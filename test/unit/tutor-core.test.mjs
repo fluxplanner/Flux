@@ -360,6 +360,33 @@ test('checkAnswer: a different word is never a spelling slip; the same words in 
   assert.equal(g.right, 1);
 });
 
+test('key terms: a first line is a title, labels and notation are not terms, and long vocabulary lists are kept whole', () => {
+  const termsOf = (text) => T.buildGuide([T.newSource('n', 'Notes', text)]).terms.map((t) => t.term);
+  const hist = termsOf('WW1 timeline – causes and key events\n\n1882 – Triple Alliance formed (Germany, Austria-Hungary, Italy)\n\nMilitarism: countries built up large armies and navies.\nImperialism: competition for colonies caused tension between the great powers.');
+  assert.ok(!hist.includes('WW1 timeline'));
+  assert.ok(hist.includes('Militarism') && hist.includes('Imperialism'));
+  const vocab = termsOf('Spanish vocab – unit 2 la casa\n\nla cocina – the kitchen\nel baño – the bathroom\nla puerta – the door\nla ventana – the window');
+  assert.ok(!vocab.includes('Spanish vocab'));
+  assert.equal(vocab.length, 4);
+  const sheet = termsOf('Ephemeral: lasting for a very short time\nUbiquitous: present or found everywhere\nCandid: truthful and straightforward');
+  assert.ok(sheet.includes('Ephemeral'), 'a list with no title keeps its first entry');
+  const bio = termsOf('Genetics\n\nHomozygous = two same alleles (AA or aa)\nHeterozygous = two different alleles (Aa)\n\nPunnett square example: Aa x Aa gives 1 AA : 2 Aa : 1 aa, so a 3:1 ratio.\nWorked example: 36 g of water ÷ 18 g/mol = 2 mol.\nA mutation is a change in the DNA sequence.');
+  for (const junk of ['AA', 'Punnett square example', 'Worked example']) assert.ok(!bio.includes(junk), junk);
+  assert.ok(bio.includes('Homozygous') && bio.includes('Mutation'));
+  const g = T.buildGuide([T.newSource('Header line', 'Notes', 'Unit 4 – Genetics & Cell Division\nMr. Alvarez, Period 3\n\nA mutation is a change in the DNA sequence. Mutations can be caused by radiation.')]);
+  assert.equal(g.outline[0].title, 'Unit 4 – Genetics & Cell Division');
+  // Every clear "term – meaning" line, up to the 500 a set holds; how many were left out is kept.
+  const word = (i) => 'term' + String.fromCharCode(97 + (i % 26)) + String.fromCharCode(97 + Math.floor(i / 26) % 26) + String.fromCharCode(97 + Math.floor(i / 676));
+  const list = (n) => 'Vocabulary\n\n' + Array.from({ length: n }, (_, i) => word(i) + ' – a word that means thing number ' + i).join('\n');
+  const big = T.buildGuide([T.newSource('v', 'Notes', list(300))]);
+  assert.equal(big.terms.length, 300);
+  assert.equal(big.omitted, 0);
+  const huge = T.buildGuide([T.newSource('v', 'Notes', list(520))]);
+  assert.equal(huge.terms.length, 500);
+  assert.equal(huge.omitted, 20);
+  assert.equal(T.normalizeSet(Object.assign(T.newSet({}), { guide: huge })).guide.omitted, 20);
+});
+
 /* ── Mastery ─────────────────────────────────────────────────────────── */
 
 test('mastery: right answers climb, a miss after mastering drops two levels, skips change nothing', () => {

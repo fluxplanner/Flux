@@ -1315,6 +1315,7 @@
       : 'No dates, numbers or causes stood out in your notes. Add facts you want to remember.';
     return '<section class="ft-guide-sec" aria-labelledby="' + hid + '"><h3 class="ft-h3" id="' + hid + '">' + title + ' <span class="ft-count">' + list.length + '</span></h3>'
       + (list.length ? '' : '<p class="ft-help">' + empty + '</p>')
+      + (terms && g.omitted ? '<p class="ft-banner" role="note" id="ftOmitted">' + plural(g.omitted, 'more term') + ' in your notes ' + (g.omitted === 1 ? 'was' : 'were') + ' left out: a study set holds up to ' + T.LIMITS.terms + ' key terms. Put the rest of the notes in a second study set to study them too.</p>' : '')
       + '<ul class="ft-items">' + list.map((it) => (ed && ed.what === what && ed.id === it.id ? editForm(what, it) : itemHtml(what, it))).join('') + '</ul>'
       + addForm(what) + '</section>';
   }
@@ -1589,7 +1590,7 @@
         return '<li class="ft-topic"><label class="ft-check"><input type="checkbox" name="topic" value="' + i + '"' + (i === firstOpen ? ' checked' : '') + '>'
           + '<span class="ft-topic-title">' + esc(t.title) + '</span></label>'
           + '<p class="ft-topic-meta">' + plural(t.conceptIds.length, 'term') + ' · ' + ms.mastered + ' mastered</p>'
-          + '<p class="ft-topic-terms">' + esc(names.join(', ')) + '</p></li>';
+          + '<p class="ft-topic-terms">' + esc(names.length > 12 ? names.slice(0, 12).join(', ') + ' and ' + (names.length - 12) + ' more' : names.join(', ')) + '</p></li>';
       }).join('') + '</ul></fieldset>'
       + '<label class="ft-check ft-check--plain"><input type="checkbox" name="skipCheck"> Skip the quick check</label>'
       + '<p class="ft-error" role="alert"></p>'

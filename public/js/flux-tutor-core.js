@@ -177,6 +177,7 @@
   const GENERIC = new Set(('note notes example examples answer answers question questions remember tip tips hint hints summary definition definitions key important homework due date name class period teacher page pages chapter unit section lesson warning reminder review objective objectives goal goals aim aims vocabulary vocab topic topics title source sources figure fig table diagram introduction conclusion overview agenda today quiz test exam worksheet reading part step steps therefore thing things way ways type types kind kinds lot lots people person time times year years process glossary key terms term facts fact')
     .split(' ').map(stem));
   const ARTICLES = new Set(['a', 'an', 'the']);
+  const LABEL_END = new Set('timeline timelines list lists example examples note notes vocab vocabulary chapter chapters worksheet glossary'.split(' ').map(stem));
 
   const WORD_RE = /[\p{L}\p{N}]+(?:['’][\p{L}]+)*(?:-[\p{L}\p{N}]+)*/gu;
   /** Words with their positions in the text, lower-cased. */
@@ -390,6 +391,20 @@
     if (RUNS_ON_END.test(line.trim())) return true;
     return typeof next === 'string' && /^[\p{Ll}]/u.test(next.trim());
   }
+  /**
+   * A source's short first line is its title ("WW1 timeline – causes and key
+   * events", "Spanish vocab – unit 2"), even with a dash or colon in it,
+   * unless the next line has the same "term – meaning" shape (then it is the
+   * first entry of a list with no title).
+   */
+  function titleLine(line, next, aloneBeforeBlank) {
+    const t = line.trim();
+    if (t.length > 80 || tokenize(t).length > 12 || isBullet(t) || /[.!?;,]["'”’)]*$/.test(t)) return false;
+    if (aloneBeforeBlank) return true;
+    if (typeof next !== 'string') return false;
+    const listy = (x) => GLOSS_LINE.test(x) || /^[^:]{1,40}:\s+\S/.test(x) || /^[^=]{1,40}=\s*\S/.test(x);
+    return !(listy(t) && listy(next.trim()));
+  }
   function cleanHeading(line) {
     return line.replace(/^#{1,6}\s+/, '').replace(/[*_`]+/g, '').replace(/:\s*$/, '').trim();
   }
@@ -455,6 +470,7 @@
       const text = normalizeText(src.text);
       const hasTop = /^#\s+\S/m.test(text);
       let section = null;
+      let sawLine = false;
       const open = (title, level, page) => {
         const ref = Object.assign({}, base, { page, para: null });
         section = { id: base.sourceId + '#' + (corpus.sections.length + 1), title, level, ref, sourceId: base.sourceId, source: base.source, paraIds: [], sentenceIds: [] };
@@ -510,6 +526,8 @@
         };
         blocks.forEach((block, bi) => {
           const lines = block.split('\n').map((l) => l.trim()).filter((l) => l && !MARKER_RE.test(l));
+          const isFirstLine = !sawLine && lines.length > 0;
+          if (lines.length) sawLine = true;
           lines.forEach((line, li) => {
             const md = /^(#{1,6})\s+(\S.*)$/.exec(line);
             if (md) {
@@ -518,7 +536,8 @@
               if (title) open(title, md[1].length, seg.page);
               return;
             }
-            if (li === 0 && headingLike(line) && (lines.length > 1 || bi < lastBlock) && !runsOn(line, lines[1])) {
+            if (li === 0 && ((headingLike(line) && (lines.length > 1 || bi < lastBlock) && !runsOn(line, lines[1]))
+              || (isFirstLine && titleLine(line, lines[1], lines.length === 1 && bi < lastBlock)))) {
               flush();
               const title = cleanHeading(line);
               if (title) open(title, hasTop ? 2 : 1, seg.page);
@@ -592,6 +611,8 @@
     if (!w.length || w.length > maxWords) return false;
     if (BAD_TERM_START.test(t) || VERBISH_TERM.test(t)) return false;
     if (w.every((x) => STOP.has(x) || /^\d+$/.test(x) || GENERIC.has(stem(x)))) return false;
+    // "Worked example", "Punnett square example", "WW1 timeline", "Spanish vocab": labels, not terms.
+    if (LABEL_END.has(stem(w[w.length - 1]))) return false;
     return true;
   }
   /** "Term (ABC)" → { term, aliases: ['ABC'] }. */
@@ -740,7 +761,7 @@
   function extractTerms(corpus, opts) {
     // Every clear definition is kept (up to `max`); weaker finds (a bare "X is …",
     // a name the notes never define) fill in up to about one per six sentences.
-    const max = (opts && opts.max) || 150;
+    const max = (opts && opts.max) || LIMITS.terms;
     const extra = (opts && opts.extra) || Math.max(6, Math.round(corpus.N / 6));
     const cands = new Map();
     const get = (label) => {
@@ -780,7 +801,8 @@
       let m;
       while ((m = ACRO_RE.exec(s.text))) {
         const a = m[2];
-        if (/^[IVXLCDM]+$/.test(a) || STOP.has(a.toLowerCase()) || GENERIC.has(stem(a))) continue;
+        // Two letters in capitals ("AA", "Aa x Aa") are notation more often than a term.
+        if (a.length <= 2 || /^[IVXLCDM]+$/.test(a) || STOP.has(a.toLowerCase()) || GENERIC.has(stem(a))) continue;
         const c = get(a);
         if (c) { c.acro++; if (!c.def) c.label = a; }
       }
@@ -850,6 +872,7 @@
       weak++;
       return weak <= extra;
     });
+    if (opts && opts.out) opts.out.omitted = Math.max(0, chosen.length - max);
     return chosen.slice(0, max).sort((a, b) => a.order - b.order).map((t) => {
       delete t.score; delete t.stems; delete t.mentionCount; delete t.strength;
       return t;
@@ -958,11 +981,13 @@
   /** The automatic study guide for a set of sources. */
   function buildGuide(sources, opts) {
     const corpus = opts && opts.corpus ? opts.corpus : buildCorpus(sources);
-    const terms = extractTerms(corpus);
+    const out = {};
+    const terms = extractTerms(corpus, { out });
     const facts = extractFacts(corpus, terms);
     return {
       builtAt: (opts && opts.now) || new Date().toISOString(),
       hash: sourcesHash(sources),
+      omitted: out.omitted || 0,
       outline: buildOutline(corpus),
       terms,
       facts,
@@ -2287,6 +2312,7 @@
       terms: (Array.isArray(g.terms) ? g.terms : []).slice(0, LIMITS.terms).map(normTerm).filter((t) => t && !seenT.has(t.id) && seenT.add(t.id)),
       facts: (Array.isArray(g.facts) ? g.facts : []).slice(0, LIMITS.facts).map(normFact).filter((f) => f && !seenF.has(f.id) && seenF.add(f.id)),
       removed: strList(g.removed, LIMITS.removed, 120).filter(safeKey),
+      omitted: clampInt(g.omitted, 0, 1e6, 0),
     };
   }
   function normMastery(m) {
