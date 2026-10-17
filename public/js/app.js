@@ -10637,6 +10637,8 @@ function getCloudPayload(){
     handwritingToText:(window.FluxHandwritingToText?.getCloudSlice?FluxHandwritingToText.getCloudSlice():load('flux_handwriting_ocr_v1',{scans:0})),
     citationHelper:(window.FluxCitationHelper?.getCloudSlice?FluxCitationHelper.getCloudSlice():load('flux_citation_helper_v1',{entries:[],exports:0})),
     calcHistory:(window.FluxCalcHistory?.getCloudSlice?FluxCalcHistory.getCloudSlice():load('flux_calc_history_v1',{tape:[],plots:[],exports:0})),
+    // Reading log: books, daily entries, quotes, the weekly goal. Each item has an id; merged item by item on the way down.
+    readingLog:(window.FluxReadingLog?.getCloudSlice?FluxReadingLog.getCloudSlice():load('flux_reading_log_v1',{books:[],entries:[],quotes:[]})),
     integrations:(function(){
       if(window.FluxGoogle&&typeof FluxGoogle.getIntegrationsForCloud==='function')return FluxGoogle.getIntegrationsForCloud();
       const tok=load('flux_canvas_token','');
@@ -11323,6 +11325,10 @@ async function syncFromCloud(opts){
     }
     if(d.calcHistory&&typeof d.calcHistory==='object'){
       try{if(window.FluxCalcHistory?.applyFromCloud)FluxCalcHistory.applyFromCloud(d.calcHistory);else save('flux_calc_history_v1',d.calcHistory);}catch(_){}
+    }
+    // Reading log: merged by id, so two devices logging the same day both keep their entries; push back if this device had any the account lacked.
+    if(window.FluxReadingLog?.applyFromCloud){
+      try{if(FluxReadingLog.applyFromCloud(d.readingLog||{}))syncKey('readingLog');}catch(_){}
     }
     if(Array.isArray(d.notes)&&!(window.FluxOfflineSync?.shouldSkipCloudOverwrite?.('notes'))){
       notes=fluxApplyCloudList('notes',notes,d.notes,d.listTombstones,_listOpts);

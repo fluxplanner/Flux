@@ -339,7 +339,7 @@
       /* Literature: reading poems, plays, films and comics closely. The general
          literary devices glossary moves here from Writing, beside the poetry
          packet it belongs with. */
-      { id: 'literature', name: 'Literature', tools: ['devices', 'lit-poetry', 'lit-commentary', 'lit-graphic', 'lit-mediums'] },
+      { id: 'literature', name: 'Literature', tools: ['devices', 'lit-poetry', 'lit-commentary', 'lit-graphic', 'lit-mediums', 'lit-reading-log'] },
       { id: 'rhetoric', name: 'Rhetoric', tools: ['rh-situation', 'rh-devices', 'rh-fallacies', 'rh-essays'] },
     ],
     music: [
