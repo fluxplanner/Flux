@@ -1257,7 +1257,9 @@
       svg.addEventListener('pointercancel', endPointer);
       svg.addEventListener('pointerleave', function () { if (!st.drag && st.tool === 'eraser') draftG.innerHTML = ''; });
       svg.addEventListener('dblclick', function (e) {
-        var g = e.target.closest('#pxItems [data-id]');
+        // Pointer capture makes the svg itself the target, so look under the pointer.
+        var under = document.elementFromPoint(e.clientX, e.clientY);
+        var g = (under && under.closest && under.closest('#pxItems [data-id]')) || e.target.closest('#pxItems [data-id]');
         var it = g && doc.items.filter(function (i) { return i.id === g.getAttribute('data-id'); })[0];
         if (it && (it.type === 'text' || it.type === 'label')) { st.sel = it.id; editTextOf(it); }
         if (it && it.type === 'figure') { st.sel = it.id; drawSel(); drawProps(); openFigures(it); }
