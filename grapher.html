@@ -30,7 +30,8 @@
   inside the planner so both look the same.
 -->
 <link rel="stylesheet" href="public/css/flux-tex.css?v=b68bf637">
-<link rel="stylesheet" href="public/css/flux-grapher.css?v=6c863d54">
+<link rel="stylesheet" href="public/css/flux-grapher.css?v=fe83419c">
+<link rel="stylesheet" href="public/css/flux-grapher-3d.css?v=8bc1f300">
 <link rel="stylesheet" href="public/css/flux-hub.css?v=6a462093">
 <link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=673aab02">
 <link rel="stylesheet" href="public/css/flux-print-watermark.css?v=b7067319">
@@ -165,11 +166,21 @@
     .sep, #ghHelp, #ghPng, .fxhub-btn-label { display: none; }
     .fxhub-btn { padding: 7px 9px; }
   }
+  .mode-btn { white-space: nowrap; }
+  /* Three tabs since the 3D mode: on a 390-wide phone everything still fits
+     on the one bar, a little closer together. */
+  @media (max-width: 420px) {
+    header.top { gap: 4px; }
+    .mode-btn { padding: 7px 6px; }
+    .hbtn { width: 30px; }
+    .fxhub-btn { padding: 7px 7px; }
+  }
+  @media (max-width: 340px) { .hbtn { width: 28px; } }
   /* A zoomed-in iPhone is 320 wide: fewer icons, so the switcher never leaves the screen. */
   @media (max-width: 380px) {
     header.top { gap: 4px; }
     #ghShare { display: none; }
-    .mode-btn { padding: 7px 8px; }
+    .mode-btn { padding: 7px 6px; }
   }
   @media (max-width: 340px) { .brand { display: none; } }
 
@@ -194,6 +205,8 @@
           aria-selected="false" aria-controls="grapherHost"><span class="ml">Functions</span><span class="ms" aria-hidden="true">ƒ(x)</span></button>
         <button type="button" class="mode-btn" id="modeData" role="tab"
           aria-selected="true" aria-controls="grapherHost"><span class="ml">Measurements</span><span class="ms" aria-hidden="true">Data ±</span></button>
+        <button type="button" class="mode-btn" id="mode3d" role="tab"
+          aria-selected="false" aria-controls="grapherHost" aria-label="3D">3D</button>
       </div>
 
       <span class="grow"></span>
@@ -233,10 +246,12 @@
   <script src="public/js/flux-lab-fit.js?v=da22f751"></script>
   <script src="public/js/flux-formula-typeset.js?v=4b6135e4"></script>
   <script src="public/js/flux-mathfield.js?v=ddaf78a5"></script>
-  <script src="public/js/flux-grapher.js?v=a53205b5"></script>
-  <script src="public/js/flux-grapher-cloud.js?v=17ab9912"></script>
+  <script src="public/js/flux-grapher.js?v=e3e0db54"></script>
+  <script src="public/js/flux-space3d.js?v=0265fac9"></script>
+  <script src="public/js/flux-grapher-3d.js?v=3205e263"></script>
+  <script src="public/js/flux-grapher-cloud.js?v=3f32ffcb"></script>
   <script src="public/js/flux-grapher-import.js?v=e69aafc4"></script>
-  <script src="public/js/flux-grapher-tour.js?v=3c93b326"></script>
+  <script src="public/js/flux-grapher-tour.js?v=1f80fcc9"></script>
   <script>
     (function () {
       var host = document.getElementById('grapherHost');
@@ -249,6 +264,9 @@
 
       var btnFn = document.getElementById('modeFunctions');
       var btnData = document.getElementById('modeData');
+      var btn3d = document.getElementById('mode3d');
+      var BTN = { functions: btnFn, data: btnData, '3d': btn3d };
+      function modeOk(m) { return m === 'functions' || m === '3d' ? m : 'data'; }
       var saveBtn = document.getElementById('ghSave');
       var acctBtn = document.getElementById('ghAcct');
       var inst = null;
@@ -266,18 +284,22 @@
         if (stash[mode]) inst.restore(stash[mode]);
         inst.on('change', markDirty);
         inst.on('saved', markDirty);
-        btnFn.setAttribute('aria-selected', String(mode === 'functions'));
-        btnData.setAttribute('aria-selected', String(mode !== 'functions'));
+        Object.keys(BTN).forEach(function (k) { BTN[k].setAttribute('aria-selected', String(k === mode)); });
         // The highlight slides to the chosen tab and the new grapher comes in
-        // from that side (Functions left, Measurements right).
-        if (G.glideSeg) G.glideSeg(document.getElementById('ghModes'), mode === 'functions' ? btnFn : btnData, !prev);
+        // from that side (Functions left, Measurements middle, 3D right).
+        if (G.glideSeg) G.glideSeg(document.getElementById('ghModes'), BTN[mode], !prev);
         if (G.enterFrom) G.enterFrom(host.firstElementChild, mode, prev);
         try { localStorage.setItem(G.MODE_KEY, mode); } catch (e) {}
+        // A 3D link in the address belongs to the 3D graph; leaving it lets it go.
+        if (mode !== '3d' && /^#3d=/.test(location.hash)) {
+          try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+        }
         markDirty();
       }
 
       btnFn.addEventListener('click', function () { if (inst.kind !== 'functions') show('functions'); });
       btnData.addEventListener('click', function () { if (inst.kind !== 'data') show('data'); });
+      btn3d.addEventListener('click', function () { if (inst.kind !== '3d') show('3d'); });
 
       /* Opened from the planner's full-screen button: take its graph along.
          Read once and removed, and ignored if it is stale. */
@@ -288,10 +310,21 @@
       } catch (e) {}
       if (hand && !(hand.at && Date.now() - hand.at < 10 * 60 * 1000)) hand = null;
 
+      /* A shared 3D graph: grapher.html#3d=… (or graph/#3d=…, which forwards
+         here) rebuilds the rows and the view. Nothing is stored. */
+      var linked = null;
+      var m3 = /^#3d=([A-Za-z0-9_-]+)$/.exec(location.hash || '');
+      if (m3 && window.FluxSpace3D) {
+        linked = window.FluxSpace3D.decodeShare(m3[1]);
+        if (!linked) setTimeout(function () { G.toast('That 3D link is damaged — it may have been cut short when it was copied.', 'warning'); }, 300);
+      }
+
       var saved = 'data';
       try { saved = localStorage.getItem(G.MODE_KEY) || 'data'; } catch (e) {}
-      show(hand ? (hand.kind === 'functions' ? 'functions' : 'data') : (saved === 'functions' ? 'functions' : 'data'));
-      if (hand) inst.loadDoc(hand.payload, hand.cloud);
+      if (!window.FluxGrapher3D && saved === '3d') saved = 'data';
+      show(linked ? '3d' : hand ? modeOk(hand.kind) : modeOk(saved));
+      if (linked) inst.loadDoc(linked, null);
+      else if (hand) inst.loadDoc(hand.payload, hand.cloud);
 
       /* Deleted in the planner (or another tab) while it is open here: let go
          of the saved id, so saving does not quietly bring it back. */
@@ -315,7 +348,8 @@
         if (!C) return;
         C.open(function (row) {
           if (inst.isDirty() && !window.confirm('Open "' + row.title + '"? Unsaved changes to the graph on screen will be lost.')) return;
-          if (row.kind !== inst.kind) { delete stash[row.kind]; show(row.kind); }
+          var kind = G.kindOf ? G.kindOf(row) : row.kind;
+          if (kind !== inst.kind) { delete stash[kind]; show(kind); }
           inst.loadDoc(row.payload, { id: row.id, title: row.title });
           markDirty();
           G.toast('Opened "' + row.title + '".', 'success');
@@ -341,12 +375,17 @@
          worth putting on a slide or in a class chat. */
       document.getElementById('ghShare').addEventListener('click', function () {
         var url = new URL('graph/', location.href.replace(/[^/]*([?#].*)?$/, '')).href;
+        // A 3D graph travels in the link itself: its rows, its box and the view.
+        if (inst && inst.kind === '3d' && inst.shareHash) url += inst.shareHash();
+        var is3d = /#3d=/.test(url);
         var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
         if (coarse && navigator.share) {
-          navigator.share({ title: 'Flux Grapher', text: 'Free graphing — no account needed', url: url }).catch(function () {});
+          navigator.share({ title: 'Flux Grapher', text: is3d ? 'A 3D graph — no account needed' : 'Free graphing — no account needed', url: url }).catch(function () {});
           return;
         }
-        var done = function () { G.toast('Link copied — ' + url.replace(/^https?:\/\//, ''), 'success'); };
+        var done = function () {
+          G.toast(is3d ? 'Link copied — it opens this 3D graph, turned the way it is now.' : 'Link copied — ' + url.replace(/^https?:\/\//, ''), 'success');
+        };
         try {
           navigator.clipboard.writeText(url).then(done, function () { window.prompt('Copy this link:', url); });
         } catch (e) { window.prompt('Copy this link:', url); }
