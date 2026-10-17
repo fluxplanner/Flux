@@ -10724,6 +10724,9 @@ let _fluxRow=null;
 let _fluxRowGen=0;
 /** Pushes in a row that found the row written by someone else first. */
 let _fluxRowMisses=0;
+/** Each field of the row as this tab last agreed with it ({key: canonical JSON}); null before any. */
+let _fluxAgreed=null;
+function fluxFieldCanon(o){const m={};if(o&&typeof o==='object')Object.keys(o).forEach(k=>{try{m[k]=fluxCanonicalJson(o[k]);}catch(_){}});return m;}
 
 function stopFluxCloudSyncLoops(){
   if(window._syncInterval){clearInterval(window._syncInterval);window._syncInterval=null;}
@@ -10757,11 +10760,11 @@ function startFluxCloudSyncLoops(){
    never replace one: a pull that wrongly found no row (a session that had
    lapsed, say) used to let a new device's empty lists replace the account's.
    The plan itself is FluxListMerge.writePlan (unit tested). */
-async function fluxWriteRow(sb,payload){
+async function fluxWriteRow(sb,payload,seen){
   const at=new Date().toISOString();
   const plan=window.FluxListMerge&&typeof FluxListMerge.writePlan==='function'
-    ?FluxListMerge.writePlan(_fluxRow)
-    :(_fluxRow&&_fluxRow.exists?{mode:'update',at:_fluxRow.at}:{mode:'insert'});
+    ?FluxListMerge.writePlan(seen)
+    :(seen&&seen.exists?{mode:'update',at:seen.at}:{mode:'insert'});
   let q;
   if(plan.mode==='update'){
     q=sb.from('user_data').update({data:payload,updated_at:at}).eq('id',currentUser.id);
@@ -10813,6 +10816,7 @@ async function syncToCloud(opts){
   if(syncUiWantsActivity())setSyncStatus('syncing');
   try{
     let payload=getCloudPayload();
+    const _rowSeen=_fluxRow;   // the row this payload was merged against
     if(window.FluxOfflineSync?.enabled?.()&&FluxOfflineSync.beforePush)payload=FluxOfflineSync.beforePush(payload);
     if(isOwner()){
       try{
@@ -10863,7 +10867,7 @@ async function syncToCloud(opts){
     }
     // Taken now: a tick made while the request is out must not count as sent.
     const _pushedLists=window.FluxListMerge?{tasks:FluxListMerge.hashes(payload.tasks),notes:FluxListMerge.hashes(payload.notes)}:{};
-    const _write=await fluxWriteRow(sb,payload);
+    const _write=await fluxWriteRow(sb,payload,_rowSeen);
     const error=_write.error;
     if(!error&&!_write.written){
       /* Someone wrote the row since this tab last merged it — another tab or
@@ -10894,6 +10898,7 @@ async function syncToCloud(opts){
       return;
     }
     _fluxRow={exists:true,at:_write.at};
+    _fluxAgreed=fluxFieldCanon(payload);
     _fluxRowGen++;
     _fluxRowMisses=0;
     window._fluxSyncFailed=false;
@@ -11100,7 +11105,10 @@ async function syncFromCloud(opts){
   let _pullOutcome='failed',_pullMerged=false;
   const _gen=_fluxRowGen;
   try{
-    const{data,error}=await sb.from('user_data').select('data,updated_at').eq('id',currentUser.id).single();
+    // A pull that never answers would hold every push that finds the row moved (fluxPullBeforePush).
+    let _q=sb.from('user_data').select('data,updated_at').eq('id',currentUser.id);
+    try{if(typeof AbortSignal!=='undefined'&&AbortSignal.timeout&&_q.abortSignal)_q=_q.abortSignal(AbortSignal.timeout(15000));}catch(_){}
+    const{data,error}=await _q.single();
     const d=data&&!error?data.data:undefined;
     // The row as it was read: what a push may write over once it is merged (fluxWriteRow).
     const _readRow={exists:true,at:data&&data.updated_at!=null?data.updated_at:null};
@@ -11149,6 +11157,18 @@ async function syncFromCloud(opts){
       window._fluxSyncFailed=false;
       if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
       return;
+    }
+    const _cloudFields=fluxFieldCanon(d);
+    if(_fluxAgreed){
+      try{
+        const mine=getCloudPayload();
+        Object.keys(mine).forEach(k=>{
+          if(k==='tasks'||k==='notes'||k==='listTombstones')return;   // merged item by item below
+          const a=_fluxAgreed[k];
+          if(a===undefined||_cloudFields[k]!==a)return;              // no record, or changed there: theirs
+          if(fluxCanonicalJson(mine[k])!==a)d[k]=mine[k];             // changed only here: kept, and pushed
+        });
+      }catch(_){}
     }
     if(window.FluxOfflineSync?.enabled?.()&&FluxOfflineSync.applyCloudPayload){
       try{FluxOfflineSync.applyCloudPayload(d);}catch(e){console.warn('[FluxOfflineSync]',e);}
@@ -11419,6 +11439,7 @@ async function syncFromCloud(opts){
        threw part way through, the next pull must try again rather than skip
        a payload it never finished using. */
     window._fluxLastCloudFingerprint=_cloudFp;
+    _fluxAgreed=_cloudFields;
   }catch(e){console.error('Sync from cloud error',e);setSyncStatus('offline');}
   finally{
     _syncFromCloudInFlight=false;
@@ -14883,7 +14904,7 @@ async function handleSignedIn(user,session){
   // A new session for this account: nothing goes up until its first pull is in.
   if(!currentUser||currentUser.id!==user.id){
     _fluxPulledOnce=false;
-    _fluxRow=null;_fluxRowMisses=0;
+    _fluxRow=null;_fluxRowMisses=0;_fluxAgreed=null;
     // Edits count from here: anything done before signing in (as a guest)
     // does not get merged into the account unless it was asked for
     // (flux_migrate_guest below).
@@ -15302,7 +15323,7 @@ function handleSignedOut(){
   currentUser=null;gmailToken=null;
   stopFluxCloudSyncLoops();
   _fluxPulledOnce=false;
-  _fluxRow=null;_fluxRowMisses=0;
+  _fluxRow=null;_fluxRowMisses=0;_fluxAgreed=null;
   sessionStorage.clear();
   const keysToKeep=[
     'flux_splash_shown','flux_theme','flux_accent','flux_accent_rgb',
