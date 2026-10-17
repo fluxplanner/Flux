@@ -248,6 +248,20 @@ test.describe('Grapher 3D', () => {
     expect(await page.evaluate(() => (window as any).fluxGrapherPage.instance.doc.title)).toBe('Three planes');
   });
 
+  test('printing lays the white drawing of the 3D graph out on its own page', async ({ page }) => {
+    await page.addInitScript(() => { (window as any).__printed = 0; window.print = () => { (window as any).__printed++; }; });
+    await open(page);
+    await load(page, ['x + y + z = 6']);
+    await page.locator('#ghPrint').click();
+    await page.locator('[data-pmono="1"]').click();
+    await page.locator('[data-pgo]').click();
+    expect(await page.evaluate(() => (window as any).__printed)).toBe(1);
+    const src = await page.locator('#flgPrintSheet img.fl3-print').getAttribute('src');
+    expect(src).toMatch(/^data:image\/png;base64,/);
+    expect(src!.length).toBeGreaterThan(20_000);
+    expect(await page.evaluate(() => localStorage.getItem('flux_grapher_print_mono'))).toBe('true');
+  });
+
   test('a share link rebuilds the rows and the view, through the short /graph/ link too', async ({ page, context }) => {
     await page.addInitScript(() => {
       Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: (t: string) => { (window as any).__copied = t; return Promise.resolve(); } } });

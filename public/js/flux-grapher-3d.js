@@ -903,8 +903,16 @@
     const keyLines = !o.screen && d.win.key ? this.keyLines() : [];
     if (ink.bg) { ctx.fillStyle = ink.bg; ctx.fillRect(0, 0, W, H); }
     ctx.save();
-    ctx.translate(0, titleH);
-    const cam = s.camera(sc.box, d.view, W, H - titleH, d.win.equal);
+    /* In an image the key sits top left; when there is room the graph moves
+       over beside it rather than under it. */
+    let offX = 0;
+    if (keyLines.length) {
+      const kw = this.keyWidth(ctx, keyLines, f, W) + 24 * f;
+      if (W - kw >= 0.62 * (H - titleH)) offX = kw;
+    }
+    const GW = W - offX;
+    ctx.translate(offX, titleH);
+    const cam = s.camera(sc.box, d.view, GW, H - titleH, d.win.equal);
     const P2 = (p) => cam.project(p);
     const col = (c) => (o.mono ? (ink.paper ? '#000000' : '#ffffff') : ink.paper ? forPaper(c) : c);
     const fill = (c) => (o.mono ? (ink.paper ? '#000000' : '#ffffff') : c);
@@ -1026,7 +1034,7 @@
       const label = t.text || String(t.n);
       ctx.font = '800 ' + (11 * f) + 'px ' + FONT;
       const w = ctx.measureText(label).width + 10 * f, h = 17 * f;
-      const x = clamp(at[0] - w / 2, 2, W - w - 2), y = clamp(at[1] - h / 2, 2, H - titleH - h - 2);
+      const x = clamp(at[0] - w / 2, 2, GW - w - 2), y = clamp(at[1] - h / 2, 2, H - titleH - h - 2);
       ctx.beginPath();
       if (ctx.roundRect) ctx.roundRect(x, y, w, h, 5 * f); else ctx.rect(x, y, w, h);
       const bgc = t.kind === 'meet' ? ink.meet : o.mono ? (ink.paper ? '#000000' : '#ffffff') : col(t.colour);
@@ -1099,7 +1107,7 @@
     }
     if (keyLines.length) this.paintKey(ctx, keyLines, 12 * f, titleH + 12 * f, f, ink, o.mono, col, W);
 
-    const picks = sc.picks.map((pk) => { const q = P2(pk.p); return Object.assign({ x: q[0], y: q[1] + titleH }, pk); });
+    const picks = sc.picks.map((pk) => { const q = P2(pk.p); return Object.assign({ x: q[0] + offX, y: q[1] + titleH }, pk); });
     return { cam: cam, picks: picks, W: W, H: H };
   };
 
@@ -1156,10 +1164,16 @@
     return lines;
   };
 
+  /** How wide the key is in an image: its longest line, up to 46% of it. */
+  P.keyWidth = function (ctx, lines, f, W) {
+    return Math.min(W * 0.46, Math.max.apply(null, lines.map((l) => {
+      ctx.font = (l.answer ? '700 ' : '') + (13.5 * f) + 'px ' + FONT;
+      return ctx.measureText(l.text).width + (l.bare ? 24 : 56) * f;
+    })));
+  };
   P.paintKey = function (ctx, lines, x, y, f, ink, mono, col, W) {
     const lh = 22 * f;
-    ctx.font = (13.5 * f) + 'px ' + FONT;
-    const wide = Math.min(W - x - 12 * f, Math.max.apply(null, lines.map((l) => ctx.measureText(l.text).width + (l.bare ? 16 : 52) * f)));
+    const wide = this.keyWidth(ctx, lines, f, W);
     const h = lines.length * lh + 12 * f;
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(x, y, wide, h, 6 * f); else ctx.rect(x, y, wide, h);
