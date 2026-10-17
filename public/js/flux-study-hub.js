@@ -1818,6 +1818,9 @@
 
   window.fluxStudyHub = { render: renderHub, register, addAITool, tools: aiTools, aiManifest, slash, balance, parseFormula, selectSubject,
     getCloudSlice, applyFromCloud,
+    /* Open one tool of one subject — the verb drill's assignment links land a
+       student on Spanish ▸ Verb drill this way, as if they had clicked it. */
+    openTool: openToolRef,
     /* Lets a shared tool tell which subject opened it — the formula sheet uses
        this to show only the relevant science instead of all three. */
     currentSubject: () => state.subject,
