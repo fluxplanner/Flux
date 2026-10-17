@@ -133,7 +133,10 @@ test.describe('Plan my week', () => {
     await expect(block(page, 'Lab write-up').locator('.pw-b-why')).toHaveText('You moved this one');
     await expect(block(page, 'History essay')).toHaveCount(2);
     await expect(modal(page).locator('[data-act="approve"]')).toHaveText('Approve changes');
-    const beforeAgain = await page.evaluate(() => JSON.stringify((window as any).tasks));
+    // Compared without updatedAt: every save stamps the items it changes (sync
+    // bookkeeping, so the undo wins over the cloud's copy), an undo included.
+    const tasksNow = () => page.evaluate(() => JSON.stringify((window as any).tasks, (k, v) => (k === 'updatedAt' ? undefined : v)));
+    const beforeAgain = await tasksNow();
     await modal(page).locator('[data-act="approve"]').click();
     await expect(page.locator('#undoSnackbar')).toContainText('Added 1 study block');
 
@@ -145,7 +148,7 @@ test.describe('Plan my week', () => {
 
     // ── Undo puts the planner back exactly as it was ──
     await page.locator('#undoSnackbar button', { hasText: 'Undo' }).click();
-    await expect.poll(() => page.evaluate(() => JSON.stringify((window as any).tasks))).toBe(beforeAgain);
+    await expect.poll(tasksNow).toBe(beforeAgain);
     expect((await blocks(page)).filter((x) => x.of === 881002)).toHaveLength(1);
 
     // ── Planning twice in a row changes nothing and never duplicates ──
