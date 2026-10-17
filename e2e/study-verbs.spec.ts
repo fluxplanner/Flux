@@ -260,4 +260,18 @@ test.describe('Verb drill', () => {
     await page.locator('[data-act="end"]').click();
     expect(await axe(page)).toEqual([]);
   });
+  test('a teacher finds Verb drill in the Lesson Hub and it opens the assignment-link maker', async ({ page }) => {
+    await gotoScenario(page, 'teacher-workflow');
+    await page.evaluate(() => (window as any).nav('lessonHub'));
+    const btn = page.locator('#lhVerbDrillBtn');
+    await expect(btn).toBeVisible();
+    await btn.click();
+    await expect(page.locator('#fvdRoot')).toBeVisible();
+    await expect(page.locator('#fvdTab-teach')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#fvdTeachForm')).toBeVisible();
+    await page.locator('#fvdTtitle').fill('Unit 2 verbs');
+    await page.locator('#fvdTlang').selectOption('fr');
+    await page.locator('#fvdTeachForm button[type="submit"]').click();
+    await expect(page.locator('#fvdLink')).toHaveValue(/#verbs=[A-Za-z0-9_-]+$/);
+  });
 });

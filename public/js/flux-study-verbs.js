@@ -883,6 +883,8 @@
   window.FluxVerbDrill = {
     render: render,
     openLink: openLink,
+    /** Study tools ▸ Verb drill ▸ For teachers (the Lesson Hub button uses this). */
+    openTeacher: function () { route({ kind: 'teach' }); },
     // Test seams: the question on screen, and the round so far.
     _current: function () { return S && S.round && S.round.q ? JSON.parse(JSON.stringify(S.round.q)) : null; },
     _round: function () { return S && S.round ? { pos: S.round.pos, total: S.round.total, timed: S.round.timed, results: S.round.results.slice(), waiting: S.round.waiting } : null; },
