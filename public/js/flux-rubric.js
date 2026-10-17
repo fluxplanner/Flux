@@ -44,7 +44,7 @@
   function pdfText(file) {
     return loadPdf().then(function (lib) {
       return readBuf(file).then(function (buf) {
-        return lib.getDocument({ data: buf }).promise.then(function (pdf) {
+        return lib.getDocument({ data: buf, isEvalSupported: false }).promise.then(function (pdf) {
           var n = Math.min(pdf.numPages, 40), chain = Promise.resolve('');
           for (var i = 1; i <= n; i++) (function (p) {
             chain = chain.then(function (acc) {

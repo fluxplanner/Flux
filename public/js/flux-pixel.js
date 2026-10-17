@@ -68,6 +68,12 @@
     plus: svgIcon('<path d="M12 5v14M5 12h14"/>'),
     front: svgIcon('<rect x="8" y="8" width="12" height="12" rx="1.5"/><path d="M4 16V5a1 1 0 0 1 1-1h11"/>'),
   };
+  var ERASE_PREF = 'flux_pixel_eraser';
+  var ERASE_MODES = [
+    ['whole', 'Whole item', 'Takes away anything it touches'],
+    ['circle', 'Circle', 'Rubs out only what it passes over'],
+    ['box', 'Box', 'Drag a box: everything inside it is rubbed out'],
+  ];
   var TOOLS = [
     ['select', 'Select and move', 'V'], ['pen', 'Pen', 'P'], ['hl', 'Highlighter', 'H'], ['eraser', 'Eraser', 'E'],
     ['line', 'Line', 'L'], ['arrow', 'Arrow', 'A'], ['rect', 'Box', 'R'], ['ellipse', 'Circle', 'O'],
@@ -142,6 +148,18 @@
     if (it.pts) it.pts = it.pts.map(function (p) { return [p[0] + dx, p[1] + dy]; });
     ['x', 'x1', 'x2'].forEach(function (k) { if (k in it) it[k] += dx; });
     ['y', 'y1', 'y2'].forEach(function (k) { if (k in it) it[k] += dy; });
+    // What the eraser rubbed out goes where the item goes.
+    (it.cuts || []).forEach(function (c) {
+      if (c.pts) c.pts = c.pts.map(function (p) { return [p[0] + dx, p[1] + dy]; });
+      else { c.x += dx; c.y += dy; }
+    });
+  }
+  function scaleCuts(it, sx, sy, ox, oy) {
+    var f = function (v, o, s) { return o + (v - o) * s; };
+    (it.cuts || []).forEach(function (c) {
+      if (c.pts) { c.pts = c.pts.map(function (p) { return [f(p[0], ox, sx), f(p[1], oy, sy)]; }); c.r = Math.max(1, c.r * Math.sqrt(sx * sy)); }
+      else { c.x = f(c.x, ox, sx); c.y = f(c.y, oy, sy); c.w *= sx; c.h *= sy; }
+    });
   }
   /** Scale about (ox, oy). Text keeps its shape: it scales by one factor. */
   function scaleItem(it, sx, sy, ox, oy) {
@@ -151,12 +169,104 @@
       ['x', 'x1', 'x2'].forEach(function (k) { if (k in it) it[k] = f(it[k], ox, s); });
       ['y', 'y1', 'y2'].forEach(function (k) { if (k in it) it[k] = f(it[k], oy, s); });
       it.size = Math.max(8, it.size * s);
+      scaleCuts(it, s, s, ox, oy);
       return;
     }
     if (it.pts) it.pts = it.pts.map(function (p) { return [f(p[0], ox, sx), f(p[1], oy, sy)]; });
     ['x1', 'x2'].forEach(function (k) { if (k in it) it[k] = f(it[k], ox, sx); });
     ['y1', 'y2'].forEach(function (k) { if (k in it) it[k] = f(it[k], oy, sy); });
     if ('w' in it) { it.x = f(it.x, ox, sx); it.y = f(it.y, oy, sy); it.w = Math.max(4, it.w * sx); it.h = Math.max(4, it.h * sy); }
+    scaleCuts(it, sx, sy, ox, oy);
+  }
+
+  /* ── The eraser ─────────────────────────────────────────────────────────
+     Three ways to rub out. Whole item takes away anything it touches. Circle
+     and Box rub out only the part under them: each touched item keeps a list
+     of cuts (a swept circle, or a box) that are drawn as holes in a mask, so
+     the item keeps its shape, its gaps move and resize with it, and undo,
+     PNG and SVG all see the same picture. A line, arrow or pen stroke rubbed
+     out from end to end is removed outright. */
+
+  function distPtSeg(p, a, b) {
+    var dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy;
+    var t = L ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L)) : 0;
+    return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+  }
+  function cross(o, a, b) { return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); }
+  function distSegSeg(a, b, c, d) {
+    var d1 = cross(c, d, a), d2 = cross(c, d, b), d3 = cross(a, b, c), d4 = cross(a, b, d);
+    if (((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0)) && d1 && d2 && d3 && d4) return 0;
+    return Math.min(distPtSeg(a, c, d), distPtSeg(b, c, d), distPtSeg(c, a, b), distPtSeg(d, a, b));
+  }
+  function arrowHeadPts(x1, y1, x2, y2, w) {
+    var a = Math.atan2(y2 - y1, x2 - x1), len = 10 + w * 3, spread = 0.45;
+    return [[x2, y2], [x2 - len * Math.cos(a - spread), y2 - len * Math.sin(a - spread)], [x2 - len * Math.cos(a + spread), y2 - len * Math.sin(a + spread)], [x2, y2]];
+  }
+  /** The lines an item's ink follows; null where its box is the best guess (text, stamps, pictures, filled shapes). */
+  function inkLines(it) {
+    switch (it.type) {
+      case 'pen': case 'hl': return [it.pts];
+      case 'line': return [[[it.x1, it.y1], [it.x2, it.y2]]];
+      case 'arrow': return [[[it.x1, it.y1], [it.x2, it.y2]], arrowHeadPts(it.x1, it.y1, it.x2, it.y2, it.width || 3)];
+      case 'rect': return it.fill ? null : [[[it.x, it.y], [it.x + it.w, it.y], [it.x + it.w, it.y + it.h], [it.x, it.y + it.h], [it.x, it.y]]];
+      case 'ellipse': {
+        if (it.fill) return null;
+        var cx = it.x + it.w / 2, cy = it.y + it.h / 2, pts = [];
+        for (var i = 0; i <= 48; i++) { var t = i / 48 * Math.PI * 2; pts.push([cx + it.w / 2 * Math.cos(t), cy + it.h / 2 * Math.sin(t)]); }
+        return [pts];
+      }
+      default: return null;
+    }
+  }
+  /** Does a circle of radius r swept from a to b touch the item's ink? */
+  function sweepTouches(it, a, b, r) {
+    var bb = bbox(it), pad = r + (it.width || 3) * 3 + 2;
+    if (bb.x > Math.max(a[0], b[0]) + pad || bb.x + bb.w < Math.min(a[0], b[0]) - pad
+      || bb.y > Math.max(a[1], b[1]) + pad || bb.y + bb.h < Math.min(a[1], b[1]) - pad) return false;
+    var lines = inkLines(it);
+    if (!lines) return true;
+    var reach = r + (it.width || 3) / 2;
+    return lines.some(function (pts) {
+      if (pts.length === 1) return distPtSeg(pts[0], a, b) <= reach;
+      for (var i = 1; i < pts.length; i++) if (distSegSeg(a, b, pts[i - 1], pts[i]) <= reach) return true;
+      return false;
+    });
+  }
+  /** Does the box (page units) touch the item's ink? */
+  function boxTouches(it, bx) {
+    var bb = bbox(it);
+    if (bb.x > bx.x + bx.w || bb.x + bb.w < bx.x || bb.y > bx.y + bx.h || bb.y + bb.h < bx.y) return false;
+    var lines = inkLines(it);
+    if (!lines) return true;
+    var m = (it.width || 3) / 2, x0 = bx.x - m, y0 = bx.y - m, x1 = bx.x + bx.w + m, y1 = bx.y + bx.h + m;
+    var inside = function (p) { return p[0] >= x0 && p[0] <= x1 && p[1] >= y0 && p[1] <= y1; };
+    var edges = [[[x0, y0], [x1, y0]], [[x1, y0], [x1, y1]], [[x1, y1], [x0, y1]], [[x0, y1], [x0, y0]]];
+    return lines.some(function (pts) {
+      if (pts.some(inside)) return true;
+      for (var i = 1; i < pts.length; i++) for (var k = 0; k < 4; k++) if (distSegSeg(pts[i - 1], pts[i], edges[k][0], edges[k][1]) === 0) return true;
+      return false;
+    });
+  }
+  function underCut(p, cuts, margin) {
+    return cuts.some(function (c) {
+      if (!c.pts) return p[0] >= c.x + margin && p[0] <= c.x + c.w - margin && p[1] >= c.y + margin && p[1] <= c.y + c.h - margin;
+      if (c.pts.length === 1) return Math.hypot(p[0] - c.pts[0][0], p[1] - c.pts[0][1]) <= c.r - margin;
+      for (var i = 1; i < c.pts.length; i++) if (distPtSeg(p, c.pts[i - 1], c.pts[i]) <= c.r - margin) return true;
+      return false;
+    });
+  }
+  /** A line, arrow or pen stroke with nothing left showing: every bit of its ink lies under a cut. */
+  function rubbedOut(it) {
+    if (!it.cuts || !it.cuts.length || !/^(pen|hl|line|arrow)$/.test(it.type)) return false;
+    var margin = (it.width || 3) / 2;
+    return inkLines(it).every(function (pts) {
+      if (!underCut(pts[0], it.cuts, margin)) return false;
+      for (var i = 1; i < pts.length; i++) {
+        var a = pts[i - 1], b = pts[i], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 3));
+        for (var k = 1; k <= n; k++) if (!underCut([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n], it.cuts, margin)) return false;
+      }
+      return true;
+    });
   }
 
   /* ── Drawing items as SVG ───────────────────────────────────────────── */
@@ -234,7 +344,23 @@
         out = '<image href="' + esc(it.href) + '" x="' + r1(it.x) + '" y="' + r1(it.y) + '" width="' + r1(it.w) + '" height="' + r1(it.h) + '" preserveAspectRatio="none"/>';
         break;
     }
-    return '<g data-id="' + esc(it.id) + '">' + out + '</g>';
+    return '<g data-id="' + esc(it.id) + '">' + withCuts(it, out) + '</g>';
+  }
+  var cutSeq = 0;
+  /** The eraser's cuts as holes in a mask over the item (see "The eraser"). */
+  function withCuts(it, out) {
+    if (!it.cuts || !it.cuts.length) return out;
+    var b = bbox(it), m = (it.width || 3) * 3 + 40;
+    var x = r1(b.x - m), y = r1(b.y - m), w = r1(b.w + m * 2), h = r1(b.h + m * 2);
+    var id = 'pxCut' + (++cutSeq);
+    var holes = it.cuts.map(function (c) {
+      if (!c.pts) return '<rect x="' + r1(c.x) + '" y="' + r1(c.y) + '" width="' + r1(c.w) + '" height="' + r1(c.h) + '" fill="#000"/>';
+      if (c.pts.length === 1) return '<circle cx="' + r1(c.pts[0][0]) + '" cy="' + r1(c.pts[0][1]) + '" r="' + r1(c.r) + '" fill="#000"/>';
+      return '<path d="M' + c.pts.map(function (p) { return r1(p[0]) + ' ' + r1(p[1]); }).join(' L') + '" fill="none" stroke="#000" stroke-width="' + r1(c.r * 2) + '" stroke-linecap="round" stroke-linejoin="round"/>';
+    }).join('');
+    return '<mask id="' + id + '" maskUnits="userSpaceOnUse" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '">'
+      + '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" fill="#fff"/>' + holes + '</mask>'
+      + '<g mask="url(#' + id + ')">' + out + '</g>';
   }
   function bgDefs(bg) {
     if (bg === 'grid') return '<pattern id="pxBg" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#c7d2fe" stroke-width="1"/><path d="M8 0V40M16 0V40M24 0V40M32 0V40M0 8H40M0 16H40M0 24H40M0 32H40" stroke="#e0e7ff" stroke-width=".6"/></pattern>';
@@ -379,7 +505,14 @@
         tool: 'pen', color: '#111827', width: 4, fill: false, dash: false,
         sel: null, zoom: 1, stamp: null, drag: null, draft: null,
         hist: [JSON.stringify(doc.items)], hi: 0,
+        eraseMode: 'whole', eraseR: 18,
       };
+      try {
+        var ep = JSON.parse(localStorage.getItem(ERASE_PREF) || 'null');
+        if (ep && ERASE_MODES.some(function (m) { return m[0] === ep.mode; })) st.eraseMode = ep.mode;
+        if (ep && ep.r >= 4 && ep.r <= 80) st.eraseR = ep.r;
+      } catch (e) {}
+      function saveErasePref() { try { localStorage.setItem(ERASE_PREF, JSON.stringify({ mode: st.eraseMode, r: st.eraseR })); } catch (e) {} }
       var saveTimer = null;
 
       host.innerHTML = '<div class="px-editor">'
@@ -431,10 +564,11 @@
         var width = it ? (it.width || st.width) : st.width;
         var showFill = it ? (it.type === 'rect' || it.type === 'ellipse') : (st.tool === 'rect' || st.tool === 'ellipse');
         var showDash = it ? /^(line|arrow|rect|ellipse)$/.test(it.type) : /^(line|arrow|rect|ellipse)$/.test(st.tool);
-        var html = '<div class="px-sec"><span class="px-sec-h">Colour</span><div class="px-colors">' + COLORS.map(function (c) {
+        var erasing = st.tool === 'eraser' && !it;
+        var html = erasing ? eraserHTML() : '<div class="px-sec"><span class="px-sec-h">Colour</span><div class="px-colors">' + COLORS.map(function (c) {
           return '<button type="button" class="px-color' + (c === color ? ' is-on' : '') + '" data-color="' + c + '" style="--c:' + c + '" aria-label="Colour ' + c + '"></button>';
         }).join('') + '<label class="px-color px-color--pick" title="Any colour"><input type="color" value="' + color + '" data-pick aria-label="Pick any colour"></label></div></div>';
-        if (!it || it.type !== 'image') {
+        if (!erasing && (!it || it.type !== 'image')) {
           html += '<div class="px-sec"><span class="px-sec-h">' + (it && (it.type === 'text' || it.type === 'label') ? 'Text size' : 'Thickness') + '</span>'
             + (it && (it.type === 'text' || it.type === 'label')
               ? '<input type="range" min="12" max="120" value="' + Math.round(it.size) + '" data-size aria-label="Text size">'
@@ -469,6 +603,13 @@
           + '<p class="px-keys">V select · P pen · H highlight · E erase · L line · A arrow · R box · O circle · T text · B label · S stamps · Del delete · Ctrl+Z undo</p>';
         props.innerHTML = html;
         if (st.stampQ) filterStamps();
+      }
+      function eraserHTML() {
+        var cur = ERASE_MODES.filter(function (m) { return m[0] === st.eraseMode; })[0] || ERASE_MODES[0];
+        return '<div class="px-sec"><span class="px-sec-h" id="pxEraseH">Eraser</span><div class="px-row" role="group" aria-labelledby="pxEraseH">' + ERASE_MODES.map(function (m) {
+          return '<button type="button" class="px-chip' + (m[0] === cur[0] ? ' is-on' : '') + '" data-erase="' + m[0] + '" aria-pressed="' + (m[0] === cur[0]) + '">' + esc(m[1]) + '</button>';
+        }).join('') + '</div><p class="px-hint">' + esc(cur[2]) + '.</p></div>'
+          + (cur[0] === 'circle' ? '<div class="px-sec"><label class="px-sec-h" for="pxEraseSize">Eraser size</label><input type="range" id="pxEraseSize" min="4" max="80" value="' + st.eraseR + '" data-erase-size></div>' : '');
       }
       function drawTools() { $$('[data-tool]', host).forEach(function (b) { b.classList.toggle('is-on', b.dataset.tool === st.tool); b.setAttribute('aria-pressed', b.dataset.tool === st.tool); }); }
       function applyZoom() {
@@ -511,6 +652,8 @@
         if (t !== 'select') st.sel = null;
         if (t === 'stamp' && !st.stamp) st.stamp = 'beaker';
         svg.setAttribute('data-mode', t);
+        svg.setAttribute('data-eraser', st.eraseMode);
+        draftG.innerHTML = '';
         drawTools(); drawSel(); drawProps();
       }
       function addItem(it) { it.id = uid(); doc.items.push(it); drawItems(); commit(); return it; }
@@ -568,6 +711,50 @@
         doc.items = doc.items.filter(function (i) { return i.id !== id; });
         drawItems();
       }
+      /* Circle: every item the circle passes over gets a cut that follows it, until it leaves. */
+      function cutAlong(a, b) {
+        var r = st.eraseR, open = st.drag.cuts, hit = false;
+        doc.items.forEach(function (it) {
+          if (!sweepTouches(it, a, b, r)) { delete open[it.id]; return; }
+          var c = open[it.id], q = [r1(b[0]), r1(b[1])];
+          if (c) { var l = c.pts[c.pts.length - 1]; if (Math.hypot(q[0] - l[0], q[1] - l[1]) >= 1) c.pts.push(q); }
+          else {
+            c = { r: r, pts: a[0] === b[0] && a[1] === b[1] ? [q] : [[r1(a[0]), r1(a[1])], q] };
+            (it.cuts = it.cuts || []).push(c);
+            open[it.id] = c;
+          }
+          st.drag.touched[it.id] = true;
+          hit = true;
+        });
+        if (hit) drawItems();
+      }
+      function ring(p) {
+        var k = 1 / pageScale();
+        draftG.innerHTML = '<circle cx="' + r1(p[0]) + '" cy="' + r1(p[1]) + '" r="' + st.eraseR + '" fill="rgba(37,99,235,.07)" stroke="#2563eb" stroke-width="' + r1(1.5 * k) + '" pointer-events="none"/>';
+      }
+      function eraseBox(drag) {
+        var a = drag.start, b = drag.end;
+        return { x: Math.min(a[0], b[0]), y: Math.min(a[1], b[1]), w: Math.abs(b[0] - a[0]), h: Math.abs(b[1] - a[1]) };
+      }
+      function drawEraseBox() {
+        var bx = eraseBox(st.drag), k = 1 / pageScale();
+        draftG.innerHTML = '<rect x="' + r1(bx.x) + '" y="' + r1(bx.y) + '" width="' + r1(bx.w) + '" height="' + r1(bx.h) + '" fill="rgba(220,38,38,.08)" stroke="#dc2626" stroke-width="' + r1(1.5 * k) + '" stroke-dasharray="' + r1(8 * k) + ' ' + r1(6 * k) + '" pointer-events="none"/>';
+      }
+      /* Box: what lies wholly inside goes; what crosses the edge loses the part inside. */
+      function applyEraseBox(drag) {
+        var bx = eraseBox(drag);
+        if (bx.w < 3 || bx.h < 3) return false;
+        var changed = false;
+        doc.items = doc.items.filter(function (it) {
+          var b = bbox(it);
+          if (b.x >= bx.x && b.y >= bx.y && b.x + b.w <= bx.x + bx.w && b.y + b.h <= bx.y + bx.h) { changed = true; return false; }
+          if (!boxTouches(it, bx)) return true;
+          (it.cuts = it.cuts || []).push({ x: r1(bx.x), y: r1(bx.y), w: r1(bx.w), h: r1(bx.h) });
+          changed = true;
+          return !rubbedOut(it);
+        });
+        return changed;
+      }
       svg.addEventListener('pointerdown', function (e) {
         if (e.button && e.button !== 0) return;
         if (editing) { closeText(true); return; }
@@ -586,7 +773,11 @@
           if (st.sel) st.drag = { mode: 'move', last: p, moved: false };
           return;
         }
-        if (t === 'eraser') { st.drag = { mode: 'erase' }; eraseAt(e); return; }
+        if (t === 'eraser') {
+          if (st.eraseMode === 'circle') { st.drag = { mode: 'cut', last: p, cuts: {}, touched: {} }; cutAlong(p, p); ring(p); return; }
+          if (st.eraseMode === 'box') { st.drag = { mode: 'boxerase', start: p, end: p }; drawEraseBox(); return; }
+          st.drag = { mode: 'erase' }; eraseAt(e); return;
+        }
         if (t === 'text') {
           var hitText = e.target.closest('#pxItems [data-id]');
           var hitItem = hitText && doc.items.filter(function (i) { return i.id === hitText.getAttribute('data-id'); })[0];
@@ -609,9 +800,11 @@
         drawDraft();
       });
       svg.addEventListener('pointermove', function (e) {
-        if (!st.drag) return;
+        if (!st.drag) { if (st.tool === 'eraser' && st.eraseMode === 'circle') ring(toPage(e)); return; }
         var p = toPage(e);
         if (st.drag.mode === 'erase') { eraseAt(e); return; }
+        if (st.drag.mode === 'cut') { cutAlong(st.drag.last, p); st.drag.last = p; ring(p); return; }
+        if (st.drag.mode === 'boxerase') { st.drag.end = p; drawEraseBox(); return; }
         if (st.drag.mode === 'move') {
           var it = selected(); if (!it) return;
           moveItem(it, p[0] - st.drag.last[0], p[1] - st.drag.last[1]);
@@ -651,6 +844,15 @@
       function endPointer() {
         var drag = st.drag; st.drag = null;
         if (!drag) return;
+        if (drag.mode === 'cut') {
+          doc.items = doc.items.filter(function (it) { return !(drag.touched[it.id] && rubbedOut(it)); });
+          drawItems(); commit(); return;
+        }
+        if (drag.mode === 'boxerase') {
+          draftG.innerHTML = '';
+          if (applyEraseBox(drag)) { drawItems(); commit(); }
+          return;
+        }
         if (drag.mode === 'erase' || (drag.mode === 'move' && drag.moved) || drag.mode === 'resize') { commit(); drawProps(); return; }
         if (drag.mode !== 'draw') return;
         var d = st.draft; st.draft = null; draftG.innerHTML = '';
@@ -674,6 +876,7 @@
       function clean(d) { var o = {}; Object.keys(d).forEach(function (k) { if (k[0] !== '_') o[k] = d[k]; }); return o; }
       svg.addEventListener('pointerup', endPointer);
       svg.addEventListener('pointercancel', endPointer);
+      svg.addEventListener('pointerleave', function () { if (!st.drag && st.tool === 'eraser') draftG.innerHTML = ''; });
       svg.addEventListener('dblclick', function (e) {
         var g = e.target.closest('#pxItems [data-id]');
         var it = g && doc.items.filter(function (i) { return i.id === g.getAttribute('data-id'); })[0];
@@ -712,10 +915,17 @@
 
       /* Buttons */
       host.onclick = function (e) {
-        var t = e.target.closest('[data-tool],[data-act],[data-color],[data-toggle],[data-bg],[data-stamp]');
+        var t = e.target.closest('[data-tool],[data-act],[data-color],[data-toggle],[data-bg],[data-stamp],[data-erase]');
         if (!t) return;
         var it = selected();
         if (t.dataset.tool) return setTool(t.dataset.tool);
+        if (t.dataset.erase) {
+          st.eraseMode = t.dataset.erase; saveErasePref();
+          svg.setAttribute('data-eraser', st.eraseMode); draftG.innerHTML = '';
+          drawProps();
+          var on = props.querySelector('[data-erase="' + st.eraseMode + '"]'); if (on) on.focus();
+          return;
+        }
         if (t.dataset.stamp) { st.stamp = t.dataset.stamp; drawProps(); return; }
         if (t.dataset.color) {
           if (it) { it.color = t.dataset.color; drawItems(); commit(); } else st.color = t.dataset.color;
@@ -766,6 +976,7 @@
         if (e.target.matches('.px-stamp-q')) { st.stampQ = e.target.value; filterStamps(); return; }
         var it = selected();
         if (e.target.matches('.px-title')) { doc.title = e.target.value.trim() || 'Untitled drawing'; save(); return; }
+        if (e.target.matches('[data-erase-size]')) { st.eraseR = +e.target.value; saveErasePref(); return; }
         if (e.target.matches('[data-width]')) { var v = +e.target.value; if (it) { it.width = v; drawItems(); } else st.width = v; return; }
         if (e.target.matches('[data-size]')) { if (it) { it.size = +e.target.value; drawItems(); } return; }
         if (e.target.matches('[data-pick]')) { var c = e.target.value; if (it) { it.color = c; drawItems(); } else st.color = c; }
