@@ -297,7 +297,7 @@
 
   async function extractPdfText(file) {
     const pdfjs = await loadPdfReader();
-    const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+    const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer(), isEvalSupported: false }).promise;
     const pageCount = Math.min(pdf.numPages, MAX_PDF_PAGES);
     const pages = [];
     try {
