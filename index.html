@@ -117,7 +117,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.97863f4f.css">
+<link rel="stylesheet" href="public/bundles/flux.e06584e7.css">
 </head>
 <body>
 <noscript>
@@ -1365,6 +1365,11 @@
           <div id="savedViewsList"></div>
         </div>
       </div>
+
+      <!-- Reading log card (flux-reading-log.js): this week against the
+           teacher's goal, the streak, and "Log today". Hidden until drawn so
+           it never shows empty; can be switched off in Settings, Layout. -->
+      <section id="readingLogCard" class="frl-dash" data-flux-section="reading" aria-labelledby="frlCardH" hidden></section>
       </div>
 
     </div>
@@ -2259,6 +2264,15 @@
       </div>
     </div>
 
+    <!-- Reading log page (flux-reading-log.js): opened from its dashboard card
+         and from Study tools, English, Literature. -->
+    <div id="readingLog" class="panel flux-page">
+      <header class="flux-page-header flux-page-header--lead">
+        <p class="flux-page-sub">Log what you read each day, keep track of your teacher's weekly goal, save quotes, and print the log to hand in.</p>
+      </header>
+      <div id="readingLogMount"></div>
+    </div>
+
     <!-- ─── AI (ChatGPT-style shell: sidebar + main + composer) ─── -->
     <div id="ai" class="panel flux-page flux-ai-panel ai-root ai-root--sidebar-hidden" style="display:none;flex:1;min-height:0;padding:0;max-width:none;overflow:hidden">
       <aside class="ai-sidebar" aria-label="Flux AI chats">
@@ -2980,8 +2994,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.a79385df.js"></script>
-<script defer src="public/bundles/flux-core.aefc466f.js"></script>
-<script defer src="public/bundles/flux-features.1ba65c84.js"></script>
+<script defer src="public/bundles/flux-core.ee5b97f1.js"></script>
+<script defer src="public/bundles/flux-features.b7918083.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
