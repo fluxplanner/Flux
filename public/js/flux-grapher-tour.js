@@ -8,7 +8,7 @@
    header replays it any time.
 
    Steps point at real elements and skip any that are not on screen (the
-   Measurements steps do not show in Functions, and vice versa), so the tour
+   Measurements steps do not show in Functions or 3D, and so on), so the tour
    cannot describe a button that is not there.
    ========================================================================== */
 (function () {
@@ -20,8 +20,14 @@
   function markSeen(v) { try { localStorage.setItem(SEEN_KEY, v || 'done'); } catch (e) {} }
 
   const STEPS = [
-    { sel: '#ghModes', title: 'Two graphers',
-      body: 'Functions is for maths — type an equation and explore it, like Desmos. Measurements is for lab data: tables, uncertainties, error bars and a best-fit line.' },
+    { sel: '#ghModes', title: 'Three graphers',
+      body: 'Functions is for maths — type an equation and explore it, like Desmos. Measurements is for lab data: tables, uncertainties, error bars and a best-fit line. 3D is for points, planes, lines and surfaces in space.' },
+    { sel: '.flg--3d .flg-items', title: 'Points, planes, lines, surfaces',
+      body: 'Type (1, 2, 3) or A = (1, 2, 3) for a point, x + y + z = 6 or z = 2x − y + 3 for a plane, line (0, 0, 0), (1, 2, 3) or (1, 2, 3) + t(4, 5, 6) for a line, and z = x² − y² for a surface. Under a plane are its intercepts, and a switch for its traces. Examples has ready-made systems of three planes.' },
+    { sel: '.fl3-viewpad', title: 'Turn it',
+      body: 'Drag the graph to turn it, and scroll or pinch to zoom. These buttons turn it too, as do the arrow keys once the graph is selected; x, y and z look straight along an axis, and the cube goes back to the standard view.' },
+    { sel: '.fl3-key:not([hidden])', title: 'Where the planes meet',
+      body: 'The key names each colour by its row number, and says where the planes meet: the line two planes share, and the point three planes share — or why there is none, or infinitely many.' },
     { sel: '.flg--functions .flg-items', title: 'Type an equation',
       body: 'Try y = x², sin(x), x = 3 or a point like (2, 5) — ^ raises the power as you type, and / starts a fraction. Circles and shading work too: x² + y² = 25, or y > x². Letters such as a or k become sliders you can drag — or press ▶ to animate. Add a table and its + regression button writes y1 ~ m x1 + b for you, with R² and residuals.' },
     { sel: '.flg--data .flg-table', title: 'Your data table',

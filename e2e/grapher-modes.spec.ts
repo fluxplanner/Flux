@@ -685,7 +685,7 @@ test.describe('Flux Grapher', () => {
     await expect(offer, 'no tour was offered on the first visit').toBeVisible();
     await offer.getByRole('button', { name: 'Show me' }).click();
     await expect(page.locator('.fgt-card')).toBeVisible();
-    await expect(page.locator('.fgt-title')).toHaveText('Two graphers');
+    await expect(page.locator('.fgt-title')).toHaveText('Three graphers');
     await page.locator('.fgt-next').click();
     await expect(page.locator('.fgt-count')).toContainText('2 of');
     await page.keyboard.press('Escape');

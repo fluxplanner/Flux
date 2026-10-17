@@ -1160,6 +1160,7 @@
   background: #7fe3ff;
 }
 .fgc-kind--data { background: #fbbf24; font-family: inherit; }
+.fgc-kind--3d { background: #cc79a7; font-family: inherit; font-size: .62rem; letter-spacing: -.02em; }
 .fgc-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; font-size: .88rem; }
 .fgc-when { flex: 0 0 auto; font-size: .72rem; color: #8a9bba; }
 .fgc-del {
