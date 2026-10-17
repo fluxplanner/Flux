@@ -1358,28 +1358,76 @@
   function answerWords(text) {
     return norm(text).split(' ').filter((w) => w && !ARTICLES.has(w));
   }
+  /* Spelling slips. A slip is what a keyboard does to a word, not a
+     different word: one letter missing, doubled or extra, two neighbouring
+     letters swapped, or a letter typed with the key next to it. Never in a
+     word's first three letters (afferent/efferent, absorption/adsorption),
+     never more than one in a word (hyperglycemia/hypoglycemia), never in an
+     abbreviation (NADPH/NADH) or a number, and never in words under five
+     letters. */
+  const KEY_ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+  const KEY_AT = (() => {
+    const at = {};
+    KEY_ROWS.forEach((row, r) => { for (let c = 0; c < row.length; c++) at[row[c]] = { r, x: c + r * 0.5 }; });
+    return at;
+  })();
+  function nextKeys(x, y) {
+    const a = KEY_AT[x];
+    const b = KEY_AT[y];
+    if (!a || !b) return false;
+    return Math.abs(a.r - b.r) <= 1 && Math.abs(a.x - b.x) <= (a.r === b.r ? 1 : 0.5);
+  }
+  /** Is `g` the word `a` with one keyboard slip after its first three letters? */
+  function typoOf(g, a) {
+    if (g === a) return false;
+    let i = 0;
+    while (i < g.length && i < a.length && g[i] === a[i]) i++;
+    if (i < 3) return false;
+    if (g.length === a.length) {
+      if (g.slice(i + 1) === a.slice(i + 1)) return nextKeys(g[i], a[i]);
+      return g[i] === a[i + 1] && g[i + 1] === a[i] && g.slice(i + 2) === a.slice(i + 2);
+    }
+    if (g.length === a.length + 1) return g.slice(i + 1) === a.slice(i);
+    if (a.length === g.length + 1) return a.slice(i + 1) === g.slice(i);
+    return false;
+  }
+  /** The expected answer's abbreviations (NADPH, ATP, mRNA), as answerWords spells them. */
+  function abbreviations(text) {
+    const out = new Set();
+    String(text || '').split(/[^\p{L}\p{N}]+/u).forEach((w) => {
+      const caps = (w.match(/\p{Lu}/gu) || []).length;
+      const lower = (w.match(/\p{Ll}/gu) || []).length;
+      if (caps >= 2 && caps >= lower) out.add(norm(w));
+    });
+    return out;
+  }
   /**
    * How many spelling slips separate an answer from the expected one, or
-   * Infinity when it is not a slip at all. Each word may be one letter out
-   * (two for words of 12+ letters), at most two slips in all, numbers must be
-   * exact, and the words must line up: "anaerobic" is not a slip for
-   * "aerobic", and "1915" is not a slip for "1914".
+   * Infinity when it is not a slip at all (see the rules above); at most two
+   * in a whole answer, and the words must line up: "1915" is not a slip for
+   * "1914".
    */
   function slips(given, expected) {
     const g = answerWords(given);
     const a = answerWords(expected);
     if (!g.length || !a.length) return Infinity;
     if (g.length !== a.length) return g.join('') === a.join('') ? 1 : Infinity;
+    const abbr = abbreviations(expected);
     let total = 0;
     for (let i = 0; i < a.length; i++) {
       if (g[i] === a[i] || stem(g[i]) === stem(a[i])) continue;
       if (/\d/.test(a[i]) || /\d/.test(g[i])) return Infinity;
-      const allow = a[i].length >= 12 ? 2 : a[i].length >= 5 ? 1 : 0;
-      const d = osa(g[i], a[i]);
-      if (d > allow) return Infinity;
-      total += d;
+      if (a[i].length < 5 || abbr.has(a[i])) return Infinity;
+      if (!typoOf(g[i], a[i])) return Infinity;
+      total++;
     }
     return total <= 2 ? total : Infinity;
+  }
+  /** The same words in any order, nothing missing and nothing extra: "July 28, 1914" for "28 July 1914". */
+  function sameWords(given, alt) {
+    const bag = (t) => contentStems(t).filter((st) => !STOP.has(st)).sort().join(' ');
+    const g = bag(given);
+    return !!g && g.indexOf(' ') > 0 && g === bag(alt);
   }
   function sameAnswer(given, alt) {
     const a = norm(alt);
@@ -1395,7 +1443,7 @@
    */
   function checkTerm(given, accepted, others) {
     const rivals = (others || []).filter((o) => o && !accepted.some((a) => norm(a) === norm(o)));
-    if (accepted.some((alt) => sameAnswer(given, alt))) return { verdict: 'correct', score: 1 };
+    if (accepted.some((alt) => sameAnswer(given, alt) || sameWords(given, alt))) return { verdict: 'correct', score: 1 };
     const rival = rivals.find((o) => sameAnswer(given, o));
     if (rival) return { verdict: 'incorrect', score: 0, note: '“' + rival.trim() + '” is a different term in your notes.' };
     let best = null;

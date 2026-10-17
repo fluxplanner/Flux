@@ -339,6 +339,27 @@ test('checkAnswer forgives case, accents, articles and a small typo, but not a d
   assert.equal(T.answerText(tf), 'False');
 });
 
+test('checkAnswer: a different word is never a spelling slip; the same words in another order are right', () => {
+  const v = (answer, given) => T.checkAnswer({ type: 'written', answer, accept: [answer], others: [] }, given).verdict;
+  for (const [answer, given] of [
+    ['Hyperglycemia', 'Hypoglycemia'], ['Hyperthyroidism', 'Hypothyroidism'], ['NADPH', 'NADH'],
+    ['Absorption', 'Adsorption'], ['Isotonic', 'Isotopic'], ['Afferent', 'Efferent'], ['Mitosis', 'Meiosis'],
+  ]) assert.ok(!T.isRight(v(answer, given)), given + ' is not a slip for ' + answer);
+  assert.ok(!T.isRight(v('Afferent neuron', 'Efferent neuron')));
+  // Real typing slips are still forgiven.
+  assert.equal(v('Photosynthesis', 'photosynthsis'), 'close');
+  assert.equal(v('Chlorophyll', 'chlorophyl'), 'close');
+  assert.equal(v('Osmosis', 'osmosos'), 'close', 'o is next to i on the keyboard');
+  assert.equal(v('Receive', 'recieve'), 'close');
+  // Any order, nothing missing or extra.
+  assert.equal(v('28 July 1914', 'July 28, 1914'), 'correct');
+  assert.equal(v('Treaty of Versailles', 'Versailles Treaty'), 'correct');
+  assert.equal(v('28 July 1914', 'July 1914'), 'partial');
+  assert.equal(v('28 July 1914', '28 July 1915'), 'partial');
+  const g = T.gradePracticeTest([{ id: 'p1', type: 'written', answer: '28 July 1914', accept: ['28 July 1914'], others: [] }], { p1: 'July 28, 1914' });
+  assert.equal(g.right, 1);
+});
+
 /* ── Mastery ─────────────────────────────────────────────────────────── */
 
 test('mastery: right answers climb, a miss after mastering drops two levels, skips change nothing', () => {
