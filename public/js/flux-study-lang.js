@@ -245,6 +245,19 @@
           desc: 'conjugation ' + low + ' verbs tenses present past future',
           render: (b) => renderConj(lang, b),
         },
+        /* The conjuguemos-style drill teachers asked for: tenses, verb sets,
+           pronouns, timed or counted rounds, accent keys, a score and your
+           mistakes — plus assignment links and score codes. The page lives in
+           flux-study-verbs.js; it sits beside the conjugator because it asks
+           exactly what the conjugator shows. */
+        {
+          id: 'verbs', name: 'Verb drill', icon: '⏱',
+          desc: 'verb drill conjugation practice timed quiz tenses score assignment teacher ' + low,
+          render: (b) => {
+            if (window.FluxVerbDrill) window.FluxVerbDrill.render(lang, b);
+            else b.innerHTML = loading('The verb drill');
+          },
+        },
         {
           id: 'irreg', name: 'Irregular verbs', icon: '📋',
           desc: 'irregular verbs strong ' + low + ' list principal parts',

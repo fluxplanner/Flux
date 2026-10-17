@@ -327,13 +327,20 @@
         : JSON.parse(localStorage.getItem(LS_KEY) || 'null');
       if (!raw || typeof raw !== 'object') return defaults();
       var d = defaults();
-      return {
+      var out = {
         lang: raw.lang === 'fr' ? 'fr' : raw.lang === 'de' ? 'de' : 'es',
         mode: ['flash', 'choice', 'type', 'drill'].indexOf(raw.mode) >= 0 ? raw.mode : d.mode,
         theme: THEMES.some(function (t) { return t.id === raw.theme; }) ? raw.theme : d.theme,
         box: raw.box && typeof raw.box === 'object' ? raw.box : {},
         stats: raw.stats && typeof raw.stats === 'object' ? Object.assign(d.stats, raw.stats) : d.stats,
       };
+      /* The verb drill's history, best scores and assignments ride in this
+         same record (see verbStore below), so they sync with the rest of
+         language practice instead of needing a sync slice of their own. Kept
+         as it was read: rebuilding the object without it would erase it the
+         next time a vocabulary answer is saved. */
+      if (raw.verbs && typeof raw.verbs === 'object') out.verbs = raw.verbs;
+      return out;
     } catch (e) { return defaults(); }
   }
   /* Read on every use rather than once at load. The module evaluates before
@@ -469,7 +476,10 @@
   }
 
   function shellHtml(inner) {
-    var modes = [['choice', 'Multiple choice'], ['type', 'Type it'], ['flash', 'Flashcards'], ['drill', 'Verb drill']];
+    /* 'Quick verbs' rather than 'Verb drill': the full drill (tenses, timed
+       rounds, assignments) is its own tab now, and two tabs with one name
+       would leave a student guessing which is which. */
+    var modes = [['choice', 'Multiple choice'], ['type', 'Type it'], ['flash', 'Flashcards'], ['drill', 'Quick verbs']];
     var langSeg = locked ? '' : '<div class="fsh-seg flp-seg" id="flpLang">'
       + [['es', 'Spanish'], ['fr', 'French'], ['de', 'German']].map(function (l) {
         return '<button type="button" data-l="' + l[0] + '" class="' + (state.lang === l[0] ? 'active' : '') + '">' + l[1] + '</button>';
@@ -499,7 +509,8 @@
         + '<div class="flp-answer"><input id="flpIn" class="flp-in" type="text" autocomplete="off" autocapitalize="off" '
         + 'autocorrect="off" spellcheck="false" placeholder="Type the form" aria-label="Your answer">'
         + '<button type="button" class="fsh-btn" id="flpGo">Check</button></div>'
-        + '<div class="flp-feedback" id="flpFb"></div>';
+        + '<div class="flp-feedback" id="flpFb"></div>'
+        + '<p class="flp-hint" style="text-align:center">For chosen tenses, timed rounds and teacher assignments, open the <b>Verb drill</b> tab.</p>';
     }
 
     var ask = current.row[0];
@@ -706,11 +717,33 @@
         state.stats.best = Math.max(state.stats.best, data.stats.best || 0);
       }
       if (data.lang === 'fr' || data.lang === 'es') state.lang = data.lang;
+      /* Verb drill: merged, never replaced — a round played on the phone and
+         one played on the laptop both stay in the history. */
+      if (data.verbs && typeof data.verbs === 'object') {
+        var VC = window.FluxVerbCore;
+        state.verbs = VC ? VC.mergeStore(state.verbs, data.verbs) : (state.verbs || data.verbs);
+      }
       try {
         if (typeof window.save === 'function') window.save(LS_KEY, state);
         else localStorage.setItem(LS_KEY, JSON.stringify(state));
       } catch (e) {}
       paint();
+    },
+    /** The verb drill's part of this record (history, best scores, assignments). */
+    verbStore: function () {
+      refresh();
+      var VC = window.FluxVerbCore;
+      return VC ? VC.sanitizeStore(state.verbs, window.FluxLangEngine) : (state.verbs || {});
+    },
+    /** Change the verb drill's part and save it — re-read first, so a vocabulary
+     *  answer saved meanwhile is not overwritten, and synced like the rest. */
+    updateVerbs: function (fn) {
+      refresh();
+      var VC = window.FluxVerbCore;
+      var cur = VC ? VC.sanitizeStore(state.verbs, window.FluxLangEngine) : (state.verbs || {});
+      var next = fn(cur);
+      if (next && typeof next === 'object') { state.verbs = next; persist(); }
+      return state.verbs;
     },
     // Test seams.
     _state: function () { return JSON.parse(JSON.stringify(refresh())); },
