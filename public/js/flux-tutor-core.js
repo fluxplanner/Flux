@@ -1310,10 +1310,12 @@
       return q;
     }
     // No sentence to use: pair the term with its own definition or another term's.
+    // A statement with a gap in it ("_____ and Theodor Schwann…") is no true-or-false statement.
+    const hasGap = (t) => /_{3,}/.test(t);
     const right = shortDef(c);
-    if (!clueOk(right)) return null;
+    if (!clueOk(right) || hasGap(right)) return null;
     if (wantFalse) {
-      const other = swaps.find((o) => clueOk(shortDef(o)) && norm(shortDef(o)) !== norm(right));
+      const other = swaps.find((o) => clueOk(shortDef(o)) && !hasGap(shortDef(o)) && norm(shortDef(o)) !== norm(right));
       if (other) {
         const q = base('tf', c, 'True or false, according to your notes?', defPassage(corpus, c));
         q.statement = c.label + ': ' + shortDef(other);
@@ -1945,6 +1947,7 @@
     const out = [];
     const used = new Set();
     const asked = new Map();
+    const seenQ = new Set();
     const singles = types.filter((t) => t !== 'match');
     let matchDone = 0;
     let i = 0;
@@ -1968,6 +1971,10 @@
       if (type === 'mc' && rnd() < 0.35) type = 'mcdef';
       const q = questionFor(corpus, c, concepts, type, rnd, used);
       if (!q) continue;
+      // The same question twice in one test helps no one.
+      const key = q.type + '|' + norm(questionText(q)) + '|' + norm(answerText(q));
+      if (seenQ.has(key)) continue;
+      seenQ.add(key);
       if (q.source && q.source.sentenceId) used.add(q.source.sentenceId);
       asked.set(c.id, times + 1);
       q.id = 'p' + (out.length + 1);
@@ -2889,7 +2896,7 @@
     newSet, newSource, normalizeSet, cloneSet, guideStale, hasNotes, summarizeSet, wordCount,
     cardList, cardQueue, cardCounts, flashDeckFrom,
     migrateLegacy, splitLegacyMaterial,
-    exportSet, exportLibrary, parseImport, toMarkdown,
+    exportSet, exportLibrary, parseImport, toMarkdown, IMPORT_MAX_CHARS,
     SAMPLE, sampleSet,
   };
 })();

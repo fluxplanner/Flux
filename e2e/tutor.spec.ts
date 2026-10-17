@@ -596,6 +596,46 @@ test.describe('Flux Tutor', () => {
     expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('flux_tutor.v2.set.')))).toEqual([]);
   });
 
+  test('the student is told when notes do not fit, when a search only half matches, and how storage works', async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.goto(APP);
+    await expect(page.locator('#ftSaveState')).toHaveText('Saved in this browser');
+    await expect(page.locator('.ft-storage-note')).toContainText('In a private or incognito window they are deleted when the window closes.');
+    // An import file over 40 MB is refused before it is read.
+    await page.locator('#ftImportFile').setInputFiles({ name: 'huge.json', mimeType: 'application/json', buffer: Buffer.alloc(41 * 1024 * 1024, 32) });
+    await expect(page.locator('#ftLibAlert')).toHaveText('This file is too big to be a Flux Tutor export (over 40 MB).');
+    // More notes than one box holds: the box says what happened.
+    await page.getByRole('link', { name: 'New study set' }).click();
+    await page.getByLabel('Title').fill('Too much');
+    const box = page.locator('textarea[data-src-text]').first();
+    await box.focus();
+    await page.keyboard.insertText('The cell is the basic unit of life. '.repeat(5600));
+    await expect(page.locator('[data-src-full]')).toBeVisible();
+    await expect(page.locator('[data-src-full]')).toContainText('This box is full (200,000 characters), so anything past that was left out.');
+    expect((await box.inputValue()).length).toBe(200000);
+    // A search that matches only some of its words says so, not "nothing".
+    await openSample(page);
+    await tab(page, 'Ask your notes').click();
+    await page.getByLabel('Your question').fill('glucose volcano eruption');
+    await page.getByRole('button', { name: 'Search' }).click();
+    await expect(page.locator('.ft-none')).toContainText('Nothing in your notes matches all of that. These passages share some of its words; check whether they answer it.');
+    await expect(page.locator('.ft-result').first()).toBeVisible();
+    // A set with more terms than a set holds says how many were left out.
+    const id = await page.evaluate(async () => {
+      const w = window as any;
+      const T = w.FluxTutor;
+      const set = T.newSet({ title: 'Long list' });
+      const word = (i: number) => 'term' + String.fromCharCode(97 + (i % 26)) + String.fromCharCode(97 + Math.floor(i / 26) % 26) + String.fromCharCode(97 + Math.floor(i / 676));
+      set.sources = [T.newSource('list', 'Notes', 'Vocabulary\n\n' + Array.from({ length: 520 }, (_, i) => word(i) + ' – a word that means thing number ' + i).join('\n'))];
+      set.guide = T.buildGuide(set.sources);
+      const store = await w.FluxTutorStore.open({ BroadcastChannel: null });
+      await store.save(set);
+      return set.id;
+    });
+    await page.goto(APP + '#set/' + id + '/guide');
+    await expect(page.locator('#ftOmitted')).toHaveText('20 more terms in your notes were left out: a study set holds up to 500 key terms. Put the rest of the notes in a second study set to study them too.');
+  });
+
   test('when the browser will not save, the student is told plainly', async ({ page }) => {
     await openSample(page);
     await saved(page);

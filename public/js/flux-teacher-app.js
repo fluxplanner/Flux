@@ -337,7 +337,7 @@
   }
   function idleLabel() {
     if (!app.store) return '';
-    return app.store.persistent ? 'Saved on this device' : 'Only kept in this tab';
+    return app.store.persistent ? 'Saved in this browser' : 'Only kept in this tab';
   }
   let askedPersist = false;
   function onStatus(s) {
@@ -683,7 +683,7 @@
       + (app.bin.length ? binHtml() : '')
       + '<p class="ft-storage-note">' + esc(app.store.backend === 'memory'
         ? 'Nothing here is saved after you close this tab. Use Export to keep a copy.'
-        : 'Your study sets are saved in this browser on this device. Use Export to keep a copy, or to move a set to another device.') + '</p>'
+        : 'Your study sets are saved in this browser on this device. In a private or incognito window they are deleted when the window closes. Use Export to keep a copy, or to move a set to another device.') + '</p>'
       + '</section>';
   }
 
@@ -802,6 +802,8 @@
   }
   async function libImport(file) {
     if (!file) return;
+    // Checked before reading: a huge file would be read into memory only to be refused.
+    if (file.size > T.IMPORT_MAX_CHARS) { libAlert('This file is too big to be a Flux Tutor export (over 40 MB).'); return; }
     let text = '';
     try { text = await file.text(); } catch (_) { libAlert('That file could not be read. Try saving it again, then import it.'); return; }
     const res = await app.store.importText(text);
@@ -939,7 +941,8 @@
       + '<span class="ft-help" data-words>' + plural(T.wordCount(src.text), 'word') + '</span>'
       + '<button type="button" class="ft-mini ft-mini--danger" data-act="src-remove" data-src="' + id + '" aria-label="Remove ' + esc(src.name) + '">Remove</button></div>'
       + '<textarea class="ft-textarea ft-textarea--notes" id="ftSrc-' + id + '" data-src-text="' + id + '" maxlength="' + T.LIMITS.sourceText + '" '
-      + 'placeholder="Paste or type your notes here. Put each heading on its own line so the outline can find it.">' + esc(src.text) + '</textarea></li>';
+      + 'placeholder="Paste or type your notes here. Put each heading on its own line so the outline can find it.">' + esc(src.text) + '</textarea>'
+      + '<p class="ft-error" data-src-full' + (src.text.length >= T.LIMITS.sourceText ? '' : ' hidden') + '>' + fullBoxText() + '</p></li>';
   }
   function importerHtml() {
     return '<div class="ft-importer" role="group" aria-labelledby="ftImportTitle">'
@@ -961,6 +964,9 @@
     if (b && app.open) b.innerHTML = icon('sparkle') + buildLabel();
   }
   let wordTimer = 0;
+  function fullBoxText() {
+    return 'This box is full (' + T.LIMITS.sourceText.toLocaleString('en-US') + ' characters), so anything past that was left out. Put the rest in another notes box, or add it as a file.';
+  }
   function onNotesInput(target) {
     const o = app.open;
     if (!o) return;
@@ -983,6 +989,13 @@
       if (!src) return;
       src.text = target.value.slice(0, T.LIMITS.sourceText);
       notesChanged();
+      // A paste that does not fit is cut by the box itself: say so, as files do.
+      const full = target.value.length >= T.LIMITS.sourceText;
+      const note = target.closest('.ft-source') && target.closest('.ft-source').querySelector('[data-src-full]');
+      if (note && note.hidden === full) {
+        note.hidden = !full;
+        if (full) announce(fullBoxText());
+      }
       // The word count and the button wait for a pause in typing (big notes are slow to count).
       clearTimeout(wordTimer);
       wordTimer = setTimeout(() => {
@@ -2110,9 +2123,11 @@
       + '<p class="ft-result-text">' + x.sentences.map((p) => highlight(p.text, r.stems)).join(' ') + (x.trimmed ? ' <span class="ft-help">(part of a longer paragraph)</span>' : '') + '</p>'
       + cite(x.ref) + '</article></li>';
     if (!r.covered) {
-      return '<div class="ft-none"><p class="ft-none-title"><strong>Nothing in your notes covers that.</strong></p>'
+      return '<div class="ft-none"><p class="ft-none-title"><strong>' + (r.related.length
+        ? 'Nothing in your notes matches all of that.</strong> These passages share some of its words; check whether they answer it.'
+        : 'Nothing in your notes covers that.</strong>') + '</p>'
         + (r.missing.length ? '<p class="ft-help">Your notes never use: ' + r.missing.map((w) => '<span class="ft-word">' + esc(w) + '</span>').join(', ') + '.</p>' : '')
-        + (r.related.length ? '<h3 class="ft-h4">Closest passages (they do not answer it)</h3><ol class="ft-results ft-results--near">' + r.related.map(result).join('') + '</ol>' : '')
+        + (r.related.length ? '<h3 class="ft-h4">Closest passages</h3><ol class="ft-results ft-results--near">' + r.related.map(result).join('') + '</ol>' : '')
         + '</div>';
     }
     return (r.terms.length ? '<div class="ft-ask-terms"><h3 class="ft-h4">Key terms</h3><ul class="ft-term-list">'
@@ -2128,7 +2143,7 @@
     const r = app.ui.askResult;
     if (!q) announce('Type a question first.');
     else if (r && r.empty) announce('Add a word or two about the topic.');
-    else if (r && !r.covered) announce('Nothing in your notes covers that.');
+    else if (r && !r.covered) announce(r.related.length ? 'Nothing in your notes matches all of that. The closest passages are below.' : 'Nothing in your notes covers that.');
     else if (r) announce(plural(r.results.length, 'passage') + ' found in your notes.');
   }
 

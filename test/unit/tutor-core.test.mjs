@@ -387,6 +387,24 @@ test('key terms: a first line is a title, labels and notation are not terms, and
   assert.equal(T.normalizeSet(Object.assign(T.newSet({}), { guide: huge })).guide.omitted, 20);
 });
 
+test('practice tests never ask the same question twice, and true-or-false statements have no gaps', () => {
+  const W = [];
+  for (const seed of ['a', 'b', 'c', 'd', 'e', 'f']) {
+    const qs = T.buildPracticeTest(S.corpus, S.concepts, {}, { count: 20, seed });
+    const keys = qs.map((q) => q.type + '|' + T.questionText(q) + '|' + T.answerText(q));
+    assert.equal(new Set(keys).size, keys.length, 'seed ' + seed);
+    qs.filter((q) => q.type === 'tf').forEach((q) => W.push(q.statement));
+  }
+  for (const c of S.concepts) {
+    for (const truth of [true, false]) {
+      const q = T.makeTrueFalse(S.corpus, c, S.concepts, T.seeded(c.id), null, truth);
+      if (q) W.push(q.statement);
+    }
+  }
+  assert.ok(W.length > 20);
+  W.forEach((st) => assert.ok(!/_{3,}/.test(st), st));
+});
+
 /* ── Mastery ─────────────────────────────────────────────────────────── */
 
 test('mastery: right answers climb, a miss after mastering drops two levels, skips change nothing', () => {
