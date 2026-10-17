@@ -204,7 +204,10 @@ try{
 
 // Synara (synara.html) keeps its own data in this browser under 'synara.*' keys with
 // no account. It is a separate app, so nothing the planner clears may take it along.
-function fluxIsOtherAppKey(k){return typeof k==='string'&&k.indexOf('synara.')===0;}
+// Flux Tutor (teacher.html) is the same: its study sets live in this browser only
+// ('flux_tutor…' keys when IndexedDB is unavailable, and the first beta's
+// 'flux_teacher.beta.v1'), so signing out of the planner must not delete them.
+function fluxIsOtherAppKey(k){return typeof k==='string'&&(k.indexOf('synara.')===0||k.indexOf('flux_tutor')===0||k==='flux_teacher.beta.v1');}
 function fluxClearLocalStorageKeepingApps(){
   const keep={};
   try{Object.keys(localStorage).forEach(k=>{if(fluxIsOtherAppKey(k))keep[k]=localStorage.getItem(k);});}catch(_){}
@@ -12110,7 +12113,7 @@ function ensurePdfJsLoaded(){
 async function pdfFileToPageScreenshots(file,scale=1.35){
   await ensurePdfJsLoaded();
   const buf=await file.arrayBuffer();
-  const pdf=await window.pdfjsLib.getDocument({data:buf}).promise;
+  const pdf=await window.pdfjsLib.getDocument({data:buf,isEvalSupported:false}).promise;
   const nPages=Math.min(pdf.numPages||0,FLUX_PDF_PREVIEW_MAX_PAGES);
   const out=[];
   for(let i=1;i<=nPages;i++){
