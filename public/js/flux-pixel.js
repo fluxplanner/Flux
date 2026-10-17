@@ -67,6 +67,9 @@
     back: svgIcon('<path d="m15 18-6-6 6-6"/>'),
     plus: svgIcon('<path d="M12 5v14M5 12h14"/>'),
     front: svgIcon('<rect x="8" y="8" width="12" height="12" rx="1.5"/><path d="M4 16V5a1 1 0 0 1 1-1h11"/>'),
+    vector: svgIcon('<path d="M4 20 18 6"/><path d="M19 5l-1.2 6.2L12.8 6.2z" fill="currentColor"/><path d="M4 20h7" stroke-dasharray="2 2.5"/>'),
+    figure: svgIcon('<path d="M3 20h12L3 6z"/><path d="M3 16h4v4"/><circle cx="17.5" cy="7.5" r="3.5"/>'),
+    link: svgIcon('<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>'),
   };
   var ERASE_PREF = 'flux_pixel_eraser';
   var ERASE_MODES = [
@@ -76,9 +79,13 @@
   ];
   var TOOLS = [
     ['select', 'Select and move', 'V'], ['pen', 'Pen', 'P'], ['hl', 'Highlighter', 'H'], ['eraser', 'Eraser', 'E'],
-    ['line', 'Line', 'L'], ['arrow', 'Arrow', 'A'], ['rect', 'Box', 'R'], ['ellipse', 'Circle', 'O'],
+    ['line', 'Line', 'L'], ['arrow', 'Arrow', 'A'], ['vector', 'Vector', 'W'], ['rect', 'Box', 'R'], ['ellipse', 'Circle', 'O'],
     ['text', 'Text', 'T'], ['label', 'Label with a line', 'B'], ['stamp', 'Stamps', 'S'], ['image', 'Picture', 'I'],
+    ['figure', 'Maths figures', 'M'],
   ];
+  var VEC_PREF = 'flux_pixel_vector';
+  var VEC_DIRS = [['angle', 'Angle from +x'], ['bearing', 'Bearing'], ['compass', 'Compass (N 30\u00b0 E)']];
+  var RESULTANT = '#dc2626';
 
   /* ── Store ──────────────────────────────────────────────────────────── */
 
@@ -116,6 +123,30 @@
     (window.FluxPixelStamps || []).some(function (g) { return g.items.some(function (s) { if (s.id === id) { out = s; return true; } return false; }); });
     return out;
   }
+  /* Maths figures and vectors are drawn by flux-figures.js (window.FluxFigures).
+     A figure item keeps its settings (it.fig), so it can be opened and changed
+     again; the drawing is rebuilt from them, cached by settings and colour. */
+  var figCache = {}, figKeys = [];
+  function figureBuilt(it) {
+    if (!window.FluxFigures || !it.fig) return null;
+    var key = JSON.stringify(it.fig) + '|' + (it.color || '');
+    if (!figCache[key]) {
+      figCache[key] = window.FluxFigures.build(it.fig, { ink: it.color || '#111827' });
+      figKeys.push(key);
+      if (figKeys.length > 80) delete figCache[figKeys.shift()];
+    }
+    return figCache[key];
+  }
+  /** A new figure item, centred on c (page units), at a size that suits the page. */
+  function figureItem(spec, c) {
+    var b = window.FluxFigures.build(spec);
+    if (b.error) return null;
+    var k = Math.min(1.3, (W * 0.8) / b.w, (H * 0.8) / b.h), w = b.w * k, h = b.h * k;
+    c = c || [W / 2, H / 2];
+    return { type: 'figure', fig: window.FluxFigures.clean(spec), color: '#111827',
+      x: Math.max(0, Math.min(W - w, c[0] - w / 2)), y: Math.max(0, Math.min(H - h, c[1] - h / 2)), w: w, h: h };
+  }
+  function vecDrawn(it) { return window.FluxFigures ? window.FluxFigures.vec.draw(it) : null; }
   function textLines(t) { return String(t || '').split('\n'); }
   function textSize(it) {
     var lines = textLines(it.text);
@@ -128,6 +159,11 @@
       case 'pen': case 'hl':
         xs = it.pts.map(function (p) { return p[0]; }); ys = it.pts.map(function (p) { return p[1]; });
         return { x: Math.min.apply(0, xs) - pad, y: Math.min.apply(0, ys) - pad, w: Math.max.apply(0, xs) - Math.min.apply(0, xs) + pad * 2, h: Math.max.apply(0, ys) - Math.min.apply(0, ys) + pad * 2 };
+      case 'vector': {
+        var vd = vecDrawn(it);
+        if (vd) return vd.box;
+        return { x: Math.min(it.x1, it.x2) - pad, y: Math.min(it.y1, it.y2) - pad, w: Math.abs(it.x2 - it.x1) + pad * 2, h: Math.abs(it.y2 - it.y1) + pad * 2 };
+      }
       case 'line': case 'arrow':
         return { x: Math.min(it.x1, it.x2) - pad, y: Math.min(it.y1, it.y2) - pad, w: Math.abs(it.x2 - it.x1) + pad * 2, h: Math.abs(it.y2 - it.y1) + pad * 2 };
       case 'text': {
@@ -208,6 +244,7 @@
       case 'pen': case 'hl': return [it.pts];
       case 'line': return [[[it.x1, it.y1], [it.x2, it.y2]]];
       case 'arrow': return [[[it.x1, it.y1], [it.x2, it.y2]], arrowHeadPts(it.x1, it.y1, it.x2, it.y2, it.width || 3)];
+      case 'vector': { var vi = vecDrawn(it); return vi ? vi.ink : [[[it.x1, it.y1], [it.x2, it.y2]]]; }
       case 'rect': return it.fill ? null : [[[it.x, it.y], [it.x + it.w, it.y], [it.x + it.w, it.y + it.h], [it.x, it.y + it.h], [it.x, it.y]]];
       case 'ellipse': {
         if (it.fill) return null;
@@ -257,7 +294,7 @@
   }
   /** A line, arrow or pen stroke with nothing left showing: every bit of its ink lies under a cut. */
   function rubbedOut(it) {
-    if (!it.cuts || !it.cuts.length || !/^(pen|hl|line|arrow)$/.test(it.type)) return false;
+    if (!it.cuts || !it.cuts.length || !/^(pen|hl|line|arrow|vector)$/.test(it.type)) return false;
     var margin = (it.width || 3) / 2;
     return inkLines(it).every(function (pts) {
       if (!underCut(pts[0], it.cuts, margin)) return false;
@@ -338,6 +375,21 @@
         var sw = (it.width || 3) * 100 / Math.max(20, Math.min(it.w, it.h));
         out = '<svg x="' + r1(it.x) + '" y="' + r1(it.y) + '" width="' + r1(it.w) + '" height="' + r1(it.h) + '" viewBox="0 0 100 100" preserveAspectRatio="none" overflow="visible"><g fill="none" stroke="' + c + '" stroke-width="' + r1(sw) + '" stroke-linecap="round" stroke-linejoin="round">' + (st ? st.svg : '') + '</g></svg>';
         if (hit) out += '<rect x="' + r1(it.x) + '" y="' + r1(it.y) + '" width="' + r1(it.w) + '" height="' + r1(it.h) + '" fill="transparent"/>';
+        break;
+      }
+      case 'figure': {
+        var fb = figureBuilt(it);
+        out = fb && !fb.error
+          ? '<svg x="' + r1(it.x) + '" y="' + r1(it.y) + '" width="' + r1(it.w) + '" height="' + r1(it.h) + '" viewBox="' + fb.vb.join(' ') + '" preserveAspectRatio="xMidYMid meet" overflow="visible">' + fb.svg + '</svg>'
+          : '<rect x="' + r1(it.x) + '" y="' + r1(it.y) + '" width="' + r1(it.w) + '" height="' + r1(it.h) + '" fill="none" stroke="#9ca3af" stroke-width="2" stroke-dasharray="10 8"/>'
+            + '<text x="' + r1(it.x + 12) + '" y="' + r1(it.y + 30) + '" font-size="20" fill="#6b7280" font-family="Inter, system-ui, sans-serif">This figure could not be drawn</text>';
+        if (hit) out += '<rect x="' + r1(it.x) + '" y="' + r1(it.y) + '" width="' + r1(it.w) + '" height="' + r1(it.h) + '" fill="transparent"/>';
+        break;
+      }
+      case 'vector': {
+        var vv = vecDrawn(it);
+        out = vv ? vv.svg : '';
+        if (hit) out += '<line x1="' + r1(it.x1) + '" y1="' + r1(it.y1) + '" x2="' + r1(it.x2) + '" y2="' + r1(it.y2) + '" ' + fat + '/>';
         break;
       }
       case 'image':
@@ -458,6 +510,15 @@
 
     function render() {
       if (cleanup) { try { cleanup(); } catch (e) {} cleanup = null; }
+      var fl = (location.hash || '').match(/^#\/fig\/(.+)$/);
+      if (fl) {
+        // A share link: the gallery behind, the figure's settings in the panel.
+        gallery();
+        var spec = window.FluxFigures && window.FluxFigures.decode(fl[1]);
+        if (!spec) { toast('That link does not hold a figure Flux Pixel knows.', 'warn'); return; }
+        figureToNewPage(spec, true);
+        return;
+      }
       var m = (location.hash || '').match(/^#\/d\/([^/]+)$/);
       if (m) {
         var d = getDoc(decodeURIComponent(m[1]));
@@ -468,16 +529,34 @@
       gallery();
     }
 
+    /** Open the Maths figures panel; Insert puts the figure on a new page. */
+    function figureToNewPage(spec, fromLink) {
+      if (!window.FluxPixelFigures) { toast('Maths figures could not load. Try refreshing.', 'warn'); return; }
+      window.FluxPixelFigures.open({
+        spec: spec,
+        onDone: function (sp) {
+          var it = figureItem(sp);
+          if (!it) return;
+          it.id = uid();
+          var d = newDoc({ title: window.FluxFigures.describe(sp).slice(0, 80), bg: 'plain', items: [it] });
+          putDoc(d);
+          location.hash = '#/d/' + encodeURIComponent(d.id);
+        },
+        onCancel: function () { if (fromLink) location.hash = '#/'; },
+      });
+    }
+
     /* ── Gallery ─────────────────────────────────────────────────────── */
 
     function gallery() {
       var list = docs();
       host.innerHTML = '<section class="px-hero"><div><h1>Draw it, label it, export it</h1>'
-        + '<p>Diagrams for science, maps for geography, sketches for anything. Stamps for lab equipment and circuits, labels with leader lines, and a crisp PNG for your notes or lab report. Free, no account, no ads.</p></div>'
+        + '<p>Diagrams for science, maps for geography, sketches for anything. Stamps for lab equipment and circuits, labels with leader lines, maths figures for tests and worksheets drawn to scale, vectors you can add tip to tail, and a crisp PNG for your notes or lab report. Free, no account, no ads.</p></div>'
         + '<div class="px-new"><span class="px-new-h">Start a new page</span><div class="px-new-row">'
         + BGS.map(function (b) {
           return '<button type="button" class="px-new-btn" data-new="' + b[0] + '"><span class="px-paper px-paper--' + b[0] + '"></span>' + esc(b[1]) + '</button>';
-        }).join('') + '</div></div></section>'
+        }).join('') + '<button type="button" class="px-new-btn" data-fig-new><span class="px-paper px-paper--fig">' + ICON.figure + '</span>Maths figure</button>'
+        + '</div></div></section>'
         + (list.length ? '<h2 class="px-h2">Your drawings</h2><div class="px-grid">' + list.map(function (d) {
           return '<div class="px-card"><a class="px-thumb" href="#/d/' + encodeURIComponent(d.id) + '" aria-label="Open ' + esc(d.title) + '">' + docSVG(d) + '</a>'
             + '<div class="px-card-foot"><div><b>' + esc(d.title) + '</b><span>' + new Date(d.updated).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · ' + d.items.length + ' item' + (d.items.length === 1 ? '' : 's') + '</span></div>'
@@ -486,8 +565,9 @@
         + '<div class="px-foot"><button type="button" class="px-link" data-example>Open the example drawing</button></div>'
         + '<p class="px-note">Drawings are saved in this browser. Export a PNG or SVG to keep a copy anywhere.</p>';
       host.onclick = function (e) {
-        var t = e.target.closest('[data-new],[data-del],[data-example]');
+        var t = e.target.closest('[data-new],[data-del],[data-example],[data-fig-new]');
         if (!t) return;
+        if (t.hasAttribute('data-fig-new')) { figureToNewPage(null, false); return; }
         if (t.dataset.new) { var d = newDoc({ bg: t.dataset.new }); putDoc(d); location.hash = '#/d/' + encodeURIComponent(d.id); return; }
         if (t.hasAttribute('data-example')) { var ex = exampleDoc(); putDoc(ex); location.hash = '#/d/' + encodeURIComponent(ex.id); return; }
         if (t.dataset.del) {
@@ -513,6 +593,280 @@
         if (ep && ep.r >= 4 && ep.r <= 80) st.eraseR = ep.r;
       } catch (e) {}
       function saveErasePref() { try { localStorage.setItem(ERASE_PREF, JSON.stringify({ mode: st.eraseMode, r: st.eraseR })); } catch (e) {} }
+
+      /* ── Vectors ─────────────────────────────────────────────────────
+         The Vector tool draws an arrow from tail to head. Each vector keeps
+         its scale (page units per unit, sx and sy), so its length and
+         direction read in squares of the paper, or in a coordinate grid's
+         own numbers when it is drawn on one. Adding vectors makes new
+         items (dashed copies placed tip to tail, and a resultant R), so
+         undo takes the whole step back. */
+      st.vec = { snap: true, showMag: true, showDir: true, comps: false, dirFmt: 'angle', prec: 1, per: 1, unit: '', label: 'A', entry: 'polar', m: '5', a: '30', cx: '3', cy: '4', k: '2' };
+      try { var vp = JSON.parse(localStorage.getItem(VEC_PREF) || 'null'); if (vp) Object.keys(st.vec).forEach(function (k) { if (vp[k] != null && typeof vp[k] === typeof st.vec[k]) st.vec[k] = vp[k]; }); } catch (e) {}
+      st.vpick = {};
+      function saveVecPref() { try { localStorage.setItem(VEC_PREF, JSON.stringify(st.vec)); } catch (e) {} }
+      var FV = window.FluxFigures ? window.FluxFigures.vec : null;
+      function fx(n, p) { return window.FluxFigures ? window.FluxFigures.fixed(n, p) : String(n); }
+      function numIn(v) { var n = parseFloat(String(v == null ? '' : v).replace(/−/g, '-').replace(',', '.')); return isFinite(n) ? n : NaN; }
+      function nextLabel(l) {
+        if (/^[A-Z]$/.test(l)) { var c = l.charCodeAt(0) + 1; if (c === 82) c++; return c <= 90 ? String.fromCharCode(c) : 'A'; }
+        var m = /^(.*?)(\d+)$/.exec(l || '');
+        return m ? m[1] + (+m[2] + 1) : (l || '');
+      }
+      function vecItems() { return doc.items.filter(function (i) { return i.type === 'vector'; }); }
+      /** A coordinate grid figure under page point p: its scale and origin in page units. */
+      function gridAt(p) {
+        for (var i = doc.items.length - 1; i >= 0; i--) {
+          var it = doc.items[i];
+          if (it.type !== 'figure' || !it.fig || it.fig.kind !== 'grid') continue;
+          var fb = figureBuilt(it);
+          if (!fb || fb.error || !fb.info || !fb.info.grid) continue;
+          var g = fb.info.grid, vb = fb.vb, k = Math.min(it.w / vb[2], it.h / vb[3]);
+          var ox = it.x + (it.w - vb[2] * k) / 2, oy = it.y + (it.h - vb[3] * k) / 2;
+          var pg = function (vx, vy) { return [ox + (vx - vb[0]) * k, oy + (vy - vb[1]) * k]; };
+          var a = pg(0, -g.H), b = pg(g.W, 0);
+          if (p[0] < a[0] - 2 || p[0] > b[0] + 2 || p[1] < a[1] - 2 || p[1] > b[1] + 2) continue;
+          var o = pg(-g.x0 / g.dx * g.cell, g.y0 / g.dy * g.cell);
+          return { sx: g.cell / g.dx * k, sy: g.cell / g.dy * k, ox: o[0], oy: o[1], dx: g.dx, dy: g.dy };
+        }
+        return null;
+      }
+      function snapV(p, g) {
+        if (!st.vec.snap) return p;
+        if (g) {
+          var ux = Math.round((p[0] - g.ox) / g.sx / g.dx) * g.dx, uy = Math.round((g.oy - p[1]) / g.sy / g.dy) * g.dy;
+          return [g.ox + ux * g.sx, g.oy - uy * g.sy];
+        }
+        var sq = 40;
+        return [Math.round(p[0] / sq) * sq, Math.round(p[1] / sq) * sq];
+      }
+      function paperScale() { var per = numIn(st.vec.per); return 40 / (per > 0 ? per : 1); }
+      function vecStyle(g) {
+        var sc = g ? g.sx : paperScale();
+        return { type: 'vector', color: st.color, width: Math.max(2, Math.min(8, st.width)), size: 24, label: st.vec.label, sx: sc, sy: g ? g.sy : sc,
+          unit: st.vec.unit, prec: st.vec.prec, showMag: st.vec.showMag, showDir: st.vec.showDir, dirFmt: st.vec.dirFmt, comps: st.vec.comps };
+      }
+      /** A new vector like `base`, tail at t (page), value v (units). */
+      function vecFrom(base, t, v, extra) {
+        var sx = base.sx || 40, sy = base.sy || sx;
+        var o = { type: 'vector', x1: t[0], y1: t[1], x2: t[0] + v.x * sx, y2: t[1] - v.y * sy, color: base.color, width: base.width, size: base.size || 24,
+          label: base.label, sx: sx, sy: sy, unit: base.unit, prec: base.prec, showMag: base.showMag, showDir: base.showDir, dirFmt: base.dirFmt, comps: false };
+        return Object.assign(o, extra || {});
+      }
+      function headOf(it) { return [it.x2, it.y2]; }
+      function addMany(list) {
+        list.forEach(function (it) { it.id = uid(); doc.items.push(it); });
+        drawItems(); commit();
+        return list;
+      }
+      function picked() {
+        return vecItems().filter(function (v) { return st.vpick[v.id] != null ? st.vpick[v.id] : !v.role; });
+      }
+      function afterOp(sel) {
+        st.tool = 'select'; svg.setAttribute('data-mode', 'select');
+        st.sel = sel.id; drawTools(); drawSel(); drawProps();
+        toast((sel.label ? sel.label + ' = ' : '') + FV.text(Object.assign({}, sel, { label: '', showMag: true, showDir: true })));
+      }
+      function vecOp(kind) {
+        var list = picked();
+        var need = { tip: [2, 'Tick two or more vectors to add them tip to tail.'], para: [2, 'Tick exactly two vectors for the parallelogram method.'], sub: [2, 'Tick exactly two vectors to subtract the second from the first.'], mul: [1, 'Tick one vector to multiply.'] }[kind];
+        if (kind === 'tip' ? list.length < 2 : list.length !== need[0]) { toast(need[1], 'warn'); return; }
+        var A = list[0], vals = list.map(FV.value), out = [], start = [A.x1, A.y1], sc = { x: A.sx || 40, y: A.sy || A.sx || 40 };
+        var step = function (p, v) { return [p[0] + v.x * sc.x, p[1] - v.y * sc.y]; };
+        var R = null;
+        if (kind === 'tip') {
+          var P = step(start, vals[0]);
+          for (var i = 1; i < list.length; i++) {
+            if (Math.hypot(list[i].x1 - P[0], list[i].y1 - P[1]) > 1) out.push(vecFrom(Object.assign({}, list[i], { sx: sc.x, sy: sc.y }), P, vals[i], { dash: true, role: 'copy', showMag: false, showDir: false }));
+            P = step(P, vals[i]);
+          }
+          R = vecFrom(A, start, FV.sum(vals), { label: 'R', role: 'resultant', color: RESULTANT, width: (A.width || 3) + 1.5, showMag: true, showDir: true, dash: false });
+        } else if (kind === 'para') {
+          var B = list[1], BB = Object.assign({}, B, { sx: sc.x, sy: sc.y });
+          if (Math.hypot(B.x1 - start[0], B.y1 - start[1]) > 1) out.push(vecFrom(BB, start, vals[1], { dash: true, role: 'copy', showMag: false, showDir: false }));
+          out.push(vecFrom(Object.assign({}, A), step(start, vals[1]), vals[0], { dash: true, role: 'copy', showMag: false, showDir: false }));
+          out.push(vecFrom(BB, step(start, vals[0]), vals[1], { dash: true, role: 'copy', showMag: false, showDir: false }));
+          R = vecFrom(A, start, FV.sum(vals), { label: 'R', role: 'resultant', color: RESULTANT, width: (A.width || 3) + 1.5, showMag: true, showDir: true, dash: false });
+        } else if (kind === 'sub') {
+          var nb = FV.scale(vals[1], -1), nl = list[1].label ? '−' + list[1].label : '';
+          out.push(vecFrom(Object.assign({}, list[1], { sx: sc.x, sy: sc.y }), step(start, vals[0]), nb, { dash: true, role: 'copy', label: nl, showMag: false, showDir: false }));
+          R = vecFrom(A, start, FV.sum([vals[0], nb]), { label: 'R', role: 'resultant', color: RESULTANT, width: (A.width || 3) + 1.5, showMag: true, showDir: true, dash: false });
+        } else {
+          var k = numIn(st.vec.k);
+          if (!isFinite(k) || k === 0) { toast('Type a number to multiply by (not 0).', 'warn'); return; }
+          var kl = k === -1 ? '−' : window.FluxFigures.fmt(k, 3);
+          var off = A.y1 + 60 < H ? 60 : -60;
+          R = vecFrom(A, [A.x1, A.y1 + off], FV.scale(vals[0], k), { label: A.label ? kl + A.label : '', dash: false });
+        }
+        out.push(R);
+        addMany(out);
+        afterOp(R);
+      }
+      /** Where on the page to put something new: the middle of what is on screen. */
+      function visibleCentre() {
+        var r = stage.getBoundingClientRect(), pt = svg.createSVGPoint();
+        pt.x = r.left + r.width / 2;
+        pt.y = r.top + Math.max(40, Math.min(r.height, window.innerHeight - r.top)) / 2;
+        var q = pt.matrixTransform(svg.getScreenCTM().inverse());
+        return [Math.max(0, Math.min(W, q.x)), Math.max(0, Math.min(H, q.y))];
+      }
+      function typedVector() {
+        var v;
+        if (st.vec.entry === 'comp') {
+          var x = numIn(st.vec.cx), y = numIn(st.vec.cy);
+          if (!isFinite(x) || !isFinite(y)) return { error: 'Type both components, like x = 3 and y = 4.' };
+          v = { x: x, y: y };
+        } else {
+          var m = numIn(st.vec.m), a = numIn(st.vec.a);
+          if (!(m > 0)) return { error: 'Type a length more than 0.' };
+          if (!isFinite(a)) return { error: 'Type a direction in degrees.' };
+          v = FV.fromPolar(m, st.vec.dirFmt === 'angle' ? a : FV.fromBearing(a));
+        }
+        if (!v.x && !v.y) return { error: 'A vector of length 0 has no arrow to draw.' };
+        return v;
+      }
+      function addTypedVector() {
+        var v = typedVector();
+        if (v.error) { toast(v.error, 'warn'); return; }
+        var base = vecStyle(null), c = visibleCentre();
+        var it = vecFrom(base, [c[0] - v.x * base.sx / 2, c[1] + v.y * base.sy / 2], v);
+        addItem(it);
+        st.vec.label = nextLabel(st.vec.label); saveVecPref();
+        drawProps();
+        var b = props.querySelector('[data-act="vadd"]'); if (b) b.focus();
+      }
+      function dirLabel(fmt) { return fmt === 'angle' ? 'Angle from +x (°)' : 'Bearing (°)'; }
+      function opt(list, cur) { return list.map(function (o) { return '<option value="' + o[0] + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join(''); }
+      var PRECS = [[0, 'Whole numbers'], [1, '1 decimal place'], [2, '2 decimal places'], [3, '3 decimal places']];
+      function chip(attr, key, on, text) { return '<button type="button" class="px-chip' + (on ? ' is-on' : '') + '" ' + attr + '="' + key + '" aria-pressed="' + !!on + '">' + esc(text) + '</button>'; }
+      function field(id, label, attr, val, extra) {
+        return '<div class="px-vf"><label class="px-vlab" for="' + id + '">' + esc(label) + '</label><input class="px-vin" id="' + id + '" ' + attr + ' value="' + esc(val) + '" autocomplete="off"' + (extra || '') + '></div>';
+      }
+      function vecToolHTML() {
+        var V = st.vec;
+        return '<div class="px-sec px-vsec"><span class="px-sec-h">Vector</span>'
+          + '<p class="px-hint">Drag from the tail to the head. On a coordinate grid it snaps to the grid and reads the grid’s numbers.</p>'
+          + field('pxVLabel', 'Label for the next one', 'data-vset="label" maxlength="12"', V.label)
+          + '<div class="px-row" role="group" aria-label="Vector options">' + chip('data-vtog', 'snap', V.snap, 'Snap to grid') + chip('data-vtog', 'showMag', V.showMag, 'Length') + chip('data-vtog', 'showDir', V.showDir, 'Direction') + chip('data-vtog', 'comps', V.comps, 'Components') + '</div>'
+          + '<div class="px-vf"><label class="px-vlab" for="pxVDir">Direction as</label><select class="px-vin" id="pxVDir" data-vset="dirFmt">' + opt(VEC_DIRS, V.dirFmt) + '</select></div>'
+          + '<div class="px-vf"><label class="px-vlab" for="pxVPrec">Round to</label><select class="px-vin" id="pxVPrec" data-vset="prec">' + opt(PRECS, V.prec) + '</select></div>'
+          + '<div class="px-vpair">' + field('pxVPer', 'One square is', 'data-vset="per" inputmode="decimal"', V.per) + field('pxVUnit', 'Unit', 'data-vset="unit" maxlength="8" placeholder="N, m/s"', V.unit) + '</div>'
+          + '</div>'
+          + '<div class="px-sec px-vsec"><span class="px-sec-h" id="pxVTypeH">Type a vector</span>'
+          + '<div class="px-row" role="group" aria-labelledby="pxVTypeH">' + chip('data-ventry', 'polar', V.entry !== 'comp', 'Length and direction') + chip('data-ventry', 'comp', V.entry === 'comp', 'Components') + '</div>'
+          + (V.entry === 'comp'
+            ? '<div class="px-vpair">' + field('pxVCx', 'x', 'data-vset="cx" inputmode="decimal"', V.cx) + field('pxVCy', 'y', 'data-vset="cy" inputmode="decimal"', V.cy) + '</div>'
+            : '<div class="px-vpair">' + field('pxVM', 'Length', 'data-vset="m" inputmode="decimal"', V.m) + field('pxVA', dirLabel(V.dirFmt), 'data-vset="a" inputmode="decimal"', V.a) + '</div>')
+          + '<button type="button" class="px-btn px-btn--small" data-act="vadd">Add vector ' + esc(V.label) + '</button></div>';
+      }
+      function vecOpsHTML() {
+        var list = vecItems();
+        if (!list.length) return '';
+        return '<div class="px-sec px-vsec"><span class="px-sec-h" id="pxVOpsH">Add vectors</span>'
+          + '<div class="px-vlist" role="group" aria-labelledby="pxVOpsH">' + list.map(function (v, i) {
+            var on = st.vpick[v.id] != null ? st.vpick[v.id] : !v.role;
+            return '<label class="px-vpick"><input type="checkbox" data-vpick="' + esc(v.id) + '"' + (on ? ' checked' : '') + '><span>' + esc(FV.text(Object.assign({}, v, { label: v.label || 'Vector ' + (i + 1), showMag: true, showDir: true })).replace(/_/g, '')) + '</span></label>';
+          }).join('') + '</div>'
+          + '<div class="px-row"><button type="button" class="px-btn px-btn--small" data-act="vtip">Tip to tail</button><button type="button" class="px-btn px-btn--small" data-act="vpara">Parallelogram</button><button type="button" class="px-btn px-btn--small" data-act="vsub">First − second</button></div>'
+          + '<div class="px-vpair px-vpair--k">' + field('pxVK', 'Multiply by', 'data-vset="k" inputmode="decimal"', st.vec.k) + '<button type="button" class="px-btn px-btn--small" data-act="vmul">× k</button></div>'
+          + '<p class="px-hint">Tick the vectors in the order to add them. The resultant R is drawn in red with its length and direction.</p></div>';
+      }
+      function vecSelHTML(it) {
+        var v = FV.value(it), p = it.prec == null ? 1 : it.prec, mag = FV.magnitude(v), deg = FV.direction(v), dir = it.dirFmt === 'angle' || !it.dirFmt ? deg : FV.toBearing(deg);
+        return '<div class="px-sec px-vsec"><span class="px-sec-h">' + (it.role === 'resultant' ? 'Resultant' : 'Vector') + '</span>'
+          + field('pxVeLabel', 'Label', 'data-vedit="label" maxlength="12"', it.label || '')
+          + '<div class="px-vpair">' + field('pxVeM', 'Length' + (it.unit ? ' (' + it.unit + ')' : ''), 'data-vedit="mag" inputmode="decimal"', fx(mag, Math.max(p, 2)).replace('−', '-'))
+          + field('pxVeA', dirLabel(it.dirFmt || 'angle'), 'data-vedit="dir" inputmode="decimal"', fx(dir, Math.max(p, 1))) + '</div>'
+          + '<div class="px-vpair">' + field('pxVeX', 'x component', 'data-vedit="x" inputmode="decimal"', fx(v.x, Math.max(p, 2)).replace('−', '-'))
+          + field('pxVeY', 'y component', 'data-vedit="y" inputmode="decimal"', fx(v.y, Math.max(p, 2)).replace('−', '-')) + '</div>'
+          + '<div class="px-row" role="group" aria-label="Show on the page">' + chip('data-vtog', 'showMag', it.showMag !== false, 'Length') + chip('data-vtog', 'showDir', it.showDir, 'Direction') + chip('data-vtog', 'comps', it.comps, 'Components') + '</div>'
+          + '<div class="px-vpair"><div class="px-vf"><label class="px-vlab" for="pxVeDir">Direction as</label><select class="px-vin" id="pxVeDir" data-vedit="dirFmt">' + opt(VEC_DIRS, it.dirFmt || 'angle') + '</select></div>'
+          + '<div class="px-vf"><label class="px-vlab" for="pxVePrec">Round to</label><select class="px-vin" id="pxVePrec" data-vedit="prec">' + opt(PRECS, p) + '</select></div></div>'
+          + field('pxVeUnit', 'Unit', 'data-vedit="unit" maxlength="8"', it.unit || '')
+          + '</div>'
+          + '<div class="px-sec px-vsec"><span class="px-sec-h">Lab check</span>'
+          + '<p class="px-hint">Type what you measured for this ' + (it.role === 'resultant' ? 'resultant' : 'vector') + ' to see the percent error.</p>'
+          + '<div class="px-vpair">' + field('pxLabM', 'Measured length', 'data-labm inputmode="decimal"', st.labM || '') + field('pxLabA', 'Measured ' + (it.dirFmt === 'angle' || !it.dirFmt ? 'angle (°)' : 'bearing (°)'), 'data-laba inputmode="decimal"', st.labA || '') + '</div>'
+          + '<p class="px-labout" id="pxLabOut" aria-live="polite"></p></div>';
+      }
+      function labCheck() {
+        var it = selected(), out = $('#pxLabOut', host);
+        if (!it || it.type !== 'vector' || !out) return;
+        var m = numIn(st.labM), a = numIn(st.labA), p = it.prec == null ? 1 : it.prec;
+        if (!isFinite(m) && !isFinite(a)) { out.textContent = ''; return; }
+        var r = FV.labCheck({ mag: m, dir: a }, FV.value(it), it.dirFmt), u = it.unit ? ' ' + it.unit : '', bits = [];
+        if (isFinite(m)) bits.push('Length: worked out ' + fx(r.mag, p) + u + ', you measured ' + fx(m, p) + u + ', so ' + fx(r.magErr, 1) + '% error.');
+        if (isFinite(a)) bits.push('Direction: worked out ' + fx(r.dir, p) + '°, ' + fx(r.dirGap, p) + '° off' + (isFinite(r.dirErr) ? ' (' + fx(r.dirErr, 1) + '% error).' : '.'));
+        out.textContent = bits.join(' ');
+      }
+      /** Change a selected vector from the panel; the tail stays put. */
+      function editVector(it, key, val) {
+        var v = FV.value(it), sx = it.sx || 40, sy = it.sy || sx, n;
+        if (key === 'label' || key === 'unit') { it[key] = String(val).slice(0, 12); }
+        else if (key === 'dirFmt') it.dirFmt = val;
+        else if (key === 'prec') it.prec = +val;
+        else {
+          n = numIn(val);
+          if (!isFinite(n)) { toast('Type a number.', 'warn'); drawProps(); return; }
+          if (key === 'x') v.x = n;
+          else if (key === 'y') v.y = n;
+          else {
+            var mag = FV.magnitude(v), deg = FV.direction(v);
+            if (key === 'mag') { if (!(n > 0)) { toast('The length has to be more than 0.', 'warn'); drawProps(); return; } mag = n; }
+            else deg = it.dirFmt === 'bearing' || it.dirFmt === 'compass' ? FV.fromBearing(n) : n;
+            v = FV.fromPolar(mag, deg);
+          }
+          if (!v.x && !v.y) { toast('A vector of length 0 has no arrow to draw.', 'warn'); drawProps(); return; }
+          it.x2 = it.x1 + v.x * sx; it.y2 = it.y1 - v.y * sy;
+        }
+        drawItems(); commit(); drawProps();
+        var again = props.querySelector('[data-vedit="' + key + '"]'); if (again) again.focus();
+      }
+
+      /* ── Maths figures ──────────────────────────────────────────────── */
+      function openFigures(existing) {
+        if (!window.FluxPixelFigures) { toast('Maths figures could not load. Try refreshing.', 'warn'); return; }
+        var id = existing && existing.id;
+        window.FluxPixelFigures.open({
+          spec: existing ? existing.fig : null,
+          mode: existing ? 'edit' : 'insert',
+          color: existing ? existing.color : '#111827',
+          onDone: function (spec) {
+            var cur = id && doc.items.filter(function (i) { return i.id === id; })[0];
+            if (cur) updateFigure(cur, spec); else insertFigure(spec);
+          },
+        });
+      }
+      function insertFigure(spec) {
+        var it = figureItem(spec, visibleCentre());
+        if (!it) return;
+        addItem(it);
+        st.tool = 'select'; svg.setAttribute('data-mode', 'select');
+        st.sel = it.id; drawTools(); drawSel(); drawProps();
+      }
+      /** New settings for a figure on the page: same middle, same scale. */
+      function updateFigure(it, spec) {
+        var old = figureBuilt(it), nb = window.FluxFigures.build(spec);
+        if (nb.error) return;
+        var k = old && !old.error ? Math.min(it.w / old.w, it.h / old.h) : Math.min(1, (W * 0.8) / nb.w, (H * 0.8) / nb.h);
+        var cx = it.x + it.w / 2, cy = it.y + it.h / 2;
+        it.fig = window.FluxFigures.clean(spec);
+        it.w = nb.w * k; it.h = nb.h * k; it.x = cx - it.w / 2; it.y = cy - it.h / 2;
+        st.sel = it.id;
+        drawItems(); drawProps(); commit();
+      }
+      /** One item as a PNG on white: what is drawn, eraser holes and all. */
+      function itemPng(it) {
+        var b = bbox(it), m = 12, x = b.x - m, y = b.y - m, w = b.w + m * 2, h = b.h + m * 2;
+        var text = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + [x, y, w, h].map(r1).join(' ') + '" width="' + Math.round(w * 2) + '" height="' + Math.round(h * 2) + '"><rect x="' + r1(x) + '" y="' + r1(y) + '" width="' + r1(w) + '" height="' + r1(h) + '" fill="#ffffff"/>' + itemSVG(it, false) + '</svg>';
+        return window.FluxPixelFigures.svgToPng(text, w * 2, h * 2);
+      }
+      function figSelHTML(it) {
+        return '<div class="px-sec"><span class="px-sec-h">Maths figure</span><p class="px-hint">' + esc(window.FluxFigures ? window.FluxFigures.describe(it.fig) : '') + '</p><div class="px-row">'
+          + '<button type="button" class="px-btn px-btn--small px-btn--primary" data-act="figedit">' + ICON.figure + 'Edit figure</button>'
+          + '<button type="button" class="px-btn px-btn--small" data-act="itemcopy">' + ICON.copy + 'Copy figure</button>'
+          + '<button type="button" class="px-btn px-btn--small" data-act="figlink">' + ICON.link + 'Share link</button></div></div>';
+      }
       var saveTimer = null;
 
       host.innerHTML = '<div class="px-editor">'
@@ -523,6 +877,7 @@
         + '<button type="button" class="px-icon" data-act="undo" aria-label="Undo" title="Undo (Ctrl+Z)">' + ICON.undo + '</button>'
         + '<button type="button" class="px-icon" data-act="redo" aria-label="Redo" title="Redo (Ctrl+Shift+Z)">' + ICON.redo + '</button>'
         + '<span class="px-zoom"><button type="button" class="px-icon" data-act="zoomout" aria-label="Zoom out">−</button><button type="button" class="px-zoom-v" data-act="zoomfit" title="Fit to screen">100%</button><button type="button" class="px-icon" data-act="zoomin" aria-label="Zoom in">+</button></span>'
+        + '<button type="button" class="px-btn px-btn--small" data-act="figures" aria-label="Maths figures">' + ICON.figure + '<span>Maths figures</span></button>'
         + '<button type="button" class="px-btn px-btn--small" data-act="copy">' + ICON.copy + '<span>Copy</span></button>'
         + '<button type="button" class="px-btn px-btn--small px-btn--primary" data-act="png">' + ICON.download + '<span>PNG</span></button>'
         + '<button type="button" class="px-btn px-btn--small" data-act="svg"><span>SVG</span></button>'
@@ -563,12 +918,12 @@
         var color = it ? (it.color || st.color) : st.color;
         var width = it ? (it.width || st.width) : st.width;
         var showFill = it ? (it.type === 'rect' || it.type === 'ellipse') : (st.tool === 'rect' || st.tool === 'ellipse');
-        var showDash = it ? /^(line|arrow|rect|ellipse)$/.test(it.type) : /^(line|arrow|rect|ellipse)$/.test(st.tool);
+        var showDash = it ? /^(line|arrow|rect|ellipse|vector)$/.test(it.type) : /^(line|arrow|rect|ellipse)$/.test(st.tool);
         var erasing = st.tool === 'eraser' && !it;
         var html = erasing ? eraserHTML() : '<div class="px-sec"><span class="px-sec-h">Colour</span><div class="px-colors">' + COLORS.map(function (c) {
           return '<button type="button" class="px-color' + (c === color ? ' is-on' : '') + '" data-color="' + c + '" style="--c:' + c + '" aria-label="Colour ' + c + '"></button>';
         }).join('') + '<label class="px-color px-color--pick" title="Any colour"><input type="color" value="' + color + '" data-pick aria-label="Pick any colour"></label></div></div>';
-        if (!erasing && (!it || it.type !== 'image')) {
+        if (!erasing && (!it || (it.type !== 'image' && it.type !== 'figure'))) {
           html += '<div class="px-sec"><span class="px-sec-h">' + (it && (it.type === 'text' || it.type === 'label') ? 'Text size' : 'Thickness') + '</span>'
             + (it && (it.type === 'text' || it.type === 'label')
               ? '<input type="range" min="12" max="120" value="' + Math.round(it.size) + '" data-size aria-label="Text size">'
@@ -590,6 +945,10 @@
             }).join('') + '</div></div>';
           }).join('') + '</div>';
         }
+        if (it && it.type === 'figure') html += figSelHTML(it);
+        if (FV && it && it.type === 'vector') html += vecSelHTML(it);
+        if (FV && !it && st.tool === 'vector') html += vecToolHTML();
+        if (FV && ((it && it.type === 'vector') || (!it && st.tool === 'vector'))) html += vecOpsHTML();
         if (it) {
           html += '<div class="px-sec px-sel-acts"><span class="px-sec-h">Selected</span><div class="px-row">'
             + '<button type="button" class="px-btn px-btn--small" data-act="dup">' + ICON.copy + 'Duplicate</button>'
@@ -600,9 +959,10 @@
           return '<button type="button" class="px-chip' + (doc.bg === b[0] ? ' is-on' : '') + '" data-bg="' + b[0] + '">' + esc(b[1]) + '</button>';
         }).join('') + '</div></div>'
           + '<div class="px-sec"><button type="button" class="px-link px-danger" data-act="clear">Clear the page</button></div>'
-          + '<p class="px-keys">V select · P pen · H highlight · E erase · L line · A arrow · R box · O circle · T text · B label · S stamps · Del delete · Ctrl+Z undo</p>';
+          + '<p class="px-keys">V select · P pen · H highlight · E erase · L line · A arrow · W vector · R box · O circle · T text · B label · S stamps · M maths figures · Del delete · Ctrl+Z undo</p>';
         props.innerHTML = html;
         if (st.stampQ) filterStamps();
+        if (it && it.type === 'vector') labCheck();
       }
       function eraserHTML() {
         var cur = ERASE_MODES.filter(function (m) { return m[0] === st.eraseMode; })[0] || ERASE_MODES[0];
@@ -648,6 +1008,7 @@
       /* Tools */
       function setTool(t) {
         if (t === 'image') { $('#pxFile', host).click(); return; }
+        if (t === 'figure') { openFigures(null); return; }
         st.tool = t;
         if (t !== 'select') st.sel = null;
         if (t === 'stamp' && !st.stamp) st.stamp = 'beaker';
@@ -792,6 +1153,13 @@
           st.sel = it2.id; drawSel();
           return;
         }
+        if (t === 'vector') {
+          var g = gridAt(p), q = snapV(p, g);
+          st.draft = Object.assign(vecStyle(g), { x1: q[0], y1: q[1], x2: q[0], y2: q[1] });
+          st.drag = { mode: 'draw', grid: g };
+          drawDraft();
+          return;
+        }
         var base = { color: st.color, width: st.width };
         if (t === 'pen' || t === 'hl') st.draft = Object.assign(base, { type: t, pts: [p], width: t === 'hl' ? Math.max(st.width * 4, 18) : st.width });
         else if (t === 'line' || t === 'arrow' || t === 'label') st.draft = Object.assign(base, { type: t === 'label' ? 'line' : t, x1: p[0], y1: p[1], x2: p[0], y2: p[1], dash: t === 'label' ? false : st.dash, _label: t === 'label' });
@@ -816,7 +1184,7 @@
           var b = st.drag.box, it2 = selected();
           var sx = Math.max(0.05, (b.w + p[0] - st.drag.start[0]) / Math.max(1, b.w));
           var sy = Math.max(0.05, (b.h + p[1] - st.drag.start[1]) / Math.max(1, b.h));
-          if (e.shiftKey || it2.type === 'stamp' || it2.type === 'image') { var s = Math.max(sx, sy); sx = sy = s; }
+          if (e.shiftKey || it2.type === 'stamp' || it2.type === 'image' || it2.type === 'figure') { var s = Math.max(sx, sy); sx = sy = s; }
           var fresh = JSON.parse(JSON.stringify(st.drag.orig));
           scaleItem(fresh, sx, sy, b.x, b.y);
           Object.assign(it2, fresh);
@@ -827,6 +1195,9 @@
         if (d.pts) {
           var last = d.pts[d.pts.length - 1];
           if (Math.hypot(p[0] - last[0], p[1] - last[1]) >= 1.5) d.pts.push(p);
+        } else if (d.type === 'vector') {
+          var qv = snapV(p, st.drag.grid);
+          d.x2 = qv[0]; d.y2 = qv[1];
         } else if ('x1' in d) {
           var x2 = p[0], y2 = p[1];
           if (e.shiftKey) {
@@ -857,6 +1228,14 @@
         if (drag.mode !== 'draw') return;
         var d = st.draft; st.draft = null; draftG.innerHTML = '';
         if (!d) return;
+        if (d.type === 'vector') {
+          if (Math.hypot(d.x2 - d.x1, d.y2 - d.y1) > 4) {
+            addItem(clean(d));
+            st.vec.label = nextLabel(st.vec.label); saveVecPref();
+            drawProps();
+          }
+          return;
+        }
         if (d._label) {
           var len = Math.hypot(d.x2 - d.x1, d.y2 - d.y1);
           if (len < 12) { d.x2 = d.x1 + 120; d.y2 = d.y1 - 40; }
@@ -881,6 +1260,7 @@
         var g = e.target.closest('#pxItems [data-id]');
         var it = g && doc.items.filter(function (i) { return i.id === g.getAttribute('data-id'); })[0];
         if (it && (it.type === 'text' || it.type === 'label')) { st.sel = it.id; editTextOf(it); }
+        if (it && it.type === 'figure') { st.sel = it.id; drawSel(); drawProps(); openFigures(it); }
       });
       function drawDraft() { draftG.innerHTML = st.draft ? itemSVG(Object.assign({ id: 'draft' }, st.draft, { type: st.draft.type }), false) : ''; }
 
@@ -900,7 +1280,7 @@
         }).catch(function () { toast('That picture could not be opened', 'warn'); });
       }
       function onPaste(e) {
-        if (editing) return;
+        if (editing || (window.FluxPixelFigures && window.FluxPixelFigures.isOpen())) return;
         var items = (e.clipboardData && e.clipboardData.items) || [];
         for (var i = 0; i < items.length; i++) {
           if (items[i].type.indexOf('image') === 0) { e.preventDefault(); placeImage(items[i].getAsFile()); return; }
@@ -915,7 +1295,7 @@
 
       /* Buttons */
       host.onclick = function (e) {
-        var t = e.target.closest('[data-tool],[data-act],[data-color],[data-toggle],[data-bg],[data-stamp],[data-erase]');
+        var t = e.target.closest('[data-tool],[data-act],[data-color],[data-toggle],[data-bg],[data-stamp],[data-erase],[data-vtog],[data-ventry]');
         if (!t) return;
         var it = selected();
         if (t.dataset.tool) return setTool(t.dataset.tool);
@@ -927,6 +1307,19 @@
           return;
         }
         if (t.dataset.stamp) { st.stamp = t.dataset.stamp; drawProps(); return; }
+        if (t.dataset.vtog) {
+          var vk = t.dataset.vtog;
+          if (it && it.type === 'vector') { it[vk] = vk === 'showMag' ? it[vk] === false : !it[vk]; drawItems(); commit(); }
+          else { st.vec[vk] = !st.vec[vk]; saveVecPref(); }
+          drawProps();
+          var vb = props.querySelector('[data-vtog="' + vk + '"]'); if (vb) vb.focus();
+          return;
+        }
+        if (t.dataset.ventry) {
+          st.vec.entry = t.dataset.ventry; saveVecPref(); drawProps();
+          var eb = props.querySelector('[data-ventry="' + st.vec.entry + '"]'); if (eb) eb.focus();
+          return;
+        }
         if (t.dataset.color) {
           if (it) { it.color = t.dataset.color; drawItems(); commit(); } else st.color = t.dataset.color;
           drawProps(); return;
@@ -947,6 +1340,19 @@
         else if (a === 'dup' && it) { var copy = JSON.parse(JSON.stringify(it)); moveItem(copy, 30, 30); var n = addItem(copy); st.sel = n.id; drawSel(); drawProps(); }
         else if (a === 'front' && it) { doc.items = doc.items.filter(function (x) { return x !== it; }).concat([it]); drawItems(); commit(); }
         else if (a === 'edittext' && it) editTextOf(it);
+        else if (a === 'figures') openFigures(null);
+        else if (a === 'figedit' && it && it.type === 'figure') openFigures(it);
+        else if (a === 'itemcopy' && it) window.FluxPixelFigures.copyPng(itemPng(it));
+        else if (a === 'figlink' && it && it.fig) {
+          var url = window.FluxPixelFigures.shareURL(it.fig);
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(function () { toast('Link copied. It opens this figure\u2019s settings.'); }, function () { window.prompt('Copy this link', url); });
+          else window.prompt('Copy this link', url);
+        }
+        else if (a === 'vadd') addTypedVector();
+        else if (a === 'vtip') vecOp('tip');
+        else if (a === 'vpara') vecOp('para');
+        else if (a === 'vsub') vecOp('sub');
+        else if (a === 'vmul') vecOp('mul');
         else if (a === 'clear') { if (doc.items.length && window.confirm('Clear everything on this page? You can undo it.')) { doc.items = []; st.sel = null; drawItems(); drawProps(); commit(); } }
         else if (a === 'png') pngBlob(doc).then(function (b) { download(safeName(doc.title) + '.png', b); }).catch(function (er) { toast(er.message, 'warn'); });
         else if (a === 'svg') download(safeName(doc.title) + '.svg', new Blob([docSVG(doc)], { type: 'image/svg+xml' }));
@@ -974,6 +1380,14 @@
       }
       host.oninput = function (e) {
         if (e.target.matches('.px-stamp-q')) { st.stampQ = e.target.value; filterStamps(); return; }
+        if (e.target.matches('[data-vset]') && e.target.tagName === 'INPUT') {
+          st.vec[e.target.getAttribute('data-vset')] = e.target.value; saveVecPref();
+          if (e.target.getAttribute('data-vset') === 'label') { var ab = props.querySelector('[data-act="vadd"]'); if (ab) ab.textContent = 'Add vector ' + e.target.value; }
+          return;
+        }
+        if (e.target.matches('[data-labm]')) { st.labM = e.target.value; labCheck(); return; }
+        if (e.target.matches('[data-laba]')) { st.labA = e.target.value; labCheck(); return; }
+        if (e.target.matches('[data-vedit]')) return;
         var it = selected();
         if (e.target.matches('.px-title')) { doc.title = e.target.value.trim() || 'Untitled drawing'; save(); return; }
         if (e.target.matches('[data-erase-size]')) { st.eraseR = +e.target.value; saveErasePref(); return; }
@@ -982,12 +1396,21 @@
         if (e.target.matches('[data-pick]')) { var c = e.target.value; if (it) { it.color = c; drawItems(); } else st.color = c; }
       };
       host.onchange = function (e) {
+        if (e.target.matches('select[data-vset]')) {
+          var sk = e.target.getAttribute('data-vset');
+          st.vec[sk] = sk === 'prec' ? +e.target.value : e.target.value; saveVecPref(); drawProps();
+          var sel2 = props.querySelector('[data-vset="' + sk + '"]'); if (sel2) sel2.focus();
+          return;
+        }
+        if (e.target.matches('[data-vedit]')) { var vi = selected(); if (vi && vi.type === 'vector') editVector(vi, e.target.getAttribute('data-vedit'), e.target.value); return; }
+        if (e.target.matches('[data-vpick]')) { st.vpick[e.target.getAttribute('data-vpick')] = e.target.checked; return; }
         if (e.target.matches('[data-width],[data-size],[data-pick]')) { if (selected()) commit(); drawProps(); }
       };
 
       /* Keys */
       var KEYS = {}; TOOLS.forEach(function (t) { KEYS[t[2].toLowerCase()] = t[0]; });
       function onKey(e) {
+        if (e.target && e.target.closest && e.target.closest('dialog')) return;
         if (editing || /INPUT|TEXTAREA|SELECT/.test((e.target && e.target.tagName) || '')) return;
         var mod = e.metaKey || e.ctrlKey;
         if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
