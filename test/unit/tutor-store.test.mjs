@@ -378,3 +378,18 @@ test('library changes read the stored copy fresh, so they never undo another tab
   assert.equal((await b.restore(set.id)).ok, true);
   assert.equal((await a.save(inA)).error.code, 'conflict', 'tab A\'s copy is now the old one');
 });
+
+test('two saves from the same tab started together both land, in order', async () => {
+  // A tap saves at once: a plan tick right after an exam date used to start a
+  // second save before the first landed, check it against the old revision,
+  // and refuse it as a clash with the first ("Not saved").
+  const store = await openLS(fakeLS());
+  const set = sampleWithGuide();
+  assert.equal((await store.save(set)).ok, true);
+  const a = Object.assign(clone(set), { subject: 'First' });
+  const b = Object.assign(clone(set), { subject: 'Second' });
+  const [ra, rb] = await Promise.all([store.save(a), store.save(b)]);
+  assert.equal(ra.ok, true, 'the first save failed');
+  assert.equal(rb.ok, true, 'the second save was refused as a clash with the first');
+  assert.equal((await store.get(set.id)).subject, 'Second');
+});

@@ -394,7 +394,20 @@
      * (default: what this tab last read or wrote); opts.force skips the check;
      * opts.rev: the new revision (default: a fresh one).
      */
-    async function write(set, opts) {
+    /* One write per set at a time, in order. Two saves from this tab started
+       close together (a tap saves at once) used to both check against the
+       revision before either landed, so the second was refused as a clash
+       with the first: "Not saved" in the tab that made both changes. */
+    const writing = new Map();   // id -> the last write's promise
+    function write(set, opts) {
+      const id = set && set.id;
+      const prev = writing.get(id) || Promise.resolve();
+      const job = prev.catch(() => {}).then(() => writeNow(set, opts));
+      writing.set(id, job);
+      job.then(() => { if (writing.get(id) === job) writing.delete(id); }, () => { if (writing.get(id) === job) writing.delete(id); });
+      return job;
+    }
+    async function writeNow(set, opts) {
       const op = opts || {};
       const expect = op.force ? FORCE : ('base' in op ? op.base : baseOf(set.id));
       set.rev = op.rev || core.uid('r');
