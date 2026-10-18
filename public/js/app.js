@@ -4508,7 +4508,11 @@ function closeDrawer(){document.getElementById('drawerOverlay').classList.remove
 // ══ TASKS ══
 function calcUrgency(task){const now=new Date();now.setHours(0,0,0,0);const days=task.date?Math.max(0,Math.floor((new Date(task.date+'T00:00:00')-now)/86400000)):99;const pMap={high:3,med:2,low:1};return(pMap[task.priority]||2)*(task.difficulty||3)/Math.max(days,0.5);}
 function addTask(){
-  const name=document.getElementById('taskName').value.trim();if(!name)return;
+  const rawName=document.getElementById('taskName').value.trim();if(!rawName)return;
+  // Fill the fields from the title once more (a pasted title fires no input
+  // event), then save the name without the date / time / priority words.
+  const parsedTitle=ntReadTitle();
+  const name=(parsedTitle&&parsedTitle.name)||rawName;
   const wo=(document.getElementById('taskWaitingOn')?.value||'').trim();
   const _recTypeAdd=(document.getElementById('taskRecurringType')?.value)||'none';
   const staffPersonal=fluxIsStaffPersonalMode();
@@ -4525,7 +4529,7 @@ function addTask(){
   try{if(window.FluxRecurring?.bindTask)FluxRecurring.bindTask(task);}catch(_){}
   save('tasks',tasks);if(task.subject){if(window.FluxGhostDraftV2?.enabled?.()&&typeof FluxGhostDraftV2.scheduleInject==='function')FluxGhostDraftV2.scheduleInject(task);else setTimeout(()=>injectGhostDraft(task),1500);}
   if(window.Flux100&&typeof Flux100.captureLastTaskFromModal==='function')try{Flux100.captureLastTaskFromModal(task);}catch(e){}
-  document.getElementById('taskName').value='';document.getElementById('taskNotes').value='';{const tt=document.getElementById('taskTime');if(tt)tt.value='';}
+  document.getElementById('taskName').value='';document.getElementById('taskNotes').value='';{const h=document.getElementById('taskNameParsed');if(h){h.textContent='';h.hidden=true;}}{const tt=document.getElementById('taskTime');if(tt)tt.value='';}
   closeDashAddTaskModal();
   renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();panicCheck(task);
   syncKey('tasks',tasks);
@@ -5370,7 +5374,9 @@ function renderTasks(){
     const emptySub=taskFilter==='done'
       ?'Tasks you finish show here for 2 weeks, then they are deleted.'
       :'Use the <span class="kbd-hint">+</span> menu or <span class="kbd-hint">T</span> quick add · <span class="kbd-hint">⌘⇧K</span> search · <span class="kbd-hint">⌘K</span> palette';
-    el.innerHTML=`<div class="empty flux-empty-smart flux-empty-animated"><div class="empty-icon flux-empty-bounce">${emptyIcon}</div><div class="empty-title">${emptyTitle}</div><div class="empty-sub">${emptySub}</div></div>`;
+    // A button, not only keyboard hints: a phone has no T key.
+    const emptyAdd=taskFilter==='done'||taskFilter==='overdue'?'':'<button type="button" class="flux-empty-add" style="margin-top:12px" onclick="openDashAddTaskModal()">+ Add a task</button>';
+    el.innerHTML=`<div class="empty flux-empty-smart flux-empty-animated"><div class="empty-icon flux-empty-bounce">${emptyIcon}</div><div class="empty-title">${emptyTitle}</div><div class="empty-sub">${emptySub}</div>${emptyAdd}</div>`;
     requestAnimationFrame(()=>{try{const em=el.querySelector('.empty');if(em)window.FluxAnim?.emptyStateIn?.(em);}catch(e){}});
     return;
   }
@@ -5526,11 +5532,83 @@ function openDashAddTaskModal(){
   fluxSyncSubjectUiForRole();
   populateSubjectSelects();
   const more=document.getElementById('taskMoreOptions');if(more)more.open=false;
+  ntResetForm();
   m.style.display='flex';
   const card=m.querySelector('.modal-card');
   try{if(window.FluxAnim?.modalOpen)FluxAnim.modalOpen(m,card||m);}catch(e){}
   try{window.FluxA11y?.trapFocus?.(m);}catch(e){}
   setTimeout(()=>document.getElementById('taskName')?.focus(),80);
+}
+/* ── New task: the title is read as you type ────────────────────────────────
+   Students type the date into the title ("Algebra quiz friday") and the form
+   ignored it: the task was saved as due today, named "Algebra quiz friday".
+   Enter did nothing, and the form kept the last task's date, type and subject.
+
+   Now each opening starts due today (the last subject and type are still
+   remembered, by flux-enhancements-v100.js applyAddTaskDefaults), the title
+   is read with parseNLTask as it is typed, and what it finds fills Due date,
+   Type, Subject, Priority, Due time and Est. time — never a field you have
+   changed yourself since opening the form. A line under the title says what
+   it read. The date / time / priority / estimate words come out of the saved
+   name. Enter in the title adds the task. */
+const NT_FIELDS={date:'taskDate',type:'taskType',subject:'taskSubject',priority:'taskPriority',time:'taskTime',estTime:'taskEstTime'};
+function ntSaid(p,k){
+  if(!p)return false;
+  if(k==='type')return p.type&&p.type!=='hw';
+  if(k==='priority')return p.priority&&p.priority!=='med';
+  return !!p[k];
+}
+function ntResetForm(){
+  const defaults={taskDate:todayStr(),taskPriority:'med',taskTime:'',taskEstTime:'',taskDifficulty:''};
+  for(const[id,v] of Object.entries(defaults)){
+    const el=document.getElementById(id);if(!el)continue;
+    el.value=v;
+  }
+  Object.values(NT_FIELDS).forEach(id=>{const el=document.getElementById(id);if(el){delete el.dataset.ntTouched;delete el.dataset.ntAuto;}});
+  const h=document.getElementById('taskNameParsed');if(h){h.textContent='';h.hidden=true;}
+  ntBindForm();
+}
+function ntBindForm(){
+  const ni=document.getElementById('taskName');
+  if(!ni||ni.dataset.ntBound)return;
+  ni.dataset.ntBound='1';
+  ni.addEventListener('input',ntReadTitle);
+  ni.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'||e.isComposing||e.shiftKey)return;
+    e.preventDefault();addTask();
+  });
+  Object.values(NT_FIELDS).forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.addEventListener('change',()=>{el.dataset.ntTouched='1';delete el.dataset.ntAuto;});
+  });
+}
+function ntReadTitle(){
+  const ni=document.getElementById('taskName');if(!ni)return null;
+  const p=ni.value.trim()?parseNLTask(ni.value):null;
+  const bits=[];
+  for(const[k,id] of Object.entries(NT_FIELDS)){
+    const el=document.getElementById(id);
+    if(!el||el.dataset.ntTouched)continue;
+    if(ntSaid(p,k)){
+      // What was there before the title spoke (a remembered subject, the
+      // calendar's day) comes back if the words are deleted again.
+      if(!el.dataset.ntAuto)el.dataset.ntDefault=el.value;
+      el.value=String(p[k]);
+      if(el.value!==String(p[k]))continue; // e.g. a subject this form has no option for
+      el.dataset.ntAuto='1';
+      if(k==='date')bits.push('Due '+fmtFluxDate(p.date,'short'));
+      else if(k==='time')bits.push('at '+p.time);
+      else if(k==='type')bits.push(el.options[el.selectedIndex]?.text||p.type);
+      else if(k==='subject')bits.push(el.options[el.selectedIndex]?.text||'');
+      else if(k==='priority')bits.push((p.priority==='high'?'High':'Low')+' priority');
+      else if(k==='estTime')bits.push('~'+p.estTime+' min');
+    }else if(el.dataset.ntAuto){
+      el.value=el.dataset.ntDefault||'';delete el.dataset.ntAuto;
+    }
+  }
+  const h=document.getElementById('taskNameParsed');
+  if(h){h.textContent=bits.length?'Read from the title: '+bits.filter(Boolean).join(' · '):'';h.hidden=!bits.length;}
+  return p;
 }
 function closeDashAddTaskModal(){
   const m=document.getElementById('dashAddTaskModal');
@@ -16579,7 +16657,7 @@ function fluxTourSteps(){
   if(!edu){
     return[
       tab('dashboard','Dashboard','Your tasks for today and the days ahead. Tick one off, or swipe it right on a phone; Undo brings it back. Plan my week, above your tasks, fits study blocks around your classes.'),
-      {sel:'.topbar-new-task-btn',title:'New task',body:'Add a task from any tab. Give it a class, a due date and how long it should take.'},
+      {sel:'.topbar-new-task-btn',title:'New task',body:'Add a task from any tab. Type it the way you would say it — “Bio quiz friday” or “essay due 10/24” — and Flux fills in the date, type and class. Press Enter to add it.'},
       tab('calendar','Calendar','Tasks, classes and no-school days on one month. Pick a day to add something, or count down to it: the countdown then sits in the top bar.'),
       tab('timer','Time','Pomodoro focus sessions with a budget for each subject, plus a clock, stopwatch, countdown and alarms.'),
       tab('school','School Info','Your classes, bell schedule and locker. Upload a photo or PDF of your timetable and Flux fills in your periods.'),
