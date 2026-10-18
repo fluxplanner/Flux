@@ -917,6 +917,7 @@
     var range = dayText(p.from, true) + ' to ' + dayText(p.to, true);
     var meta = [['Name', o.name], ['Class', o.className], ['Teacher', o.teacher], ['Dates', range]];
     var h = '<div class="frl-p">' +
+      '<div class="frl-p-brand"><img src="public/flux-planner-logo.png" alt="" width="36" height="36"><span>Flux Planner</span></div>' +
       '<h1>Reading log</h1>' +
       '<table class="frl-p-meta"><tbody>' + meta.map(function (m) {
         return '<tr><th scope="row">' + m[0] + '</th><td>' + (m[1] ? esc(m[1]) : '<span class="frl-p-blank"></span>') + '</td></tr>';
@@ -1000,7 +1001,15 @@
     if (navigator.standalone === true) {
       say('frlPrintMsg', 'Printing does not work in the home-screen app on iPhone and iPad. Open Flux in Safari, then print from there.', true);
     } else say('frlPrintMsg', 'Opening the print window…');
-    try { window.print(); } catch (e) { done(); say('frlPrintMsg', 'Printing is not available here.', true); }
+    // The logo is fetched the first time; printing before it arrives leaves a blank space on the paper.
+    var go = function () { try { window.print(); } catch (e) { done(); say('frlPrintMsg', 'Printing is not available here.', true); } };
+    var logo = rootEl.querySelector('.frl-p-brand img');
+    if (!logo || logo.complete) return go();
+    var started = false;
+    var once = function () { if (!started) { started = true; go(); } };
+    logo.addEventListener('load', once);
+    logo.addEventListener('error', once);
+    setTimeout(once, 1500);
   }
 
   /* ════════════════════════════════════════════════════════════════════════

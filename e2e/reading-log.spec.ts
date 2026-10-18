@@ -216,8 +216,9 @@ test.describe('Reading log', () => {
     await page.locator('#frlPrintClass').fill('English 10');
     await page.getByRole('button', { name: 'Print or save as PDF' }).click();
 
+    // Printing waits for the logo to load, so it can land a moment after the click.
+    await expect.poll(() => page.evaluate(() => (window as any).__printed.length)).toBe(1);
     const printed = await page.evaluate(() => (window as any).__printed);
-    expect(printed).toHaveLength(1);
     expect(printed[0].cls).toBe(true);
     const html: string = printed[0].html;
     expect(html).toContain('Ada Student');
@@ -235,6 +236,11 @@ test.describe('Reading log', () => {
     await expect(page.locator('#frlPrintRoot')).toBeVisible();
     await expect(page.locator('#app')).toBeHidden();
     await expect(page.locator('#frlPrintRoot h1')).toHaveText('Reading log');
+    // The Flux logo heads the page, already loaded by the time the print window opened.
+    const logo = page.locator('#frlPrintRoot .frl-p-brand img');
+    await expect(logo).toBeVisible();
+    expect(await logo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+    await expect(page.locator('#frlPrintRoot .frl-p-brand')).toHaveText('Flux Planner');
     await expect(page.locator('#frlPrintRoot .frl-p-table tbody tr')).toHaveCount(2);   // the week line + one day
     const ink = await page.locator('#frlPrintRoot .frl-p').evaluate((el) => getComputedStyle(el).color);
     expect(ink).toBe('rgb(0, 0, 0)');
