@@ -20,20 +20,93 @@
 (function () {
   'use strict';
 
-  /* One list, used by the Hub directory. Adding a product here puts it on the
-     Hub page without duplicating product data in its markup. */
+  /* One list, used by the Hub directory and the planner's Study tools shelf.
+     Adding a product here puts it on both without duplicating product data in
+     their markup. `group` is the Hub section it sits under (GROUPS, below);
+     the list is in display order within each. */
+  var GROUPS = [
+    { id: 'planner', name: 'Planner' },
+    { id: 'study', name: 'Study apps' },
+    { id: 'partner', name: 'Partner apps' },
+  ];
   var PRODUCTS = [
     {
       id: 'planner',
+      group: 'planner',
       name: 'Flux Planner',
       tagline: 'Tasks, timetable, revision',
       href: 'index.html',
       mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
     },
     {
-      // Beside the planner, first of the apps after it. Its own brand rather
-      // than "Flux …": Synara keeps its name and violet look.
+      id: 'teacher',
+      group: 'study',
+      name: 'Flux Tutor',
+      tagline: 'Learn from your class materials',
+      href: 'teacher.html',
+      free: true,
+      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2.5 8 12 13l9.5-5L12 3Z"/><path d="M6.5 11v5.2c3.1 2.4 7.9 2.4 11 0V11M21.5 8v6"/></svg>',
+    },
+    {
+      id: 'grapher',
+      group: 'study',
+      name: 'Flux Grapher',
+      tagline: 'Equations, lab data and 3D',
+      href: 'grapher.html',
+      free: true,
+      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg>',
+    },
+    {
+      id: 'calculator',
+      group: 'study',
+      name: 'Flux Calculator',
+      tagline: 'Works like a TI-84, Plus CE or Evo',
+      href: 'calculator.html',
+      free: true,
+      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2.5"/><rect x="8" y="5" width="8" height="4" rx=".8"/><path d="M8.5 13h.01M12 13h.01M15.5 13h.01M8.5 16.5h.01M12 16.5h.01M15.5 16.5h.01"/></svg>',
+    },
+    {
+      id: 'flashcards',
+      group: 'study',
+      name: 'Flux Flashcards',
+      tagline: 'Spaced repetition, tests and games',
+      href: 'flashcards.html',
+      free: true,
+      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="15" height="14" rx="2"/><path d="M7 2h13a2 2 0 0 1 2 2v12"/></svg>',
+    },
+    {
+      id: 'pixel',
+      group: 'study',
+      name: 'Flux Pixel',
+      tagline: 'Diagrams and maths figures',
+      href: 'pixel.html',
+      free: true,
+      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    },
+    {
+      id: 'periodic',
+      group: 'study',
+      name: 'Flux Periodic Table',
+      tagline: 'Every trend, spectrum and atom in 3D',
+      href: 'periodic.html',
+      free: true,
+      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="10" width="5" height="5" rx="1"/><rect x="9.5" y="10" width="5" height="5" rx="1"/><rect x="16" y="10" width="5" height="5" rx="1"/><path d="M5 19h14"/></svg>',
+    },
+    {
+      id: 'composer',
+      group: 'study',
+      name: 'Flux Composer',
+      tagline: 'Keys, chords, beats and DP Music',
+      href: 'composer.html',
+      free: true,
+      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+    },
+    {
+      // Last, under Partner apps: built by Flux for another organization, so
+      // it follows Flux's own study apps rather than sitting among them. Its
+      // own brand rather than "Flux …": Synara keeps its name and violet look.
       id: 'synara',
+      group: 'partner',
       name: 'Synara',
       tagline: 'Epilepsy meds, seizures, safety card',
       href: 'synara.html',
@@ -45,62 +118,6 @@
          public/synara/icons/icon.svg, filling a tile painted with the Hub
          directory's violet gradient (.app-icon--logo). */
       logo: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19h4l2.5-6.5L16.5 23l2.8-7H26"/></svg>',
-    },
-    {
-      id: 'teacher',
-      name: 'Flux Tutor',
-      tagline: 'Learn from your class materials',
-      href: 'teacher.html',
-      free: true,
-      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2.5 8 12 13l9.5-5L12 3Z"/><path d="M6.5 11v5.2c3.1 2.4 7.9 2.4 11 0V11M21.5 8v6"/></svg>',
-    },
-    {
-      id: 'grapher',
-      name: 'Flux Grapher',
-      tagline: 'Equations and lab data',
-      href: 'grapher.html',
-      free: true,
-      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg>',
-    },
-    {
-      id: 'periodic',
-      name: 'Flux Periodic Table',
-      tagline: 'Every trend, spectrum and atom in 3D',
-      href: 'periodic.html',
-      free: true,
-      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="10" width="5" height="5" rx="1"/><rect x="9.5" y="10" width="5" height="5" rx="1"/><rect x="16" y="10" width="5" height="5" rx="1"/><path d="M5 19h14"/></svg>',
-    },
-    {
-      id: 'composer',
-      name: 'Flux Composer',
-      tagline: 'Keys, chords, beats and DP Music',
-      href: 'composer.html',
-      free: true,
-      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
-    },
-    {
-      id: 'flashcards',
-      name: 'Flux Flashcards',
-      tagline: 'Spaced repetition, tests and games',
-      href: 'flashcards.html',
-      free: true,
-      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="15" height="14" rx="2"/><path d="M7 2h13a2 2 0 0 1 2 2v12"/></svg>',
-    },
-    {
-      id: 'pixel',
-      name: 'Flux Pixel',
-      tagline: 'Draw and label diagrams',
-      href: 'pixel.html',
-      free: true,
-      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
-    },
-    {
-      id: 'calculator',
-      name: 'Flux Calculator',
-      tagline: 'Works like a TI-84 Plus CE',
-      href: 'calculator.html',
-      free: true,
-      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2.5"/><rect x="8" y="5" width="8" height="4" rx=".8"/><path d="M8.5 13h.01M12 13h.01M15.5 13h.01M8.5 16.5h.01M12 16.5h.01M15.5 16.5h.01"/></svg>',
     },
   ];
 
@@ -203,5 +220,5 @@
     return Promise.resolve(save());
   }
 
-  window.FluxHub = { mount: mount, mountAll: mountAll, openPage: openPage, PRODUCTS: PRODUCTS, canPrint: canPrint, printImage: printImage };
+  window.FluxHub = { mount: mount, mountAll: mountAll, openPage: openPage, PRODUCTS: PRODUCTS, GROUPS: GROUPS, canPrint: canPrint, printImage: printImage };
 })();
