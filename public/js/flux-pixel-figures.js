@@ -58,17 +58,19 @@
         ['first', 'First quadrant, 0 to 10', { xmin: 0, xmax: 10, ymin: 0, ymax: 10, xstep: 1, ystep: 1, axes: true, nums: true, lines: true }],
         ['paper', 'Blank graph paper', { xmin: 0, xmax: 20, ymin: 0, ymax: 14, xstep: 1, ystep: 1, axes: false, nums: false, lines: true, eqs: '', pts: '', title: '' }],
       ] },
+      H('Graphs and points'),
+      { k: 'eqs', t: 'area', l: 'Lines and curves, one per line', ph: 'y = 2x + 1\ny > x^2 − 4\nx^2 + y^2 = 25\ny = √x for 0 ≤ x ≤ 9' },
+      { t: 'note', l: 'Type it the way you would write it: 2x + 3y = 6, |x|, sin x, f(x) = x^3. An inequality shades its side, dashed for < and >. Add “for −2 < x < 3” to draw part of a line.' },
+      { k: 'pts', t: 'area', l: 'Points and shapes, one per line', ph: 'A(2, 3)\npolygon P(0,0) Q(4,0) R(4,3)\nsegment (0,0) (3,4)' },
       H('Range'),
       N('xmin', 'Smallest x'), N('xmax', 'Largest x'), N('ymin', 'Smallest y'), N('ymax', 'Largest y'),
       N('xstep', 'Grid step across'), N('ystep', 'Grid step up'),
-      H('Axes'),
+      { t: 'action', a: 'fit', l: 'Fit the grid to my graphs' },
+      H('Axes and labels'),
       C('axes', 'Axes'), C('arrows', 'Arrows on the axes', is(['axes', true])), C('nums', 'Numbers'), C('lines', 'Grid lines'),
       N('every', 'Numbers on every … line (0 picks for you)', is(['nums', true])),
       T('xname', 'Name of the x axis', is(['axes', true])), T('yname', 'Name of the y axis', is(['axes', true])), T('title', 'Title (optional)'),
-      H('Graphs and points'),
-      { k: 'eqs', t: 'area', l: 'Lines and curves, one per line', ph: 'y = 2x + 1\ny = x^2 − 4\nx = 3' },
       C('eqlab', 'Write each equation beside its line'), C('mono', 'Black only, with dashes (for printing)'),
-      { k: 'pts', t: 'area', l: 'Points and shapes, one per line', ph: 'A(2, 3)\npolygon P(0,0) Q(4,0) R(4,3)\nsegment (0,0) (3,4)' },
       C('ptcoord', 'Write the coordinates beside each point'),
     ],
     numline: [
@@ -146,6 +148,18 @@
       C('apo', 'Apothem (centre to the middle of a side)'), C('rad', 'Radius (centre to a corner)'), C('centre', 'Centre point'),
       NOTE, T('sS', 'Label on the side'), T('gI', 'Label in the angle'), T('sA', 'Label on the apothem', is(['apo', true])), T('sR', 'Label on the radius', is(['rad', true])),
       H('Marks'), C('ticks', 'Tick marks (all sides equal)'),
+    ], TURN),
+    circle: [
+      H('Measurements'), N('r', 'Radius'),
+      N('sector', 'Sector angle (°, 0 for none)'),
+      C('rad', 'Radius line'), C('diam', 'Diameter'), C('chord', 'Chord'), C('tangent', 'Tangent, with its right angle'),
+    ].concat(UNIT_ROWS, [
+      H('Labels'), C('giv', 'Show the radius'), C('calc', 'Show worked-out lengths (diameter, chord)'),
+      C('centre', 'Centre point'), C('names', 'Letters'),
+      { t: 'row', l: 'Letters', keys: ['nO', 'nA', 'nB'], show: is(['names', true]) },
+      NOTE,
+      T('sR', 'Label on the radius'), T('sD', 'Label on the diameter', is(['diam', true])), T('sC', 'Label on the chord', is(['chord', true])),
+      T('gS', 'Label in the sector angle', function (s) { return s.sector > 0; }),
     ], TURN),
     angle: [
       H('Angles'),
@@ -266,17 +280,64 @@
 
   var dlg = null, state = null, seq = 0;
 
+  /* ── Describe it ───────────────────────────────────────────────────── */
+
+  var TRY = ['right triangle 3 4 5', 'y = x^2 − 4', 'y > 2x − 1', 'circle r 5 sector 60', 'cylinder r 3 h 8', 'number line x ≥ −2'];
+  var askTimer = 0;
+  /** As the student types, say what Enter will make, or what is missing. */
+  function askHint() {
+    clearTimeout(askTimer);
+    askTimer = setTimeout(function () {
+      if (!dlg) return;
+      var text = dlg.querySelector('#pxFigAskIn').value, hint = dlg.querySelector('#pxFigAskHint');
+      hint.classList.remove('is-err');
+      if (!text.trim()) { hint.textContent = 'Type the figure in words, or pick one below and fill it in.'; return; }
+      var r = F.fromText(text);
+      hint.textContent = r.error ? (text.trim().length > 3 ? r.error : '') : 'Enter makes: ' + r.said + '.';
+    }, 160);
+  }
+  /** Make the figure the box describes, and show its form so every detail can still be changed. */
+  function ask() {
+    var input = dlg.querySelector('#pxFigAskIn'), hint = dlg.querySelector('#pxFigAskHint');
+    clearTimeout(askTimer);
+    var r = F.fromText(input.value);
+    if (r.error && !r.spec) { hint.textContent = r.error; hint.classList.add('is-err'); input.setAttribute('aria-invalid', 'true'); input.focus(); return; }
+    input.removeAttribute('aria-invalid');
+    hint.classList.remove('is-err');
+    state.kind = r.spec.kind;
+    state.spec = F.clean(r.spec);
+    Array.prototype.forEach.call(dlg.querySelectorAll('input[name="pxFigKind"]'), function (b) { b.checked = b.value === state.kind; });
+    renderForm();
+    hint.textContent = r.error ? 'Nearly: ' + r.error : 'Made: ' + r.said + '. Change anything below, then Insert.';
+    if (r.error) hint.classList.add('is-err');
+  }
+
   function fieldId(k, i) { return 'pxf-' + k + (i ? '-' + i : ''); }
   function labelOf(f, s) { return typeof f.l === 'function' ? f.l(s) : f.l; }
 
+  /* How many sections each figure shows straight away; the rest wait under
+     "More options", so the first thing on screen is only what makes the figure. */
+  var OPEN = { grid: 2, numline: 2 };
+  var MORE = 'flux_pixel_fig_more';
+  function moreOpen() { try { return localStorage.getItem(MORE) === '1'; } catch (e) { return false; } }
+
   function formHTML(kind, s) {
-    var html = '', open = false;
+    var html = '', open = false, sets = 0, keep = OPEN[kind] || 1, more = [];
+    FORMS[kind].forEach(function (f) { if (f.t === 'head' && ++sets > keep) more.push(f.l); });
+    sets = 0;
     FORMS[kind].forEach(function (f, i) {
       var show = f.show ? ' data-show="' + i + '"' : '';
       if (f.t === 'head') {
         if (open) html += '</fieldset>';
+        if (++sets === keep + 1) {
+          html += '<details class="px-f-more" id="pxFigMore"' + (moreOpen() ? ' open' : '') + '><summary class="px-f-more-sum">More options<span class="px-f-more-what">' + esc(more.join(' · ')) + '</span></summary>';
+        }
         html += '<fieldset class="px-f-set"><legend class="px-f-legend">' + esc(f.l) + '</legend>';
         open = true;
+        return;
+      }
+      if (f.t === 'action') {
+        html += '<p class="px-f-act"' + show + '><button type="button" class="px-btn px-btn--small" data-fig-act="' + f.a + '">' + esc(f.l) + '</button></p>';
         return;
       }
       var id = fieldId(f.k, f.dup);
@@ -307,6 +368,7 @@
       }
     });
     if (open) html += '</fieldset>';
+    if (sets > keep) html += '</details>';
     return html + '<p class="px-f-reset"><button type="button" class="px-link" data-fig-act="reset">Start this figure again</button></p>';
   }
 
@@ -356,8 +418,11 @@
       prev.innerHTML = '<svg viewBox="' + r.vb.join(' ') + '" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">' + r.svg + '</svg>';
       prev.classList.remove('is-stale');
       prev.setAttribute('aria-label', 'Preview: ' + F.describe(s));
-      if (msg.textContent) msg.textContent = '';
+      var off = (r.info && r.info.offgrid) || [];
+      var note = off.length ? (off.length === 1 ? '“' + off[0] + '” is' : off.length + ' of the graphs are') + ' off the grid. Fit the grid to them with the button below.' : '';
+      if (msg.textContent !== note) msg.textContent = note;
       msg.classList.remove('is-err');
+      dlg.querySelector('#pxFigFit').hidden = !off.length;
       Object.keys(r.auto || {}).forEach(function (k) {
         var el = dlg.querySelector('#pxFigForm [data-k="' + k + '"]');
         if (el && el.type === 'text') el.placeholder = r.auto[k];
@@ -371,8 +436,13 @@
       msg.classList.add('is-err');
       if (r.field) {
         var bad = dlg.querySelector('#pxFigForm [data-k="' + r.field + '"]');
-        if (bad) { bad.setAttribute('aria-invalid', 'true'); bad.setAttribute('aria-describedby', 'pxFigMsg'); }
+        if (bad) {
+          bad.setAttribute('aria-invalid', 'true'); bad.setAttribute('aria-describedby', 'pxFigMsg');
+          var box = bad.closest('details');
+          if (box && !box.open) box.open = true;
+        }
       }
+      dlg.querySelector('#pxFigFit').hidden = true;
     }
     Array.prototype.forEach.call(dlg.querySelectorAll('[data-needs-figure]'), function (b) { b.disabled = !ok; });
   }
@@ -385,12 +455,20 @@
     dlg.innerHTML = '<div class="px-fig-in">'
       + '<header class="px-fig-head"><h2 id="pxFigH">Maths figures</h2><span class="px-fig-sub">Drawn to scale, ready to print</span><span class="px-grow"></span>'
       + '<button type="button" class="px-icon" data-fig-act="cancel" aria-label="Close">×</button></header>'
+      + '<form class="px-fig-ask" id="pxFigAsk" autocomplete="off">'
+      + '<label class="px-fig-ask-lab" for="pxFigAskIn">Describe it</label>'
+      + '<div class="px-fig-ask-row"><input class="px-f-in px-fig-ask-in" id="pxFigAskIn" type="text" spellcheck="false" enterkeyhint="go" aria-describedby="pxFigAskHint" placeholder="right triangle 3 4 5 · y = x^2 − 4 · cylinder r 3 h 8">'
+      + '<button type="submit" class="px-btn px-btn--small">Make it</button></div>'
+      + '<p class="px-fig-ask-hint" id="pxFigAskHint" aria-live="polite">Type the figure in words, or pick one below and fill it in.</p>'
+      + '<div class="px-fig-try" role="group" aria-label="Examples">' + TRY.map(function (x) { return '<button type="button" class="px-fig-try-b" data-try="' + esc(x) + '">' + esc(x) + '</button>'; }).join('') + '</div>'
+      + '</form>'
       + '<fieldset class="px-fig-kinds"><legend class="px-sr">Figure</legend>' + F.KINDS.map(function (k) {
         return '<label class="px-fig-kind"><input type="radio" name="pxFigKind" value="' + k[0] + '"><span>' + esc(k[1]) + '</span></label>';
       }).join('') + '</fieldset>'
       + '<div class="px-fig-body">'
       + '<div class="px-fig-side"><div class="px-fig-prev" id="pxFigPrev" role="img" aria-label="Preview"></div>'
       + '<p class="px-fig-msg" id="pxFigMsg" role="status" aria-live="polite"></p>'
+      + '<p class="px-fig-fit" id="pxFigFit" hidden><button type="button" class="px-btn px-btn--small" data-fig-act="fit">Fit the grid to my graphs</button></p>'
       + '<div class="px-fig-share" hidden><label class="px-f-lab" for="pxFigLink">Share link: opens these settings</label><input class="px-f-in" id="pxFigLink" readonly></div></div>'
       + '<div class="px-fig-form" id="pxFigForm"></div>'
       + '</div>'
@@ -405,11 +483,13 @@
       + '</footer></div>';
     document.body.appendChild(dlg);
     dlg.addEventListener('input', function (e) {
+      if (e.target.id === 'pxFigAskIn') { askHint(); return; }
       if (e.target.name === 'pxFigKind') return;
       if (e.target.hasAttribute('data-preset')) return;
       schedule();
     });
     dlg.addEventListener('change', function (e) {
+      if (e.target.id === 'pxFigAskIn') return;
       if (e.target.name === 'pxFigKind') { setKind(e.target.value); return; }
       if (e.target.hasAttribute('data-preset')) {
         var f = FORMS[state.kind][+e.target.getAttribute('data-preset')], o = f.opts.filter(function (x) { return x[0] === e.target.value; })[0];
@@ -419,11 +499,17 @@
       schedule();
     });
     dlg.addEventListener('click', function (e) {
+      var tb = e.target.closest('[data-try]');
+      if (tb) { var inp = dlg.querySelector('#pxFigAskIn'); inp.value = tb.getAttribute('data-try'); ask(); return; }
       var b = e.target.closest('[data-fig-act]');
       if (!b || b.disabled) return;
       act(b.getAttribute('data-fig-act'));
     });
     dlg.addEventListener('cancel', function (e) { e.preventDefault(); close(); });
+    dlg.querySelector('#pxFigAsk').addEventListener('submit', function (e) { e.preventDefault(); ask(); });
+    dlg.addEventListener('toggle', function (e) {
+      if (e.target.id === 'pxFigMore') { try { localStorage.setItem(MORE, e.target.open ? '1' : '0'); } catch (er) {} }
+    }, true);
     return dlg;
   }
   function renderForm() {
@@ -440,6 +526,7 @@
     var s = state.spec, built = state.built;
     if (a === 'cancel') { close(); return; }
     if (a === 'reset') { state.spec = F.defaults(state.kind); renderForm(); var first = dlg.querySelector('#pxFigForm .px-f-in'); if (first) first.focus(); return; }
+    if (a === 'fit') { state.spec = F.fitRange(s); renderForm(); toast('The grid now fits your graphs.'); return; }
     if (!built) return;
     if (a === 'done') {
       var cb = state.onDone, spec = F.clean(s);

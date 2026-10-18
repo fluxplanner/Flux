@@ -551,7 +551,7 @@
     function gallery() {
       var list = docs();
       host.innerHTML = '<section class="px-hero"><div><h1>Draw it, label it, export it</h1>'
-        + '<p>Diagrams for science, maps for geography, sketches for anything. Stamps for lab equipment and circuits, labels with leader lines, maths figures for tests and worksheets drawn to scale, vectors you can add tip to tail, and a crisp PNG for your notes or lab report. Free, no account, no ads.</p></div>'
+        + '<p>Diagrams for science, maps for geography, sketches for anything. Stamps for lab equipment and circuits, labels with leader lines, maths figures for tests and worksheets drawn to scale (type “right triangle 3 4 5” or “y > 2x − 1” and it draws it), vectors you can add tip to tail, and a crisp PNG for your notes or lab report. Free, no account, no ads.</p></div>'
         + '<div class="px-new"><span class="px-new-h">Start a new page</span><div class="px-new-row">'
         + BGS.map(function (b) {
           return '<button type="button" class="px-new-btn" data-new="' + b[0] + '"><span class="px-paper px-paper--' + b[0] + '"></span>' + esc(b[1]) + '</button>';

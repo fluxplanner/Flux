@@ -211,7 +211,7 @@
     attrs: function (o) {
       o = o || {};
       var w = o.w || this.lw, dash = o.dash === true ? r2(w * 3) + ' ' + r2(w * 2.2) : o.dash;
-      return ' fill="' + (o.fill || 'none') + '" stroke="' + (o.color || this.ink) + '" stroke-width="' + r2(w) + '"'
+      return ' fill="' + (o.fill || 'none') + '"' + (o.opacity != null ? ' fill-opacity="' + o.opacity + '"' : '') + ' stroke="' + (o.color || this.ink) + '" stroke-width="' + r2(w) + '"'
         + (dash ? ' stroke-dasharray="' + dash + '"' : '') + ' stroke-linecap="round" stroke-linejoin="round"';
     },
     line: function (a, b, o) {
@@ -673,6 +673,63 @@
     return pic;
   }
 
+  /* ── Circles ───────────────────────────────────────────────────────── */
+
+  /*
+   * A circle with the parts a circle question names: a radius OA, a
+   * diameter, a chord, a shaded sector from OA round to OB, and a tangent
+   * at A with its right angle to the radius.
+   */
+  function buildCircle(s, ink) {
+    var r = num(s.r, NaN), e;
+    if ((e = positive(r, 'r', 'The radius'))) return e;
+    var sec = num(s.sector, 0) || 0;
+    if (sec < 0 || sec >= 360) return { error: 'The sector angle needs to be more than 0° and less than 360° (0 for no sector).', field: 'sector' };
+    var R = 170, O = [0, 0], pic = new Pic(ink), u = unitText(s.u), dp = dpOf(s), size = SIZE, thin = pic.lw * 0.7;
+    var rot = (num(s.rot, 0) || 0) * DEG, aA = rot + 35 * DEG, aB = aA + sec * DEG, A = polar(R, aA), B = polar(R, aB);
+    if (sec > 0) {
+      var wedgePts = [O];
+      for (var i = 0; i <= 60; i++) wedgePts.push(polar(R, aA + sec * DEG * i / 60));
+      pic.poly(wedgePts, { close: true, fill: ink, color: 'none', opacity: 0.1 });
+    }
+    pic.circle(O, R, {});
+    var ar = fmt(r, 4) + u, ad = fmt(2 * r, dp) + u, ac = fmt(2 * r * Math.sin(45 * DEG), dp) + u, ag = fmt(sec, dp) + '°';
+    pic.auto.sR = ar; pic.auto.sD = ad; pic.auto.sC = ac; pic.auto.gS = ag;
+    var showA = s.rad || sec > 0 || s.tangent;
+    if (s.rad || sec > 0) {
+      pic.line(O, A, { w: thin });
+      sideLabel(pic, O, A, polar(1, aA - Math.PI / 2), pick(s.sR, ar, s.giv), size);
+    }
+    if (sec > 0) {
+      pic.line(O, B, { w: thin });
+      pic.arc(O, 34, aA, sec * DEG, { w: thin });
+      wedgeLabel(pic, O, aA, sec * DEG, pick(s.gS, ag, true), 34, size, R * 0.7);
+    }
+    if (s.diam) {
+      var dA = rot + 160 * DEG, P = polar(R, dA), Q = polar(R, dA + Math.PI);
+      pic.line(P, Q, { w: thin });
+      sideLabel(pic, O, Q, polar(1, dA + Math.PI - Math.PI / 2), pick(s.sD, ad, s.giv || s.calc), size);
+    }
+    if (s.chord) {
+      var C1 = polar(R, rot + 215 * DEG), C2 = polar(R, rot + 305 * DEG);
+      pic.line(C1, C2, { w: thin });
+      sideLabel(pic, C1, C2, vunit(mid(C1, C2)), pick(s.sC, ac, s.calc), size);
+    }
+    if (s.tangent) {
+      var t = polar(1, aA + Math.PI / 2);
+      pic.line(vsub(A, vmul(t, 150)), vadd(A, vmul(t, 150)), { w: thin });
+      rightBox(pic, A, vunit(vsub(O, A)), t, 12);
+    }
+    if (s.centre || s.rad || sec > 0 || s.diam) pic.dot(O, 4, {});
+    if (s.names) {
+      var away = vunit(vadd(polar(1, aA + Math.PI), sec > 0 ? polar(1, aB + Math.PI) : [0, 0]));
+      if (s.nO) pic.text(vadd(O, vmul(vlen(away) > 0.1 ? away : [0, -1], 22)), s.nO, { size: size, halo: true });
+      if (showA && s.nA) pic.text(vadd(A, polar(16 + reach(polar(1, aA), textBox(s.nA, size)), aA)), s.nA, { size: size, halo: true });
+      if (sec > 0 && s.nB) pic.text(vadd(B, polar(16 + reach(polar(1, aB), textBox(s.nB, size)), aB)), s.nB, { size: size, halo: true });
+    }
+    return pic;
+  }
+
   /* ── Angles ────────────────────────────────────────────────────────── */
 
   var ANGLE_TOTAL = { line: 180, right: 90, point: 360 };
@@ -928,7 +985,174 @@
     }
     return { items: items };
   }
-  /** Lines and curves, one per line: y = 2x + 1, y = x^2 - 4, y = sin(x), x = 3. */
+  /* ── Reading maths the way students type it ────────────────────────── */
+
+  var BARE_FNS = ['sinh', 'cosh', 'tanh', 'asin', 'acos', 'atan', 'sqrt', 'cbrt', 'sin', 'cos', 'tan', 'exp', 'abs', 'log', 'ln'];
+  /* A function name with no bracket after it, and the short term it applies
+     to: "sin 2x", "ln x", "sqrt x", "cos^2 x". */
+  var BARE_RE = new RegExp('(^|[^A-Za-z])(' + BARE_FNS.join('|') + ')(\\^\\s*\\d+)?(?!\\s*\\()\\s*'
+    + '(-?(?:\\d+\\.?\\d*|\\.\\d+)?\\s*(?:pi|π|[a-z])?(?:\\s*\\^\\s*(?:\\d+\\.?\\d*|[a-z]))?)', 'gi');
+  /** |x − 1| into abs(x − 1). A bar opens after an operator, a bracket or another opening bar; otherwise it closes. */
+  function absBars(s) {
+    if (s.indexOf('|') < 0) return s;
+    var out = '', depth = 0, last = '', lastOpen = false;
+    for (var i = 0; i < s.length; i++) {
+      var c = s[i];
+      if (c === '|') {
+        if (depth === 0 || lastOpen || last === '' || /[(+\-*/^=<>,≤≥]/.test(last)) { out += 'abs('; depth++; lastOpen = true; last = '('; }
+        else { out += ')'; depth--; lastOpen = false; last = ')'; }
+        continue;
+      }
+      out += c;
+      if (c !== ' ') { last = c; lastOpen = false; }
+    }
+    return out;
+  }
+  /**
+   * What a student types, into what FluxExpr reads: a real minus, × and ÷,
+   * ² and ³, √, |x|, and the brackets people leave off (sin x, ln 2x).
+   */
+  function tidyMath(src) {
+    var s = String(src == null ? '' : src)
+      .replace(/[−–—]/g, '-').replace(/[×·⋅∙]/g, '*').replace(/÷/g, '/')
+      .replace(/²/g, '^2').replace(/³/g, '^3').replace(/½/g, '(1/2)')
+      .replace(/=</g, '<=').replace(/=>/g, '>=')
+      .replace(/\barc(sin|cos|tan)\b/gi, 'a$1')
+      .replace(/√\s*\(/g, 'sqrt(').replace(/√\s*(\d*\.?\d*\s*[a-z]?)/gi, 'sqrt($1)')
+      .replace(/(^|[^a-z])([xy]{2,})(?![a-z])/gi, function (all, pre, w) { return pre + w.split('').join('*'); });   // 2xy is 2·x·y
+    s = absBars(s);
+    return s.replace(BARE_RE, function (all, pre, name, pow, term) {
+      if (!term || !term.trim()) return all;
+      return pre + name + '(' + term.trim() + ')' + (pow ? pow.replace(/\s+/g, '') : '');
+    });
+  }
+
+  var REL_OPS = ['<=', '>=', '≤', '≥', '<', '>', '='];
+  /** The one comparison outside any brackets: { lhs, op, rhs }, { error }, or null when there is none. */
+  function splitRelation(s) {
+    var found = [], depth = 0;
+    for (var i = 0; i < s.length; i++) {
+      var c = s[i];
+      if (c === '(' || c === '[' || c === '{') depth++;
+      else if (c === ')' || c === ']' || c === '}') depth--;
+      else if (depth === 0) {
+        if ((c === '!' && s[i + 1] === '=') || c === '≠') return { error: '≠ cannot be drawn: use =, < or >.' };
+        for (var k = 0; k < REL_OPS.length; k++) {
+          if (s.substr(i, REL_OPS[k].length) === REL_OPS[k]) { found.push({ i: i, op: REL_OPS[k] }); i += REL_OPS[k].length - 1; break; }
+        }
+      }
+    }
+    if (!found.length) return null;
+    if (found.length > 1) return { error: 'Use one =, < or > on a line, like y = 2x + 1 or y > x^2.' };
+    var f = found[0];
+    return { lhs: s.slice(0, f.i).trim(), op: ({ '≤': '<=', '≥': '>=' })[f.op] || f.op, rhs: s.slice(f.i + f.op.length).trim() };
+  }
+  /**
+   * Where a line limits x: "y = 2x for −3 < x < 4", "y = x^2 {0 ≤ x ≤ 5}",
+   * "y = √x, x ≥ 0". { rest, lim: { lo, hi, loIn, hiIn } | null } or { error }.
+   */
+  function splitDomain(line) {
+    var m = /\{([^{}]*)\}\s*$/.exec(line) || /\s(?:for|when|where|if)\s+([^=]+)$/i.exec(line) || /,\s*([^,()]*\bx\b[^,()]*[<>≤≥][^,()]*)$/i.exec(line);
+    if (!m) return { rest: line, lim: null };
+    var E = root.FluxExpr, lim = { lo: -Infinity, hi: Infinity, loIn: true, hiIn: true };
+    var conds = tidyMath(m[1]).split(/\s*(?:,|\band\b|&&)\s*/i).filter(Boolean);
+    if (!conds.length) return { error: 'Put a limit on x after it, like “for −3 < x < 4”.' };
+    for (var c = 0; c < conds.length; c++) {
+      var parts = conds[c].split(/\s*(<=|>=|≤|≥|<|>)\s*/), sawX = false;
+      for (var j = 0; j + 2 < parts.length; j += 2) {
+        var a = parts[j].trim(), op = parts[j + 1], b = parts[j + 2].trim(), aX = /^x$/i.test(a), bX = /^x$/i.test(b);
+        if (aX === bX) return { error: 'A limit compares x with a number, like “for −3 < x < 4”.' };
+        var other = E.tryCompile(aX ? b : a, 'x');
+        if (other.error || other.usesVar) return { error: 'A limit compares x with a number, like “for −3 < x < 4”.' };
+        var v = other.fn(0), less = op === '<' || op === '<=' || op === '≤', incl = op.length > 1 || op === '≤' || op === '≥';
+        if ((aX ? less : !less)) { if (v < lim.hi) { lim.hi = v; lim.hiIn = incl; } }
+        else if (v > lim.lo) { lim.lo = v; lim.loIn = incl; }
+        sawX = true;
+      }
+      if (!sawX) return { error: 'A limit compares x with a number, like “for −3 < x < 4”.' };
+    }
+    if (!(lim.hi > lim.lo)) return { error: 'There is no x that fits that limit: ' + fmt(lim.lo, 4) + ' is not less than ' + fmt(lim.hi, 4) + '.' };
+    return { rest: line.slice(0, m.index).trim(), lim: lim };
+  }
+  /** g(t) = c + k·t for every t tried, or null. */
+  function affine(g) {
+    var ts = [-3.7, 0.6, 2.9, 5.3], vs = ts.map(function (t) { try { return g(t); } catch (e) { return NaN; } });
+    if (!vs.every(isFinite)) return null;
+    var k = (vs[1] - vs[0]) / (ts[1] - ts[0]);
+    for (var i = 2; i < ts.length; i++) if (Math.abs(vs[i] - (vs[0] + k * (ts[i] - ts[0]))) > 1e-7 * (1 + Math.abs(vs[i]))) return null;
+    return { c: vs[0] - k * ts[0], k: k };
+  }
+  /** Whether F(x, y) is a straight function of y at every x tried: 1 or −1 when the slope keeps its sign, 2 when it flips, 0 when it is not straight. */
+  function linearInY(F) {
+    var xs = [-9.7, -6.1, -3.3, -1.2, -0.4, 0.3, 1.1, 2.6, 4.9, 8.3], pos = 0, neg = 0;
+    for (var i = 0; i < xs.length; i++) {
+      var x = xs[i], f0 = F(x, 0), f1 = F(x, 1), f3 = F(x, 3), fm = F(x, -2);
+      if (![f0, f1, f3, fm].every(isFinite)) continue;
+      var k = f1 - f0, tol = 1e-7 * (1 + Math.abs(f0) + Math.abs(f3) + Math.abs(fm));
+      if (Math.abs(f3 - f0 - 3 * k) > tol || Math.abs(fm - f0 + 2 * k) > tol) return 0;
+      if (k > 1e-12) pos++; else if (k < -1e-12) neg++;
+    }
+    if (pos + neg < 3) return 0;
+    return neg === 0 ? 1 : pos === 0 ? -1 : 2;
+  }
+  /**
+   * One line of the equations box as something to draw:
+   *   fn        y as a function of x (y = 2x + 1, 2x + 3y = 6, xy = 1)
+   *   vline     x = 3, 2x = 6
+   *   implicit  anything else with x and y (x² + y² = 25)
+   *   pts       a point or points typed here instead of in the points box
+   * With < > ≤ ≥ the item also has op and the side to shade.
+   */
+  function readRelation(raw, E) {
+    if (/^\s*([A-Za-z][A-Za-z0-9']*)?\s*\(\s*[-+−]?(\d|\.\d)/.test(raw)) {
+      var P = parsePoints(raw);
+      if (!P.error) return { kind: 'pts', items: P.items };
+    }
+    var dom = splitDomain(raw);
+    if (dom.error) return dom;
+    var body = tidyMath(dom.rest).replace(/^\s*[fgh]\s*\(\s*x\s*\)\s*=/i, 'y =');
+    var rel = splitRelation(body), out;
+    if (rel && rel.error) return rel;
+    if (!rel) {
+      var c = E.tryCompile(body, 'x');
+      if (c.error) return { error: c.error };
+      out = { kind: 'fn', fn: c.fn, bare: true };
+    } else {
+      if (!rel.lhs || !rel.rhs) return { error: 'Put something on both sides, like y = 2x + 1 or y > x^2.' };
+      var ref = { v: 0 }, o = { var2: 'y', var2Ref: ref };
+      var a = E.tryCompile(rel.lhs, 'x', o);
+      if (a.error) return { error: a.error };
+      var b = E.tryCompile(rel.rhs, 'x', o);
+      if (b.error) return { error: b.error };
+      if (!a.usesVar && !b.usesVar && !a.usesVar2 && !b.usesVar2) return { error: 'There is no x or y in this to draw.' };
+      var fa = a.fn, fb = b.fn, F = function (x, y) { ref.v = y; return fa(x) - fb(x); };
+      var want = rel.op === '=' ? 0 : rel.op.charAt(0) === '>' ? 1 : -1;
+      if (!a.usesVar2 && !b.usesVar2) {
+        var lin = affine(function (t) { return F(t, 0); });
+        if (lin && lin.k === 0) return { error: 'There is no x or y in this to draw.' };
+        out = lin ? { kind: 'vline', x: -lin.c / lin.k, right: want ? (want > 0) === (lin.k > 0) : null } : { kind: 'implicit', F: F };
+      } else {
+        var ky = linearInY(F);
+        if (ky && (!want || ky !== 2)) {
+          out = { kind: 'fn', fn: function (x) { var f0 = F(x, 0); return -f0 / (F(x, 1) - f0); }, above: want ? (want > 0) === (ky > 0) : null };
+        } else out = { kind: 'implicit', F: F, want: want };
+      }
+      out.op = rel.op;
+      out.strict = rel.op === '<' || rel.op === '>';
+    }
+    out.lim = dom.lim;
+    out.shown = dom.rest;
+    return out;
+  }
+  /** How a line reads in its label: ≤ and ≥ rather than <= and >=, and y = in front of a bare expression. */
+  function eqLabel(raw, bare) {
+    var t = String(raw).replace(/<=/g, '≤').replace(/>=/g, '≥');
+    return bare ? 'y = ' + t : t;
+  }
+  /**
+   * Lines, curves, regions and points, one per line: y = 2x + 1, y = x^2 − 4,
+   * x = 3, 2x + 3y = 6, x^2 + y^2 = 25, y > 2x − 1, y = √x for 0 ≤ x ≤ 9, A(2, 3).
+   */
   function parseEquations(text) {
     var E = root.FluxExpr, items = [], lines = String(text || '').split('\n');
     for (var li = 0; li < lines.length; li++) {
@@ -936,20 +1160,149 @@
       if (!line) continue;
       var where = 'Line ' + (li + 1) + ' of the equations (“' + line + '”): ';
       if (!E) return { error: where + 'the equation reader did not load. Refresh the page.', field: 'eqs' };
-      var m = /^x\s*=\s*(.+)$/i.exec(line), r;
-      if (m) {
-        r = E.tryCompile(m[1], 'x');
-        if (r.error || r.usesVar) return { error: where + 'for an up-and-down line write x = a number, like x = 3.', field: 'eqs' };
-        items.push({ kind: 'vline', x: r.fn(0), text: line });
-        continue;
-      }
-      var expr = line.replace(/^(?:y|[fgh]\s*\(\s*x\s*\))\s*=\s*/i, '');
-      if (/[=<>]/.test(expr)) return { error: where + 'I can draw equations like y = 2x + 1 or x = 3: put y on its own on the left.', field: 'eqs' };
-      r = E.tryCompile(expr, 'x');
+      var r = readRelation(line, E);
       if (r.error) return { error: where + r.error, field: 'eqs' };
-      items.push({ kind: 'fn', fn: r.fn, text: expr === line ? 'y = ' + line : line });
+      r.text = eqLabel(r.shown || line, r.bare);
+      items.push(r);
     }
     return { items: items };
+  }
+  /**
+   * Draw F(x, y) = 0 by marching squares: F is sampled on cells a few pixels
+   * across, and wherever it changes sign along an edge the curve crosses
+   * there. The crossings are joined cell to cell into whole lines, so a
+   * dashed curve dashes evenly. A sign change across a pole (1/x) is not a
+   * crossing: at a real one F is near zero there. want: 1 or −1 also fills
+   * the cells where F is above or below zero.
+   */
+  function implicitParts(F, G, want) {
+    var nx = Math.max(16, Math.ceil(G.W / 4)), ny = Math.max(16, Math.ceil(G.H / 4)), W1 = nx + 1, i, j;
+    var xs = [], ys = [], val = new Float64Array(W1 * (ny + 1));
+    for (i = 0; i <= nx; i++) xs.push(G.x0 + (G.x1 - G.x0) * i / nx);
+    for (j = 0; j <= ny; j++) ys.push(G.y0 + (G.y1 - G.y0) * j / ny);
+    function at(x, y) { var f; try { f = F(x, y); } catch (e) { f = NaN; } return isFinite(f) ? f : NaN; }
+    for (j = 0; j <= ny; j++) for (i = 0; i <= nx; i++) val[j * W1 + i] = at(xs[i], ys[j]);
+    var hits = {};
+    function cross(key, xa, ya, fa, xb, yb, fb) {
+      if (key in hits) return hits[key];
+      var t = fa / (fa - fb);
+      if (!(t >= 0 && t <= 1)) t = 0.5;
+      var x = xa + (xb - xa) * t, y = ya + (yb - ya) * t, fc = at(x, y);
+      var r = isFinite(fc) && Math.abs(fc) <= Math.max(Math.abs(fa), Math.abs(fb)) * 0.75 + 1e-12 ? [G.X(x), G.Y(y)] : null;
+      hits[key] = r;
+      return r;
+    }
+    var segs = [], fill = '';
+    for (j = 0; j < ny; j++) {
+      var run = -1;
+      for (i = 0; i <= nx; i++) {
+        var a = val[j * W1 + i], b = val[j * W1 + i + 1], c = val[(j + 1) * W1 + i + 1], d = val[(j + 1) * W1 + i];
+        var ok = i < nx && a === a && b === b && c === c && d === d;
+        var inside = ok && want && (want > 0 ? a + b + c + d > 0 : a + b + c + d < 0);
+        if (inside && run < 0) run = i;
+        if (!inside && run >= 0) {
+          fill += 'M' + r2(G.X(xs[run])) + ' ' + r2(-G.Y(ys[j])) + 'H' + r2(G.X(xs[i])) + 'V' + r2(-G.Y(ys[j + 1])) + 'H' + r2(G.X(xs[run])) + 'Z';
+          run = -1;
+        }
+        if (!ok) continue;
+        var sa = a > 0, sb = b > 0, sc = c > 0, sd = d > 0, e = [];
+        if (sa !== sb) e.push(['h' + i + ',' + j, cross('h' + i + ',' + j, xs[i], ys[j], a, xs[i + 1], ys[j], b)]);
+        if (sb !== sc) e.push(['v' + (i + 1) + ',' + j, cross('v' + (i + 1) + ',' + j, xs[i + 1], ys[j], b, xs[i + 1], ys[j + 1], c)]);
+        if (sd !== sc) e.push(['h' + i + ',' + (j + 1), cross('h' + i + ',' + (j + 1), xs[i], ys[j + 1], d, xs[i + 1], ys[j + 1], c)]);
+        if (sa !== sd) e.push(['v' + i + ',' + j, cross('v' + i + ',' + j, xs[i], ys[j], a, xs[i], ys[j + 1], d)]);
+        var pairs = e.length === 2 ? [[0, 1]] : e.length === 4 ? ((a + b + c + d > 0) === sa ? [[0, 1], [2, 3]] : [[0, 3], [1, 2]]) : [];
+        pairs.forEach(function (p) {
+          var u = e[p[0]], w = e[p[1]];
+          if (u[1] && w[1]) segs.push([u[0], u[1], w[0], w[1]]);
+        });
+      }
+    }
+    // Join the pieces into lines.
+    var adj = {}, used = new Uint8Array(segs.length), lines = [];
+    segs.forEach(function (s, k) { (adj[s[0]] = adj[s[0]] || []).push(k); (adj[s[2]] = adj[s[2]] || []).push(k); });
+    function follow(key, line, atEnd) {
+      for (;;) {
+        var list = adj[key] || [], nxt = -1;
+        for (var q = 0; q < list.length; q++) if (!used[list[q]]) { nxt = list[q]; break; }
+        if (nxt < 0) return;
+        used[nxt] = 1;
+        var s = segs[nxt], far = s[0] === key ? 2 : 0;
+        if (atEnd) line.push(s[far + 1]); else line.unshift(s[far + 1]);
+        key = s[far];
+      }
+    }
+    segs.forEach(function (s, k) {
+      if (used[k]) return;
+      used[k] = 1;
+      var line = [s[1], s[3]];
+      follow(s[2], line, true);
+      follow(s[0], line, false);
+      lines.push(line);
+    });
+    return { lines: lines, fill: fill };
+  }
+  /** The region above (or below) a curve, as polygons closed along the top (or bottom) of the grid. */
+  function shadeCurve(pic, fn, xa, xb, G, above, n, col) {
+    var runs = [], cur = null, prev = null, H = G.H;
+    for (var i = 0; i <= n; i++) {
+      var x = xa + (xb - xa) * i / n, y;
+      try { y = fn(x); } catch (e) { y = NaN; }
+      var py = isFinite(y) ? G.Y(y) : NaN;
+      if (!isFinite(py)) { cur = null; prev = null; continue; }
+      if (prev != null && ((prev > H * 2 && py < -H) || (prev < -H && py > H * 2))) cur = null;
+      if (!cur) { cur = []; runs.push(cur); }
+      cur.push([G.X(x), clamp(py, 0, H)]);
+      prev = py;
+    }
+    var edge = above ? H : 0;
+    runs.forEach(function (r) {
+      if (r.length < 2) return;
+      pic.poly(r.concat([[r[r.length - 1][0], edge], [r[0][0], edge]]), { close: true, fill: col, color: 'none', opacity: 0.16 });
+    });
+  }
+  function niceStep(raw) {
+    var p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p;
+    return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+  }
+  /**
+   * The grid's settings with x and y ranges that show every graph and point:
+   * the y range is where the curves spend most of their time over the x
+   * range, so y = x^2 + 20 or y = 100x fits without a pole stretching it.
+   */
+  function fitRange(spec) {
+    var s = clean(spec);
+    if (!s || s.kind !== 'grid') return s;
+    var EQ = parseEquations(s.eqs), PT = parsePoints(s.pts);
+    if (EQ.error || PT.error) return s;
+    var x0 = num(s.xmin, -10), x1 = num(s.xmax, 10), xs = [], ys = [];
+    if (!(x1 > x0)) { x0 = -10; x1 = 10; }
+    var pts = [];
+    PT.items.forEach(function (it) { pts = pts.concat(it.pts); });
+    EQ.items.forEach(function (it) {
+      if (it.kind === 'pts') it.items.forEach(function (p) { pts = pts.concat(p.pts); });
+      if (it.kind === 'vline') xs.push(it.x);
+    });
+    pts.forEach(function (p) { xs.push(p.x); ys.push(p.y); });
+    if (xs.length) { x0 = Math.min(x0, Math.min.apply(0, xs) - 1); x1 = Math.max(x1, Math.max.apply(0, xs) + 1); }
+    var fy = [];
+    EQ.items.forEach(function (it) {
+      if (it.kind !== 'fn') return;
+      var a = it.lim ? Math.max(x0, it.lim.lo) : x0, b = it.lim ? Math.min(x1, it.lim.hi) : x1;
+      for (var i = 0; i <= 200; i++) { var y; try { y = it.fn(a + (b - a) * i / 200); } catch (e) { y = NaN; } if (isFinite(y)) fy.push(y); }
+    });
+    fy.sort(function (p, q) { return p - q; });
+    if (fy.length) { ys.push(fy[Math.floor(fy.length * 0.04)]); ys.push(fy[Math.ceil(fy.length * 0.96) - 1]); }
+    var y0 = ys.length ? Math.min.apply(0, ys) : -10, y1 = ys.length ? Math.max.apply(0, ys) : 10;
+    if (y1 - y0 < 1e-9) { y0 -= 5; y1 += 5; }
+    var span = y1 - y0, pad0 = span * 0.06, pad1 = span * 0.06;
+    // Close enough to the x axis to show it: start from 0, with no gap below.
+    if (y0 > 0 && y0 < span * 0.6) { y0 = 0; pad0 = 0; }
+    if (y1 < 0 && -y1 < span * 0.6) { y1 = 0; pad1 = 0; }
+    var ystep = niceStep((y1 - y0) / 14), xstep = niceStep((x1 - x0) / 16);
+    s.ymin = Math.floor((y0 - pad0) / ystep) * ystep; s.ymax = Math.ceil((y1 + pad1) / ystep) * ystep;
+    s.xmin = Math.floor(x0 / xstep) * xstep; s.xmax = Math.ceil(x1 / xstep) * xstep;
+    s.xstep = xstep; s.ystep = ystep;
+    return s;
   }
   /** Clip the segment p–q to the box [0, W] × [0, H] (Liang–Barsky); null when it misses. */
   function clipSeg(p, q, W, H) {
@@ -1010,6 +1363,9 @@
     if (EQ.error) return EQ;
     var PT = parsePoints(s.pts);
     if (PT.error) return PT;
+    // Points typed among the equations are points like any other.
+    EQ.items.forEach(function (it) { if (it.kind === 'pts') PT.items = PT.items.concat(it.items); });
+    EQ.items = EQ.items.filter(function (it) { return it.kind !== 'pts'; });
     for (var pi = 0; pi < PT.items.length; pi++) {
       var off = PT.items[pi].pts.filter(function (p) { return p.x < G.x0 - 1e-9 || p.x > G.x1 + 1e-9 || p.y < G.y0 - 1e-9 || p.y > G.y1 + 1e-9; })[0];
       if (off) return { error: 'The point ' + off.name + '(' + fmt(off.x, 4) + ', ' + fmt(off.y, 4) + ') is off the grid, which runs from x = ' + fmt(G.x0, 4) + ' to ' + fmt(G.x1, 4) + ' and y = ' + fmt(G.y0, 4) + ' to ' + fmt(G.y1, 4) + '.', field: 'pts' };
@@ -1060,18 +1416,45 @@
       if (both) pic.text([ax - 7, ay - 8 - size * 0.55], '0', { size: size, anchor: 'end', halo: true });
     }
     if (s.title) pic.text([W / 2, H + (yAxis ? ext + 16 + size * 1.6 : 14) + 14], s.title, { size: 22, bold: true });
-    // Lines and curves.
-    var samples = Math.max(240, Math.ceil(W * 1.5));
+    // Lines, curves and regions. A < or > boundary is dashed, the way it is taught.
+    var samples = Math.max(240, Math.ceil(W * 1.5)), offgrid = [];
     EQ.items.forEach(function (eq, i) {
-      var col = s.mono ? ink : PALETTE[i % PALETTE.length], dash = s.mono ? DASHES[i % DASHES.length] : '', lastPt = null;
+      var col = s.mono ? ink : PALETTE[i % PALETTE.length], dash = eq.strict ? '10 7' : s.mono ? DASHES[i % DASHES.length] : '', lastPt = null;
+      var shade = s.mono ? '#64748b' : col, lim = eq.lim;
       if (eq.kind === 'vline') {
-        if (eq.x < G.x0 || eq.x > G.x1) return;
+        if (eq.x < G.x0 || eq.x > G.x1) { offgrid.push(eq.text); return; }
+        if (eq.right != null) {
+          var xa = eq.right ? X(eq.x) : 0, xb = eq.right ? W : X(eq.x);
+          if (xb > xa) pic.poly([[xa, 0], [xb, 0], [xb, H], [xa, H]], { close: true, fill: shade, color: 'none', opacity: 0.16 });
+        }
         pic.line([X(eq.x), 0], [X(eq.x), H], { color: col, w: 2.6, dash: dash });
         lastPt = [X(eq.x), H];
+      } else if (eq.kind === 'implicit') {
+        var F = lim ? function (x, y) { return x < lim.lo || x > lim.hi ? NaN : eq.F(x, y); } : eq.F;
+        var parts = implicitParts(F, G, eq.want || 0);
+        if (parts.fill) pic.path(parts.fill, [0, 0, W, H], { fill: shade, color: 'none', opacity: 0.16 });
+        var longest = null;
+        parts.lines.forEach(function (ln) {
+          pic.poly(ln, { color: col, w: 2.6, dash: dash });
+          if (!longest || ln.length > longest.length) longest = ln;
+        });
+        if (longest) lastPt = longest[longest.length - 1];
+        else if (!parts.fill) offgrid.push(eq.text);
       } else {
-        sampleCurve(eq.fn, G.x0, G.x1, X, Y, W, H, samples).forEach(function (pc) {
+        var a = lim ? Math.max(G.x0, lim.lo) : G.x0, b = lim ? Math.min(G.x1, lim.hi) : G.x1;
+        if (!(b > a)) { offgrid.push(eq.text); return; }
+        if (eq.above != null) shadeCurve(pic, eq.fn, a, b, G, eq.above, samples, shade);
+        var pcs = sampleCurve(eq.fn, a, b, X, Y, W, H, samples);
+        pcs.forEach(function (pc) {
           pic.poly(pc, { color: col, w: 2.6, dash: dash });
           lastPt = pc[pc.length - 1];
+        });
+        if (!pcs.length && eq.above == null) offgrid.push(eq.text);
+        // Where a limit ends the line: a filled dot when that end is included, an open one when not.
+        if (lim) [[lim.lo, lim.loIn], [lim.hi, lim.hiIn]].forEach(function (end) {
+          if (!isFinite(end[0]) || end[0] < G.x0 || end[0] > G.x1) return;
+          var y; try { y = eq.fn(end[0]); } catch (e) { y = NaN; }
+          if (isFinite(y) && y >= G.y0 && y <= G.y1) pic.dot([X(end[0]), Y(y)], 5, { open: !end[1], color: col, w: 2.4 });
         });
       }
       if (s.eqlab && lastPt) {
@@ -1094,7 +1477,7 @@
         pic.text([at[0] + (right ? 1 : -1) * (7 + box.w / 2), at[1] + (up ? 1 : -1) * (6 + box.h / 2)], label, { size: size + 2, halo: true });
       });
     });
-    pic.info = { grid: { x0: G.x0, x1: G.x1, y0: G.y0, y1: G.y1, dx: G.dx, dy: G.dy, cell: cell, W: W, H: H } };
+    pic.info = { grid: { x0: G.x0, x1: G.x1, y0: G.y0, y1: G.y1, dx: G.dx, dy: G.dy, cell: cell, W: W, H: H }, offgrid: offgrid };
     return pic;
   }
 
@@ -1394,7 +1777,7 @@
   var KINDS = [
     ['grid', 'Coordinate grid'], ['numline', 'Number line'], ['triangle', 'Triangle'], ['rect', 'Rectangle'],
     ['para', 'Parallelogram'], ['trap', 'Trapezoid'], ['kite', 'Kite'], ['reg', 'Regular polygon'],
-    ['angle', 'Angles'], ['parallel', 'Parallel lines'], ['solid', '3D solid'],
+    ['circle', 'Circle'], ['angle', 'Angles'], ['parallel', 'Parallel lines'], ['solid', '3D solid'],
   ];
   var DEFAULTS = {
     grid: { kind: 'grid', xmin: -10, xmax: 10, ymin: -10, ymax: 10, xstep: 1, ystep: 1, every: 0, axes: true, arrows: true, nums: true, lines: true, xname: 'x', yname: 'y', title: '', eqs: '', pts: '', eqlab: true, ptcoord: false, mono: false },
@@ -1405,11 +1788,12 @@
     trap: { kind: 'trap', type: 'iso', b1: 10, b2: 6, h: 5, off: 2, u: 'cm', dp: 1, giv: true, calc: false, sB1: '', sB2: '', sH: '', sL: '', sR: '', height: true, arrows: true, ticks: true, boxes: true, names: false, nA: 'A', nB: 'B', nC: 'C', nD: 'D', rot: 0, flip: false },
     kite: { kind: 'kite', wd: 6, p: 3, q: 7, u: 'cm', dp: 1, giv: true, calc: false, sT: '', sB: '', diag: true, dW: '', dP: '', dQ: '', ticks: true, box: true, names: false, nA: 'A', nB: 'B', nC: 'C', nD: 'D', rot: 0 },
     reg: { kind: 'reg', n: 6, s: 4, u: 'cm', dp: 1, giv: true, calc: false, sS: '', gI: '', ticks: true, centre: false, apo: false, sA: '', rad: false, sR: '', names: false, rot: 0 },
+    circle: { kind: 'circle', r: 5, u: 'cm', dp: 1, giv: true, calc: false, rad: true, diam: false, chord: false, tangent: false, sector: 0, centre: true, names: true, nO: 'O', nA: 'A', nB: 'B', sR: '', sD: '', sC: '', gS: '', rot: 0 },
     angle: { kind: 'angle', mode: 'single', parts: 2, a1: 40, a2: 60, a3: 50, giv: true, calc: false, l1: '', l2: '', l3: '', l4: '', names: false, nA: 'A', nB: 'B', nC: 'C', rot: 0 },
     parallel: { kind: 'parallel', ang: 60, mode: 'numbers', c1: '', c2: '', c3: '', c4: '', c5: '', c6: '', c7: '', c8: '', arcs: false, arrows: true, names: true, nL: 'l', nM: 'm', nT: 't', rot: 0 },
     solid: { kind: 'solid', shape: 'cuboid', l: 6, w: 4, h: 3, r: 3, tri: 'iso', u: 'cm', dp: 1, giv: true, sL: '', sW: '', sH: '', sR: '', slant: false, sS: '', hid: 'dash' },
   };
-  var BUILDERS = { grid: buildGrid, numline: buildNumline, triangle: buildTriangle, rect: buildRect, para: buildPara, trap: buildTrap, kite: buildKite, reg: buildReg, angle: buildAngle, parallel: buildParallel, solid: buildSolid };
+  var BUILDERS = { grid: buildGrid, numline: buildNumline, triangle: buildTriangle, rect: buildRect, para: buildPara, trap: buildTrap, kite: buildKite, reg: buildReg, circle: buildCircle, angle: buildAngle, parallel: buildParallel, solid: buildSolid };
 
   function defaults(kind) { var d = DEFAULTS[kind]; return d ? JSON.parse(JSON.stringify(d)) : null; }
   /** Fill in whatever is missing or of the wrong type from the defaults; drop what does not belong. */
@@ -1463,6 +1847,7 @@
       case 'trap': return 'Trapezoid with parallel sides ' + fmt(s.b1) + u + ' and ' + fmt(s.b2) + u + ', height ' + fmt(s.h) + u;
       case 'kite': return 'Kite, ' + fmt(s.wd) + u + ' across';
       case 'reg': return 'Regular ' + (POLY_NAMES[Math.round(s.n)] || 'polygon') + ' with sides of ' + fmt(s.s) + u;
+      case 'circle': return 'Circle, radius ' + fmt(s.r) + u + (s.sector > 0 ? ', with a sector of ' + fmt(s.sector) + '°' : '');
       case 'angle': {
         var P = angleParts(s);
         if (P.error) return 'Angles';
@@ -1511,9 +1896,187 @@
     return s;
   }
 
+  /* ── A figure from a sentence ──────────────────────────────────────── */
+
+  var NUM = '-?(?:\\d+\\.?\\d*|\\.\\d+)';
+  var POLY_WORDS = { pentagon: 5, hexagon: 6, heptagon: 7, septagon: 7, octagon: 8, nonagon: 9, decagon: 10, hendecagon: 11, dodecagon: 12 };
+  var SOLID_WORDS = [['hemisphere', 'hemi'], ['sphere', 'sphere'], ['ball', 'sphere'], ['cylinder', 'cylinder'], ['cone', 'cone'], ['pyramid', 'pyramid'],
+    ['triangular prism', 'triprism'], ['cuboid', 'cuboid'], ['rectangular prism', 'cuboid'], ['box', 'cuboid'], ['cube', 'cube']];
+  var EXAMPLES = 'Try “right triangle 3 4 5”, “y = x^2 − 4”, “cylinder r 3 h 8”, “circle r 5 sector 60” or “number line x > 2”.';
+
+  /**
+   * Turn what a student types — “right triangle 3 4 5”, “rectangle 8 by 5”,
+   * “hexagon side 4”, “cylinder r 3 h 8”, “y = x^2 − 4”, “number line
+   * −5 to 5, x > 2” — into a figure's settings: { spec, said } or { error }.
+   */
+  function fromText(text) {
+    var raw = String(text == null ? '' : text).trim();
+    if (!raw) return { error: 'Type what you need. ' + EXAMPLES };
+    var t = ' ' + raw.toLowerCase().replace(/[−–—]/g, '-').replace(/,(?=\S)/g, ', ') + ' ';
+    var has = function (re) { return re.test(t); };
+    function named(words) {
+      var m = new RegExp('(?:^|[^a-z])(?:' + words + ')\\s*(?:=|:|of|is)?\\s*(' + NUM + ')').exec(t);
+      return m ? parseFloat(m[1]) : NaN;
+    }
+    var unitM = new RegExp(NUM + '\\s*(mm|cm|km|m|in|ft|yd)\\b').exec(t);
+    var unit = unitM ? unitM[1] : null;
+    // Plain numbers, and angles (a number with °, deg or degrees after it).
+    var nums = [], angs = [], re = new RegExp('(' + NUM + ')\\s*(°|deg(?:rees?)?\\b)?', 'g'), m;
+    while ((m = re.exec(t))) {
+      var before = t[m.index - 1] || ' ';
+      if (/[a-z^_(]/.test(before)) continue;   // x^2, F_1, A(2, 3)
+      (m[2] ? angs : nums).push(parseFloat(m[1]));
+    }
+    function spec(kind, extra) {
+      var s = defaults(kind);
+      Object.keys(extra).forEach(function (k) { if (extra[k] !== undefined && !(typeof extra[k] === 'number' && !isFinite(extra[k]))) s[k] = extra[k]; });
+      if (unit && 'u' in s) s.u = unit;
+      return s;
+    }
+    function done(s) {
+      var r = build(s);
+      if (r.error) return { error: r.error, spec: s };
+      return { spec: s, said: describe(s) };
+    }
+    var isEq = /[a-z]\s*\(\s*x\s*\)\s*=|\by\s*(=|<|>|≤|≥)|(=|<|>|≤|≥)\s*y\b/.test(t);
+
+    // Number lines.
+    if (has(/number\s*line/)) {
+      var rng = new RegExp('(' + NUM + ')\\s*(?:to|until|\\.\\.)\\s*(' + NUM + ')').exec(t);
+      var marks = [], ineq = new RegExp('(?:' + NUM + '\\s*(?:<=|>=|<|>|≤|≥)\\s*)?x\\s*(?:<=|>=|<|>|≤|≥)\\s*' + NUM + '|' + NUM + '\\s*(?:<=|>=|<|>|≤|≥)\\s*x', 'g'), q;
+      while ((q = ineq.exec(t))) marks.push(q[0].trim());
+      var dots = /(?:dots?|points?|marks?)\s*(?:at)?\s*((?:-?\d*\.?\d+(?:\s*(?:,|and)\s*)?)+)/.exec(t);
+      if (dots) dots[1].split(/\s*(?:,|and)\s*/).filter(Boolean).forEach(function (d) { marks.push(d); });
+      var vals = [];
+      marks.forEach(function (mk) { (mk.match(new RegExp(NUM, 'g')) || []).forEach(function (v) { vals.push(parseFloat(v)); }); });
+      var from = rng ? parseFloat(rng[1]) : vals.length ? Math.min(-5, Math.floor(Math.min.apply(0, vals)) - 2) : -5;
+      var to = rng ? parseFloat(rng[2]) : vals.length ? Math.max(5, Math.ceil(Math.max.apply(0, vals)) + 2) : 5;
+      return done(spec('numline', { from: Math.min(from, to), to: Math.max(from, to), marks: marks.join('\n') }));
+    }
+
+    // Graphs: equations, inequalities and points on a grid.
+    if (isEq || has(/\b(graph|plot|axes|coordinate|grid|quadrant)/) || (/^\s*[a-z]?\s*\(\s*-?\d/i.test(raw) && !has(/triangle|circle|rect|square/))) {
+      var g = {}, eqs = [], pts = [];
+      raw.replace(/[−–—]/g, '-').split(/\s*;\s*|\n|\s+and\s+(?=[a-z]\s*[(=<>]|y\b|x\b)/i).forEach(function (part) {
+        var p = part.replace(/^\s*(?:please\s+)?(?:graph|plot|draw|sketch|show)?\s*(?:of\s+|the\s+)?(?:lines?|curves?|graphs?|points?)?\s*:?\s*/i, '').trim();
+        p = p.replace(/\s*(?:on|in)\s+(?:a\s+|the\s+)?(?:grid|graph|axes)\b.*$/i, '').replace(/\s*,?\s*[xy]\s+from\s+.*$/i, '').trim();
+        if (!p || /^(?:a\s+)?(?:blank\s+)?(?:grid|graph paper|axes|coordinate grid|first quadrant)$/i.test(p)) return;
+        if (/^([A-Za-z][A-Za-z0-9']*)?\s*\(\s*-?\d/.test(p) && !/=/.test(p)) pts.push(p);
+        else if (/[=<>≤≥]|x/i.test(p)) eqs.push(p);
+      });
+      g.eqs = eqs.join('\n'); g.pts = pts.join('\n');
+      var xr = new RegExp('x\\s*from\\s*(' + NUM + ')\\s*to\\s*(' + NUM + ')').exec(t), yr = new RegExp('y\\s*from\\s*(' + NUM + ')\\s*to\\s*(' + NUM + ')').exec(t);
+      if (has(/first quadrant/)) { g.xmin = 0; g.xmax = 10; g.ymin = 0; g.ymax = 10; }
+      if (xr) { g.xmin = parseFloat(xr[1]); g.xmax = parseFloat(xr[2]); }
+      if (yr) { g.ymin = parseFloat(yr[1]); g.ymax = parseFloat(yr[2]); }
+      if (has(/graph paper|blank grid/) && !eqs.length && !pts.length) Object.assign(g, { xmin: 0, xmax: 20, ymin: 0, ymax: 14, axes: false, nums: false });
+      var gs = spec('grid', g), first = build(gs);
+      // Nothing to see in the usual −10 to 10? Fit the grid to the graphs instead.
+      if (!yr && !first.error && first.info && first.info.offgrid && first.info.offgrid.length) gs = fitRange(gs);
+      return done(gs);
+    }
+
+    // 3D solids.
+    for (var si = 0; si < SOLID_WORDS.length; si++) {
+      if (t.indexOf(SOLID_WORDS[si][0]) < 0) continue;
+      var shape = SOLID_WORDS[si][1], r = named('r|radius'), d = named('d|diameter'), h = named('h|height|tall'), l = named('l|length|long|edge|side'), w = named('w|width|wide|base');
+      if (!isFinite(r) && isFinite(d)) r = d / 2;
+      var free = nums.filter(function (v) { return [r, d, h, l, w].indexOf(v) < 0; });
+      var take = function (v) { return isFinite(v) ? v : free.length ? free.shift() : NaN; };
+      var o = { shape: shape };
+      if (shape === 'cube') o.l = take(l);
+      else if (shape === 'cuboid' || shape === 'pyramid') {
+        o.l = take(l); o.w = take(w); o.h = take(h);
+        if (shape === 'pyramid' && !isFinite(o.h) && isFinite(o.w)) { o.h = o.w; o.w = o.l; }
+      } else if (shape === 'triprism') { o.w = take(w); o.h = take(h); o.l = take(l); o.tri = has(/right/) ? 'right' : 'iso'; }
+      else if (shape === 'sphere' || shape === 'hemi') o.r = take(r);
+      else { o.r = take(r); o.h = take(h); o.slant = has(/slant/); }
+      return done(spec('solid', o));
+    }
+
+    // Circles.
+    if (has(/circle/)) {
+      var cr = named('r|radius'), cd = named('d|diameter');
+      var co = { r: isFinite(cr) ? cr : isFinite(cd) ? cd / 2 : nums[0], diam: has(/diameter/), chord: has(/chord/), tangent: has(/tangent/) };
+      var sector = named('sector|angle');
+      if (has(/sector/)) co.sector = isFinite(sector) ? sector : angs[0] != null ? angs[0] : 60;
+      return done(spec('circle', co));
+    }
+
+    // Regular polygons.
+    var nSides = NaN;
+    Object.keys(POLY_WORDS).forEach(function (pw) { if (t.indexOf(pw) >= 0) nSides = POLY_WORDS[pw]; });
+    var ngon = /(\d+)\s*-?\s*(?:gon|sided|sides)/.exec(t);
+    if (!isFinite(nSides) && ngon && has(/regular|polygon|gon/)) nSides = parseInt(ngon[1], 10);
+    if (isFinite(nSides)) {
+      var side = named('side|length|s'), rest = nums.filter(function (v) { return v !== nSides; });
+      return done(spec('reg', { n: nSides, s: isFinite(side) ? side : rest[0] }));
+    }
+
+    // Triangles.
+    if (has(/triangle/)) {
+      var caps = {};
+      raw.replace(/\b(AB|BC|CA|AC|[abcABC])\s*=\s*(-?\d*\.?\d+)/g, function (all, k, v) { caps[k === 'AC' ? 'CA' : k] = parseFloat(v); return all; });
+      var sides = [caps.AB != null ? caps.AB : caps.c, caps.BC != null ? caps.BC : caps.a, caps.CA != null ? caps.CA : caps.b];
+      var angsN = [caps.A, caps.B, caps.C];
+      if (sides.some(isFinite) || angsN.some(isFinite)) {
+        var hs = sides.filter(isFinite).length, ha = angsN.filter(isFinite).length;
+        var to = { c: sides[0], a: sides[1], b: sides[2], A: angsN[0], B: angsN[1], C: angsN[2] };
+        to.method = hs === 3 ? 'sss' : hs === 2 && ha >= 1 ? 'sas' : hs === 1 && ha >= 2 ? (isFinite(sides[0]) ? 'asa' : 'aas') : ha === 3 ? 'aaa' : '';
+        if (!to.method) return { error: 'A triangle needs three facts: three sides, two sides and an angle, or two angles and a side.' };
+        return done(spec('triangle', to));
+      }
+      if (has(/equilateral/) && nums.length) return done(spec('triangle', { method: 'sss', a: nums[0], b: nums[0], c: nums[0] }));
+      if (has(/isosceles/) && nums.length >= 2) return done(spec('triangle', { method: 'sss', a: nums[0], b: nums[0], c: nums[1] }));
+      if (has(/right/) && nums.length >= 2) {
+        var legs = nums.length >= 3 ? nums.slice(0, 3).sort(function (p, q2) { return p - q2; }).slice(0, 2) : nums.slice(0, 2);
+        return done(spec('triangle', { method: 'right', a: legs[0], b: legs[1] }));
+      }
+      if (nums.length >= 3) return done(spec('triangle', { method: 'sss', c: nums[0], a: nums[1], b: nums[2] }));
+      if (nums.length === 2 && angs.length >= 1) return done(spec('triangle', { method: 'sas', c: nums[0], b: nums[1], A: angs[0] }));
+      if (nums.length === 1 && angs.length >= 2) return done(spec('triangle', { method: 'asa', c: nums[0], A: angs[0], B: angs[1] }));
+      if (angs.length >= 2) return done(spec('triangle', { method: 'aaa', A: angs[0], B: angs[1], C: angs.length > 2 ? angs[2] : 180 - angs[0] - angs[1] }));
+      return { error: 'Give the triangle its sizes, like “triangle 5 6 7”, “right triangle 3 4” or “triangle 7, 40°, 60°”.' };
+    }
+
+    // Four-sided shapes.
+    var by = new RegExp('(' + NUM + ')\\s*(?:by|x|\\*)\\s*(' + NUM + ')').exec(t.replace(/×/g, 'x'));
+    if (has(/\bsquare\b/)) return done(spec('rect', { w: nums[0], h: nums[0] }));
+    if (has(/rectangle|oblong/)) {
+      var rw = named('w|width|length|base'), rh = named('h|height');
+      return done(spec('rect', { w: by ? parseFloat(by[1]) : isFinite(rw) ? rw : nums[0], h: by ? parseFloat(by[2]) : isFinite(rh) ? rh : nums[1] }));
+    }
+    if (has(/parallelogram|rhombus/)) {
+      var pb = named('base|b'), ps = named('side|s');
+      return done(spec('para', { b: isFinite(pb) ? pb : nums[0], s: isFinite(ps) ? ps : has(/rhombus/) ? nums[0] : nums[1], ang: angs[0] }));
+    }
+    if (has(/trapezoid|trapezium/)) {
+      return done(spec('trap', { b1: nums[0], b2: nums[1], h: nums[2], type: has(/right/) ? 'right' : has(/isosceles/) ? 'iso' : undefined }));
+    }
+    if (has(/kite/)) return done(spec('kite', { wd: nums[0], p: nums[1], q: nums[2] }));
+
+    // Angles and parallel lines.
+    if (has(/parallel|transversal/)) return done(spec('parallel', { ang: angs[0] != null ? angs[0] : nums[0] }));
+    if (has(/angle/)) {
+      var av = angs.concat(nums);
+      var mode = has(/straight line|on a line/) ? 'line' : has(/around a point|at a point|round a point|full turn/) ? 'point'
+        : has(/vertically opposite|crossing|intersecting/) ? 'vertical' : has(/in a right angle|make a right angle|right angle split/) ? 'right' : 'single';
+      if (mode === 'single' && !av.length && has(/right angle/)) av = [90];
+      var ao = { mode: mode, a1: av[0], a2: av[1], a3: av[2] };
+      if (mode === 'line' || mode === 'right') ao.parts = clamp(av.length + 1, 2, 3);
+      if (mode === 'point') ao.parts = clamp(av.length + 1, 3, 4);
+      return done(spec('angle', ao));
+    }
+
+    // A bare equation, like “x^2 − 4”, or nothing recognised.
+    if (/x/.test(t) && root.FluxExpr && !parseEquations(raw).error) return done(spec('grid', { eqs: raw }));
+    return { error: 'I could not tell which figure that is. ' + EXAMPLES };
+  }
+
   root.FluxFigures = {
     KINDS: KINDS, DEFAULTS: DEFAULTS, POLY_NAMES: POLY_NAMES,
     defaults: defaults, clean: clean, build: build, describe: describe, encode: encode, decode: decode,
+    fromText: fromText, fitRange: fitRange, tidyMath: tidyMath, splitDomain: splitDomain, EXAMPLES: EXAMPLES,
     // geometry, for the tests and for Pixel
     solveTriangle: solveTriangle, trianglePoints: trianglePoints, rectPoints: rectPoints, paraPoints: paraPoints,
     trapPoints: trapPoints, trapOffset: trapOffset, kitePoints: kitePoints, regularPoints: regularPoints,

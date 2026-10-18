@@ -29,6 +29,11 @@ async function openPanel(page: Page, kind: string) {
   await expect(dlg(page)).toBeVisible();
   await dlg(page).locator(`input[name="pxFigKind"][value="${kind}"]`).check();
 }
+/** Labels, marks and position wait under "More options" until asked for. */
+async function moreOptions(page: Page) {
+  const more = dlg(page).locator('#pxFigMore');
+  if (!(await more.evaluate((d: HTMLDetailsElement) => d.open))) await more.locator('summary').click();
+}
 async function drag(page: Page, box: Box, from: [number, number], to: [number, number]) {
   await page.mouse.move(...at(box, ...from));
   await page.mouse.down();
@@ -49,6 +54,7 @@ test.describe('Flux Pixel: maths figures', () => {
     await expect(page.locator('#pxFigPrev')).toHaveAttribute('aria-label', /Triangle with sides 5, 3 and 4 cm \(right-angled\)/);
     await expect(page.locator('#pxFigPrev svg text')).toContainText(['5 cm']);
     // The worked-out angle shows as a placeholder, ready to be replaced.
+    await moreOptions(page);
     await expect(dlg(page).getByLabel('Label in angle A')).toHaveAttribute('placeholder', /36\.9°/);
     await dlg(page).getByLabel('Label on AB').fill('x + 2');
     await dlg(page).getByRole('button', { name: 'Insert' }).click();
@@ -180,6 +186,7 @@ test.describe('Flux Pixel: maths figures', () => {
     await expect(dlg(page).getByLabel('Length', { exact: true })).toBeHidden();
     await expect(page.locator('#pxFigPrev [stroke-dasharray]')).toHaveCount(1);
     await expect(page.locator('#pxFigPrev')).toHaveAttribute('aria-label', /Cylinder, radius 3 cm, height 3 cm/);
+    await moreOptions(page);
     await dlg(page).getByLabel('Hidden edges').selectOption('hide');
     await expect(page.locator('#pxFigPrev [stroke-dasharray]')).toHaveCount(0);
     await dlg(page).locator('input[name="pxFigKind"][value="numline"]').check();
@@ -187,6 +194,71 @@ test.describe('Flux Pixel: maths figures', () => {
     await expect(page.locator('#pxFigPrev circle[fill="#ffffff"]')).toHaveCount(1);
     await dlg(page).getByLabel('Dots and inequalities, one per line').fill('x > 9');
     await expect(page.locator('#pxFigMsg')).toContainText('9 is off the number line');
+  });
+
+  test('describe it in words: the box says what Enter makes, then makes it with the form filled in', async ({ page }) => {
+    await newPage(page);
+    await page.locator('[data-tool="figure"]').click();
+    const ask = dlg(page).getByLabel('Describe it');
+    await ask.fill('cylinder r 3 h 8');
+    await expect(dlg(page).locator('#pxFigAskHint')).toContainText('Enter makes: Cylinder, radius 3 cm, height 8 cm');
+    await ask.press('Enter');
+    await expect(dlg(page).locator('input[name="pxFigKind"][value="solid"]')).toBeChecked();
+    await expect(dlg(page).getByLabel('Shape')).toHaveValue('cylinder');
+    await expect(dlg(page).getByLabel('Height', { exact: true })).toHaveValue('8');
+    await ask.fill('right triangle 3 4 5');
+    await dlg(page).getByRole('button', { name: 'Make it' }).click();
+    await expect(page.locator('#pxFigPrev')).toHaveAttribute('aria-label', /right-angled/);
+    await expect(dlg(page).getByLabel('Make it from')).toHaveValue('right');
+    // Something it cannot read is said in words, and the figure stays as it was.
+    await ask.fill('banana');
+    await ask.press('Enter');
+    await expect(dlg(page).locator('#pxFigAskHint')).toContainText('I could not tell which figure that is');
+    await expect(ask).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#pxFigPrev')).toHaveAttribute('aria-label', /right-angled/);
+    // An example fills the box and makes it.
+    await dlg(page).getByRole('button', { name: 'circle r 5 sector 60' }).click();
+    await expect(page.locator('#pxFigPrev')).toHaveAttribute('aria-label', /Circle, radius 5 cm, with a sector of 60°/);
+    await expect(page.locator('#pxFigPrev svg')).toContainText('60°');
+  });
+
+  test('a grid reads what students type: shading, a circle, a limited line, and a grid that fits', async ({ page }) => {
+    await newPage(page);
+    await openPanel(page, 'grid');
+    const eqs = dlg(page).getByLabel('Lines and curves, one per line');
+    await eqs.fill('y > 2x - 1\nx^2 + y^2 = 25\ny = |x| for -3 < x < 3');
+    await expect(page.locator('#pxFigMsg')).toHaveText('');
+    // The inequality shades its side, behind a dashed line.
+    await expect(page.locator('#pxFigPrev [fill-opacity]')).toHaveCount(1);
+    await expect(page.locator('#pxFigPrev polyline[stroke="#2563eb"][stroke-dasharray]')).not.toHaveCount(0);
+    await expect(page.locator('#pxFigPrev polyline[stroke="#dc2626"]')).not.toHaveCount(0);
+    // The limit ends the line in open dots, and stays out of its label.
+    await expect(page.locator('#pxFigPrev circle[fill="#ffffff"][stroke="#16a34a"]')).toHaveCount(2);
+    await expect(page.locator('#pxFigPrev svg')).toContainText('y = |x|');
+    await expect(page.locator('#pxFigPrev svg')).not.toContainText('for -3');
+    // A curve off the grid is named, and one press fits the grid to it.
+    await eqs.fill('y = x^2 + 50');
+    await expect(page.locator('#pxFigMsg')).toContainText('off the grid');
+    await dlg(page).locator('#pxFigFit').getByRole('button', { name: 'Fit the grid to my graphs' }).click();
+    await expect(dlg(page).getByLabel('Largest y')).not.toHaveValue('10');
+    await expect(page.locator('#pxFigMsg')).toHaveText('');
+    await expect(page.locator('#pxFigPrev polyline[stroke="#2563eb"]')).not.toHaveCount(0);
+  });
+
+  test('More options keeps the form short, and stays the way it was left', async ({ page }) => {
+    await newPage(page);
+    await openPanel(page, 'triangle');
+    await expect(dlg(page).getByLabel('Side AB', { exact: true })).toBeVisible();
+    await expect(dlg(page).getByLabel('Label on AB')).toBeHidden();
+    await expect(dlg(page).locator('#pxFigMore summary')).toContainText('Labels · Marks · Position');
+    await moreOptions(page);
+    await expect(dlg(page).getByLabel('Label on AB')).toBeVisible();
+    // Another figure, and the panel opened again later: still open.
+    await dlg(page).locator('input[name="pxFigKind"][value="rect"]').check();
+    await expect(dlg(page).getByLabel('Label on the width')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.locator('[data-tool="figure"]').click();
+    await expect(dlg(page).locator('#pxFigMore')).toHaveAttribute('open', '');
   });
 
   test('keyboard: M opens the panel, arrows change the figure, Escape closes and focus comes back', async ({ page }) => {
