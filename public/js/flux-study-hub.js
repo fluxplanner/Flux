@@ -1464,11 +1464,26 @@
     _stageRaf = requestAnimationFrame(() => { _stageRaf = 0; renderStage(picked); });
   }
 
+  /* The study apps that open on their own page (Flux Tutor, the full Grapher
+     with 3D, Pixel, Flashcards…). Inside the planner they were reachable only
+     through the nine-dot Hub, so a student in Study tools never learned they
+     existed. The list is flux-hub.js's, the same one hub.html shows, so a new
+     app turns up here without touching this file. target=_blank: flux-hub.js
+     keeps these in the same window when Flux runs as a home-screen app. */
+  function appsShelfHtml() {
+    const apps = ((window.FluxHub && window.FluxHub.PRODUCTS) || []).filter((p) => p.group === 'study');
+    if (!apps.length) return '';
+    return `<nav class="fsh-apps" aria-labelledby="fshAppsH"><h2 class="fsh-apps-h" id="fshAppsH">More Flux apps</h2><div class="fsh-apps-row">`
+      + apps.map((p) => `<a class="fsh-app fsh-app--${esc(p.id)}" href="${esc(p.href)}" target="_blank" rel="noopener"><span class="fsh-app-ico" aria-hidden="true">${p.mark || ''}</span><span class="fsh-app-t"><b>${esc(p.name.replace(/^Flux /, ''))}</b><small>${esc(p.tagline)}</small></span></a>`).join('')
+      + `</div></nav>`;
+  }
+
   // ── shell + events ───────────────────────────────────────────────────────
   function buildShell() {
     const host = $('stSections'); if (!host) return false;
     if ($('toolbox')) $('toolbox').classList.add('fsh-active');
     host.innerHTML = `<div id="fshRoot" class="fsh"><div class="fsh-hero"><div class="fsh-hero-text"><h1>Study Tools</h1><p>Interactive tools for all ${SUBJECTS.length} subjects, sorted into the units you're taught: calculators, simulations, references and practice, all in one place.</p></div><div class="fsh-search"><span class="fsh-search-ico">⌕</span><input id="fshSearch" type="search" placeholder="Search tools, subjects & elements…" autocomplete="off"><button type="button" class="fsh-search-clear" id="fshSearchClear" hidden aria-label="Clear">×</button><span class="fsh-search-key" aria-hidden="true">/</span></div></div>
+      ${appsShelfHtml()}
       <div class="fsh-group-row" id="fshGroups" role="tablist" aria-label="Subject areas">${groupRowHtml()}</div>
       <div class="fsh-rail-wrap"><div class="fsh-rail" id="fshRail"></div></div>
       <div class="fsh-stage" id="fshStage"></div></div>`;

@@ -97,6 +97,27 @@
 [data-theme="light"] .fsh-group-n { background:rgba(0,0,0,.08); }
 @media (max-width:768px) { .fsh-group-row { padding:0 16px; gap:6px; } .fsh-group { padding:9px 12px; font-size:12.5px; } }
 
+/* ── More Flux apps shelf (appsShelfHtml): the study apps on their own page ── */
+.fsh-apps { padding:0 26px; margin:16px 0 0; }
+.fsh-apps-h { margin:0 0 8px; font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--fsh-mut); }
+/* One row that scrolls sideways rather than wrapping into a wall of cards
+   above the subjects, which are what most visits are for. */
+.fsh-apps-row { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; scrollbar-width:thin; scroll-snap-type:x proximity; }
+.fsh-app {
+  flex:0 0 auto; display:flex; align-items:center; gap:10px; min-height:44px;
+  padding:8px 14px 8px 10px; border-radius:var(--fsh-radius-sm); scroll-snap-align:start;
+  border:1px solid var(--fsh-line); background:rgba(10,14,24,.42);
+  color:var(--fsh-ink-2); text-decoration:none;
+  transition:color .18s, border-color .18s;
+}
+.fsh-app:hover, .fsh-app:focus-visible { color:var(--fsh-ink); border-color:rgba(var(--fsh-accent-rgb),.45); }
+.fsh-app-ico { display:inline-flex; width:30px; height:30px; flex:0 0 30px; align-items:center; justify-content:center; border-radius:9px; color:var(--fsh-accent); background:rgba(var(--fsh-accent-rgb),.12); }
+.fsh-app-t { display:flex; flex-direction:column; line-height:1.25; }
+.fsh-app-t b { font-size:13px; font-weight:700; color:var(--fsh-ink); }
+.fsh-app-t small { font-size:11.5px; color:var(--fsh-mut); white-space:nowrap; }
+[data-theme="light"] .fsh-app { background:rgba(255,255,255,.7); }
+@media (max-width:768px) { .fsh-apps { padding:0 16px; } }
+
 /* ── SUBJECT RAIL ──────────────────────────────────────────────────────── */
 .fsh-rail-wrap { position:relative; margin:18px 0 4px; }
 /* scroll-padding, not just padding: scrollIntoView() aligns to the scrollport
