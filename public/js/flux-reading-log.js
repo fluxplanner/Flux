@@ -7,7 +7,9 @@
        be hidden like any dashboard section (Settings → Layout).
      · Its own page (#readingLog panel): the daily log, books, quotes, the
        weekly goal, and a printout for a chosen date range to hand in.
-     · Study tools → English → Literature → Reading log opens the page too.
+     · Study tools → English → Literature → Reading log opens the page too,
+       and so does its own tab in the sidebar's Learn group (app.js
+       DEFAULT_TABS, id readingLog).
 
    Data lives under one key (flux_reading_log_v1) through the app's own
    load/save, and travels with the account as the `readingLog` slice of the
@@ -309,7 +311,7 @@
     // The button that had focus has gone; hand focus to the next thing on the dashboard.
     var next = document.querySelector('#dashboard .dash-v2-work-title');
     if (next) { next.setAttribute('tabindex', '-1'); try { next.focus({ preventScroll: true }); } catch (e) {} }
-    toast('Reading log card hidden. Bring it back in Settings, Layout. The page stays under Study tools.', 'info');
+    toast('Reading log card hidden. Bring it back in Settings, Layout. The page stays in the sidebar, under Learn.', 'info');
   }
 
   /* ════════════════════════════════════════════════════════════════════════

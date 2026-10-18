@@ -34,7 +34,7 @@ import { gotoScenario } from './helpers';
 
 const PANELS = [
   'dashboard', 'calendar', 'school', 'notes', 'timer', 'canvas',
-  'profile', 'goals', 'mood', 'toolbox', 'settings',
+  'profile', 'goals', 'mood', 'toolbox', 'readingLog', 'settings',
 ];
 
 /* Mirrors how a browser resolves an accessible name, for the cases Flux uses:
