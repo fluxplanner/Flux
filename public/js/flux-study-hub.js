@@ -1394,14 +1394,54 @@
     ['chem:ions', '±', 'Ions & Solubility', 'ions polyatomic solubility table constants'],
     ['chem:worksheet', '📝', 'Worksheet Maker', 'worksheet practice problems generator print quiz redox'],
   ];
+  /* Search the way students type. Every word has to turn up somewhere in the
+     tool's name, its keywords or its subject, in any order — so "spanish
+     verbs" finds Spanish's verb drill and "molar mass calculator" finds the
+     calculators. Accents and capitals never count, and a word may be a
+     shorter or longer form ("conjugate" → Conjugator, "graphs" → graph) or
+     one typing slip off ("periodic tabel"). */
+  const foldText = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const searchWords = (s) => foldText(s).split(/[^a-z0-9]+/).filter(Boolean);
+  function slipOne(a, b) {
+    if (Math.abs(a.length - b.length) > 1 || a === b) return a === b;
+    let i = 0; while (i < a.length && a[i] === b[i]) i++;
+    if (a.length === b.length) return a.slice(i + 1) === b.slice(i + 1) || (a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2));
+    return a.length > b.length ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1);
+  }
+  /** 2 when the query word is the start of a word here, 1 for a looser match, 0 for none. */
+  function wordScore(qw, hayWords) {
+    let best = 0;
+    for (const w of hayWords) {
+      if (w.startsWith(qw)) return 2;
+      const stem = Math.min(qw.length, w.length) - 2;
+      if (stem >= 4 && qw.slice(0, stem) === w.slice(0, stem) && Math.abs(qw.length - w.length) <= 3) best = 1;
+      else if (qw.length >= 5 && slipOne(qw, w)) best = 1;
+      else if (qw.length >= 3 && w.indexOf(qw) > 0) best = Math.max(best, 1);
+    }
+    return best;
+  }
+  /** How well a query matches some text: 0 unless every word is found. Words in the title count double. */
+  function searchScore(qws, title, rest) {
+    const tw = searchWords(title), all = tw.concat(searchWords(rest));
+    let sum = 0;
+    for (const qw of qws) {
+      const sc = wordScore(qw, all);
+      if (!sc) return 0;
+      sum += sc + wordScore(qw, tw);
+    }
+    return sum;
+  }
   function renderSearch() {
-    const q = searchQ.trim().toLowerCase();
+    const qws = searchWords(searchQ);
+    const q = foldText(searchQ.trim());
     const toolHits = [];
-    CHEM_SEARCH.forEach(([tid, ico, name, kw]) => { if ((name + ' ' + kw).toLowerCase().includes(q)) toolHits.push({ sid: 'chemistry', t: { id: tid, icon: ico, name } }); });
-    legacyChipsFor('chemistry').forEach((c) => { if (((c.label || '') + ' ' + (c.desc || '')).toLowerCase().includes(q)) toolHits.push({ sid: 'chemistry', t: { id: 'chem:lg-' + c.id, icon: c.icon || '🧰', name: c.label || c.id } }); });
-    Object.keys(registry).forEach((sid) => (registry[sid] || []).forEach((t) => { if (t.render && (t.name + ' ' + (t.desc || '')).toLowerCase().includes(q)) toolHits.push({ sid, t }); }));
-    const subHits = SUBJECTS.filter((s) => s.name.toLowerCase().includes(q));
-    const elHits = elements().filter((e) => e.name.toLowerCase().includes(q) || e.s.toLowerCase() === q).slice(0, 8);
+    const hit = (sid, t, title, rest) => { const sc = qws.length ? searchScore(qws, title, rest + ' ' + subjById(sid).name) : 0; if (sc) toolHits.push({ sid, t, sc }); };
+    CHEM_SEARCH.forEach(([tid, ico, name, kw]) => hit('chemistry', { id: tid, icon: ico, name }, name, kw));
+    legacyChipsFor('chemistry').forEach((c) => hit('chemistry', { id: 'chem:lg-' + c.id, icon: c.icon || '🧰', name: c.label || c.id }, c.label || '', c.desc || ''));
+    Object.keys(registry).forEach((sid) => (registry[sid] || []).forEach((t) => { if (t.render) hit(sid, t, t.name, t.desc || ''); }));
+    toolHits.sort((a, b) => b.sc - a.sc);
+    const subHits = SUBJECTS.filter((s) => qws.length && searchScore(qws, s.name, ''));
+    const elHits = elements().filter((e) => foldText(e.name).includes(q) || foldText(e.s) === q).slice(0, 8);
     const none = !toolHits.length && !elHits.length && !subHits.length;
     $('fshStage').innerHTML = `<div class="fsh-panel"><div class="fsh-section-head"><span class="fsh-sh-ico">⌕</span><span><h2>Results for "${esc(searchQ)}"</h2><p>${toolHits.length} tools · ${subHits.length} subjects · ${elHits.length} elements</p></span></div>
       ${subHits.length ? `<div class="fsh-chips-row" style="margin-bottom:16px">${subHits.map((s) => `<button type="button" class="fsh-qchip" data-act="open-sub" data-sid="${s.id}"><span class="qi">${s.ico}</span>${esc(s.name)} →</button>`).join('')}</div>` : ''}

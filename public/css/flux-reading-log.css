@@ -109,6 +109,8 @@
 .frl-quick .frl-field { margin-bottom: 0; }
 .frl-field--grow { flex: 1 1 180px; }
 .frl-field--num { flex: 0 1 92px; }
+/* Minutes take "1h 30" as well as "25", and the placeholder says so. */
+.frl-field--min { flex-basis: 120px; }
 .frl-quick-go { flex: 0 0 auto; }
 
 /* ── the page ── */
@@ -188,6 +190,7 @@
   .frl-row { flex-direction: column; }
   .frl-row-acts, .frl-confirm { justify-content: flex-start; }
   .frl-field--num { flex: 1 1 80px; }
+  .frl-field--min { flex-basis: 110px; }
   .frl-quick-go { flex: 1 1 100%; }
   .frl-card { padding: 14px; }
 }
