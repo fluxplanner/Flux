@@ -1,0 +1,23 @@
+/* Flux · print watermark — a faint Flux mark in the bottom corner of every
+   printed page of graphs and tables. Paper only: nothing changes on screen.
+   The logo is drawn for a dark background, so on paper it prints as a light
+   grey silhouette; it sits in the corner because behind the data it would be
+   hidden by filled cells and get in the way of reading the lines. */
+@media print {
+  body.flux-print-wm { position: relative; z-index: 0; }
+  body.flux-print-wm::before {
+    content: '';
+    position: fixed;
+    right: 12mm;
+    bottom: 12mm;
+    width: 30mm;
+    height: 30mm;
+    background: url('../flux-planner-logo.png') center / contain no-repeat;
+    filter: grayscale(1) brightness(0);
+    opacity: .12;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    pointer-events: none;
+    z-index: -1;
+  }
+}

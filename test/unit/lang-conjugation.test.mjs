@@ -192,3 +192,149 @@ test('every listed irregular returns six real forms in every tense', () => {
   assert.ok(combos > 900, `only ${combos} combinations swept`);
   assert.deepEqual(broken, [], `\n${broken.join('\n')}\n`);
 });
+
+/* The verb drill asks for every form of every verb in its sets, so a wrong cell
+   is now a question a student is marked wrong on. Everything below was wrong
+   before the drill went in — each one a first-year form. */
+const EXPECT_2026 = {
+  es: {
+    subjunctive: {
+      // -car / -gar / -zar respell before e in all six persons.
+      jugar: 'juegue,juegues,juegue,juguemos,juguéis,jueguen',
+      buscar: 'busque,busques,busque,busquemos,busquéis,busquen',
+      llegar: 'llegue,llegues,llegue,lleguemos,lleguéis,lleguen',
+      empezar: 'empiece,empieces,empiece,empecemos,empecéis,empiecen',
+      almorzar: 'almuerce,almuerces,almuerce,almorcemos,almorcéis,almuercen',
+      construir: 'construya,construyas,construya,construyamos,construyáis,construyan',
+      recoger: 'recoja,recojas,recoja,recojamos,recojáis,recojan',
+      agradecer: 'agradezca,agradezcas,agradezca,agradezcamos,agradezcáis,agradezcan',
+      distinguir: 'distinga,distingas,distinga,distingamos,distingáis,distingan',
+      enviar: 'envíe,envíes,envíe,enviemos,enviéis,envíen',
+      oler: 'huela,huelas,huela,olamos,oláis,huelan',
+      reír: 'ría,rías,ría,riamos,riáis,rían',
+      obtener: 'obtenga,obtengas,obtenga,obtengamos,obtengáis,obtengan',
+    },
+    present: {
+      recoger: 'recojo,recoges,recoge,recogemos,recogéis,recogen',
+      agradecer: 'agradezco,agradeces,agradece,agradecemos,agradecéis,agradecen',
+      perseguir: 'persigo,persigues,persigue,perseguimos,perseguís,persiguen',
+      enviar: 'envío,envías,envía,enviamos,enviáis,envían',
+      continuar: 'continúo,continúas,continúa,continuamos,continuáis,continúan',
+      obtener: 'obtengo,obtienes,obtiene,obtenemos,obtenéis,obtienen',
+      freír: 'frío,fríes,fríe,freímos,freís,fríen',
+    },
+    perfect: {
+      leer: 'he leído,has leído,ha leído,hemos leído,habéis leído,han leído',
+      oír: 'he oído,has oído,ha oído,hemos oído,habéis oído,han oído',
+      traer: 'he traído,has traído,ha traído,hemos traído,habéis traído,han traído',
+      construir: 'he construido,has construido,ha construido,hemos construido,habéis construido,han construido',
+      proponer: 'he propuesto,has propuesto,ha propuesto,hemos propuesto,habéis propuesto,han propuesto',
+    },
+    preterite: {
+      introducir: 'introduje,introdujiste,introdujo,introdujimos,introdujisteis,introdujeron',
+      deshacer: 'deshice,deshiciste,deshizo,deshicimos,deshicisteis,deshicieron',
+    },
+    future: { mantener: 'mantendré,mantendrás,mantendrá,mantendremos,mantendréis,mantendrán' },
+  },
+  fr: {
+    present: {
+      manger: 'mange,manges,mange,mangeons,mangez,mangent',
+      commencer: 'commence,commences,commence,commençons,commencez,commencent',
+      acheter: 'achète,achètes,achète,achetons,achetez,achètent',
+      préférer: 'préfère,préfères,préfère,préférons,préférez,préfèrent',
+      appeler: 'appelle,appelles,appelle,appelons,appelez,appellent',
+      jeter: 'jette,jettes,jette,jetons,jetez,jettent',
+      envoyer: 'envoie,envoies,envoie,envoyons,envoyez,envoient',
+      nettoyer: 'nettoie,nettoies,nettoie,nettoyons,nettoyez,nettoient',
+      payer: 'paie,paies,paie,payons,payez,paient',
+      naître: 'nais,nais,naît,naissons,naissez,naissent',
+      devenir: 'deviens,deviens,devient,devenons,devenez,deviennent',
+      permettre: 'permets,permets,permet,permettons,permettez,permettent',
+      rire: 'ris,ris,rit,rions,riez,rient',
+      conduire: 'conduis,conduis,conduit,conduisons,conduisez,conduisent',
+      craindre: 'crains,crains,craint,craignons,craignez,craignent',
+      battre: 'bats,bats,bat,battons,battez,battent',
+      interrompre: 'interromps,interromps,interrompt,interrompons,interrompez,interrompent',
+      apercevoir: 'aperçois,aperçois,aperçoit,apercevons,apercevez,aperçoivent',
+      décrire: 'décris,décris,décrit,décrivons,décrivez,décrivent',
+      contredire: 'contredis,contredis,contredit,contredisons,contredisez,contredisent',
+      valoir: 'vaux,vaux,vaut,valons,valez,valent',
+    },
+    imperfect: {
+      manger: 'mangeais,mangeais,mangeait,mangions,mangiez,mangeaient',
+      commencer: 'commençais,commençais,commençait,commencions,commenciez,commençaient',
+      naître: 'naissais,naissais,naissait,naissions,naissiez,naissaient',
+      rire: 'riais,riais,riait,riions,riiez,riaient',
+    },
+    future: {
+      acheter: 'achèterai,achèteras,achètera,achèterons,achèterez,achèteront',
+      appeler: 'appellerai,appelleras,appellera,appellerons,appellerez,appelleront',
+      nettoyer: 'nettoierai,nettoieras,nettoiera,nettoierons,nettoierez,nettoieront',
+      devenir: 'deviendrai,deviendras,deviendra,deviendrons,deviendrez,deviendront',
+      cueillir: 'cueillerai,cueilleras,cueillera,cueillerons,cueillerez,cueilleront',
+      renvoyer: 'renverrai,renverras,renverra,renverrons,renverrez,renverront',
+    },
+    passeCompose: {
+      devenir: 'suis devenu,es devenu,est devenu,sommes devenus,êtes devenus,sont devenus',
+      découvrir: 'ai découvert,as découvert,a découvert,avons découvert,avez découvert,ont découvert',
+      rire: 'ai ri,as ri,a ri,avons ri,avez ri,ont ri',
+      conduire: 'ai conduit,as conduit,a conduit,avons conduit,avez conduit,ont conduit',
+      apparaître: 'suis apparu,es apparu,est apparu,sommes apparus,êtes apparus,sont apparus',
+      prévenir: 'ai prévenu,as prévenu,a prévenu,avons prévenu,avez prévenu,ont prévenu',
+    },
+  },
+  de: {
+    perfect: {
+      reisen: 'bin gereist,bist gereist,ist gereist,sind gereist,seid gereist,sind gereist',
+      aufwachen: 'bin aufgewacht,bist aufgewacht,ist aufgewacht,sind aufgewacht,seid aufgewacht,sind aufgewacht',
+    },
+    present: { geschehen: 'geschehe,geschiehst,geschieht,geschehen,gescheht,geschehen' },
+  },
+};
+
+test('forms the verb drill exposed are right (spelling changes, compounds, accents)', () => {
+  const wrong = [];
+  for (const lang of Object.keys(EXPECT_2026)) {
+    for (const tense of Object.keys(EXPECT_2026[lang])) {
+      for (const [verb, want] of Object.entries(EXPECT_2026[lang][tense])) {
+        let got;
+        try { got = E.conjugate(lang, verb, tense).forms.join(','); } catch (e) { got = 'THREW ' + e.message; }
+        if (got !== want) wrong.push(`${lang} ${verb} ${tense}\n  got  ${got}\n  want ${want}`);
+      }
+    }
+  }
+  assert.deepEqual(wrong, [], `\n${wrong.join('\n')}\n`);
+});
+
+test('equally right spellings ride along as alts, and forms keep the textbook one', () => {
+  const pay = E.conjugate('fr', 'payer', 'present');
+  assert.equal(pay.forms[0], 'paie');
+  assert.deepEqual([...pay.alts[0]], ['paye']);
+  assert.deepEqual([...pay.alts[3]], [], 'nous payons has only one spelling');
+  assert.deepEqual([...E.conjugate('fr', 'préférer', 'future').alts[0]], ['préfèrerai']);
+  assert.deepEqual([...E.conjugate('es', 'reír', 'preterite').alts[2]], ['rio']);
+  // sonrió always carries its accent, so the compound must not inherit "rio".
+  assert.equal(E.conjugate('es', 'sonreír', 'preterite').forms[2], 'sonrió');
+  assert.equal(E.conjugate('es', 'sonreír', 'preterite').alts, undefined);
+  assert.equal(E.conjugate('fr', 'aller', 'passeCompose').agree, true);
+  assert.equal(E.conjugate('fr', 'parler', 'passeCompose').agree, undefined);
+});
+
+test('verbs typed without accents find the table spelling; unknown irregulars are refused', () => {
+  assert.equal(E.conjugate('fr', 'preferer', 'present').forms[0], 'préfère');
+  assert.equal(E.conjugate('fr', 'decouvrir', 'passeCompose').forms[0], 'ai découvert');
+  assert.equal(E.conjugate('es', 'oir', 'present').forms[0], 'oigo');
+  assert.equal(E.conjugate('de', 'heissen', 'present').forms[1], 'heißt');
+  // répartir is a different verb from repartir: an accent typed is meant.
+  assert.equal(E.conjugate('fr', 'répartir', 'present').forms[0], 'répartis');
+  assert.throws(() => E.conjugate('fr', 'conclure', 'present'), /does not have the forms/);
+  assert.throws(() => E.conjugate('fr', 'asseoir', 'present'), /does not have the forms/);
+  // Impersonal: one person, dashes for the rest — never an invented form.
+  assert.deepEqual([...E.conjugate('fr', 'falloir', 'present').forms], ['—', '—', 'faut', '—', '—', '—']);
+  assert.equal(E.pastParticiple('es', 'leer'), 'leído');
+  assert.equal(E.pastParticiple('es', 'componer'), 'compuesto');
+  assert.equal(E.pastParticiple('fr', 'permettre'), 'permis');
+  assert.equal(E.known('es', 'obtener'), true);
+  assert.equal(E.known('fr', 'préférer'), true);
+  assert.equal(E.known('es', 'bailar'), false, 'a regular verb is conjugated by rule, not listed');
+});

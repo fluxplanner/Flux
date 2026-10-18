@@ -101,12 +101,27 @@ export function focusKey(node) {
 
 export function refocus(key, root = document) {
   if (!key) return false;
-  const next = root.querySelector(key);
-  if (next) {
+  // The first match can be one that can't take focus: SOS is both the
+  // sidebar's button (hidden on a phone) and the app bar's.
+  for (const next of root.querySelectorAll(key)) {
     next.focus({ preventScroll: true });
-    return true;
+    if (document.activeElement === next) return true;
   }
   return false;
+}
+
+/**
+ * When an overlay closes: back to the control that opened it, or its
+ * twin after a re-render, or else the top of the screen. Never left in
+ * the overlay as it empties, which drops focus to <body> and sends a
+ * keyboard or screen-reader user back to the very start of the page.
+ */
+function returnFocus(node, key) {
+  if (node && node.isConnected) node.focus({ preventScroll: true });
+  else refocus(key);
+  if (el.shell && !el.shell.contains(document.activeElement)) {
+    document.getElementById('screen')?.focus({ preventScroll: true });
+  }
 }
 
 /* ============================================================
@@ -220,16 +235,14 @@ export function closeSheet() {
   sheetOpen = false;
 
   const done = conceal(el.sheet);
-  conceal(el.backdrop).then(() => { el.backdrop.hidden = true; });
+  // conceal() hides it only if nothing re-opened it meanwhile — a
+  // confirm opened from this sheet arrives within the 300ms.
+  conceal(el.backdrop);
   overlayClosed('sheet');
 
   // The control that opened the sheet has usually been re-rendered
   // away by the save it triggered, so fall back to finding its twin.
-  if (returnFocusNode && returnFocusNode.isConnected) {
-    returnFocusNode.focus({ preventScroll: true });
-  } else {
-    refocus(returnFocusKey);
-  }
+  returnFocus(returnFocusNode, returnFocusKey);
   returnFocusNode = null;
   returnFocusKey = null;
 
@@ -314,6 +327,8 @@ export function toast(message, tone = 'default') {
 
 let emergencyOpen = false;
 let onEmergencyClose = null;
+let emReturnNode = null;
+let emReturnKey = null;
 let wakeLock = null;
 
 /* Progressive enhancement: unsupported in some browsers, and a
@@ -343,6 +358,12 @@ document.addEventListener('visibilitychange', () => {
 
 export function openEmergency(markup, { onClose, onMount } = {}) {
   if (sheetOpen) closeSheet();
+  // Where to come back to. Not when it is already up (#/sos again):
+  // focus is inside the card then.
+  if (!emergencyOpen) {
+    emReturnNode = document.activeElement;
+    emReturnKey = focusKey(emReturnNode);
+  }
   onEmergencyClose = onClose || null;
   el.emergency.innerHTML = markup;
   reveal(el.emergency);
@@ -365,6 +386,9 @@ export function closeEmergency() {
   conceal(el.emergency, 220);
   overlayClosed('emergency');
   releaseWakeLock();
+  returnFocus(emReturnNode, emReturnKey);
+  emReturnNode = null;
+  emReturnKey = null;
   if (onEmergencyClose) {
     const fn = onEmergencyClose;
     onEmergencyClose = null;
@@ -395,6 +419,8 @@ export function openWelcome(markup) {
 export function closeWelcome() {
   conceal(el.welcome, 250);
   overlayClosed('welcome');
+  // Nothing opened it, so start at the top of the screen.
+  returnFocus(null, null);
 }
 
 /** The intro's next step, in place: the overlay stays open. Focus goes to

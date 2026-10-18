@@ -304,6 +304,7 @@
             ${window.FluxDriveImport?.enabled?.()?'<button class="lh-action-btn" id="lhDriveImportBtn">Drive import</button>':''}
             <button class="lh-action-btn" id="lhSubPlanBtn">Sub-plan template</button>
             <button class="lh-action-btn" id="lhExitTicketBtn">Exit ticket</button>
+            <button class="lh-action-btn" id="lhVerbDrillBtn" title="Make a Spanish, French or German verb-drill link for students">Verb drill</button>
             ${window.fluxStudentLinksOn?.()?'<button class="lh-action-btn primary" id="lhBroadcastBtn">Announce</button>':''}
           </div>
         </div>
@@ -425,6 +426,13 @@
       const q=window.FluxClassroomTools?.exitQuestion?.(exitQ.textContent)||'In one sentence, what was the main idea of today’s lesson?';
       exitQ.textContent=q;
     };
+    /* Language teachers make verb-drill assignment links in Study tools ▸
+       Verb drill ▸ For teachers. Study tools is not in a teacher's menu, so
+       this is their way in (the same view the #verbs-teacher link opens). */
+    document.getElementById('lhVerbDrillBtn')?.addEventListener('click',()=>{
+      if(window.FluxVerbDrill&&window.FluxVerbDrill.openTeacher)window.FluxVerbDrill.openTeacher();
+      else location.hash='verbs-teacher';
+    });
     document.getElementById('lhExitTicketBtn')?.addEventListener('click',()=>{
       exitCard.hidden=false;newExitQ();
     });

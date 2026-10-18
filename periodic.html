@@ -24,6 +24,8 @@
 -->
 <link rel="stylesheet" href="public/css/flux-ptable.css?v=68e3b6b4">
 <link rel="stylesheet" href="public/css/flux-hub.css?v=6a462093">
+<link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=673aab02">
+<link rel="stylesheet" href="public/css/flux-print-watermark.css?v=b7067319">
 <style>
   :root {
     --bg: #070b14;
@@ -41,15 +43,23 @@
   html, body { background-color: #070b14; }
   body {
     min-height: 100dvh;
-    background:
-      radial-gradient(120% 80% at 50% -10%, rgba(0,194,255,.10), transparent 55%),
-      radial-gradient(90% 70% at 100% 5%, rgba(124,92,255,.08), transparent 55%),
-      linear-gradient(170deg, #0a0f1c 0%, #070b14 55%, #05070f 100%);
-    background-attachment: fixed;
+    /* Its own stacking context, so the fixed glow below paints over the
+       body colour and under everything else. */
+    isolation: isolate;
     color: var(--text);
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
     font-size: 16px;
     line-height: 1.5;
+  }
+  /* The glow is its own fixed layer. As a fixed body background it was
+     repainted on every frame of scrolling, which made the page lag. */
+  @media screen {
+    body::after {
+      content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+      background: radial-gradient(120% 80% at 50% -10%, rgba(0,194,255,.10), transparent 55%),
+      radial-gradient(90% 70% at 100% 5%, rgba(124,92,255,.08), transparent 55%),
+      linear-gradient(170deg, #0a0f1c 0%, #070b14 55%, #05070f 100%);
+    }
   }
   header.top {
     display: flex; align-items: center; gap: 10px;
@@ -131,10 +141,10 @@
     }
   }
 </style>
-<script src="public/js/flux-theme-carry.js?v=be761bf0"></script>
+<script src="public/js/flux-theme-carry.js?v=41b239bd"></script>
 <script src="public/js/flux-purple-day.js?v=1966eb3d"></script>
 </head>
-<body>
+<body class="flux-print-wm">
   <header class="top">
     <img class="brand-mark" src="public/flux-planner-logo.png" alt="Flux" width="30" height="30">
     <span class="title">Periodic Table</span>
@@ -167,7 +177,7 @@
   <script src="public/js/flux-periodic.js?v=a33c798e"></script>
   <script src="public/js/flux-ptable-data.js?v=8af848a3"></script>
   <script src="public/js/flux-chem.js?v=07de6a14"></script>
-  <script src="public/js/flux-ptable.js?v=aee8d3a2"></script>
+  <script src="public/js/flux-ptable.js?v=4d77c558"></script>
   <script src="public/js/flux-ptable-atom3d.js?v=6ebfd2ec"></script>
   <script src="public/js/flux-ptable-explore.js?v=e77e1b21"></script>
   <script>

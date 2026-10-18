@@ -103,12 +103,16 @@ test.describe('Cloud pull while nothing is changing', () => {
         }),
       });
       await w.syncFromCloud();
-      return { afterFirst, afterChange: w.__renders, tasks: (w.tasks || []).length };
+      const ids = (w.tasks || []).map((t: any) => t.id);
+      return { afterFirst, afterChange: w.__renders, cloudIds: [1, 2].filter((id) => ids.includes(id)) };
     }, PAYLOAD);
 
     expect(res.afterFirst).toBe(1);
     expect(res.afterChange, 'a genuinely changed row was skipped').toBe(2);
-    expect(res.tasks, 'the new task never arrived').toBe(2);
+    // Both cloud tasks are here. (The scenario's own seeded tasks stay too:
+    // the pull merges item by item now, and they were never synced, so a row
+    // without them is not a reason to delete them.)
+    expect(res.cloudIds, 'the new task never arrived').toEqual([1, 2]);
   });
 
   test('typing survives a pull that brings nothing new', async ({ page }) => {

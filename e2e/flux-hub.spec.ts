@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { gotoScenario } from './helpers';
 
+// GitHub Pages serves /hub.html as written; the test server (npx serve) drops
+// the .html, so accept both spellings of the same page.
+const HUB_URL = /\/hub(\.html)?$/;
+
 test.describe('Flux Hub link', () => {
   test('the standalone grapher opens the Hub directly', async ({ page }) => {
     await page.goto('/grapher.html');
@@ -11,7 +15,7 @@ test.describe('Flux Hub link', () => {
     await expect(page.locator('.fxhub-panel')).toHaveCount(0);
 
     await link.click();
-    await expect(page).toHaveURL(/\/hub\.html$/);
+    await expect(page).toHaveURL(HUB_URL);
     await expect(page.locator('#apps .app')).toHaveCount(9);
   });
 
@@ -24,7 +28,7 @@ test.describe('Flux Hub link', () => {
     await expect(link).toBeVisible();
     await expect(link).toHaveAttribute('href', 'hub.html');
     await link.click();
-    await expect(page).toHaveURL(/\/hub\.html$/);
+    await expect(page).toHaveURL(HUB_URL);
   });
 
   test('the planner phone header also links directly to the Hub', async ({ page }) => {
@@ -36,7 +40,7 @@ test.describe('Flux Hub link', () => {
     await expect(link).toHaveCount(1);
     await expect(link).toHaveAttribute('href', 'hub.html');
     await link.click();
-    await expect(page).toHaveURL(/\/hub\.html$/);
+    await expect(page).toHaveURL(HUB_URL);
     await expect(page.locator('#apps a.app--grapher')).toBeVisible();
   });
 

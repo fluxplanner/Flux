@@ -252,3 +252,195 @@ export function assertNoCspOrConsoleViolations(page: Page): void {
     `console errors detected:\n${log.consoleErrors.join('\n')}`,
   ).toEqual([]);
 }
+
+// ── Signed-in boot against a stand-in Supabase ───────────────────────────────
+// The real sign-in path (initAuth → handleSignedIn → syncFromCloud), with a
+// session already on the device and every Supabase call answered here. Nothing
+// leaves the machine. `holdFirstPull` keeps the first user_data read waiting
+// until the test calls releasePull(), so a race can be set up on purpose.
+// Writes are answered the way PostgREST answers fluxWriteRow's: an update
+// lands only where the row's updated_at is still the one it names, an insert
+// that ignores duplicates lands only where there is no row, and either
+// returns the rows written. writeElsewhere() stands for another device or the
+// Claude connector writing the row (a new updated_at).
+
+export const BOOT_UID = '11111111-2222-4333-8444-555555555555';
+
+export type BootTask = { id: number; name: string; done?: boolean; [k: string]: unknown };
+export type CloudRow = { tasks?: BootTask[]; [k: string]: unknown };
+
+export async function bootSignedIn(page: Page, opts: {
+  tasks: BootTask[];
+  cloud?: CloudRow;
+  holdFirstPull?: boolean;
+  /** This many reads of the row fail (a 500) before one succeeds. */
+  failPulls?: number;
+  /** This many reads of the row answer "no row" (PGRST116) although it is there. */
+  missingPulls?: number;
+  extraLocal?: Record<string, unknown>;
+}) {
+  const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString('base64url');
+  const exp = Math.floor(Date.now() / 1000) + 3600;
+  const user = {
+    id: BOOT_UID, aud: 'authenticated', role: 'authenticated', email: 'boot@flux.test',
+    user_metadata: { full_name: 'Boot Tester' }, app_metadata: { provider: 'email' }, created_at: '2026-01-01T00:00:00Z',
+  };
+  const session = {
+    access_token: `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: BOOT_UID, exp, role: 'authenticated', aud: 'authenticated' })}.sig`,
+    refresh_token: 'r', token_type: 'bearer', expires_in: 3600, expires_at: exp, user,
+  };
+  const state = {
+    cloud: JSON.parse(JSON.stringify(opts.cloud || { tasks: opts.tasks, onboarded: true })) as CloudRow,
+    updatedAt: '2026-01-01T00:00:00+00:00' as string | null,
+    pulls: 0,
+    /** Writes sent, landed or not. */
+    pushes: 0,
+    /** Writes that matched no row: someone else had written first. */
+    missed: 0,
+    pushedBeforeFirstPull: false,
+    firstPullServed: false,
+    failedPulls: 0,
+    missingPulls: 0,
+  };
+  let stamp = 0;
+  const nextAt = () => new Date(Date.UTC(2026, 0, 1, 0, 0, ++stamp)).toISOString().replace('Z', '+00:00');
+  let release: () => void = () => {};
+  const gate = new Promise<void>((r) => { release = r; });
+  if (!opts.holdFirstPull) release();
+
+  await page.context().route(/^https?:\/\/(?!127\.0\.0\.1|localhost)/, async (route) => {
+    const req = route.request();
+    const url = req.url();
+    if (!url.includes('.supabase.co')) return route.abort();
+    const single = /vnd\.pgrst\.object/.test(req.headers()['accept'] || '');
+    const json = (status: number, body: unknown) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    if (url.includes('/rest/v1/user_data')) {
+      if (req.method() === 'GET') {
+        // The release gate reads the owner's row; that is not ours.
+        if (!url.includes(BOOT_UID)) return json(406, { code: 'PGRST116', message: 'no rows' });
+        state.pulls++;
+        if (state.failedPulls < (opts.failPulls || 0)) {
+          state.failedPulls++;
+          return json(500, { code: 'XX000', message: 'upstream unavailable' });
+        }
+        if (state.missingPulls < (opts.missingPulls || 0)) {
+          state.missingPulls++;
+          return json(406, { code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned' });
+        }
+        const first = state.pulls === 1;
+        const snapshot = JSON.parse(JSON.stringify(state.cloud));
+        const at = state.updatedAt;
+        if (first) await gate;
+        state.firstPullServed = true;
+        return json(200, single ? { data: snapshot, updated_at: at } : [{ data: snapshot, updated_at: at }]);
+      }
+      state.pushes++;
+      if (!state.firstPullServed) state.pushedBeforeFirstPull = true;
+      const q = new URL(url).searchParams;
+      const prefer = req.headers()['prefer'] || '';
+      if (req.method() === 'PATCH') {
+        const want = q.get('updated_at');
+        if (want !== null && want !== (state.updatedAt === null ? 'is.null' : `eq.${state.updatedAt}`)) {
+          state.missed++;
+          return json(200, single ? null : []);
+        }
+      } else if (/resolution=ignore-duplicates/.test(prefer)) {
+        state.missed++;                                // the row is there: an insert writes nothing
+        return json(201, single ? null : []);
+      }
+      try {
+        const p = JSON.parse(req.postData() || '{}');
+        const row = Array.isArray(p) ? p[0] : p;
+        if (row && row.data) state.cloud = row.data;
+      } catch (_) { /* not a row */ }
+      state.updatedAt = nextAt();
+      const out = { updated_at: state.updatedAt };
+      return json(req.method() === 'PATCH' ? 200 : 201, single ? out : [out]);
+    }
+    if (url.includes('/rest/v1/user_roles')) {
+      const row = { user_id: BOOT_UID, role: 'student', display_name: 'Boot Tester' };
+      return json(200, single ? row : [row]);
+    }
+    if (url.includes('/auth/v1/user')) return json(200, user);
+    if (url.includes('/auth/v1/token')) return json(200, session);
+    return json(200, single ? null : []);
+  });
+
+  await page.addInitScript(([s, uid, tasks, extra]) => {
+    // Once per tab: a reload must find what the app left, not a fresh seed.
+    const n = Number(sessionStorage.getItem('__fluxBootLoads') || '0') + 1;
+    sessionStorage.setItem('__fluxBootLoads', String(n));
+    if (n > 1) return;
+    localStorage.setItem('sb-lfigdijuqmbensebnevo-auth-token', JSON.stringify(s));
+    const put = (k: string, v: unknown) => localStorage.setItem(k, JSON.stringify(v));
+    put('flux_last_user_id', uid);
+    put('flux_last_user_email', 'boot@flux.test');
+    put('flux_splash_shown', '1');
+    put('flux_onboarded', true);
+    put('flux_onboarding_done_' + uid, true);
+    put('flux_tour_completed', true);
+    put('flux_tour_done', true);
+    put('tasks', tasks);
+    Object.entries(extra || {}).forEach(([k, v]) => put(k, v));
+  }, [session, BOOT_UID, opts.tasks, opts.extraLocal || {}] as const);
+
+  return {
+    state,
+    releasePull: () => release(),
+    cloudTask: (id: number) => (state.cloud.tasks || []).find((t) => t.id === id),
+    /** Another device, or the Claude connector, writes the row. */
+    writeElsewhere: (change: (row: CloudRow) => CloudRow) => {
+      state.cloud = change(JSON.parse(JSON.stringify(state.cloud)));
+      state.updatedAt = nextAt();
+    },
+  };
+}
+
+/**
+ * In the page, for tests that drive syncFromCloud / syncToCloud directly:
+ * window.__fluxStubRow(row?) replaces the Supabase client with a stand-in for
+ * the user_data row (window.__row, its updated_at window.__rowAt) that answers
+ * like PostgREST does fluxWriteRow: an update lands only where updated_at still
+ * matches, an insert only where there is no row. window.__writeRow(fn) is
+ * another device (or Claude) writing it. window.__rowRead, if set, is awaited
+ * by each read once it has taken its snapshot, to hold a pull in flight.
+ */
+export async function stubCloudRow(page: Page) {
+  await page.evaluate(() => {
+    const w = window as any;
+    let n = 0;
+    const land = (data: unknown) => {
+      w.__row = JSON.parse(JSON.stringify(data));
+      w.__rowAt = 'v' + ++n;
+      return { data: [{ updated_at: w.__rowAt }], error: null };
+    };
+    w.__writeRow = (fn: (row: any) => any) => { land(fn(JSON.parse(JSON.stringify(w.__row)))); };
+    w.__fluxStubRow = (init?: unknown) => {
+      w.__row = JSON.parse(JSON.stringify(init ?? w.getCloudPayload()));
+      w.__rowAt = 'v0';
+      w.getSB = () => ({
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              single: async () => {
+                const snap = { data: JSON.parse(JSON.stringify(w.__row)), updated_at: w.__rowAt };
+                if (w.__rowRead) await w.__rowRead();
+                return { data: snap, error: null };
+              },
+            }),
+          }),
+          update: (o: any) => {
+            let want: unknown;
+            const q: any = {
+              eq: (k: string, v: unknown) => { if (k === 'updated_at') want = v; return q; },
+              is: (k: string, v: unknown) => { if (k === 'updated_at') want = v; return q; },
+              select: async () => (want === w.__rowAt ? land(o.data) : { data: [], error: null }),
+            };
+            return q;
+          },
+          upsert: (o: any) => ({ select: async () => (w.__row ? { data: [], error: null } : land(o.data)) }),
+        }),
+      });
+    };
+  });
+}

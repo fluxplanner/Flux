@@ -1,0 +1,103 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * FLUX GRAPHER · 3D · flux-grapher-3d.css
+ *
+ * Only what the 3D mode adds. The rail, the rows, the stage, the view
+ * buttons, the popovers and the save-an-image sheet are the 2D halves' own
+ * (flux-grapher.css), so the three tabs look like one tool.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+.flg--3d .fl3-plot { cursor: grab; }
+.flg--3d .flg-stage.is-grabbing .fl3-plot { cursor: grabbing; }
+.fl3-plot:focus-visible { outline: 2px solid var(--flg-accent); outline-offset: -3px; border-radius: 6px; }
+.fl3-canvas { display: block; width: 100%; height: 100%; }
+
+/* Read by screen readers, not shown: what the graph holds and where the planes meet. */
+.fl3-sr {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ── Rows ─────────────────────────────────────────────────────────────── */
+.flg--3d .flg-mq .mq-root-block.mq-empty::before { content: '(1, 2, 3)  or  x + y + z = 6'; }
+.fl3-glyph { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 700; font-size: .95rem; letter-spacing: .02em; }
+.flg-add.fl3-exbtn { flex: 0 1 auto; gap: 6px; font-size: .78rem; font-weight: 700; }
+.fl3-hint { margin: 0; padding: 0 4px; font-size: .74rem; line-height: 1.5; color: var(--flg-mut); }
+.fl3-hint b { font-family: var(--flg-mono); font-weight: 600; color: var(--flg-ink); white-space: nowrap; }
+.fl3-hint[hidden] { display: none; }
+
+.fl3-info:empty { display: none; }
+.fl3-line { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: .74rem; line-height: 1.5; color: var(--flg-mut); }
+.fl3-line b { font-family: var(--flg-mono); font-weight: 600; color: var(--flg-ink); overflow-wrap: anywhere; }
+.fl3-k { font-weight: 800; font-size: .66rem; letter-spacing: .06em; text-transform: uppercase; color: var(--flg-mut); }
+.fl3-line.fl3-out { color: #fbbf24; }
+.fl3-line.fl3-mut { font-style: italic; }
+
+.fl3-expop { max-width: min(340px, calc(100vw - 16px)); }
+.fl3-expop .flg-menu-i > span { display: flex; flex-direction: column; gap: 1px; text-align: left; }
+.fl3-exsrc { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: .7rem; font-weight: 500; color: #9fb0cc; white-space: pre-wrap; }
+
+/* ── The key over the graph ───────────────────────────────────────────── */
+.flg-results.fl3-key {
+  left: 12px; top: 12px;
+  max-width: min(360px, calc(100% - 70px));
+  max-height: calc(100% - 120px);
+  cursor: default;
+  touch-action: auto;
+}
+.fl3-key.is-folded { padding-bottom: 6px; }
+.fl3-keyans { margin: 0; max-width: 260px; font-size: .74rem; font-weight: 750; line-height: 1.35; color: var(--flg-ink); }
+.fl3-key .flg-rc-bar { align-items: center; justify-content: flex-start; margin: 0 -6px 2px 0; }
+.fl3-keyh { flex: 1; font-size: .66rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--flg-mut); }
+.fl3-keylist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.fl3-keylist li { display: grid; grid-template-columns: 16px 14px minmax(0, 1fr); align-items: center; gap: 6px; font-size: .76rem; line-height: 1.35; }
+.fl3-n { font-size: .66rem; font-weight: 800; color: var(--flg-mut); text-align: center; }
+.fl3-src { font-family: var(--flg-mono); overflow-wrap: anywhere; color: var(--flg-ink); }
+.fl3-sw { display: block; width: 14px; height: 12px; border-radius: 3px; background: color-mix(in srgb, var(--c) 55%, transparent); border: 1.5px solid var(--c); }
+.fl3-sw--points { width: 10px; height: 10px; margin-left: 2px; border-radius: 50%; background: var(--c); }
+.fl3-sw--line { height: 0; border-width: 1.5px 0 0; border-top: 3px solid var(--c); background: none; border-radius: 0; }
+.fl3-sw--surface { background: linear-gradient(135deg, var(--c), color-mix(in srgb, var(--c) 40%, #000)); }
+.fl3-keylist li.fl3-meet { display: block; padding-top: 4px; border-top: 1px solid var(--flg-soft); color: var(--flg-mut); font-size: .74rem; }
+.fl3-keylist li.fl3-meet + li.fl3-meet { border-top: 0; padding-top: 0; }
+.fl3-keylist li.fl3-meet.is-answer { color: var(--flg-ink); font-weight: 750; }
+
+/* ── Turning: preset views and the four arrows, bottom left ──────────── */
+.fl3-viewpad {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fl3-presets, .fl3-turn { display: flex; gap: 4px; }
+.fl3-viewpad button {
+  display: grid;
+  place-items: center;
+  width: 34px; height: 34px;
+  padding: 0; margin: 0;
+  border: 1px solid var(--flg-line);
+  border-radius: 10px;
+  background: rgba(12, 17, 30, .78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--flg-ink);
+  font: italic 700 1rem Georgia, 'Times New Roman', serif;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.fl3-viewpad button:hover { border-color: var(--flg-accent); color: var(--flg-accent); }
+.fl3-viewpad button:focus-visible { outline: 2px solid var(--flg-accent); outline-offset: 2px; }
+[data-theme='light'] .fl3-viewpad button { background: rgba(255, 255, 255, .9); }
+
+@media (max-width: 760px) {
+  .fl3-viewpad { left: 8px; bottom: 8px; gap: 5px; }
+  .fl3-viewpad button { width: 32px; height: 32px; border-radius: 10px; }
+  .flg-results.fl3-key { left: 8px; top: 8px; max-width: calc(100% - 56px); max-height: calc(100% - 100px); font-size: .72rem; }
+  .fl3-keylist li { font-size: .72rem; }
+}
+
+/* ── Printing: the image of the graph on its own page ─────────────────── */
+@media print {
+  #flgPrintSheet img.fl3-print { display: block; width: 100%; height: auto; max-height: 180mm; object-fit: contain; break-inside: avoid; }
+}

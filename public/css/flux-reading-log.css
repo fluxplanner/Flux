@@ -1,0 +1,234 @@
+/* Flux · Reading log — paired with public/js/flux-reading-log.js.
+   Tokens only (--card2, --border, --accent, --text, --muted2), so it follows
+   the dark and light planner themes and any custom accent. No animation: the
+   progress bars are drawn at their value, so nothing moves or flashes, with or
+   without "reduce motion". The print stylesheet is at the bottom. */
+
+#readingLogCard[hidden] { display: none !important; }
+
+/* ── shared pieces ─────────────────────────────────────────────────────── */
+.frl-h2, .frl-h3 { margin: 0 0 10px; color: var(--text, #f0f1f8); letter-spacing: -.01em; }
+.frl-h2 { font-size: 1.05rem; font-weight: 800; }
+.frl-h3 { font-size: .95rem; font-weight: 800; }
+/* Headings take focus only so a screen reader lands in the right place after
+   opening the page or saving; they are not controls, so no ring. */
+.frl-h2[tabindex="-1"]:focus, .frl-h3[tabindex="-1"]:focus, .frl-h2[tabindex="-1"]:focus-visible, .frl-h3[tabindex="-1"]:focus-visible { outline: none; box-shadow: none; }
+/* .frl-btn and friends set display, which would otherwise beat [hidden]. */
+.frl [hidden], .frl-card [hidden], .frl-card[hidden] { display: none !important; }
+
+.frl-hint { font-size: .74rem; line-height: 1.5; color: var(--muted2, #9aa3b2); margin: 0 0 10px; }
+.frl-opt { font-weight: 500; color: var(--muted2, #9aa3b2); }
+.frl-empty { font-size: .8rem; line-height: 1.55; color: var(--muted2, #9aa3b2); margin: 0; }
+.frl-msg { min-height: 1em; margin: 8px 0 0; font-size: .76rem; line-height: 1.45; color: var(--text2, var(--text, #e6e9ef)); }
+.frl-msg:empty { min-height: 0; margin: 0; }
+.frl-msg.is-bad { color: var(--red, #f87171); }
+
+.frl-link {
+  display: inline; padding: 0; margin: 0; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: .78rem; font-weight: 700; color: var(--accent);
+  text-decoration: underline; text-underline-offset: 2px; min-height: 0;
+}
+.frl-link:hover { transform: none; box-shadow: none; background: none; text-decoration-thickness: 2px; }
+.frl-link--quiet { color: var(--muted2, #9aa3b2); font-weight: 600; }
+
+.frl-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 14px; min-height: 40px; border-radius: 10px; cursor: pointer;
+  font-size: .8rem; font-weight: 700; line-height: 1.2;
+  background: transparent; color: var(--text, #fff);
+  border: 1px solid var(--border2, rgba(255, 255, 255, .14));
+}
+.frl-btn:hover { border-color: rgba(var(--accent-rgb), .5); background: rgba(var(--accent-rgb), .08); transform: none; box-shadow: none; }
+.frl-btn--primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent, #04202c); }
+.frl-btn--primary:hover { background: var(--accent); filter: brightness(1.06); color: var(--on-accent, #04202c); }
+.frl-btn--sm { padding: 6px 11px; min-height: 34px; font-size: .74rem; }
+
+.frl-mini {
+  padding: 5px 10px; min-height: 32px; border-radius: 8px; cursor: pointer;
+  font-size: .72rem; font-weight: 700; background: transparent; color: var(--text2, var(--text, #e6e9ef));
+  border: 1px solid var(--border2, rgba(255, 255, 255, .14));
+}
+.frl-mini:hover { border-color: rgba(var(--accent-rgb), .5); transform: none; box-shadow: none; }
+.frl-mini--danger { color: var(--red, #f87171); border-color: rgba(248, 113, 113, .45); }
+.frl-mini--danger:hover { background: rgba(248, 113, 113, .1); border-color: var(--red, #f87171); }
+
+/* ── form fields ──
+   Out-rank flux-form-controls.css, which sets every input inside #app to
+   width:100% with its own margins at (1,1,1). These are (1,2,1). */
+.frl-form { display: block; }
+.frl-grid { display: grid; gap: 10px; margin-bottom: 10px; }
+.frl-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.frl-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.frl-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; margin-bottom: 10px; }
+.frl-grid > .frl-field { margin-bottom: 0; }
+.frl-field > span { font-size: .72rem; font-weight: 700; color: var(--text2, var(--text, #e6e9ef)); }
+#app .frl .frl-field input, #app .frl .frl-field select, #app .frl .frl-field textarea,
+#app .frl-card .frl-field input, #app .frl-card .frl-field select {
+  width: 100%; min-width: 0; margin: 0 !important; font-size: .85rem; padding: 8px 10px !important;
+}
+#app .frl .frl-field textarea { resize: vertical; min-height: 64px; line-height: 1.45; }
+#app .frl .frl-field input[type="date"] { padding-right: 34px !important; }
+#app .frl [aria-invalid="true"] { border-color: var(--red, #f87171) !important; }
+.frl-fieldset { border: 0; padding: 0; margin: 0 0 10px; min-width: 0; }
+.frl-fieldset legend { padding: 0; margin: 0 0 6px; font-size: .74rem; font-weight: 800; color: var(--text, #fff); }
+.frl-fieldset .frl-hint { margin: 6px 0 0; }
+.frl-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.frl-checks { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 4px 0 10px; }
+.frl-check { display: inline-flex; align-items: center; gap: 8px; font-size: .8rem; color: var(--text2, var(--text, #e6e9ef)); cursor: pointer; }
+#app .frl .frl-check input { width: 18px; height: 18px; margin: 0 !important; flex: 0 0 auto; accent-color: var(--accent); }
+.frl-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.frl-print-sum { font-size: .8rem; line-height: 1.5; color: var(--text2, var(--text, #e6e9ef)); margin: 0 0 12px; }
+
+/* ── progress ── */
+.frl-prog { margin: 0 0 10px; }
+.frl-prog-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+.frl-prog-label { font-size: .72rem; font-weight: 700; color: var(--muted2, #9aa3b2); }
+.frl-prog-num { font-size: .85rem; font-weight: 800; color: var(--text, #fff); font-variant-numeric: tabular-nums; }
+.frl-prog-after { font-size: .72rem; color: var(--muted2, #9aa3b2); margin: 5px 0 0; }
+.frl-prog-after.is-met { color: var(--text, #fff); font-weight: 700; }
+.frl-bar { position: relative; height: 8px; border-radius: 99px; overflow: hidden; background: var(--border2, rgba(255, 255, 255, .12)); }
+.frl-bar--thin { height: 6px; margin-top: 8px; }
+.frl-bar-fill { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background: var(--accent); }
+.frl-bar-fill.is-met { background: var(--green, #34d399); }
+.frl-nogoal { font-size: .8rem; line-height: 1.5; color: var(--text2, var(--text, #e6e9ef)); margin: 0 0 10px; }
+
+/* ── dashboard card ── */
+#readingLogCard { margin-top: 14px; }
+.frl-card { padding: 16px 18px; }
+.frl-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.frl-card-title { margin: 0; font-size: 1rem; font-weight: 800; color: var(--text, #fff); letter-spacing: -.01em; }
+.frl-card-links { display: flex; gap: 14px; align-items: baseline; }
+.frl-chips { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.frl-chip {
+  font-size: .72rem; font-weight: 600; padding: 4px 10px; border-radius: 99px;
+  background: var(--card2, rgba(255, 255, 255, .05)); border: 1px solid var(--border, rgba(255, 255, 255, .08));
+  color: var(--text2, var(--text, #e6e9ef));
+}
+.frl-chip.is-on { border-color: rgba(var(--accent-rgb), .45); color: var(--text, #fff); }
+.frl-quick-row { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; }
+.frl-quick .frl-field { margin-bottom: 0; }
+.frl-field--grow { flex: 1 1 180px; }
+.frl-field--num { flex: 0 1 92px; }
+.frl-quick-go { flex: 0 0 auto; }
+
+/* ── the page ── */
+.frl { display: flex; flex-direction: column; gap: 14px; }
+.frl > .card, .frl-pane > .card { margin: 0; }
+.frl-pane { display: flex; flex-direction: column; gap: 14px; }
+.frl-pane[hidden] { display: none; }
+.frl-goal { margin-top: 12px; border-top: 1px solid var(--border, rgba(255, 255, 255, .08)); padding-top: 10px; }
+.frl-goal > summary { cursor: pointer; font-size: .8rem; font-weight: 700; color: var(--accent); padding: 4px 0; }
+.frl-goal[open] > summary { margin-bottom: 8px; }
+
+.frl-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0 0; }
+.frl-stat { background: var(--card2, rgba(255, 255, 255, .04)); border: 1px solid var(--border, rgba(255, 255, 255, .08)); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+.frl-stat dt { font-size: .7rem; font-weight: 700; color: var(--text2, var(--text, #e6e9ef)); }
+.frl-stat dd { margin: 2px 0 0; font-size: 1.05rem; font-weight: 800; color: var(--text, #fff); font-variant-numeric: tabular-nums; }
+.frl-stat dd.frl-stat-sub { font-size: .7rem; font-weight: 500; color: var(--text2, var(--text, #e6e9ef)); }
+
+.frl-tabs {
+  display: flex; gap: 4px; padding: 4px; border-radius: 12px; overflow-x: auto;
+  background: var(--card2, rgba(255, 255, 255, .04)); border: 1px solid var(--border, rgba(255, 255, 255, .08));
+  scrollbar-width: none;
+}
+.frl-tabs::-webkit-scrollbar { display: none; }
+.frl-tab {
+  flex: 1 0 auto; padding: 8px 12px; min-height: 38px; border: 0; border-radius: 9px; cursor: pointer;
+  font-size: .8rem; font-weight: 700; background: transparent; color: var(--text2, var(--text, #e6e9ef)); white-space: nowrap;
+}
+.frl-tab:hover { color: var(--text, #fff); transform: none; box-shadow: none; background: transparent; }
+.frl-tab.is-on, .frl-tab[aria-selected="true"] { background: var(--card, rgba(255, 255, 255, .08)); color: var(--text, #fff); box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), .45); }
+
+.frl-day + .frl-day { margin-top: 14px; }
+.frl-day-h { margin: 0 0 6px; font-size: .8rem; font-weight: 800; color: var(--text, #fff); }
+.frl-day-date, .frl-day-tot { font-weight: 500; color: var(--muted2, #9aa3b2); font-size: .74rem; }
+.frl-day-tot::before { content: '· '; }
+.frl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.frl-row {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  background: var(--card2, rgba(255, 255, 255, .04)); border: 1px solid var(--border, rgba(255, 255, 255, .08));
+  border-radius: 12px; padding: 9px 10px 9px 12px;
+}
+.frl-row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.frl-row-title { font-size: .84rem; font-weight: 700; color: var(--text, #fff); overflow-wrap: anywhere; }
+.frl-row-meta { font-size: .74rem; color: var(--text2, var(--text, #e6e9ef)); font-variant-numeric: tabular-nums; }
+.frl-row-note { font-size: .76rem; color: var(--text2, var(--text, #e6e9ef)); overflow-wrap: anywhere; }
+.frl-row-acts { display: flex; gap: 6px; flex: 0 0 auto; flex-wrap: wrap; justify-content: flex-end; }
+.frl-confirm { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.frl-confirm-q { font-size: .74rem; font-weight: 700; color: var(--text, #fff); }
+.frl-more { margin-top: 12px; }
+
+.frl-books { gap: 10px; }
+.frl-book { background: var(--card2, rgba(255, 255, 255, .04)); border: 1px solid var(--border, rgba(255, 255, 255, .08)); border-radius: 12px; padding: 12px; }
+.frl-book-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.frl-book-title { margin: 0; font-size: .92rem; font-weight: 800; color: var(--text, #fff); overflow-wrap: anywhere; }
+.frl-book-author { margin: 2px 0 0; font-size: .76rem; color: var(--text2, var(--text, #e6e9ef)); }
+.frl-book-sub { margin: 6px 0 0; font-size: .74rem; color: var(--text2, var(--text, #e6e9ef)); }
+.frl-book-refl { margin: 8px 0 0; font-size: .8rem; line-height: 1.5; color: var(--text2, var(--text, #e6e9ef)); white-space: pre-wrap; overflow-wrap: anywhere; }
+.frl-book-acts { margin-top: 10px; justify-content: flex-start; }
+.frl-badge { flex: 0 0 auto; font-size: .68rem; font-weight: 700; padding: 3px 9px; border-radius: 99px; border: 1px solid var(--border2, rgba(255, 255, 255, .14)); color: var(--text2, var(--text, #e6e9ef)); white-space: nowrap; }
+.frl-badge--reading { border-color: rgba(var(--accent-rgb), .5); color: var(--text, #fff); }
+.frl-stars { color: var(--accent); letter-spacing: 1px; }
+.frl-stars-off { color: var(--border2, rgba(255, 255, 255, .2)); }
+
+.frl-quote-text { margin: 0; padding-left: 10px; border-left: 3px solid rgba(var(--accent-rgb), .6); font-size: .86rem; line-height: 1.5; color: var(--text, #fff); white-space: pre-wrap; overflow-wrap: anywhere; font-style: italic; }
+.frl-quote-why { margin: 4px 0 0; font-size: .76rem; line-height: 1.5; color: var(--text2, var(--text, #e6e9ef)); white-space: pre-wrap; overflow-wrap: anywhere; }
+.frl-quote-why-l { font-weight: 700; }
+
+.frl-tool h3 { margin: 0 0 6px; }
+
+/* Phones (down to 390px and below): one column, actions under the text. */
+@media (max-width: 620px) {
+  .frl-grid--2 { grid-template-columns: minmax(0, 1fr); }
+  /* From and To page sit side by side; the third field wraps under them. */
+  .frl-grid--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .frl-stats { grid-template-columns: minmax(0, 1fr); }
+  .frl-stat { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+  .frl-stat dd { margin: 0; }
+  .frl-row { flex-direction: column; }
+  .frl-row-acts, .frl-confirm { justify-content: flex-start; }
+  .frl-field--num { flex: 1 1 80px; }
+  .frl-quick-go { flex: 1 1 100%; }
+  .frl-card { padding: 14px; }
+}
+
+/* ── printing ──
+   Only while the reading log is printing (body.frl-printing): everything but
+   #frlPrintRoot is hidden. Out-ranks the study hub's
+   `body > *:not(#fshPrintRoot)` rule, which would otherwise hide this too. */
+#frlPrintRoot { display: none; }
+@media print {
+  @page { margin: 14mm; }
+  html:has(body.frl-printing), body.frl-printing { background: #fff !important; color: #000 !important; }
+  body.frl-printing > *:not(#frlPrintRoot) { display: none !important; }
+  body.frl-printing > #frlPrintRoot { display: block !important; position: static !important; }
+  /* The planner's ambient glows are drawn on html/body pseudo-elements; on
+     paper they would tint, or sit over, the log. */
+  html:has(body.frl-printing)::before, html:has(body.frl-printing)::after,
+  body.frl-printing::before, body.frl-printing::after { display: none !important; content: none !important; }
+  #frlPrintRoot th, #frlPrintRoot td, #frlPrintRoot p, #frlPrintRoot strong { color: #000 !important; }
+  #frlPrintRoot .frl-p { color: #000; font: 11pt/1.45 Georgia, 'Times New Roman', serif; }
+  #frlPrintRoot h1 { font: 700 20pt/1.2 system-ui, -apple-system, 'Segoe UI', sans-serif; margin: 0 0 8px; color: #000; }
+  #frlPrintRoot h2 { font: 700 12.5pt/1.3 system-ui, -apple-system, 'Segoe UI', sans-serif; margin: 16px 0 6px; padding-bottom: 3px; border-bottom: 1px solid #000; color: #000; break-after: avoid; }
+  #frlPrintRoot h3 { font: 700 11pt/1.3 system-ui, -apple-system, 'Segoe UI', sans-serif; margin: 0; color: #000; }
+  #frlPrintRoot .frl-p-by { font-weight: 400; }
+  #frlPrintRoot table { width: 100%; border-collapse: collapse; }
+  #frlPrintRoot .frl-p-meta { width: auto; margin: 0 0 10px; }
+  #frlPrintRoot .frl-p-meta th { text-align: left; padding: 2px 14px 2px 0; font: 700 10pt system-ui, sans-serif; }
+  #frlPrintRoot .frl-p-meta td { padding: 2px 0; min-width: 70mm; }
+  #frlPrintRoot .frl-p-blank { display: inline-block; width: 70mm; border-bottom: 1px solid #000; height: 1em; }
+  #frlPrintRoot .frl-p-table th, #frlPrintRoot .frl-p-table td { border: 1px solid #666; padding: 4px 6px; text-align: left; vertical-align: top; font-size: 10pt; }
+  #frlPrintRoot .frl-p-table thead th, #frlPrintRoot .frl-p-table tfoot th, #frlPrintRoot .frl-p-table tfoot td { font-family: system-ui, sans-serif; font-weight: 700; }
+  #frlPrintRoot .frl-p-table thead { display: table-header-group; }
+  #frlPrintRoot .frl-p-table tr { break-inside: avoid; }
+  #frlPrintRoot .frl-p-sum { margin: 0 0 6px; }
+  #frlPrintRoot .frl-p-book, #frlPrintRoot .frl-p-quote { margin: 0 0 10px; break-inside: avoid; }
+  #frlPrintRoot .frl-p-small { margin: 2px 0 0; font-size: 9.5pt; color: #333; }
+  #frlPrintRoot .frl-p-refl, #frlPrintRoot .frl-p-why { margin: 4px 0 0; white-space: pre-wrap; }
+  #frlPrintRoot blockquote { margin: 0; padding-left: 8px; border-left: 2px solid #000; font-style: italic; white-space: pre-wrap; }
+  #frlPrintRoot .frl-p-sign { margin-top: 26px; break-inside: avoid; }
+  #frlPrintRoot .frl-p-line { display: flex; align-items: flex-end; gap: 8px; margin-top: 22px; font: 10pt system-ui, sans-serif; }
+  #frlPrintRoot .frl-p-rule { flex: 1 1 auto; border-bottom: 1px solid #000; height: 1.2em; }
+  #frlPrintRoot .frl-p-rule--short { flex: 0 0 35mm; }
+  #frlPrintRoot .frl-p-foot { margin-top: 18px; font: 8.5pt system-ui, sans-serif; color: #555; }
+}

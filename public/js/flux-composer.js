@@ -477,6 +477,10 @@
   const BT_DRUMS = [['kick', 'Kick'], ['snare', 'Snare'], ['clap', 'Clap'], ['hat', 'Hi-hat'], ['open', 'Open'], ['tom', 'Tom'], ['bell', 'Cowbell']];
   const BT_KEYS = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
   const BT_IDS = BT_DRUMS.map((d) => d[0]).concat(['k0', 'k1', 'k2', 'k3', 'k4', 'bass']);
+  /* Rows that play a pitch, and the notes their menus offer (C3–C6, E1–D3). */
+  const BT_NOTE_IDS = ['k0', 'k1', 'k2', 'k3', 'k4', 'bass'];
+  const BT_MELODY_RANGE = [48, 84];
+  const BT_BASS_RANGE = [28, 50];
   const BT_PRESETS = {
     'Boom bap': { bpm: 90, swing: 25, kick: 'x......x..x.....', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.', bass: 'x......x..x.....', k2: '..........x.....', k1: 'x...............' },
     House: { bpm: 124, swing: 0, kick: 'x...x...x...x...', clap: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.', open: '..x...x...x...x.', bass: '..x...x...x...x.' },
@@ -502,7 +506,7 @@
       tr: { i: 8, note: 'C', dir: 'sounding' },
       terms: { q: '', group: 'All' },
       dp: { sel: { kind: 'core', i: 0 } },
-      bt: { bpm: 90, swing: 25, key: 'C', mode: 'minor', preset: 'Boom bap', rows: {}, on: false, timer: null, bar: 0, step: 0 },
+      bt: { bpm: 90, swing: 25, key: 'C', mode: 'minor', preset: 'Boom bap', rows: {}, notes: {}, grid: 16, on: false, timer: null, bar: 0, step: 0 },
     };
     const VALID = new Set(TABS.map((t) => t[0]));
     function readHash() {
@@ -937,11 +941,24 @@
     function renderBeats() {
       const bt = st.bt;
       const melody = btMelody();
-      const rows = BT_DRUMS.map(([id, label]) => [id, label, 'drum'])
-        .concat(melody.map((m, i) => ['k' + i, nm(m.note), 'key']))
-        .concat([['bass', 'Bass ' + nm(melody[melody.length - 1].note), 'bass']]);
-      const grid = rows.map(([id, label, kind]) => `<div class="fc-bt-row fc-bt-row--${kind}"><span class="fc-bt-name">${esc(label)}</span><div class="fc-bt-steps">${btRow(id).map((on, s) => `<button type="button" class="fc-bt-step" data-r="${id}" data-s="${s}" aria-pressed="${on}" aria-label="${esc(label)}, step ${s + 1}"></button>`).join('')}</div></div>`).join('');
-      body.innerHTML = card('Beat Maker', 'Click the squares to build a beat, then press play — or start from a style. The melody and bass use the key’s pentatonic scale, so every note fits. <kbd>Space</kbd> plays and stops.',
+      const custom = BT_NOTE_IDS.some((id) => bt.notes[id] != null);
+      const shown = Array.from({ length: 16 }, (_, s) => s).filter((s) => bt.grid === 16 || s % 2 === 0);
+      const stepCls = (s) => (s % 4 === 0 ? ' is-beat' : s % 4 === 2 ? ' is-and' : '');
+      const steps = (id, label) => shown.map((s) => `<button type="button" class="fc-bt-step${stepCls(s)}" data-r="${id}" data-s="${s}" aria-pressed="${btRow(id)[s]}" aria-label="${esc(label)}, ${btCount(s)}"></button>`).join('');
+      const row = (id, name, label, kind) => `<div class="fc-bt-row fc-bt-row--${kind}">${name}<div class="fc-bt-steps">${steps(id, label)}</div></div>`;
+      const count = `<div class="fc-bt-row fc-bt-row--count" aria-hidden="true"><span></span><div class="fc-bt-steps">${shown.map((s) => `<span class="fc-bt-count${stepCls(s)}">${s % 4 === 0 ? s / 4 + 1 : s % 4 === 2 ? '&amp;' : s % 4 === 1 ? 'e' : 'a'}</span>`).join('')}</div></div>`;
+      const noteRow = (id, kind, aria) => {
+        const label = btNoteName(btNote(id));
+        return row(id, `<select class="fc-select fc-bt-note" data-note="${id}" aria-label="${esc(aria)}">${btNoteOptions(id)}</select>`, label, kind);
+      };
+      const grid = count
+        + BT_DRUMS.map(([id, label]) => row(id, `<span class="fc-bt-name">${esc(label)}</span>`, label, 'drum')).join('')
+        + `<div class="fc-bt-sec"><span>Melody</span>${custom ? '<button type="button" class="fc-btn fc-btn--small" id="btNotesReset">Back to the scale</button>' : ''}</div>`
+        + melody.map((m, i) => noteRow('k' + i, 'key', 'Melody row ' + (i + 1) + ' note')).join('')
+        + '<div class="fc-bt-sec"><span>Bass</span></div>'
+        + noteRow('bass', 'bass', 'Bass note');
+      const hidden = bt.grid === 8 && BT_IDS.some((id) => btRow(id).some((on, s) => on && s % 2));
+      body.innerHTML = card('Beat Maker', 'Click the squares to build a beat, then press play — or start from a style. The melody and bass start on the key’s pentatonic scale, so every note fits; pick any row’s note from its menu. Changing the key moves your notes with it; Major or Minor puts them back on that scale. <kbd>Space</kbd> plays and stops.',
         `<div class="fc-row">
            <button type="button" class="fc-btn fc-btn--primary" id="btGo" aria-pressed="${bt.on}">${bt.on ? '■ Stop' : '▶ Play'}</button>
            <label class="fc-inline">Style ${selectHTML('btPreset', bt.preset, ['Choose…'].concat(Object.keys(BT_PRESETS)), 'Start from a style')}</label>
@@ -951,8 +968,10 @@
          <div class="fc-row fc-bt-sliders">
            <label class="fc-inline">Tempo <input type="range" id="btBpm" min="60" max="180" value="${bt.bpm}" aria-label="Tempo in beats per minute"><b id="btBpmV">${bt.bpm}</b></label>
            <label class="fc-inline">Swing <input type="range" id="btSwing" min="0" max="60" value="${bt.swing}" aria-label="Swing"><b id="btSwingV">${bt.swing}%</b></label>
+           <span class="fc-inline" id="btGridLbl">Count ${segHTML('btGridMode', String(bt.grid), [['8', '1 & 2 &'], ['16', '1 e & a']]).replace('role="radiogroup"', 'role="radiogroup" aria-labelledby="btGridLbl"')}</span>
          </div>
-         <div class="fc-bt-grid" id="btGrid">${grid}</div>
+         <div class="fc-bt-grid" id="btGrid" style="--steps:${shown.length}">${grid}</div>
+         ${hidden ? '<p class="fc-note fc-bt-hidden">Some hits are on an “e” or an “a”, which this count leaves out. They still play: switch to 1 e &amp; a to see them.</p>' : ''}
          <div class="fc-row fc-bt-actions">
            <button type="button" class="fc-btn" id="btInspire">Inspire me</button>
            <button type="button" class="fc-btn" id="btClear">Clear</button>
@@ -970,9 +989,22 @@
         if (row[s] && !bt.on) withAudio((c) => btSound(c, btOut(c), c.currentTime + 0.02, b.dataset.r));
         writeHash();
       });
+      q('#btGrid').addEventListener('change', (e) => {
+        const sel = e.target.closest('[data-note]');
+        if (!sel) return;
+        const id = sel.dataset.note;
+        bt.notes[id] = +sel.value === btDefaultNote(id) ? null : +sel.value;
+        if (!bt.on) withAudio((c) => btSound(c, btOut(c), c.currentTime + 0.02, id));
+        renderBeats(); writeHash();
+        const again = body.querySelector(`[data-note="${id}"]`);
+        if (again) again.focus();
+      });
+      const reset = q('#btNotesReset');
+      if (reset) reset.addEventListener('click', () => { bt.notes = {}; renderBeats(); writeHash(); });
+      q('#btGridMode').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; bt.grid = +b.dataset.v; renderBeats(); });
       q('#btPreset').addEventListener('change', (e) => { if (BT_PRESETS[e.target.value]) { btLoad(e.target.value); renderBeats(); writeHash(); } });
-      q('#btKey').addEventListener('change', (e) => { bt.key = e.target.value; renderBeats(); writeHash(); });
-      q('#btMode').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; bt.mode = b.dataset.v; renderBeats(); writeHash(); });
+      q('#btKey').addEventListener('change', (e) => { btTranspose(e.target.value); renderBeats(); writeHash(); });
+      q('#btMode').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; bt.mode = b.dataset.v; bt.notes = {}; renderBeats(); writeHash(); });
       q('#btBpm').addEventListener('input', (e) => { bt.bpm = +e.target.value; q('#btBpmV').textContent = bt.bpm; });
       q('#btBpm').addEventListener('change', writeHash);
       q('#btSwing').addEventListener('input', (e) => { bt.swing = +e.target.value; q('#btSwingV').textContent = bt.swing + '%'; });
@@ -986,13 +1018,67 @@
       });
       q('#btWav').addEventListener('click', btDownload);
     }
+    /** How a step is counted aloud: beat 1, 1 e, 1 and, 1 a. */
+    function btCount(s) {
+      const b = Math.floor(s / 4) + 1;
+      return ['beat ' + b, b + ' e', b + ' and', b + ' a'][s % 4];
+    }
+    /** The note a melody or bass row plays: the student's pick, else the scale's. */
+    function btDefaultNote(id) {
+      const m = btMelody();
+      return id === 'bass' ? m[4].midi - 24 : m[+id[1]].midi;
+    }
+    function btNote(id) {
+      const v = st.bt.notes[id];
+      return v != null ? v : btDefaultNote(id);
+    }
+    /** The key's seven notes (major or natural minor), spelled as the key spells them. */
+    function btKeyScale() {
+      return T().scale(T().parse(st.bt.key), st.bt.mode === 'minor' ? 'Natural minor' : 'Major');
+    }
+    /** A midi note named the way the key would write it, with its octave: E♭4. */
+    function btNoteName(midi) {
+      const scale = btKeyScale();
+      const pc = (n) => mod(NATURAL[n.l] + n.a, 12);
+      let n = scale.find((x) => pc(x) === mod(midi, 12));
+      // In a minor key the note under the tonic is the raised 7th: C♯ in D minor, not D♭.
+      if (!n && st.bt.mode === 'minor' && mod(midi + 1, 12) === pc(scale[0])) n = { l: scale[6].l, a: scale[6].a + 1 };
+      if (!n) n = T().parse((scale.some((x) => x.a < 0) ? FLAT_NAMES : SHARP_NAMES)[mod(midi, 12)]);
+      return nm(n) + (Math.floor((midi - NATURAL[n.l] - n.a) / 12) - 1);
+    }
+    /** A row's menu: the key's notes first, then the rest, highest first like the grid. */
+    function btNoteOptions(id) {
+      const [lo, hi] = id === 'bass' ? BT_BASS_RANGE : BT_MELODY_RANGE;
+      const inKey = new Set(btKeyScale().map((n) => mod(NATURAL[n.l] + n.a, 12)));
+      const cur = btNote(id);
+      const opt = (m) => `<option value="${m}"${m === cur ? ' selected' : ''}>${esc(btNoteName(m))}</option>`;
+      const all = [];
+      for (let m = hi; m >= lo; m--) all.push(m);
+      const key = st.bt.key + (st.bt.mode === 'minor' ? ' minor' : ' major');
+      return `<optgroup label="In ${esc(key)}">${all.filter((m) => inKey.has(mod(m, 12))).map(opt).join('')}</optgroup>`
+        + `<optgroup label="Other notes">${all.filter((m) => !inKey.has(mod(m, 12))).map(opt).join('')}</optgroup>`;
+    }
+    /** A new key carries the student's notes with it, by the smallest step. */
+    function btTranspose(key) {
+      const bt = st.bt;
+      const d = mod(BT_KEYS.indexOf(key) - BT_KEYS.indexOf(bt.key) + 5, 12) - 5;
+      bt.key = key;
+      BT_NOTE_IDS.forEach((id) => {
+        if (bt.notes[id] == null) return;
+        const [lo, hi] = id === 'bass' ? BT_BASS_RANGE : BT_MELODY_RANGE;
+        let m = bt.notes[id] + d;
+        while (m > hi) m -= 12;
+        while (m < lo) m += 12;
+        bt.notes[id] = m === btDefaultNote(id) ? null : m;
+      });
+    }
     function btRow(id) { return st.bt.rows[id] || (st.bt.rows[id] = new Array(16).fill(false)); }
     function btBlank() { BT_IDS.forEach((id) => { st.bt.rows[id] = new Array(16).fill(false); }); }
     function btLoad(name) {
       const p = BT_PRESETS[name];
       btBlank();
       BT_IDS.forEach((id) => { if (p[id]) st.bt.rows[id] = p[id].split('').map((ch) => ch === 'x'); });
-      st.bt.bpm = p.bpm; st.bt.swing = p.swing; st.bt.preset = name;
+      st.bt.bpm = p.bpm; st.bt.swing = p.swing; st.bt.preset = name; st.bt.notes = {};
     }
     /** The five pentatonic notes, highest first, with the midi each plays. */
     function btMelody() {
@@ -1016,10 +1102,13 @@
     function btCode() {
       const bt = st.bt;
       const hex = BT_IDS.map((id) => btRow(id).reduce((n, on, i) => n | (on ? 1 << (15 - i) : 0), 0).toString(16).padStart(4, '0')).join('');
-      return [bt.bpm, bt.swing, BT_KEYS.indexOf(bt.key), bt.mode === 'minor' ? 'm' : 'M', hex].join('-');
+      // Picked notes ride on the end, two hex digits a row (00 = the scale's own); a link without them still opens.
+      const notes = BT_NOTE_IDS.some((id) => bt.notes[id] != null)
+        ? BT_NOTE_IDS.map((id) => (bt.notes[id] != null ? bt.notes[id] : 0).toString(16).padStart(2, '0')).join('') : '';
+      return [bt.bpm, bt.swing, BT_KEYS.indexOf(bt.key), bt.mode === 'minor' ? 'm' : 'M', hex].concat(notes ? [notes] : []).join('-');
     }
     function btFromCode(code) {
-      const m = /^(\d{2,3})-(\d{1,2})-(\d{1,2})-([mM])-([0-9a-f]{52})$/i.exec(code || '');
+      const m = /^(\d{2,3})-(\d{1,2})-(\d{1,2})-([mM])-([0-9a-f]{52})(?:-([0-9a-f]{12}))?$/i.exec(code || '');
       if (!m) return false;
       const bt = st.bt;
       bt.bpm = Math.max(60, Math.min(180, +m[1]));
@@ -1029,6 +1118,12 @@
       BT_IDS.forEach((id, r) => {
         const n = parseInt(m[5].slice(r * 4, r * 4 + 4), 16);
         bt.rows[id] = Array.from({ length: 16 }, (_, i) => !!(n & (1 << (15 - i))));
+      });
+      bt.notes = {};
+      if (m[6]) BT_NOTE_IDS.forEach((id, i) => {
+        const v = parseInt(m[6].slice(i * 2, i * 2 + 2), 16);
+        const [lo, hi] = id === 'bass' ? BT_BASS_RANGE : BT_MELODY_RANGE;
+        if (v >= lo && v <= hi && v !== btDefaultNote(id)) bt.notes[id] = v;
       });
       bt.preset = 'Choose…';
       return true;
@@ -1097,13 +1192,13 @@
         bp.connect(env(c, dest, t, 0.4, 0.28));
         osc(c, 'square', 540, 0, t, 0.28, bp); osc(c, 'square', 800, 0, t, 0.28, bp);
       } else if (id === 'bass') {
-        const midi = btMelody()[4].midi - 24;
+        const midi = btNote('bass');
         const lp = c.createBiquadFilter();
         lp.type = 'lowpass'; lp.frequency.setValueAtTime(900, t); lp.frequency.exponentialRampToValueAtTime(220, t + 0.25); lp.Q.value = 5;
         lp.connect(env(c, dest, t, 0.5, 0.3));
         osc(c, 'sawtooth', freq(midi), 0, t, 0.3, lp); osc(c, 'sine', freq(midi), 0, t, 0.3, lp);
       } else if (id[0] === 'k') {
-        const midi = btMelody()[+id[1]].midi;
+        const midi = btNote(id);
         const lp = c.createBiquadFilter();
         lp.type = 'lowpass'; lp.frequency.value = 2800;
         lp.connect(env(c, dest, t, 0.22, 0.4));
@@ -1232,9 +1327,48 @@
     }
 
     /* ── DP Music ─────────────────────────────────────────────────────────── */
+    /* Listening sheets: one per piece, each tagged with its area of inquiry and
+       context, because the "Exploring music in context" portfolio asks for
+       diverse music across all four areas and personal, local and global
+       contexts. There used to be a single sheet (SHEET_KEY); it becomes the
+       first piece and the old key is left as it was. */
     const SHEET_KEY = 'flux_composer_listening';
-    function loadSheet() { try { return JSON.parse(localStorage.getItem(SHEET_KEY) || '{}') || {}; } catch (e) { return {}; } }
-    function saveSheet(v) { try { localStorage.setItem(SHEET_KEY, JSON.stringify(v)); } catch (e) { /* private window */ } }
+    const SHEETS_KEY = 'flux_composer_listening_v2';
+    let sheetSeq = 0;
+    const blankSheet = () => ({ id: 'p' + Date.now().toString(36) + (sheetSeq++), piece: '', area: '', context: '', notes: {} });
+    function cleanSheet(s) {
+      const notes = {};
+      if (s.notes && typeof s.notes === 'object') DIMS.forEach(([d]) => { if (typeof s.notes[d] === 'string' && s.notes[d]) notes[d] = s.notes[d].slice(0, 4000); });
+      return {
+        id: typeof s.id === 'string' && s.id ? s.id.slice(0, 40) : blankSheet().id,
+        piece: typeof s.piece === 'string' ? s.piece.slice(0, 300) : '',
+        area: AREAS.some((a) => a[0] === s.area) ? s.area : '',
+        context: CONTEXTS.some((c) => c[0] === s.context) ? s.context : '',
+        notes,
+      };
+    }
+    function loadSheets() {
+      let v = null;
+      try { v = JSON.parse(localStorage.getItem(SHEETS_KEY) || 'null'); } catch (e) { v = null; }
+      if (!v || typeof v !== 'object' || !Array.isArray(v.sheets)) {
+        let old = {};
+        try { old = JSON.parse(localStorage.getItem(SHEET_KEY) || '{}') || {}; } catch (e) { old = {}; }
+        const first = blankSheet();
+        if (typeof old.Piece === 'string') first.piece = old.Piece;
+        DIMS.forEach(([d]) => { if (typeof old[d] === 'string' && old[d]) first.notes[d] = old[d]; });
+        v = { sheets: [first], current: first.id };
+      }
+      v.sheets = v.sheets.filter((s) => s && typeof s === 'object').map(cleanSheet);
+      if (!v.sheets.length) v.sheets = [blankSheet()];
+      if (!v.sheets.some((s) => s.id === v.current)) v.current = v.sheets[0].id;
+      return v;
+    }
+    let sheetSaveWarned = false;
+    function saveSheets(v) {
+      try { localStorage.setItem(SHEETS_KEY, JSON.stringify(v)); sheetSaveWarned = false; } catch (e) {
+        if (!sheetSaveWarned) { sheetSaveWarned = true; toast('Could not save here — storage may be full or blocked.'); }
+      }
+    }
     function renderDP() {
       const sel = st.dp.sel;
       const cx = 235, cy = 235;
@@ -1251,7 +1385,14 @@
           ${lines.map((l, li) => `<text text-anchor="middle" dominant-baseline="central" y="${lines.length > 1 ? li * 13 - 6.5 : 0}">${esc(l)}</text>`).join('')}</g>`;
       };
       const info = sel.kind === 'core' ? ['Pitch & rhythm', 'The two fundamental dimensions — every musical idea is organised pitch in organised time.'] : (sel.kind === 'meta' ? METADIMS[sel.i] : DIMS[sel.i]);
-      const sheet = loadSheet();
+      const book = loadSheets();
+      const cur = book.sheets.find((x) => x.id === book.current);
+      const pieceName = (x, i) => x.piece.trim() || 'Untitled piece ' + (i + 1);
+      const opt = (v, l, on) => `<option value="${esc(v)}"${v === on ? ' selected' : ''}>${esc(l)}</option>`;
+      const coverage = () => `<table class="fc-cov"><thead><tr><th scope="col">Area</th>${CONTEXTS.map((c) => `<th scope="col">${esc(c[0])}</th>`).join('')}</tr></thead><tbody>${AREAS.map((a) => `<tr><th scope="row" title="${esc(a[1])}">Area ${esc(a[0])}</th>${CONTEXTS.map((c) => {
+        const n = book.sheets.filter((x) => x.area === a[0] && x.context === c[0]).length;
+        return n ? `<td class="is-on">${n}<span class="fc-sr"> ${n === 1 ? 'piece' : 'pieces'}</span></td>` : '<td><span aria-hidden="true">—</span><span class="fc-sr">none yet</span></td>';
+      }).join('')}</tr>`).join('')}</tbody></table>`;
       const ring = `<div class="fc-dp-ring"><svg viewBox="0 0 470 470" class="fc-ring" role="group" aria-label="Dimensions and metadimensions">
           <circle cx="${cx}" cy="${cy}" r="228" class="fc-ring-meta"/><circle cx="${cx}" cy="${cy}" r="168" class="fc-ring-dim"/><circle cx="${cx}" cy="${cy}" r="72" class="fc-ring-core"/>
           <text x="${cx}" y="24" text-anchor="middle" class="fc-ring-cap">METADIMENSIONS</text>
@@ -1261,33 +1402,65 @@
           <g class="fc-dim fc-dim--core${sel.kind === 'core' ? ' is-on' : ''}" data-kind="core" data-i="0" tabindex="0" role="button" aria-label="Pitch and rhythm"><circle cx="${cx}" cy="${cy}" r="60"/><text x="${cx}" y="${cy - 9}" text-anchor="middle">Pitch</text><text x="${cx}" y="${cy + 13}" text-anchor="middle">Rhythm</text></g>
         </svg><div class="fc-dp-info"><h3 class="fc-h3">${esc(info[0])}</h3><p>${esc(info[1])}</p></div></div>`;
       const grid = (rows, cls) => `<div class="fc-dp-grid${cls ? ' ' + cls : ''}">${rows.map((r) => `<div class="fc-dp-cell">${r.length === 3 ? `<span class="fc-dp-n">${esc(r[0])}</span><b>${esc(r[1])}</b><p>${esc(r[2])}</p>` : `<b>${esc(r[0])}</b><p>${esc(r[1])}</p>`}</div>`).join('')}</div>`;
-      const fields = DIMS.map(([d]) => `<label class="fc-ls-row"><span>${esc(d)}</span><textarea class="fc-input" data-ls="${esc(d)}" rows="2" placeholder="What do you hear?">${esc(sheet[d] || '')}</textarea></label>`).join('');
+      const fields = DIMS.map(([d]) => `<label class="fc-ls-row"><span>${esc(d)}</span><textarea class="fc-input" data-ls-dim="${esc(d)}" rows="2" placeholder="What do you hear?">${esc(cur.notes[d] || '')}</textarea></label>`).join('');
       body.innerHTML = card('Dimensions &amp; metadimensions', 'The listening framework: dimensions describe the sound itself, metadimensions its context and meaning. Tap one.', ring)
         + card('Areas of inquiry', 'IB DP Music (first assessed 2022) studies music through four areas of inquiry.', grid(AREAS))
         + card('Contexts &amp; roles', 'Each area is explored in personal, local and global contexts, working as a researcher, creator and performer.', grid(CONTEXTS) + grid(ROLES))
         + card('Assessment components', 'Check your school’s current subject guide for weightings and word limits.', grid(COMPONENTS.map((c) => [c[1], c[0], c[2]]), 'fc-dp-grid--wide'))
-        + card('Listening sheet', 'Notes on a piece, one dimension at a time. Saved on this device; Copy puts it on your clipboard for an essay or portfolio.',
-          `<label class="fc-ls-row"><span>Piece</span><input class="fc-input" data-ls="Piece" placeholder="Title, composer / artist, year" value="${esc(sheet.Piece || '')}"></label>${fields}
-           <div class="fc-row"><button type="button" class="fc-btn fc-btn--primary" id="lsCopy">Copy</button><button type="button" class="fc-btn" id="lsClear">Clear</button></div>`);
+        + card('Listening sheets', 'Notes on each piece, one dimension at a time, tagged with its area of inquiry and context. Saved on this device; Copy puts the open sheet on your clipboard for an essay or portfolio.',
+          `<div class="fc-row fc-ls-pick"><label class="fc-ls-row"><span>Your pieces</span><select class="fc-select" id="lsPick">${book.sheets.map((x, i) => opt(x.id, pieceName(x, i), book.current)).join('')}</select></label><button type="button" class="fc-btn" id="lsNew">New piece</button></div>
+           <label class="fc-ls-row"><span>Piece</span><input class="fc-input" data-ls="piece" placeholder="Title, composer / artist, year" value="${esc(cur.piece)}"></label>
+           <label class="fc-ls-row"><span>Area of inquiry</span><select class="fc-select" data-ls="area">${opt('', 'Choose…', cur.area)}${AREAS.map((a) => opt(a[0], 'Area ' + a[0] + ' · ' + a[1], cur.area)).join('')}</select></label>
+           <label class="fc-ls-row"><span>Context</span><select class="fc-select" data-ls="context">${opt('', 'Choose…', cur.context)}${CONTEXTS.map((c) => opt(c[0], c[0], cur.context)).join('')}</select></label>${fields}
+           <div class="fc-row"><button type="button" class="fc-btn fc-btn--primary" id="lsCopy">Copy</button><button type="button" class="fc-btn" id="lsClear">Delete this piece</button></div>`)
+        + card('Portfolio coverage', 'Pieces you have notes on, by area of inquiry and context. The portfolio asks for diverse music, so the empty cells show where to look next.', `<div id="lsCov">${coverage()}</div>`);
       const pick = (g) => { st.dp.sel = { kind: g.dataset.kind, i: +g.dataset.i }; renderDP(); };
       body.querySelectorAll('.fc-dim').forEach((g) => {
         g.addEventListener('click', () => pick(g));
         g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(g); } });
       });
-      body.querySelectorAll('[data-ls]').forEach((el) => el.addEventListener('input', () => {
-        const v = loadSheet();
-        v[el.dataset.ls] = el.value;
-        saveSheet(v);
+      const save = () => saveSheets(book);
+      body.querySelectorAll('[data-ls]').forEach((el) => el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => {
+        cur[el.dataset.ls] = el.value;
+        save();
+        if (el.dataset.ls === 'piece') {
+          const o = body.querySelector(`#lsPick option[value="${CSS.escape(cur.id)}"]`);
+          if (o) o.textContent = pieceName(cur, book.sheets.indexOf(cur));
+        } else body.querySelector('#lsCov').innerHTML = coverage();
       }));
+      body.querySelectorAll('[data-ls-dim]').forEach((el) => el.addEventListener('input', () => {
+        if (el.value) cur.notes[el.dataset.lsDim] = el.value; else delete cur.notes[el.dataset.lsDim];
+        save();
+      }));
+      body.querySelector('#lsPick').addEventListener('change', (e) => {
+        book.current = e.target.value;
+        save();
+        renderDP();
+        body.querySelector('#lsPick')?.focus();
+      });
+      body.querySelector('#lsNew').addEventListener('click', () => {
+        const fresh = blankSheet();
+        book.sheets.push(fresh);
+        book.current = fresh.id;
+        save();
+        renderDP();
+        body.querySelector('[data-ls="piece"]')?.focus();
+      });
       body.querySelector('#lsCopy').addEventListener('click', () => {
-        const v = loadSheet();
-        const text = ['Piece'].concat(DIMS.map((d) => d[0])).filter((k) => (v[k] || '').trim()).map((k) => k + ': ' + v[k].trim()).join('\n');
+        const area = AREAS.find((a) => a[0] === cur.area);
+        const lines = [['Piece', cur.piece], ['Area of inquiry', area ? 'Area ' + area[0] + ': ' + area[1] : ''], ['Context', cur.context]]
+          .concat(DIMS.map(([d]) => [d, cur.notes[d] || '']))
+          .filter(([, v]) => v.trim()).map(([k, v]) => k + ': ' + v.trim());
+        const text = lines.join('\n');
         if (!text) { toast('Nothing to copy yet.'); return; }
         try { navigator.clipboard.writeText(text).then(() => toast('Copied'), () => window.prompt('Copy this:', text)); } catch (e) { window.prompt('Copy this:', text); }
       });
       body.querySelector('#lsClear').addEventListener('click', () => {
-        if (!window.confirm('Clear the listening sheet?')) return;
-        saveSheet({});
+        if (!window.confirm('Delete the notes on “' + pieceName(cur, book.sheets.indexOf(cur)) + '”?')) return;
+        book.sheets = book.sheets.filter((x) => x.id !== cur.id);
+        if (!book.sheets.length) book.sheets.push(blankSheet());
+        book.current = book.sheets[0].id;
+        save();
         renderDP();
       });
     }

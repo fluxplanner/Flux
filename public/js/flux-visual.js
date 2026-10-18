@@ -290,6 +290,8 @@
     });
   }
 
+  // Not Study tools: twinkling behind the periodic table and calculators
+  // cost frames those tools need.
   const FLUX_STAR_PANELS = new Set([
     'dashboard',
     'calendar',
@@ -299,7 +301,6 @@
     'timer',
     'mood',
     'profile',
-    'toolbox',
     'settings',
     'canvas',
     'staffTasks',
@@ -472,8 +473,22 @@
     document.body.prepend(canvas);
 
     const ctx = canvas.getContext('2d', { alpha: false });
-    let W = (canvas.width = window.innerWidth);
-    let H = (canvas.height = window.innerHeight);
+    /* Drawn at a quarter of the window's size and stretched by CSS: the
+       picture is nothing but soft gradients, so it looks the same, and each
+       frame fills a sixteenth of the pixels. At full size this canvas cost
+       about half of every frame in the planner, which made busy screens like
+       the periodic table lag on school laptops. */
+    const SCALE = 0.25;
+    let W = 0;
+    let H = 0;
+    function fit() {
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width = Math.max(1, Math.ceil(W * SCALE));
+      canvas.height = Math.max(1, Math.ceil(H * SCALE));
+      ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+    }
+    fit();
     let t = 0;
 
     function getAccent() {
@@ -523,9 +538,13 @@
     }
 
     let nodes = [];
+    // Read once per theme change, not per frame: getComputedStyle on every
+    // frame forced a style pass over the whole planner each time.
+    let accentRgb = [0, 191, 255];
 
     function createNodes() {
       const accent = hexToRgb(getAccent());
+      accentRgb = accent;
       const purple = [124, 92, 255];
       nodes = [
         new MeshNode(W * 0.2, H * 0.2, W * 0.5, accent, 0.0008, 0),
@@ -561,7 +580,7 @@
       // Subtle horizontal noise drift
       ctx.save();
       ctx.globalAlpha = 0.015;
-      const [r, g, b] = hexToRgb(getAccent());
+      const [r, g, b] = accentRgb;
       for (let i = 0; i < 5; i++) {
         const y = ((H * i * 0.25) + t * 20) % (H * 1.5) - H * 0.25;
         const grad = ctx.createLinearGradient(0, y, W, y + 100);
@@ -572,17 +591,29 @@
         ctx.fillRect(0, y, W, 1);
       }
       ctx.restore();
-      t += 0.4;
+      t += 0.8;
     }
 
+    /* 12 frames a second: the shapes drift a couple of pixels a second, so
+       more frames bought nothing but work. A canvas hidden by low-end or
+       reduced-motion mode is not drawn at all. While Study tools is open the
+       backdrop is held: its last frame stays up and nothing is redrawn (see
+       syncToolsStill). */
     let raf = 0;
     let running = true;
+    let held = false;
     let lastDraw = 0;
-    const frameMs = 1000 / 24;
+    let shown = true;
+    let showTick = 0;
+    const frameMs = 1000 / 12;
     function loop(now) {
-      if (!running) return;
+      if (!running || held) {
+        raf = 0;
+        return;
+      }
       if (!lastDraw || now - lastDraw >= frameMs) {
-        draw();
+        if (showTick++ % 24 === 0) shown = canvas.isConnected && getComputedStyle(canvas).display !== 'none';
+        if (shown) draw();
         lastDraw = now;
       }
       raf = requestAnimationFrame(loop);
@@ -592,9 +623,10 @@
     loop();
 
     function onResize() {
-      W = canvas.width = window.innerWidth;
-      H = canvas.height = window.innerHeight;
+      fit();
       createNodes();
+      // Resizing clears the canvas to black; a held backdrop draws once more.
+      if (held) draw();
     }
     window.addEventListener('resize', onResize);
 
@@ -638,6 +670,29 @@
       canvas.remove();
       window.removeEventListener('resize', onResize);
     };
+    /** Hold the backdrop on its current frame (true), or let it drift again. */
+    window._fluxMeshHold = (on) => {
+      on = !!on;
+      if (on === held) return;
+      held = on;
+      cancelAnimationFrame(raf);
+      raf = 0;
+      if (!held && running && !document.hidden) raf = requestAnimationFrame(loop);
+    };
+  }
+
+  /* Study tools holds the planner's background still: the drifting backdrop
+     canvas, the aurora, the ambient wash, the sidebar logo's shimmer and the
+     quick-add glow (flux-visual.css, html.flux-tools-still). Each of them made
+     the browser redraw and recomposite the whole screen on every frame, behind
+     a periodic table of 118 cells, a graph or a calculator that need those
+     frames — the periodic table lagged badly on school laptops. Everything
+     carries on where it stopped when you leave. */
+  const FLUX_STILL_PANELS = new Set(['toolbox']);
+  function syncToolsStill(panelId) {
+    const still = FLUX_STILL_PANELS.has(panelId);
+    document.documentElement.classList.toggle('flux-tools-still', still);
+    if (typeof window._fluxMeshHold === 'function') window._fluxMeshHold(still);
   }
 
   function initFluxVisual() {
@@ -668,6 +723,7 @@
       'flux-nav',
       (e) => {
         const panelId = e.detail?.panel;
+        if (panelId) syncToolsStill(panelId);
         if (panelId) setTimeout(() => initPanelStarField(panelId), 120);
         if (panelId === 'dashboard' && typeof window.renderStats === 'function') {
           setTimeout(() => {
@@ -683,11 +739,12 @@
 
     const taskObserver = new MutationObserver(() => {
       injectTaskShootingStars();
-      const items = [...document.querySelectorAll('.task-item:not([data-flux-visual-init])')];
-      items.forEach((el) => {
+      // Rows already seen (.task-seen) are only redrawn: no fade from blank again.
+      const items = [...document.querySelectorAll('.task-item:not([data-flux-visual-init])')].filter((el) => {
         el.dataset.fluxVisualInit = '1';
-        el.classList.add('stagger-item');
+        return !el.classList.contains('task-seen');
       });
+      items.forEach((el) => el.classList.add('stagger-item'));
       if (items.length) staggerItems(items, 40);
     });
     const taskList = document.getElementById('taskList');
@@ -698,6 +755,7 @@
 
     const activePanel = document.querySelector('.panel.active')?.id;
     if (activePanel) initPanelStarField(activePanel);
+    if (activePanel) syncToolsStill(activePanel);
   }
 
   window.FluxVisual = {

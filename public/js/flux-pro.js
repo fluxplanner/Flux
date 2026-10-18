@@ -611,6 +611,12 @@ document.addEventListener('keydown', e=>{
     const list = getNavigableTasks();
     const el = list[_kbdFocusIndex];
     if(!el) return;
+    // Enter on a focused button or link is that control's, not the highlighted
+    // task's — it used to tick the task as well (or instead). And only while
+    // the highlight is still on screen: a re-render drops it.
+    if(!el.classList.contains('flux-kbd-focus')) return;
+    const own = e.target && e.target.closest && e.target.closest('button, a, [role="button"], [role="checkbox"], summary, [contenteditable="true"]');
+    if(own && own !== el) return;
     const rawTid = el.dataset.taskId || (el.id||'').replace(/^task-/,'');
     if(!rawTid) return;
     const tasks = (window.tasks)||[];

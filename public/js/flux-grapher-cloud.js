@@ -187,8 +187,16 @@
     return text ? JSON.parse(text) : null;
   }
 
-  function list(s) {
-    return rest(s, 'flux_graphs?select=id,kind,title,updated_at&order=updated_at.desc&limit=200');
+  /* `space` is the payload's own kind, read by the database, so a 3D graph
+     (saved as kind 'functions') can wear a 3D badge without fetching every
+     graph whole. If that column is ever refused, the plain list still loads. */
+  async function list(s) {
+    try {
+      return await rest(s, 'flux_graphs?select=id,kind,title,updated_at,space:payload->>kind&order=updated_at.desc&limit=200');
+    } catch (e) {
+      if (e.auth) throw e;
+      return rest(s, 'flux_graphs?select=id,kind,title,updated_at&order=updated_at.desc&limit=200');
+    }
   }
   async function get(s, id) {
     if (!UUID.test(id)) throw new Error('That graph link is not valid.');
@@ -413,7 +421,9 @@
         }
         listEl.innerHTML = rows.map((r) => '<div class="fgc-row">'
           + '<button type="button" class="fgc-open" data-open="' + esc(r.id) + '">'
-          + '<span class="fgc-kind fgc-kind--' + esc(r.kind) + '" aria-hidden="true">' + (r.kind === 'functions' ? 'ƒ' : '±') + '</span>'
+          + (r.space === '3d'
+            ? '<span class="fgc-kind fgc-kind--3d" aria-hidden="true">3D</span>'
+            : '<span class="fgc-kind fgc-kind--' + esc(r.kind) + '" aria-hidden="true">' + (r.kind === 'functions' ? 'ƒ' : '±') + '</span>')
           + '<span class="fgc-title">' + esc(r.title) + '</span>'
           + '<span class="fgc-when">' + esc(ago(r.updated_at)) + '</span></button>'
           + '<button type="button" class="fgc-del" data-delrow="' + esc(r.id) + '" aria-label="Delete ' + esc(r.title) + '" title="Delete">'
