@@ -3424,6 +3424,10 @@ const DEFAULT_TABS=[
   {id:'goals',icon:'🎯',label:'College Prep',visible:true},
   {id:'mood',icon:'😊',label:'Mood',visible:true},
   {id:'toolbox',icon:'🧰',label:'Study tools',visible:true},
+  // Its own page since the reading log shipped, but reachable only from a
+  // dashboard card and Study tools ▸ English ▸ Literature; a tab of its own
+  // puts it beside Study tools in Learn.
+  {id:'readingLog',icon:'📖',label:'Reading log',visible:true},
   {id:'settings',icon:'⚙',label:'Settings',visible:true},
 ];
 let tabConfig=load('flux_tabs',DEFAULT_TABS);
@@ -4215,6 +4219,8 @@ const NAV_TAB_SVGS={
   google:`<svg class="nt-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>`,
   canvas:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>`,
   toolbox:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5"/></svg>`,
+  /* Open book — Reading log. Not the notebook's spiral or the references' spine. */
+  readingLog:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg>`,
   profile:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>`,
   /* People / clubs — not concentric rings (was too close to old AI look) */
   goals:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3.5"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
@@ -4347,12 +4353,13 @@ function ensureNbkSubtabs(){
 window.ensureNbkSubtabs=ensureNbkSubtabs;
 
 function renderSidebars(){
-  // Max 5 tabs per section (user request): Plan 4 · Learn 5 (School + Feed +
+  // Max 5 tabs per section (user request): Plan 4 · Learn 5 (School Info +
+  // Notebook + Study tools + Reading log + Canvas; was School + Feed +
   // Notebook (merged w/ Knowledge sub-view) + Study tools + Google) ·
   // Me & Life 4.
   const groups=[
     {label:'Plan',ids:['dashboard','calendar','timer']},
-    {label:'Learn',ids:['notes','toolbox','canvas']},
+    {label:'Learn',ids:['notes','toolbox','readingLog','canvas']},
     {label:'Me & Life',ids:['profile','goals','mood','settings']},
   ];
   const visibleIds=new Set(tabConfig.filter(t=>t.visible).map(t=>t.id));
@@ -4371,7 +4378,7 @@ function renderSidebars(){
   const augSide=buildEducatorNavAugmentation(false,schoolClassicLabel);
   const augMob=buildEducatorNavAugmentation(true,schoolClassicLabel);
   const includeWorkspaceNav=typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator();
-  const schoolIds=['notes','toolbox','canvas'];
+  const schoolIds=['notes','toolbox','readingLog','canvas'];
   const schoolItemsSide=schoolIds.filter(id=>visibleIds.has(id)).map(id=>{
     const tc=tabConfig.find(t=>t.id===id)||DEFAULT_TABS.find(t=>t.id===id);
     const lab=esc(tc?.label||id);
@@ -14438,6 +14445,8 @@ const LOGIN_DEMO_LINES=[
   'Snap your timetable — Flux reads it and fills in your classes.',
   'See your bell schedule and no-school days on one calendar.',
   'Fit a regression to your lab data, with R² and residuals.',
+  'Plan my week: study blocks fitted around your classes.',
+  'Log tonight’s reading and print the week for English.',
   'Balance a chemical equation, then check it on the periodic table.',
   'Log activities, colleges and test scores — superscores worked out.',
   'Run a Pomodoro with a time budget for every subject.'
@@ -15370,6 +15379,10 @@ function buildFeatPillsHtml(){
   const pills=[
     {label:'Study tools',c:'#6366f1'},
     {label:'Flux Grapher',c:'#34d399'},
+    {label:'Flux Tutor',c:'#7c5cff'},
+    {label:'Plan my week',c:'#22d3ee'},
+    {label:'Reading log',c:'#f472b6'},
+    {label:'Verb drill',c:'#ef6c4d'},
     {label:'Smart calendar',c:'#3b82f6'},
     {label:'Countdowns',c:'#fbbf24'},
     {label:'⏱ Focus timer',c:'#a78bfa'},
@@ -16561,12 +16574,13 @@ function fluxTourSteps(){
   const mode={sel:'#modeSwitchBar .mode-switch-track',title:'Work and Personal',body:'Work mode holds your school tools. Personal mode is a separate planner for the rest of your life, and nothing crosses between them. Switch whenever you like.'};
   if(!edu){
     return[
-      tab('dashboard','Dashboard','Your tasks for today and the days ahead. Tick one off when it’s done; anything overdue stays at the top until you do.'),
+      tab('dashboard','Dashboard','Your tasks for today and the days ahead. Tick one off, or swipe it right on a phone; Undo brings it back. Plan my week, above your tasks, fits study blocks around your classes.'),
       {sel:'.topbar-new-task-btn',title:'New task',body:'Add a task from any tab. Give it a class, a due date and how long it should take.'},
       tab('calendar','Calendar','Tasks, classes and no-school days on one month. Pick a day to add something, or count down to it: the countdown then sits in the top bar.'),
       tab('timer','Time','Pomodoro focus sessions with a budget for each subject, plus a clock, stopwatch, countdown and alarms.'),
       tab('school','School Info','Your classes, bell schedule and locker. Upload a photo or PDF of your timetable and Flux fills in your periods.'),
-      tab('toolbox','Study tools','Tools for 16 subjects, sorted into units: a periodic table, an equation balancer, formula sheets, language practice and a full graphing calculator.'),
+      tab('toolbox','Study tools','Tools for 16 subjects, sorted into units: a periodic table, an equation balancer, formula sheets, a verb drill and a full graphing calculator. The row at the top opens the other Flux apps: Flux Tutor, the 3D Grapher, Pixel, Flashcards and more.'),
+      tab('readingLog','Reading log','Log what you read each day for English class, keep quotes, set a weekly goal and print a log to hand in.'),
       tab('canvas','Canvas','Connect Canvas to bring your assignments in, then add the ones you want to your planner.'),
       tab('profile','Profile','Your details, study style, how confident you feel in each course, and your stats.'),
       tab('goals','College Prep','Activities, your college list with deadlines, and every test score: GPA, SAT, ACT and AP/IB results, with superscores worked out for you.'),
