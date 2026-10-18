@@ -1154,5 +1154,12 @@
     printHTML: function (o) { return printHTML(cur(), o); },
   };
 
+  // A pull that ran before this file loaded left the account's copy for us (app.js syncFromCloud).
+  var pending = window._fluxPendingReadingLog;
+  if (pending) {
+    try { delete window._fluxPendingReadingLog; } catch (e) { window._fluxPendingReadingLog = undefined; }
+    try { if (applyFromCloud(pending) && typeof window.syncKey === 'function') window.syncKey(SLICE); } catch (e) {}
+  }
+
   renderAll();
 })();

@@ -10645,7 +10645,8 @@ function getCloudPayload(){
     citationHelper:(window.FluxCitationHelper?.getCloudSlice?FluxCitationHelper.getCloudSlice():load('flux_citation_helper_v1',{entries:[],exports:0})),
     calcHistory:(window.FluxCalcHistory?.getCloudSlice?FluxCalcHistory.getCloudSlice():load('flux_calc_history_v1',{tape:[],plots:[],exports:0})),
     // Reading log: books, daily entries, quotes, the weekly goal. Each item has an id; merged item by item on the way down.
-    readingLog:(window.FluxReadingLog?.getCloudSlice?FluxReadingLog.getCloudSlice():load('flux_reading_log_v1',{books:[],entries:[],quotes:[]})),
+    // Before the module has loaded, send back the account's own copy if a pull already brought one: this device's alone would drop the other devices' entries.
+    readingLog:(window.FluxReadingLog?.getCloudSlice?FluxReadingLog.getCloudSlice():(window._fluxPendingReadingLog||load('flux_reading_log_v1',{books:[],entries:[],quotes:[]}))),
     integrations:(function(){
       if(window.FluxGoogle&&typeof FluxGoogle.getIntegrationsForCloud==='function')return FluxGoogle.getIntegrationsForCloud();
       const tok=load('flux_canvas_token','');
@@ -11336,6 +11337,9 @@ async function syncFromCloud(opts){
     // Reading log: merged by id, so two devices logging the same day both keep their entries; push back if this device had any the account lacked.
     if(window.FluxReadingLog?.applyFromCloud){
       try{if(FluxReadingLog.applyFromCloud(d.readingLog||{}))syncKey('readingLog');}catch(_){}
+    }else if(d.readingLog&&typeof d.readingLog==='object'){
+      // The features bundle can finish after the first pull; the module merges this when it loads.
+      window._fluxPendingReadingLog=d.readingLog;
     }
     if(Array.isArray(d.notes)&&!(window.FluxOfflineSync?.shouldSkipCloudOverwrite?.('notes'))){
       notes=fluxApplyCloudList('notes',notes,d.notes,d.listTombstones,_listOpts);
