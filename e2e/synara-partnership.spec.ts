@@ -83,6 +83,7 @@ test.describe('Flux Partners', () => {
     await page.goto('/hub.html');
     await expect(page.locator('#apps a.app--synara .app-partner')).toHaveText('Partner');
     await expect(page.locator('#apps .app-partner')).toHaveCount(1);
+    await page.getByRole('tab', { name: /Partners/ }).click();
     await page.locator('.partners-strip a').click();
     await expect(page).toHaveURL(/partners/);
   });
