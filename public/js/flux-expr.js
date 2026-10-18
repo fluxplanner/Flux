@@ -230,7 +230,8 @@
       var ch = name[0];
       if (ch.toLowerCase() === v) { usedVar = true; return X; }
       if (v2 && ch.toLowerCase() === v2) { usedVar2 = true; return Y; }
-      if (ch === 'e') return constFn(Math.E);
+      // "2πx" is 2·π·x. π used to fall through to param() and become a slider worth 1.
+      if (Object.prototype.hasOwnProperty.call(CONSTS, ch)) return constFn(CONSTS[ch]);
       if (ch === 'y') fail('y is what is being drawn, so it cannot appear on the right.');
       return param(ch);
     }
@@ -276,6 +277,55 @@
     return derivative(function (u) { return derivative(f, u, order - 1); }, v, 1);
   }
 
+  /* ── Reading maths the way students type it ──────────────────────────
+     compile() is strict on purpose: it is also what reads a table's column
+     names, where "ln" or "xy" may be a name. tidy() is the forgiving front
+     door for anything a person typed or pasted as maths — the grapher's rows
+     and Pixel's figures both go through it, so they read the same things. */
+
+  var BARE_FNS = ['sinh', 'cosh', 'tanh', 'asin', 'acos', 'atan', 'sqrt', 'cbrt', 'sin', 'cos', 'tan', 'exp', 'abs', 'log', 'ln'];
+  /* A function name with no bracket after it, and the short term it applies
+     to: "sin 2x", "ln x", "sqrt x", "cos^2 x", "sin x1". */
+  var BARE_RE = new RegExp('(^|[^A-Za-z])(' + BARE_FNS.join('|') + ')(\\^\\s*\\d+)?(?!\\s*\\()\\s*'
+    + '(-?(?:\\d+\\.?\\d*|\\.\\d+)?\\s*(?:pi|π|[a-z]\\d*)?(?:\\s*\\^\\s*(?:\\d+\\.?\\d*|[a-z]))?)', 'gi');
+
+  /** |x − 1| into abs(x − 1). A bar opens after an operator, a bracket or another opening bar; otherwise it closes. */
+  function absBars(s) {
+    if (s.indexOf('|') < 0) return s;
+    var out = '', depth = 0, last = '', lastOpen = false;
+    for (var i = 0; i < s.length; i++) {
+      var c = s[i];
+      if (c === '|') {
+        if (depth === 0 || lastOpen || last === '' || /[(+\-*/^=<>,≤≥{]/.test(last)) { out += 'abs('; depth++; lastOpen = true; last = '('; }
+        else { out += ')'; depth--; lastOpen = false; last = ')'; }
+        continue;
+      }
+      out += c;
+      if (c !== ' ') { last = c; lastOpen = false; }
+    }
+    return out;
+  }
+
+  /**
+   * What a student types, into what compile() reads: a real minus, × and ÷,
+   * ² and ³, √, |x|, ½, =< for ≤, and the brackets people leave off
+   * (sin x, ln 2x, cos^2 x). Text that is already plain comes back as it was.
+   */
+  function tidy(src) {
+    var s = String(src == null ? '' : src)
+      .replace(/[−–—]/g, '-').replace(/[×·⋅∙]/g, '*').replace(/÷/g, '/')
+      .replace(/²/g, '^2').replace(/³/g, '^3').replace(/½/g, '(1/2)')
+      .replace(/=</g, '<=').replace(/=>/g, '>=')
+      .replace(/\barc(sin|cos|tan)\b/gi, 'a$1')
+      .replace(/√\s*\(/g, 'sqrt(').replace(/√\s*(\d*\.?\d*\s*[a-z]?)/gi, 'sqrt($1)')
+      .replace(/(^|[^a-z])([xy]{2,})(?![a-z0-9])/gi, function (all, pre, w) { return pre + w.split('').join('*'); });   // 2xy is 2·x·y
+    s = absBars(s);
+    return s.replace(BARE_RE, function (all, pre, name, pow, term) {
+      if (!term || !term.trim()) return all;
+      return pre + name + '(' + term.trim() + ')' + (pow ? pow.replace(/\s+/g, '') : '');
+    });
+  }
+
   /** Compile without throwing: { fn, params } or { error }. */
   function tryCompile(src, varName, opts) {
     try {
@@ -284,5 +334,5 @@
     } catch (e) { return { error: e && e.message ? e.message : 'That expression did not parse.' }; }
   }
 
-  window.FluxExpr = { compile: compile, tryCompile: tryCompile, FNS: FNS, CONSTS: CONSTS };
+  window.FluxExpr = { compile: compile, tryCompile: tryCompile, tidy: tidy, FNS: FNS, CONSTS: CONSTS };
 })();

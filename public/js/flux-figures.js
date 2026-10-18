@@ -987,44 +987,10 @@
   }
   /* ── Reading maths the way students type it ────────────────────────── */
 
-  var BARE_FNS = ['sinh', 'cosh', 'tanh', 'asin', 'acos', 'atan', 'sqrt', 'cbrt', 'sin', 'cos', 'tan', 'exp', 'abs', 'log', 'ln'];
-  /* A function name with no bracket after it, and the short term it applies
-     to: "sin 2x", "ln x", "sqrt x", "cos^2 x". */
-  var BARE_RE = new RegExp('(^|[^A-Za-z])(' + BARE_FNS.join('|') + ')(\\^\\s*\\d+)?(?!\\s*\\()\\s*'
-    + '(-?(?:\\d+\\.?\\d*|\\.\\d+)?\\s*(?:pi|π|[a-z])?(?:\\s*\\^\\s*(?:\\d+\\.?\\d*|[a-z]))?)', 'gi');
-  /** |x − 1| into abs(x − 1). A bar opens after an operator, a bracket or another opening bar; otherwise it closes. */
-  function absBars(s) {
-    if (s.indexOf('|') < 0) return s;
-    var out = '', depth = 0, last = '', lastOpen = false;
-    for (var i = 0; i < s.length; i++) {
-      var c = s[i];
-      if (c === '|') {
-        if (depth === 0 || lastOpen || last === '' || /[(+\-*/^=<>,≤≥]/.test(last)) { out += 'abs('; depth++; lastOpen = true; last = '('; }
-        else { out += ')'; depth--; lastOpen = false; last = ')'; }
-        continue;
-      }
-      out += c;
-      if (c !== ' ') { last = c; lastOpen = false; }
-    }
-    return out;
-  }
-  /**
-   * What a student types, into what FluxExpr reads: a real minus, × and ÷,
-   * ² and ³, √, |x|, and the brackets people leave off (sin x, ln 2x).
-   */
+  /** What a student types, into what FluxExpr reads. The forgiving reader lives in flux-expr.js, shared with the grapher. */
   function tidyMath(src) {
-    var s = String(src == null ? '' : src)
-      .replace(/[−–—]/g, '-').replace(/[×·⋅∙]/g, '*').replace(/÷/g, '/')
-      .replace(/²/g, '^2').replace(/³/g, '^3').replace(/½/g, '(1/2)')
-      .replace(/=</g, '<=').replace(/=>/g, '>=')
-      .replace(/\barc(sin|cos|tan)\b/gi, 'a$1')
-      .replace(/√\s*\(/g, 'sqrt(').replace(/√\s*(\d*\.?\d*\s*[a-z]?)/gi, 'sqrt($1)')
-      .replace(/(^|[^a-z])([xy]{2,})(?![a-z])/gi, function (all, pre, w) { return pre + w.split('').join('*'); });   // 2xy is 2·x·y
-    s = absBars(s);
-    return s.replace(BARE_RE, function (all, pre, name, pow, term) {
-      if (!term || !term.trim()) return all;
-      return pre + name + '(' + term.trim() + ')' + (pow ? pow.replace(/\s+/g, '') : '');
-    });
+    var E = root.FluxExpr;
+    return E && E.tidy ? E.tidy(src) : String(src == null ? '' : src);
   }
 
   var REL_OPS = ['<=', '>=', '≤', '≥', '<', '>', '='];

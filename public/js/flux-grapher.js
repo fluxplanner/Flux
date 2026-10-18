@@ -153,7 +153,15 @@
     if (typeof s === 'number') return s;
     const t = String(s == null ? '' : s).trim().replace(/^−/, '-');
     if (!t) return NaN;
-    return Number(t);
+    const n = Number(t);
+    if (!Number.isNaN(n)) return n;
+    /* A reading as it is written in a lab book — 4,5 or 3.2 × 10⁻³, or
+       2.35 ± 0.05 (the value; the ± belongs in a ± column) — read with the
+       importer's rules, so a typed cell and an imported one agree. */
+    const I = window.FluxGrapherImport;
+    if (!I || !I.cleanNumber) return NaN;
+    const pm = I.splitPM(t);
+    return Number(pm ? pm[0] : I.cleanNumber(t));
   }
 
   /** Readable, without pretending to precision the readings do not have. */
@@ -586,7 +594,7 @@
   function parseDomain(text, opts) {
     const E = window.FluxExpr;
     const lows = [], highs = [], params = [];
-    const conds = String(text).split(',').map((c) => c.trim()).filter(Boolean);
+    const conds = String(text).split(/,|\band\b|&&/i).map((c) => c.trim()).filter(Boolean);
     if (!conds.length) return { error: 'Put a limit inside the braces, like {0 < x < 3}.' };
     for (let k = 0; k < conds.length; k++) {
       const parts = conds[k].split(/\s*(<=|>=|≤|≥|<|>)\s*/);
@@ -608,6 +616,22 @@
     }
     const test = (x) => lows.every((f) => x >= f(0)) && highs.every((f) => x <= f(0));
     return { test: test, params: params };
+  }
+
+  /**
+   * Limits written in words or after a comma, the way a worksheet writes
+   * them — "y = x^2 for 0 < x < 3", "y = √x, x ≥ 0" — moved into the { }
+   * that parseDomain reads. Only a tail that compares x with something and
+   * has no = of its own counts, so (1, 2) and a = 4 are left alone.
+   */
+  function bracedDomain(s) {
+    if (/\}\s*$/.test(s)) return s;
+    const m = /^(.*\S)\s+(?:for|when|where|if)\s+(.+)$/i.exec(s)
+      || /^(.*\S)\s*,\s*([^,()[\]{}]+)$/.exec(s);
+    if (!m) return s;
+    const cond = m[2];
+    if (!/\bx\b/i.test(cond) || !/[<>≤≥]/.test(cond) || /(^|[^<>!])=/.test(cond)) return s;
+    return m[1] + ' {' + cond + '}';
   }
 
   const DEF_RE = /^\s*([a-zA-Zα-ωΑ-Ω])\s*=\s*(.+)$/;
@@ -659,6 +683,24 @@
     const f = found[0];
     return { lhs: s.slice(0, f.i).trim(), op: ({ '≤': '<=', '≥': '>=' })[f.op] || f.op, rhs: s.slice(f.i + f.op.length).trim() };
   }
+  /** When F(x, y) = 0 is a straight function of y at every x (the slope in y
+      never zero and never changing sign), y as a function of x; else null. */
+  function solvedForY(F) {
+    const xs = [-9.7, -6.1, -3.3, -1.2, -0.4, 0.3, 1.1, 2.6, 4.9, 8.3];
+    let sign = 0, seen = 0;
+    for (let i = 0; i < xs.length; i++) {
+      const x = xs[i], f0 = F(x, 0), f1 = F(x, 1), f3 = F(x, 3), fm = F(x, -2);
+      if (![f0, f1, f3, fm].every(Number.isFinite)) continue;
+      const k = f1 - f0, tol = 1e-7 * (1 + Math.abs(f0) + Math.abs(f3) + Math.abs(fm));
+      if (Math.abs(f3 - f0 - 3 * k) > tol || Math.abs(fm - f0 + 2 * k) > tol) return null;
+      const sk = k > 1e-12 ? 1 : k < -1e-12 ? -1 : 0;
+      if (!sk || (sign && sk !== sign)) return null;
+      sign = sk;
+      seen++;
+    }
+    if (seen < 3) return null;
+    return (x) => { const f0 = F(x, 0); return -f0 / (F(x, 1) - f0); };
+  }
   /** Compile a relation to F(x, y) = left − right; it holds where F is 0, below 0 or above 0. */
   function parseImplicit(rel, opts, domain) {
     const E = window.FluxExpr;
@@ -680,6 +722,15 @@
       ref.v = y;
       return fa(x) - fb(x);
     };
+    /* 2x + 3y = 6, y − 2 = 3(x − 1): a line written the way the textbook
+       writes it. Solved for y it is an ordinary curve, so it gets intercepts,
+       tracing and a table like y = … does, not just a drawn outline. Only
+       with y on one side and no sliders: a slider could later make it
+       curved, and the check here would not be run again. */
+    if (rel.op === '=' && !params.length && a.usesVar2 !== b.usesVar2) {
+      const fy = solvedForY(F);
+      if (fy) return { kind: 'fn', fn: fy, params: params };
+    }
     return { kind: 'implicit', op: rel.op, F: F, params: params };
   }
 
@@ -699,6 +750,8 @@
     let s = String(src || '').trim();
     if (!s) return { kind: 'empty', params: [] };
     if (!E) return { error: 'The maths engine has not loaded.' };
+    // |x|, sin x, √x, x², a real minus: read the way it was written.
+    s = E.tidy(s).trim();
     const opts = { params: true, scope: scope, fns: c.fns };
 
     if (s.indexOf('~') >= 0) return parseRegression(s, c);
@@ -719,6 +772,7 @@
     }
 
     let domain = null;
+    s = bracedDomain(s);
     const dm = /\{([^{}]*)\}\s*$/.exec(s);
     if (dm) {
       domain = parseDomain(dm[1], opts);
@@ -2372,18 +2426,62 @@
     });
   };
 
-  /** A pasted block lands across columns and rows, adding either as needed. */
-  Grapher.prototype.pasteBlock = function (t, text, r0, c0) {
-    const lines = String(text).replace(/\r/g, '').split('\n').filter((l) => l.trim() !== '');
+  /**
+   * Text pasted from a spreadsheet as { grid, heads }: rows of cells, and the
+   * heading row if there was one. An empty cell keeps its place — a missing
+   * reading in the middle of a row used to be dropped, sliding every later
+   * reading into the wrong column. The separator is sniffed the way a CSV
+   * import does it, so "0,5;1,2" is two decimals and not four numbers.
+   */
+  function pastedGrid(text) {
+    const I = window.FluxGrapherImport;
+    const src = String(text).replace(/\r/g, '');
+    const rows = I && I.parseCSV ? I.parseCSV(src)
+      : src.split('\n').map((l) => l.split(/\t|,|;|\s+/));
+    const decimalComma = !!(I && I.sniffDelimiter && I.sniffDelimiter(src) === ';' && /\d,\d/.test(src));
     const grid = [];
-    lines.forEach((line) => {
-      const cells = line.split(/\t|,|;|\s+/).map((c) => c.trim()).filter((c) => c !== '');
+    let heads = null;
+    rows.forEach((row) => {
+      const cells = row.map((c) => String(c).trim());
+      while (cells.length && cells[cells.length - 1] === '') cells.pop();
       if (!cells.length) return;
       // A header row pasted with the data would otherwise become blank readings.
-      if (!cells.some((c) => Number.isFinite(num(c.replace(/%$/, ''))))) return;
-      grid.push(cells);
+      if (!cells.some((c) => Number.isFinite(num(c.replace(/%$/, ''))))) {
+        if (!grid.length && !heads) heads = cells;
+        return;
+      }
+      grid.push(I && I.cleanNumber ? cells.map((c) => (c === '' ? '' : I.cleanNumber(c, decimalComma))) : cells);
     });
-    return this.fillGrid(t, grid, r0, c0);
+    // Every row as wide as the widest, so a blank at the end of a row clears that cell too.
+    const width = grid.reduce((m, r) => Math.max(m, r.length), 0);
+    grid.forEach((r) => { while (r.length < width) r.push(''); });
+    return { grid: grid, heads: heads };
+  }
+
+  /** A pasted block lands across columns and rows, adding either as needed. */
+  Grapher.prototype.pasteBlock = function (t, text, r0, c0) {
+    const p = pastedGrid(text);
+    const ok = this.fillGrid(t, p.grid, r0, c0);
+    /* Headings pasted at the top of a table name its columns — "Time (s)"
+       becomes Time, in s — unless they have been named already. */
+    const I = window.FluxGrapherImport;
+    if (ok && p.heads && r0 === 0 && I && I.splitHeading) {
+      const slots = t.cols.map((c, i) => (i >= c0 && c.role !== 'calc' ? i : -1)).filter((i) => i >= 0);
+      p.heads.forEach((h, j) => {
+        const col = t.cols[slots[j]];
+        // Only the placeholder names: x and y, and the c1, c2 a paste adds. A
+        // Functions table's x1 and y1 stay, since a regression row refers to them.
+        if (!col || !h || col.role !== 'value' || !/^([xy]|c\d+)$/.test(col.name || 'c1')) return;
+        const hd = I.splitHeading(h);
+        if (!hd.name || t.cols.some((o) => o !== col && o.name === hd.name)) return;
+        col.name = hd.name;
+        if (hd.unit && !col.unit) col.unit = hd.unit;
+      });
+      this.touch();
+      this.rerenderItem(t.id);
+      this.draw();
+    }
+    return ok;
   };
 
   /** Rows of cells written into a table from row r0, typed columns only. */
@@ -4980,7 +5078,7 @@
       normaliseDoc: normaliseDoc, tablePoints: tablePoints, uncOf: uncOf, fmtTick: fmtTick,
       computeTable: computeTable, parseDomain: parseDomain, manualSpread: manualSpread, docIsBlank: docIsBlank,
       fitManyStarts: fitManyStarts, parseListBody: parseListBody, fittedEquation: fittedEquation,
-      implicitSVG: implicitSVG,
+      implicitSVG: implicitSVG, pastedGrid: pastedGrid,
     },
   };
 })();

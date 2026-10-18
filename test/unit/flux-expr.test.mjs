@@ -93,3 +93,31 @@ test('a space separates words: "a sin(x)" is a·sin(x), not the arcsine', () => 
 test('y cannot appear on the right-hand side', () => {
   assert.ok(E.tryCompile('y+1', 'x', { params: true }).error);
 });
+
+/* tidy(): the forgiving front door the grapher and Pixel share. */
+const tidyAt = (s, x) => E.compile(E.tidy(s), 'x', { params: true })(x);
+
+test('tidy reads what students type: bars, bare functions, roots and powers', () => {
+  close(tidyAt('|x - 2|', -1), 3, '|x − 2|');
+  assert.equal(E.tidy('||x| - 1|'), 'abs(abs(x) - 1)', 'nested bars');
+  close(tidyAt('2|x|', -3), 6, 'a bar after a number opens');
+  close(tidyAt('sin x', Math.PI / 2), 1, 'sin x');
+  close(tidyAt('3sin 2x', Math.PI / 4), 3, 'sin 2x is sin(2x)');
+  close(tidyAt('cos^2 x', 1), Math.cos(1) ** 2, 'cos^2 x');
+  close(tidyAt('ln x', Math.E), 1, 'ln x');
+  close(tidyAt('arcsin x', 1), Math.PI / 2, 'arcsin x');
+  close(tidyAt('√x', 9), 3, '√x');
+  close(tidyAt('2√(x+7)', 2), 6, '√( … )');
+  close(tidyAt('x² − 4', 3), 5, '² and a real minus');
+  close(tidyAt('x³ ÷ 2 × 4', 2), 16, '³ ÷ ×');
+  close(tidyAt('½x', 4), 2, '½');
+  assert.equal(E.tidy('sin x1'), 'sin(x1)', 'a column name stays whole');
+  assert.equal(E.tidy('y = 2x + 1'), 'y = 2x + 1', 'plain text is left alone');
+  assert.equal(E.tidy('y =< 3'), 'y <= 3');
+});
+
+test('π next to a letter is π, not a slider called π', () => {
+  const f = E.compile('2πx', 'x', { params: true });
+  assert.deepEqual([...f.params], []);
+  close(f(1), 2 * Math.PI, '2πx at 1');
+});
