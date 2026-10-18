@@ -1,0 +1,116 @@
+/* ============================================================================
+   FLUX · flux-loader.css — the one loading screen
+   The Flux mark (the infinity) draws itself, its dot pops in, and while the
+   page is still getting ready a bright stretch keeps travelling round the
+   loop. The planner's splash (splash.js) and Flux Tutor both use it, so every
+   wait in Flux looks the same.
+
+   Markup:
+     <div class="flux-loader" role="status" aria-label="Opening …">
+       <svg class="flux-loader__mark" viewBox="0 0 440 220" aria-hidden="true">
+         <defs><linearGradient id="…" x1="0" y1="0" x2="1" y2="0">…</linearGradient></defs>
+         <path class="flux-loader__path" pathLength="1" transform="translate(268,110)" d="…" stroke="url(#…)"/>
+         <path class="flux-loader__run"  pathLength="1" transform="translate(268,110)" d="…"/>
+         <circle class="flux-loader__dot" cx="268" cy="110" r="13"/>
+       </svg>
+       <div class="flux-loader__word">Flux</div>          (optional)
+       <div class="flux-loader__label">Opening …</div>    (optional)
+     </div>
+
+   --fl-acc / --fl-acc2: the two colours (the person's accent where known).
+   --fl-draw: how long the mark takes to draw.
+   --fl-label: the colour of the line under it (for a light page).
+   ========================================================================== */
+.flux-loader {
+  --fl-acc: #00c2ff;
+  --fl-acc2: #7c5cff;
+  --fl-draw: .95s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+}
+.flux-loader__mark {
+  display: block;
+  width: var(--fl-size, 168px);
+  height: auto;
+  overflow: visible;
+  filter: drop-shadow(0 0 22px color-mix(in srgb, var(--fl-acc) 45%, transparent));
+}
+.flux-loader__path,
+.flux-loader__run {
+  fill: none;
+  stroke-width: 22;
+  stroke-linecap: round;
+}
+.flux-loader__path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: fluxLoaderDraw var(--fl-draw) cubic-bezier(.65, 0, .35, 1) .1s forwards;
+}
+/* The stretch that keeps going round once the mark is drawn: the sign that
+   something is still happening, rather than a frozen logo. */
+.flux-loader__run {
+  stroke: #fff;
+  stroke-width: 9;
+  stroke-dasharray: .14 .86;
+  opacity: 0;
+  animation: fluxLoaderRunIn .3s ease calc(var(--fl-draw) + .1s) forwards,
+    fluxLoaderRun 1.6s linear calc(var(--fl-draw) + .1s) infinite;
+}
+.flux-loader__dot {
+  fill: var(--fl-acc);
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: fluxLoaderPop .4s cubic-bezier(.34, 1.56, .64, 1) calc(var(--fl-draw) - .1s) forwards;
+}
+.flux-loader__word {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: clamp(2.4rem, 9vw, 3.2rem);
+  font-weight: 800;
+  letter-spacing: -.04em;
+  line-height: 1;
+  background: linear-gradient(90deg, #e8f4fc 0%, var(--fl-acc) 60%, var(--fl-acc2) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  opacity: 0;
+  animation: fluxLoaderRise .55s cubic-bezier(.22, 1, .36, 1) calc(var(--fl-draw) * .58) forwards;
+}
+.flux-loader__label {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: .72rem;
+  letter-spacing: .32em;
+  text-transform: uppercase;
+  margin-right: -.32em;
+  color: var(--fl-label, rgba(190, 205, 225, .8));
+  opacity: 0;
+  animation: fluxLoaderRise .55s cubic-bezier(.22, 1, .36, 1) calc(var(--fl-draw) * .79) forwards;
+}
+@keyframes fluxLoaderDraw { to { stroke-dashoffset: 0; } }
+@keyframes fluxLoaderRun { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes fluxLoaderRunIn { to { opacity: .55; } }
+@keyframes fluxLoaderPop { from { opacity: 0; transform: scale(.2); } to { opacity: 1; transform: none; } }
+@keyframes fluxLoaderRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* Quick: for waits that are usually short (opening Flux again, Flux Tutor).
+   The mark is already drawn and the light is already going, so a load that
+   ends in a third of a second never shows a half-drawn logo. */
+.flux-loader--quick .flux-loader__path { animation: none; stroke-dashoffset: 0; }
+.flux-loader--quick .flux-loader__run { animation: fluxLoaderRunIn .3s ease forwards, fluxLoaderRun 1.6s linear infinite; }
+.flux-loader--quick .flux-loader__dot { animation: none; opacity: 1; }
+.flux-loader--quick .flux-loader__word,
+.flux-loader--quick .flux-loader__label { animation: fluxLoaderRise .4s cubic-bezier(.22, 1, .36, 1) forwards; }
+
+/* Reduced motion: the finished mark, still; no drawing, no travelling light. */
+@media (prefers-reduced-motion: reduce) {
+  .flux-loader .flux-loader__path { animation: none; stroke-dashoffset: 0; }
+  .flux-loader .flux-loader__run { display: none; }
+  .flux-loader .flux-loader__dot,
+  .flux-loader .flux-loader__word,
+  .flux-loader .flux-loader__label { animation: none; opacity: 1; }
+}
