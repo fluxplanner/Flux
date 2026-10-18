@@ -211,13 +211,14 @@ test.describe('Synara', () => {
     expect(brand.toLowerCase()).toBe('#7c4dff');
   });
 
-  test('the hub lists it under Partner apps, in its own colour', async ({ page }) => {
+  test('the hub lists it under the Partners tab, in its own colour', async ({ page }) => {
     await page.goto('/hub.html');
     const hrefs = await page.locator('#apps .app').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
     // Flux's own apps first, then the partner app it builds for someone else.
     expect(hrefs[0]).toBe('index.html');
-    expect(hrefs[hrefs.length - 1], 'Synara closes the list, under Partner apps').toBe('synara.html');
-    await expect(page.locator('#apps-partner + a.app--synara')).toHaveCount(1);
+    expect(hrefs[hrefs.length - 1], 'Synara closes the list, under Partners').toBe('synara.html');
+    await page.getByRole('tab', { name: /Partners/ }).click();
+    await expect(page.locator('#apps-partner a.app--synara')).toHaveCount(1);
     const card = page.locator('#apps a.app--synara');
     await expect(card).toHaveAttribute('href', 'synara.html');
     await expect(card.locator('.app-name')).toHaveText(/^Synara/);

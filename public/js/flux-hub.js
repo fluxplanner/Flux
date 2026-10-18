@@ -22,12 +22,13 @@
 
   /* One list, used by the Hub directory and the planner's Study tools shelf.
      Adding a product here puts it on both without duplicating product data in
-     their markup. `group` is the Hub section it sits under (GROUPS, below);
-     the list is in display order within each. */
+     their markup. `group` places it on the Hub (GROUPS, below): the planner is
+     the wide bar at the top, and every other group is a pill tab over a grid.
+     The list is in display order within each. */
   var GROUPS = [
     { id: 'planner', name: 'Planner' },
     { id: 'study', name: 'Study apps' },
-    { id: 'partner', name: 'Partner apps' },
+    { id: 'partner', name: 'Partners' },
   ];
   var PRODUCTS = [
     {
