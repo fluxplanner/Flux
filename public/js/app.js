@@ -15810,7 +15810,7 @@ function handleCheckoutReturn(){
   if(ab){const p=document.getElementById('abPill');p.textContent=ab+' Day';p.style.display='block';p.style.background=ab==='A'?'rgba(99,102,241,.15)':'rgba(16,217,160,.15)';p.style.color=ab==='A'?'var(--accent)':'var(--green)';p.style.border='1px solid '+(ab==='A'?'rgba(99,102,241,.3)':'rgba(16,217,160,.3)');}
   updateTopbarStats();
   updateNextClassPill();
-  const td=document.getElementById('taskDate');if(td)td.valueAsDate=TODAY;
+  const td=document.getElementById('taskDate');if(td)td.value=todayStr();
   setEnergy(document.getElementById('energySlider')?.value||3);
   renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();
   renderProfile();
@@ -18513,65 +18513,169 @@ function switchIntelTab(tab, btn){
 // ════════════════════════════════════════════════════
 
 // ══ 1. NATURAL LANGUAGE TASK INPUT ══
-// Parses: "Physics lab due Tuesday high priority 30min"
-const NLP_DAYS={monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6,sunday:0,
-  mon:1,tue:2,wed:3,thu:4,fri:5,sat:6,sun:0,today:0,tomorrow:1};
-const NLP_TYPES={test:/\btest\b/i,quiz:/\bquiz\b/i,project:/\bproject\b/i,essay:/\bessay\b/i,lab:/\blab\b/i,exam:/\bexam\b/i,hw:/\bhomework\b|\bhw\b/i};
-const NLP_PRI={high:/\bhigh\b|\burgent\b|\basap\b|\bcritical\b/i,low:/\blow\b|\beasy\b/i};
+/* Reads what a student types — "bio lab report due thurs 45 min",
+   "Ch 5 hw tmrw", "essay due 10/24", "spanish test oct 24th at 9am" — into a
+   due date, time, type, subject, priority and estimate, and gives back the
+   name with only the date / time / priority / estimate words taken out.
 
-function parseNLTask(text){
-  if(!text||!text.trim())return null;
-  const result={name:'',priority:'med',date:'',type:'hw',estTime:0,subject:''};
-  let t=text.trim();
+   The old reader stripped "due", "by" and "on" from inside words
+   ("Conclusion" became "Cclusi"), read the "3 h" in "chapter 3 homework" as
+   three hours, took "on photosynthesis" for a date, and knew no short forms
+   or numbered dates. Every pattern here matches whole words only, and
+   anything it doesn't recognise stays in the name. */
+const NLP_WEEKDAYS={sunday:0,sun:0,monday:1,mon:1,tuesday:2,tue:2,tues:2,wednesday:3,wed:3,weds:3,thursday:4,thu:4,thur:4,thurs:4,friday:5,fri:5,saturday:6,sat:6};
+const NLP_MONTHS={jan:0,january:0,feb:1,february:1,mar:2,march:2,apr:3,april:3,may:4,jun:5,june:5,jul:6,july:6,aug:7,august:7,sep:8,sept:8,september:8,oct:9,october:9,nov:10,november:10,dec:11,december:11};
+const NLP_SMALL_NUMS={a:1,an:1,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
+/* "sat" is also the SAT and "sun" is the sun: those two only count as days
+   after due / by / on / this / next. Months always need a day number. */
+const NLP_AMBIGUOUS_DAYS={sat:1,sun:1};
+const NLP_TYPE_RULES=[
+  ['quiz',/\bquiz(?:zes)?\b/i],
+  ['test',/\b(?:tests?|exams?|midterms?|finals|final exam)\b/i],
+  ['lab',/\blabs?\b/i],
+  ['essay',/\b(?:essays?|paper)\b/i],
+  ['project',/\bprojects?\b/i],
+  ['hw',/\b(?:homework|hw|worksheet|problem set|pset)\b/i],
+  ['reading',/\b(?:read|reading|chapters?)\b/i]
+];
+/* Short names students type for a class, matched against the words of the
+   class names they actually have. */
+const NLP_SUBJECT_ALIASES={bio:['biology'],chem:['chemistry'],phys:['physics'],math:['math','algebra','geometry','calculus','precalculus','statistics','trigonometry'],maths:['math','algebra','geometry','calculus','statistics'],calc:['calculus'],stats:['statistics'],eng:['english'],lit:['literature','english'],hist:['history'],gov:['government'],econ:['economics'],psych:['psychology'],cs:['computer'],compsci:['computer'],span:['spanish'],pe:['physical']};
+const NLP_SUBJECT_SKIP=new Set(['ap','ib','hl','sl','honors','honours','and','of','the','i','ii','iii','iv','intro','to','advanced','studies','class']);
 
-  // Extract priority
-  if(NLP_PRI.high.test(t)){result.priority='high';t=t.replace(NLP_PRI.high,'').trim();}
-  else if(NLP_PRI.low.test(t)){result.priority='low';t=t.replace(NLP_PRI.low,'').trim();}
+function nlpAddDays(base,n){const d=new Date(base);d.setDate(d.getDate()+n);return d;}
+/** A month/day with no year: this year, or next year once it has passed. */
+function nlpMonthDay(base,mo,day,year){
+  if(mo==null||mo<0||mo>11||day<1||day>31)return null;
+  const y=year!=null?(year<100?2000+year:year):base.getFullYear();
+  let d=new Date(y,mo,day);
+  if(d.getMonth()!==mo)return null;
+  if(year==null&&d<base)d=new Date(y+1,mo,day);
+  return d;
+}
 
-  // Extract type
-  for(const[type,re] of Object.entries(NLP_TYPES)){if(re.test(t)){result.type=type;break;}}
-
-  // Extract time estimate: "30min", "1h", "2 hours"
-  const timeMatch=t.match(/(\d+)\s*(min(?:utes?)?|h(?:ours?)?)/i);
-  if(timeMatch){
-    result.estTime=timeMatch[2].toLowerCase().startsWith('h')?parseInt(timeMatch[1])*60:parseInt(timeMatch[1]);
-    t=t.replace(timeMatch[0],'').trim();
+/** The earliest date phrase in `t`: {date:'YYYY-MM-DD', match} or null. */
+function nlpFindDate(t,now){
+  const base=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const lead='(\\b(?:due|by|on|for|before|until)\\s+)?';
+  const wd='sunday|monday|tuesday|wednesday|thursday|friday|saturday|thurs|tues|weds|thur|sun|mon|tue|wed|thu|fri|sat';
+  const mon='january|february|march|april|may|june|july|august|september|october|november|december|sept|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec';
+  const rules=[
+    [new RegExp(lead+'\\b(today|tonight|tomorrow|tmrw|tmr|tmw|tomoz|2morrow|2moro)\\b','i'),m=>
+      /^(today|tonight)$/i.test(m[2])?base:nlpAddDays(base,1)],
+    [new RegExp(lead+'\\bday after tomorrow\\b','i'),()=>nlpAddDays(base,2)],
+    [new RegExp(lead+'\\bin\\s+(\\d{1,2}|a|an|one|two|three|four|five|six|seven|eight|nine|ten)\\s+(days?|weeks?)\\b','i'),m=>{
+      const n=/^\d+$/.test(m[2])?parseInt(m[2],10):NLP_SMALL_NUMS[m[2].toLowerCase()];
+      return nlpAddDays(base,/^week/i.test(m[3])?n*7:n);
+    }],
+    [new RegExp(lead+'\\bnext week\\b','i'),()=>nlpAddDays(base,(8-base.getDay())%7||7)],
+    [new RegExp(lead+'\\b(?:this\\s+)?weekend\\b','i'),()=>nlpAddDays(base,(6-base.getDay()+7)%7)],
+    [new RegExp(lead+'\\b(?:(this|next)\\s+)?('+wd+')\\.?(?=[\\s,.!?]|$)','i'),m=>{
+      const w=m[3].toLowerCase();
+      if(NLP_AMBIGUOUS_DAYS[w]&&!m[1]&&!m[2])return null;
+      return nlpAddDays(base,(NLP_WEEKDAYS[w]-base.getDay()+7)%7||7);
+    }],
+    // 10/24 or 10/24/26 — month first, or day first when the first number can't be a month.
+    // Only "/": "pages 10-12" is not a date.
+    [new RegExp(lead+'\\b(\\d{1,2})/(\\d{1,2})(?:/(\\d{2}|\\d{4}))?\\b','i'),m=>{
+      let a=parseInt(m[2],10),b=parseInt(m[3],10);
+      if(a>12&&b<=12){const x=a;a=b;b=x;}
+      return nlpMonthDay(base,a-1,b,m[4]!=null?parseInt(m[4],10):null);
+    }],
+    // oct 24, October 24th, oct 24 2026
+    [new RegExp(lead+'\\b('+mon+')\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b(?:,?\\s+(\\d{4})\\b)?','i'),m=>
+      nlpMonthDay(base,NLP_MONTHS[m[2].toLowerCase()],parseInt(m[3],10),m[4]!=null?parseInt(m[4],10):null)],
+    // 24 oct, 24th of October
+    [new RegExp(lead+'\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?('+mon+')\\b','i'),m=>
+      nlpMonthDay(base,NLP_MONTHS[m[3].toLowerCase()],parseInt(m[2],10),null)],
+    // the 24th — this month, or next month once it has passed
+    [new RegExp(lead+'\\bthe\\s+(\\d{1,2})(?:st|nd|rd|th)\\b','i'),m=>{
+      const day=parseInt(m[2],10);
+      let d=new Date(base.getFullYear(),base.getMonth(),day);
+      if(d<base)d=new Date(base.getFullYear(),base.getMonth()+1,day);
+      return d.getDate()===day?d:null;
+    }]
+  ];
+  let best=null;
+  for(const[re,fn] of rules){
+    const m=t.match(re);
+    if(!m)continue;
+    const d=fn(m);
+    if(d&&(!best||m.index<best.index))best={date:fluxLocalYMD(d),match:m[0],index:m.index};
   }
+  return best;
+}
 
-  // Extract due date: "due Tuesday", "by Friday", "tomorrow", "today"
-  const dateMatch=t.match(/(?:due|by|on)\s+(\w+)|^(today|tomorrow)$/i)||t.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today)\b/i);
-  if(dateMatch){
-    const dayWord=(dateMatch[1]||dateMatch[2]||dateMatch[0]).toLowerCase();
-    const offset=NLP_DAYS[dayWord];
-    if(offset!==undefined){
-      const d=new Date(TODAY);
-      if(dayWord==='today'){}
-      else if(dayWord==='tomorrow')d.setDate(d.getDate()+1);
-      else{
-        const current=d.getDay();
-        let diff=offset-current;
-        if(diff<=0)diff+=7;
-        d.setDate(d.getDate()+diff);
-      }
-      result.date=fluxLocalYMD(d);
-    }
-    t=t.replace(dateMatch[0],'').replace(/due|by|on/gi,'').trim();
-  }
-
-  // Match subject from classes
-  const subjs=getSubjects();
+/** The key of the class named in `t`, or ''. Whole words only. */
+function nlpFindSubject(t){
+  let subjs={};
+  try{subjs=getSubjects()||{};}catch(_){}
+  const words=String(t).toLowerCase().match(/[a-z0-9]+/g)||[];
+  const wordSet=new Set(words);
+  const joined=' '+words.join(' ')+' ';
+  let best=null;
   for(const[key,s] of Object.entries(subjs)){
-    if(t.toLowerCase().includes(s.name.toLowerCase())||t.toLowerCase().includes(key.toLowerCase())){
-      result.subject=key;
-      t=t.replace(new RegExp(s.name,'gi'),'').replace(new RegExp(key,'gi'),'').trim();
-      break;
-    }
+    const allNameWords=String(s&&s.name||'').toLowerCase().match(/[a-z0-9]+/g)||[];
+    const nameWords=allNameWords.filter(w=>!NLP_SUBJECT_SKIP.has(w));
+    const short=String(s&&s.short||'').toLowerCase().trim();
+    let score=0;
+    if(allNameWords.length&&joined.includes(' '+allNameWords.join(' ')+' '))score=3;
+    else if(short.length>=2&&wordSet.has(short))score=2;
+    else if(nameWords.some(w=>w.length>=4&&wordSet.has(w)))score=2;
+    else if(words.some(w=>(NLP_SUBJECT_ALIASES[w]||[]).some(tg=>nameWords.some(nw=>nw.startsWith(tg)))))score=1;
+    if(score&&(!best||score>best.score))best={key,score};
+  }
+  return best?best.key:'';
+}
+
+/** `now` is for tests; everyone else gets today. */
+function parseNLTask(text,now){
+  if(!text||!String(text).trim())return null;
+  const original=String(text).trim();
+  const result={name:'',priority:'med',date:'',time:'',type:'hw',estTime:0,subject:''};
+  let t=' '+original+' ';
+  const cut=s=>{t=t.replace(s,' ');};
+
+  // Priority: only words that clearly mean it, so "high school" stays in the name.
+  const hi=t.match(/\s(?:!!+|!high)(?=\s)|\b(?:high priority|urgent|asap|important)\b/i);
+  const lo=t.match(/\s!low(?=\s)|\blow priority\b/i);
+  if(hi){result.priority='high';cut(hi[0]);}
+  else if(lo){result.priority='low';cut(lo[0]);}
+
+  // Estimate: "45 min", "1h", "1.5 hrs", "for 2 hours". The unit has to end the
+  // word, so the "3 h" at the start of "3 homework" is not three hours.
+  const est=t.match(/\b(?:for\s+|takes\s+)?(\d+(?:\.\d+)?)\s*(minutes?|mins?|hours?|hrs?|h)\b/i);
+  if(est){
+    const n=parseFloat(est[1]);
+    result.estTime=Math.round(/^h/i.test(est[2])?n*60:n);
+    cut(est[0]);
   }
 
-  // Remaining text = task name
-  result.name=t.replace(/\s+/g,' ').trim()||text.trim();
+  // Time of day: "at 3pm", "9:30am", "at 15:00".
+  const tm=t.match(/\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i)||t.match(/\bat\s+(\d{1,2}):(\d{2})\b/i);
+  if(tm){
+    let h=parseInt(tm[1],10);const mi=tm[2]?parseInt(tm[2],10):0;const ap=(tm[3]||'').toLowerCase();
+    if(ap==='pm'&&h<12)h+=12;
+    if(ap==='am'&&h===12)h=0;
+    if(h<24&&mi<60){result.time=String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0');cut(tm[0]);}
+  }
+
+  const dm=nlpFindDate(t,now instanceof Date?now:new Date());
+  if(dm){result.date=dm.date;cut(dm.match);}
+
+  for(const[type,re] of NLP_TYPE_RULES){if(re.test(t)){result.type=type;break;}}
+  result.subject=nlpFindSubject(t);
+
+  // Tidy what's left: a "due" / "by" left hanging at either end, stray punctuation, spaces.
+  let name=t.replace(/\s+/g,' ').trim()
+    .replace(/^(?:due|by|on|for|at)\s+/i,'')
+    .replace(/\s+(?:due|by|on|for|at)$/i,'')
+    .replace(/[\s,;:–—-]+$/,'').replace(/^[\s,;:–—-]+/,'').trim();
+  if(!name)name=original;
+  result.name=name.charAt(0).toUpperCase()+name.slice(1);
   return result;
 }
+window.parseNLTask=parseNLTask;
 
 function addTaskFromNL(text){
   const parsed=parseNLTask(text);
@@ -19408,6 +19512,7 @@ function resolveQuickAddParse(raw){
       type:nl.type||'hw',
       subject:nl.subject||'',
       estTime:nl.estTime||0,
+      time:nl.time||'',
       difficulty:3
     };
   }
@@ -19456,7 +19561,7 @@ function submitQuickAdd(){
     id:Date.now()+Math.random(),name:parsed.name,
     subject:parsed.subject||'',priority:parsed.priority||'med',
     date:parsed.date||'',type:parsed.type||'hw',
-    estTime:parsed.estTime||0,difficulty:parsed.difficulty||3,
+    estTime:parsed.estTime||0,difficulty:parsed.difficulty||3,time:parsed.time||'',
     done:false,rescheduled:0,createdAt:Date.now()
   };
   t.urgencyScore=calcUrgency(t);
@@ -19465,7 +19570,7 @@ function submitQuickAdd(){
   updateQuickAddPreview('');
   renderStats();renderTasks();renderCalendar();renderCountdown();
   checkAllPanic();
-  showToast('Added: '+t.name,'success');
+  showToast('Added: '+t.name+(t.date?' — due '+fmtFluxDate(t.date,'short'):''),'success');
   syncKey('tasks',tasks);panicCheck(t);
 }
 function parseNaturalTask(raw){
