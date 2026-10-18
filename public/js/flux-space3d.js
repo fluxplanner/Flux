@@ -167,7 +167,7 @@
   function numberOf(text) {
     const t = String(text == null ? '' : text).trim();
     if (!t) return { error: 'A coordinate is missing — a point has three, like (1, 2, 3).' };
-    const r = expr().tryCompile(t.toLowerCase(), 'x', { params: true, scope: {}, var2: 'y', var2Ref: { v: 0 } });
+    const r = expr().tryCompile(expr().tidy(t.toLowerCase()), 'x', { params: true, scope: {}, var2: 'y', var2Ref: { v: 0 } });
     if (r.error) return { error: r.error };
     if (r.usesVar || r.usesVar2 || r.params.length) return { error: 'A point’s coordinates are numbers, like (1, 2, 3) — “' + t + '” is not a number.' };
     const v = r.fn(0);
@@ -187,7 +187,8 @@
   /** An expression in x, y and z, as f(x, y, z). */
   function compile3(text) {
     const ref = { v: 0 }, scope = { z: 0 };
-    const r = expr().tryCompile(String(text).toLowerCase(), 'x', { params: true, scope: scope, var2: 'y', var2Ref: ref });
+    // sin x cos y, x² − y², √2: read the way it was written, as in the 2D grapher.
+    const r = expr().tryCompile(expr().tidy(String(text).toLowerCase()), 'x', { params: true, scope: scope, var2: 'y', var2Ref: ref });
     if (r.error) return { error: r.error };
     const extra = r.params.filter((p) => p !== 'z');
     if (extra.length) return { error: lettersError(extra, 'in an equation') };
