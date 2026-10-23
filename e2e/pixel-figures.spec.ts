@@ -126,10 +126,10 @@ test.describe('Flux Pixel: maths figures', () => {
     await page.keyboard.press('Control+z');
     await page.waitForTimeout(500);
     expect((await items(page))[0].fig.h).toBe(5);
-    // The Edit figure button does the same as the double click.
+    // The side panel's button to the full panel does the same as the double click.
     await page.locator('[data-tool="select"]').click();
     await page.mouse.click(...at(box, first.x + 4, first.y + first.h / 2));
-    await page.locator('[data-act="figedit"]').click();
+    await page.getByRole('button', { name: 'Bigger preview, export and share' }).click();
     await expect(dlg(page).getByLabel('Height (BC)')).toHaveValue('5');
     await page.keyboard.press('Escape');
     await expect(dlg(page)).toBeHidden();
@@ -194,6 +194,76 @@ test.describe('Flux Pixel: maths figures', () => {
     await expect(page.locator('#pxFigPrev circle[fill="#ffffff"]')).toHaveCount(1);
     await dlg(page).getByLabel('Dots and inequalities, one per line').fill('x > 9');
     await expect(page.locator('#pxFigMsg')).toContainText('9 is off the number line');
+  });
+
+  test('Flux Figures mode: figure kinds down the left, a sentence or a click adds one, each in free space', async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 860 });
+    await page.goto('/pixel.html');
+    await page.locator('[data-fig-new]').click();
+    await expect(page.locator('[data-mode-set="figures"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.px-tools [data-figkind]')).toHaveCount(12);
+    // Nothing selected: the side panel says what to do.
+    await page.locator('#pxNewFigIn').fill('right triangle 3 4 5');
+    await page.locator('#pxNewFigIn').press('Enter');
+    await expect.poll(async () => (await items(page)).map((i: any) => i.fig.kind)).toEqual(['triangle']);
+    // The rail adds a figure and opens its settings beside the page.
+    await page.locator('[data-figkind="circle"]').click();
+    await expect.poll(async () => (await items(page)).length).toBe(2);
+    await expect(page.locator('#pxFigInline').getByLabel('Radius', { exact: true })).toBeFocused();
+    const [a, b] = await items(page);
+    const apart = a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y;
+    expect(apart, 'the second figure does not land on the first').toBe(true);
+    // A drawing tool goes back to Draw mode; the page remembers the mode it was left in.
+    await page.keyboard.press('Escape');   // out of the field
+    await page.keyboard.press('Escape');   // nothing selected
+    await page.keyboard.press('p');
+    await expect(page.locator('[data-mode-set="draw"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.px-tools [data-tool="pen"]')).toHaveAttribute('aria-pressed', 'true');
+    await page.locator('[data-mode-set="figures"]').click();
+    await page.reload();
+    await expect(page.locator('[data-mode-set="figures"]')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('a selected figure changes in place: side panel, action bar, any corner, and undo says what it undid', async ({ page }) => {
+    const box = await newPage(page);
+    await openPanel(page, 'triangle');
+    await dlg(page).getByLabel('Describe it').fill('right triangle 3 4 5');
+    await dlg(page).getByLabel('Describe it').press('Enter');
+    await dlg(page).getByRole('button', { name: 'Insert' }).click();
+    // Selected: an action bar above it, a grab corner at each corner, its settings beside the page.
+    await expect(page.locator('#pxFloat')).toBeVisible();
+    await expect(page.locator('#pxSel [data-handle]')).toHaveCount(4);
+    const side = page.locator('#pxFigInline');
+    await expect(side.getByLabel('Leg BC')).toHaveValue('3');
+    await side.getByLabel('Leg BC').fill('6');
+    await expect.poll(async () => (await items(page))[0]?.fig.a).toBe(6);
+    await expect(page.locator('#pxItems')).toContainText('6 cm');
+    // A sentence in the side panel makes a different figure in the same place.
+    const before = (await items(page))[0];
+    await side.getByLabel('Describe it').fill('circle r 4 sector 90');
+    await side.getByLabel('Describe it').press('Enter');
+    await expect.poll(async () => (await items(page))[0]?.fig.kind).toBe('circle');
+    const circ = (await items(page))[0];
+    expect(circ.x + circ.w / 2).toBeCloseTo(before.x + before.w / 2, 0);
+    // The top-left corner grows it while the bottom-right corner stays put.
+    const nw = (await page.locator('#pxSel [data-handle="nw"]').boundingBox())!;
+    await page.mouse.move(nw.x + nw.width / 2, nw.y + nw.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(nw.x - 60, nw.y - 60, { steps: 6 });
+    await page.mouse.up();
+    await expect.poll(async () => (await items(page))[0].w).toBeGreaterThan(circ.w * 1.1);
+    const grown = (await items(page))[0];
+    expect(grown.x + grown.w).toBeCloseTo(circ.x + circ.w, 0);
+    // Undo names what it takes back, and the undo button says it first.
+    await expect(page.locator('[data-act="undo"]')).toHaveAttribute('title', /Undo: Resized/);
+    await page.locator('[data-act="undo"]').click();
+    await expect(page.locator('.px-toast').last()).toContainText('Undone: resized');
+    // Delete from the action bar, and get it back from the message.
+    await page.locator('#pxFloat [data-act="delete"]').click();
+    await expect.poll(async () => (await items(page)).length).toBe(0);
+    await page.locator('.px-toast--act').getByRole('button', { name: 'Undo' }).click();
+    await expect.poll(async () => (await items(page)).length).toBe(1);
+    void box;
   });
 
   test('describe it in words: the box says what Enter makes, then makes it with the form filled in', async ({ page }) => {
@@ -281,6 +351,8 @@ test.describe('Flux Pixel: maths figures', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/pixel.html');
     await page.locator('[data-fig-new]').click();
+    await expect(page.locator('[data-mode-set="figures"]')).toHaveAttribute('aria-pressed', 'true');
+    await page.keyboard.press('m');
     await expect(dlg(page)).toBeVisible();
     const results = await new AxeBuilder({ page }).include('dialog.px-fig').analyze();
     const bad = results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
