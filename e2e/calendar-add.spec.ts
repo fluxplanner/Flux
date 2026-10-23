@@ -201,3 +201,42 @@ test.describe('Calendar add dialog', () => {
     await expect(page.locator('#editNotes')).toHaveValue('original note');
   });
 });
+
+test.describe('Calendar add dialog: switching type', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 1000 });
+    await gotoScenario(page, 'student-semester');
+  });
+
+  test('after picking Task, Event and Activity are still one tap away, and back again', async ({ page }) => {
+    await openDialog(page);
+    const day = await page.evaluate(() => (document.querySelector('.cal-day.selected[data-cal-date]') as HTMLElement | null)?.dataset.calDate || '');
+    await page.locator('#addEventTypeTask').click();
+    await expect(page.locator('#dashAddTaskModal')).toBeVisible();
+    // The New task form carries the same three types while it came from the calendar.
+    for (const id of ['#taskCalTypeTask', '#taskCalTypeEvent', '#taskCalTypeEc']) await expect(page.locator(id)).toBeVisible();
+    await page.locator('#taskCalTypeEvent').click();
+    await expect(page.locator('#dashAddTaskModal')).toBeHidden();
+    await expect(page.locator('#addEventModal')).toBeVisible();
+    if (day) await expect(page.locator('#addEventDate')).toHaveValue(day);
+    for (const id of ['#addEventTypeTask', '#addEventTypeEvent', '#addEventTypeEc']) await expect(page.locator(id)).toBeVisible();
+
+    // Activity, then Task again, then Activity from the task form.
+    await page.locator('#addEventTypeEc').click();
+    await expect(page.locator('#addEventTypeEvent')).toBeVisible();
+    await page.locator('#addEventTypeTask').click();
+    await expect(page.locator('#dashAddTaskModal')).toBeVisible();
+    await page.locator('#taskCalTypeEc').click();
+    await expect(page.locator('#addEventModal')).toBeVisible();
+    await expect(page.locator('#addEventExtraRow')).toBeVisible();
+  });
+
+  test('the New task form opened anywhere else has no calendar type row', async ({ page }) => {
+    await openDialog(page);
+    await page.locator('#addEventTypeTask').click();
+    await page.evaluate(() => (window as any).closeDashAddTaskModal());
+    await page.evaluate(() => (window as any).openDashAddTaskModal());
+    await expect(page.locator('#dashAddTaskModal')).toBeVisible();
+    await expect(page.locator('#taskCalTypeRow')).toBeHidden();
+  });
+});
