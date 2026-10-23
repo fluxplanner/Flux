@@ -277,6 +277,7 @@
     "public/css/styles.css",
     "public/css/login.css",
     "public/css/login-aurora.css",
+    "public/css/flux-loader.css",
     "public/css/flux-login-split.css",
     "public/css/login-refresh.css",
     "public/css/flux-modern-ui.css",
