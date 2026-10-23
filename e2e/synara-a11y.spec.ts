@@ -287,7 +287,7 @@ test.describe('Synara: what it says about itself', () => {
   test('no notes meant for developers, and privacy copy that matches what it does', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/synara.html');
-    await expect(page.locator('#welcome .welcome-note')).toContainText('unless you turn on encrypted sync');
+    await expect(page.locator('#welcome .welcome-note')).toContainText('encrypted so Flux can’t read it');
     await page.getByRole('button', { name: 'Look around with example data' }).click();
     await expect(page.locator('#welcome')).toBeHidden();
 
