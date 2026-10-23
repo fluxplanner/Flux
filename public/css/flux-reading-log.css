@@ -211,6 +211,8 @@
   body.frl-printing::before, body.frl-printing::after { display: none !important; content: none !important; }
   #frlPrintRoot th, #frlPrintRoot td, #frlPrintRoot p, #frlPrintRoot strong { color: #000 !important; }
   #frlPrintRoot .frl-p { color: #000; font: 11pt/1.45 Georgia, 'Times New Roman', serif; }
+  #frlPrintRoot .frl-p-brand { display: flex; align-items: center; gap: 4px; margin: 0 0 6px; font: 700 11pt system-ui, -apple-system, 'Segoe UI', sans-serif; color: #333; }
+  #frlPrintRoot .frl-p-brand img { width: 18mm; height: 9mm; object-fit: cover; /* crop the square's empty top and bottom */ -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   #frlPrintRoot h1 { font: 700 20pt/1.2 system-ui, -apple-system, 'Segoe UI', sans-serif; margin: 0 0 8px; color: #000; }
   #frlPrintRoot h2 { font: 700 12.5pt/1.3 system-ui, -apple-system, 'Segoe UI', sans-serif; margin: 16px 0 6px; padding-bottom: 3px; border-bottom: 1px solid #000; color: #000; break-after: avoid; }
   #frlPrintRoot h3 { font: 700 11pt/1.3 system-ui, -apple-system, 'Segoe UI', sans-serif; margin: 0; color: #000; }
