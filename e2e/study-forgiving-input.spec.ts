@@ -116,25 +116,33 @@ test.describe('Study tools: forgiving input', () => {
     await expect(page.locator('#lgOut')).toContainText('läuft');
   });
 
-  test('the reading log takes minutes as "1h 30" or "1:15", and explains anything else', async ({ page }) => {
+  test('the reading log takes minutes as "1h 30" or "0:15", and explains anything else', async ({ page }) => {
     await gotoScenario(page, 'student-dashboard-widgets');
-    const card = page.locator('#readingLogCard');
-    await expect(card).toBeVisible();
-    await card.getByLabel('What are you reading?').fill('Macbeth');
-    await card.getByRole('button', { name: 'Add book' }).click();
-    await expect(card.getByLabel('Minutes')).toBeFocused();
+    await page.evaluate(() => (window as any).FluxReadingLog.open('books'));
+    await expect(page.locator('#readingLog.panel.active')).toBeVisible();
+    await page.locator('#frlBookTitle').fill('Macbeth');
+    await page.getByRole('button', { name: 'Save book' }).click();
+    await expect(page.locator('#frlBookMsg')).toHaveText('Added Macbeth.');
+    await page.locator('#frlTab-log').click();
+    const today = await page.evaluate(() => (window as any).FluxReadingLogCore.ymd(new Date()));
+    const minutes = page.locator('#frlEntryMin');
+    await expect(minutes).toHaveAttribute('placeholder', '25 or 1h 30');
 
-    await card.getByLabel('Minutes').fill('lots');
-    await card.getByRole('button', { name: 'Log today' }).click();
-    await expect(card.locator('#frlQuickMsg')).toHaveText(/Type minutes like 25, 1h 30 or 1:30/);
+    await page.locator('#frlEntryDate').fill(today);
+    await minutes.fill('lots');
+    await page.getByRole('button', { name: 'Save entry' }).click();
+    await expect(page.locator('#frlEntryMsg')).toHaveText('Type minutes like 25, 1h 30 or 1:30, up to 24 hours.');
+    await expect(minutes).toBeFocused();
 
-    await card.getByLabel('Minutes').fill('1h 30');
-    await card.getByRole('button', { name: 'Log today' }).click();
-    await expect(card.locator('#frlQuickMsg')).toHaveText('Logged 1 hour 30 minutes of Macbeth for today.');
+    await minutes.fill('1h 30');
+    await page.getByRole('button', { name: 'Save entry' }).click();
+    await expect(page.locator('#frlEntryMsg')).toHaveText('Saved: Macbeth, today.');
+    await expect(page.locator('#frlEntries')).toContainText('1 h 30 min');
 
-    await card.getByLabel('Minutes').fill('0:15');
-    await card.getByRole('button', { name: 'Log today' }).click();
-    await expect(card.locator('#frlQuickMsg')).toHaveText('Logged 15 minutes of Macbeth for today.');
-    await expect(card).toContainText('Today: 1 h 45 min');
+    await page.locator('#frlEntryDate').fill(today);
+    await minutes.fill('0:15');
+    await page.getByRole('button', { name: 'Save entry' }).click();
+    await expect(page.locator('#frlEntryMsg')).toHaveText('Saved: Macbeth, today.');
+    await expect(page.locator('#frlEntries')).toContainText('15 min');
   });
 });
