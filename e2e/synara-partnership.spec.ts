@@ -12,9 +12,9 @@ const NOT_PURPLE_DAY = new Date('2027-03-25T10:00:00');
 const accent = (page: Page) => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
 
 test.describe('Purple Day', () => {
-  test('on March 26 the hub goes purple and points to Synara; dismissing it lasts the year', async ({ page }) => {
+  test('on March 26 Flux Suite goes purple and points to Synara; dismissing it lasts the year', async ({ page }) => {
     await page.clock.setFixedTime(PURPLE_DAY);
-    await page.goto('/hub.html');
+    await page.goto('/suite.html');
     await expect(page.locator('html')).toHaveClass(/flux-purple-day/);
     expect(await accent(page)).toBe('#a78bfa');
 
@@ -35,7 +35,7 @@ test.describe('Purple Day', () => {
 
   test('any other day nothing changes', async ({ page }) => {
     await page.clock.setFixedTime(NOT_PURPLE_DAY);
-    await page.goto('/hub.html');
+    await page.goto('/suite.html');
     await expect(page.locator('html')).not.toHaveClass(/flux-purple-day/);
     await expect(page.locator('.fxpd')).toHaveCount(0);
     expect(await accent(page)).toBe('#00c2ff');
@@ -43,8 +43,8 @@ test.describe('Purple Day', () => {
 
   test('?purpleday previews it on any day', async ({ page }) => {
     await page.clock.setFixedTime(NOT_PURPLE_DAY);
-    // /hub, not /hub.html?…: the test server's clean-URL redirect drops the query.
-    await page.goto('/hub?purpleday');
+    // /suite, not /suite.html?…: the test server's clean-URL redirect drops the query.
+    await page.goto('/suite?purpleday');
     await expect(page.locator('[data-purple-day-slot] .fxpd')).toBeVisible();
   });
 
@@ -79,8 +79,8 @@ test.describe('Purple Day', () => {
 });
 
 test.describe('Flux Partners', () => {
-  test('the hub labels Synara a partner and links to the program', async ({ page }) => {
-    await page.goto('/hub.html');
+  test('Flux Suite labels Synara a partner and links to the program', async ({ page }) => {
+    await page.goto('/suite.html');
     await expect(page.locator('#apps a.app--synara .app-partner')).toHaveText('Partner');
     await expect(page.locator('#apps .app-partner')).toHaveCount(1);
     await page.getByRole('tab', { name: /Partners/ }).click();

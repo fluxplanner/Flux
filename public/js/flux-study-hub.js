@@ -1466,8 +1466,8 @@
 
   /* The study apps that open on their own page (Flux Tutor, the full Grapher
      with 3D, Pixel, Flashcards…). Inside the planner they were reachable only
-     through the nine-dot Hub, so a student in Study tools never learned they
-     existed. The list is flux-hub.js's, the same one hub.html shows, so a new
+     through the nine-dot Flux Suite link, so a student in Study tools never learned they
+     existed. The list is flux-hub.js's, the same one suite.html shows, so a new
      app turns up here without touching this file. target=_blank: flux-hub.js
      keeps these in the same window when Flux runs as a home-screen app. */
   function appsShelfHtml() {

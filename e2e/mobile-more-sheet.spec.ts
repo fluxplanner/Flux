@@ -233,5 +233,5 @@ test('the More sheet names Flux Suite, the way to the other Flux apps on a phone
   await expect(item).toBeVisible();
   await item.click();
   // The dev server drops .html from the address.
-  await page.waitForURL(/\/(hub|suite)(\.html)?$/, { waitUntil: 'commit' });
+  await page.waitForURL(/\/suite(\.html)?$/, { waitUntil: 'commit' });
 });

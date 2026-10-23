@@ -240,7 +240,7 @@
       <nav class="lx-topbar-actions" aria-label="Login">
         <a class="lx-navlink" href="#features">Features</a>
         <a class="lx-navlink" href="#grapher">Grapher</a>
-        <a class="lx-navlink" href="hub.html">All apps</a>
+        <a class="lx-navlink" href="suite.html">All apps</a>
         <button type="button" class="lx-ghost-btn" onclick="skipLogin()">
           Continue as guest <span aria-hidden="true">→</span>
         </button>
@@ -3024,7 +3024,7 @@
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c391de9f.js"></script>
 <script defer src="public/bundles/flux-core.44fd4dc9.js"></script>
-<script defer src="public/bundles/flux-features.1ef1e4bc.js"></script>
+<script defer src="public/bundles/flux-features.e1297716.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
@@ -3086,10 +3086,9 @@
       <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2 M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/></svg></span><span class="more-sheet-label">Profile</span>
     </button>
     <!-- The nine-dot switcher in the phone top bar is easy to miss, so the
-         rest of the Flux apps get a named way in here too. hub.html forwards
-         to suite.html once Flux Suite lands, so this works either side. A
-         button, not a link, so it takes the sheet's pill shape like the rest. -->
-    <button type="button" class="more-sheet-item" data-action="suite" onclick="closeMobileSheet();location.href='hub.html'">
+         rest of the Flux apps get a named way in here too. A button, not a
+         link, so it takes the sheet's pill shape like the rest. -->
+    <button type="button" class="more-sheet-item" data-action="suite" onclick="closeMobileSheet();location.href='suite.html'">
       <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span><span class="more-sheet-label">Flux Suite</span>
     </button>
     <!-- B2: the floating Report fab collapses into this item on <768px -->

@@ -349,7 +349,7 @@ test.describe('Periodic table page: taps that must not move it, and paper', () =
  */
 test.describe('Periodic table: nothing repaints the screen behind it', () => {
   test('no page paints a fixed body background, signed in or not', async ({ page }) => {
-    const pages = ['periodic', 'composer', 'hub', 'flashcards', 'pixel', 'partners', 'grapher', 'calculator'];
+    const pages = ['periodic', 'composer', 'suite', 'flashcards', 'pixel', 'partners', 'grapher', 'calculator'];
     const fixed = async () => {
       const out: string[] = [];
       for (const p of pages) {
