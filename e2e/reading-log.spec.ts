@@ -4,15 +4,21 @@ import { bootSignedIn, gotoScenario, openSidebarTab, type BootTask } from './hel
 
 /*
  * Reading log (flux-reading-log.js), asked for by a literature teacher:
- * a dashboard card with "Log today", and its own page with the daily log,
- * books, quotes, the teacher's weekly goal, a streak, and a printout for a
- * chosen range. The counting and merging are unit tested in
- * test/unit/reading-log.test.mjs; this checks the screens, printing, the
- * dashboard section switch, and that the log goes up to the account and
- * comes back merged with another device's entries.
+ * its own page with the daily log, books, quotes, the teacher's weekly goal,
+ * a streak, and a printout for a chosen range. The counting and merging are
+ * unit tested in test/unit/reading-log.test.mjs; this checks the screens,
+ * printing, that the dashboard no longer carries a card for it, and that the
+ * log goes up to the account and comes back merged with another device's
+ * entries.
  */
 
-const card = (page: Page) => page.locator('#readingLogCard');
+async function todayMinutes(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const w = window as any;
+    const t = w.FluxReadingLogCore.ymd(new Date());
+    return w.FluxReadingLog.state().entries.filter((e: any) => !e.deleted && e.date === t).reduce((n: number, e: any) => n + (e.minutes || 0), 0);
+  });
+}
 
 async function today(page: Page): Promise<string> {
   return page.evaluate(() => (window as any).FluxReadingLogCore.ymd(new Date()));
@@ -27,50 +33,12 @@ test.describe('Reading log', () => {
     await expect(page.locator('#dashboard.panel.active')).toBeVisible();
   });
 
-  test('the dashboard card adds a book, logs today, and shows the week against the goal', async ({ page }) => {
-    await expect(card(page)).toBeVisible();
-    await expect(card(page).getByRole('heading', { name: 'Reading log' })).toBeVisible();
-    await expect(card(page)).toContainText('Read today to start a streak');
-
-    // No books yet: the card asks what you are reading.
-    const title = card(page).getByLabel('What are you reading?');
-    await card(page).getByRole('button', { name: 'Add book' }).click();
-    await expect(card(page).locator('#frlQuickBookMsg')).toHaveText(/type the title/i);
-    await title.fill('Macbeth');
-    await card(page).getByRole('button', { name: 'Add book' }).click();
-    await expect(card(page).locator('#frlQuickBook')).toHaveValue(/.+/);
-    await expect(card(page).getByLabel('Minutes')).toBeFocused();
-
-    // Nothing filled in is refused, in words.
-    await card(page).getByRole('button', { name: 'Log today' }).click();
-    await expect(card(page).locator('#frlQuickMsg')).toHaveText(/minutes you read, the pages, or both/i);
-
-    await card(page).getByLabel('Minutes').fill('25');
-    await card(page).getByLabel('Pages').fill('12');
-    await card(page).getByRole('button', { name: 'Log today' }).click();
-    await expect(card(page).locator('#frlQuickMsg')).toHaveText('Logged 25 minutes and 12 pages of Macbeth for today.');
-    await expect(card(page)).toContainText('Today: 25 min, 12 pages');
-    await expect(card(page)).toContainText('Read today: day 1 of a streak');
-    await expect(card(page).getByLabel('Minutes')).toHaveValue('');
-
-    // No goal yet: the card offers to set one, which opens the page's goal form.
-    await card(page).getByRole('button', { name: 'Set your weekly goal' }).click();
-    await expect(page.locator('#readingLog.panel.active')).toBeVisible();
-    await expect(page.locator('#topbarTitle')).toHaveText('Reading log');
-    await expect(page.locator('#frlGoalAmount')).toBeFocused();
-    await page.locator('#frlGoalAmount').fill('60');
-    await page.getByRole('button', { name: 'Save goal' }).click();
-    await expect(page.locator('#frlGoalMsg')).toHaveText('Goal saved: 60 minutes a week.');
-
-    await page.evaluate(() => (window as any).nav('dashboard'));
-    const bar = card(page).getByRole('progressbar', { name: 'Weekly reading goal' });
-    await expect(bar).toHaveAttribute('aria-valuetext', '25 of 60 minutes, 42 percent');
-    await expect(card(page)).toContainText('35 minutes to go');
-
-    // It survives a reload (saved through the app's own storage).
-    await page.reload();
-    await expect(page.locator('#app')).toHaveClass(/visible/);
-    await expect(card(page)).toContainText('25 of 60 minutes');
+  test('the dashboard has no reading log card any more; its tab opens the log', async ({ page }) => {
+    // It has its own tab in the sidebar, so the dashboard keeps to tasks (Azfer, 2026-10-23).
+    await expect(page.locator('#readingLogCard')).toHaveCount(0);
+    await expect(page.locator('#dashboard .frl-card')).toHaveCount(0);
+    await openSidebarTab(page, 'readingLog');
+    await expect(page.locator('#readingLog.panel.active #frlRoot')).toBeVisible();
   });
 
   test('the page: books, entries with from–to pages, edit, delete with a check, quotes, tabs by keyboard', async ({ page }) => {
@@ -266,19 +234,13 @@ test.describe('Reading log', () => {
       w.FluxReadingLog.render();
       return id;
     });
-    await expect(card(page)).toBeVisible();
-    await card(page).getByLabel('Minutes').fill('15');
-    await card(page).getByRole('button', { name: 'Log today' }).click();
-    await expect(card(page).locator('#frlQuickMsg')).toContainText('Logged 15 minutes');
     for (const theme of ['dark', 'light']) {
       await page.evaluate((k) => (window as any).applyTheme?.(k), theme);
-      for (const where of ['dashboard', 'log', 'books', 'quotes', 'print']) {
-        if (where === 'dashboard') await page.evaluate(() => (window as any).nav('dashboard'));
-        else await page.evaluate((w) => (window as any).FluxReadingLog.open(w), where);
+      for (const where of ['log', 'books', 'quotes', 'print']) {
+        await page.evaluate((w) => (window as any).FluxReadingLog.open(w), where);
         const sideways = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         expect(sideways, `${theme} ${where}`).toBeLessThanOrEqual(0);
-        const root = where === 'dashboard' ? '#readingLogCard' : '#frlRoot';
-        const overflow = await page.locator(root).evaluate((el) => {
+        const overflow = await page.locator('#frlRoot').evaluate((el) => {
           const r = el.getBoundingClientRect();
           // Click ripples are drawn larger than their button and clipped by it.
           return [...el.querySelectorAll('*')].filter((c) => !c.closest('[class*="ripple"]')).filter((c) => {
@@ -299,16 +261,11 @@ test.describe('Reading log', () => {
     }
   });
 
-  test('no serious accessibility problems on the card or the page', async ({ page }) => {
+  test('no serious accessibility problems on the page', async ({ page }) => {
     await page.evaluate(() => {
       const w = window as any;
       w.FluxReadingLog.addBook({ title: 'Macbeth' });
     });
-    for (const sel of ['#readingLogCard']) {
-      const r = await new AxeBuilder({ page }).include(sel).analyze();
-      const bad = r.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
-      expect(bad.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual([]);
-    }
     for (const tab of ['log', 'books', 'quotes', 'print']) {
       await page.evaluate((w) => (window as any).FluxReadingLog.open(w), tab);
       await page.waitForTimeout(700);   // let the panel's entrance settle: half-faded text reads as low contrast
@@ -316,21 +273,6 @@ test.describe('Reading log', () => {
       const bad = r.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
       expect(bad.map((v) => `${tab} ${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual([]);
     }
-  });
-
-  test('the card can be hidden and brought back from Settings, Layout', async ({ page }) => {
-    await expect(card(page)).toBeVisible();
-    await card(page).getByRole('button', { name: 'Hide the reading log card from the dashboard' }).click();
-    await expect(card(page)).toHaveClass(/flux-dash-user-hidden/);
-    await expect(card(page)).toBeHidden();
-    await openSidebarTab(page, 'settings');
-    await page.evaluate(() => (window as any).switchStab('appearance'));
-    await page.evaluate(() => (window as any).FluxPersonal?.renderPanelLayoutSettings?.());
-    const box = page.locator('#fluxPanelLayoutSettings label').filter({ hasText: 'Reading log' }).locator('input');
-    await expect(box).not.toBeChecked();
-    await box.check();
-    await page.evaluate(() => (window as any).nav('dashboard'));
-    await expect(card(page)).toBeVisible();
   });
 
   test('Study tools, English, Literature opens the reading log', async ({ page }) => {
@@ -382,18 +324,18 @@ test('the log goes up to the account and comes back merged with another device\'
   await expect.poll(() => page.evaluate(() => (window as any).FluxReadingLog.state().entries.map((e: any) => e.id).sort()), { timeout: 15_000 })
     .toEqual(['elaptop1', 'ephone1']);
   await expect.poll(() => ids((boot.state.cloud as any).readingLog), { timeout: 20_000 }).toEqual(['elaptop1', 'ephone1']);
-  await expect(card(page)).toContainText('Today: 35 min');
+  await expect.poll(() => todayMinutes(page)).toBe(35);
 
-  // The phone logs again (writing the row) while the student logs here from the card.
+  // The phone logs again (writing the row) while the student logs here on the page.
   await page.waitForTimeout(500);
   boot.writeElsewhere((row: any) => ({
     ...row,
     readingLog: { ...row.readingLog, entries: [...row.readingLog.entries, { id: 'ephone2', date: ymd, bookId: 'bshared', minutes: 10, updated: Date.now() }] },
   }));
+  await page.evaluate(() => (window as any).FluxReadingLog.open('log'));
   await noMoodCard(page);
-  await card(page).getByLabel('Minutes').fill('5');
-  await card(page).getByRole('button', { name: 'Log today' }).click();
-  await expect(card(page).locator('#frlQuickMsg')).toContainText('Logged 5 minutes of The Odyssey');
+  await page.locator('#frlEntryMin').fill('5');
+  await page.locator('#frlEntrySubmit').click();
 
   // Nothing lost on either side: four entries, here and in the account.
   await expect.poll(async () => {
@@ -402,7 +344,7 @@ test('the log goes up to the account and comes back merged with another device\'
   }, { timeout: 30_000 }).toEqual({ here: 4, cloud: 4 });
   const cloudIds = ids((boot.state.cloud as any).readingLog);
   expect(cloudIds).toEqual(expect.arrayContaining(['elaptop1', 'ephone1', 'ephone2']));
-  await expect(card(page)).toContainText('Today: 50 min');
+  await expect.poll(() => todayMinutes(page)).toBe(50);
 
   // A deletion here reaches the account as a tombstone, not a missing item that could come back.
   await page.evaluate(() => {

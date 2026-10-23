@@ -218,3 +218,23 @@ test.describe('Ticking a task off on a phone', () => {
     expect(await stored(page, 9100)).toBe(true);
   });
 });
+
+test('finishing a task shows one check mark, not a scatter of little icons', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await gotoScenario(page, 'student-semester');
+  await seed(page, 3);
+  await page.evaluate(() => {
+    const w = window as any;
+    w._fluxAdded = [];
+    new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n: any) => {
+      if (n.nodeType === 1) w._fluxAdded.push({ cls: String(n.className || ''), text: (n.textContent || '').trim() });
+    }))).observe(document.body, { childList: true });
+  });
+  await check(page, 9100).click();
+  await page.waitForTimeout(400);
+  const added = await page.evaluate(() => (window as any)._fluxAdded as { cls: string; text: string }[]);
+  expect(added.filter((a) => /burst|particle/.test(a.cls)), 'dots flew out of the check box').toEqual([]);
+  const marks = added.filter((a) => a.cls.includes('flux-celebrate-overlay'));
+  for (const m of marks) expect(m.text).toBe('✓');
+  expect(await stored(page, 9100)).toBe(true);
+});

@@ -557,7 +557,7 @@ function taskComplete(taskEl, checkboxEl, onDone) {
     } catch (_) {}
   };
 
-  particleBurst(chk || taskEl);
+  // No particleBurst here: the tick alone marks a finished task (see app.js toggleTask).
   try { window.FluxMotionMore?.tickAndStrike(chk, nameEl); } catch (_) {}
 
   try {
