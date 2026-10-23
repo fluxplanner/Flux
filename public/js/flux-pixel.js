@@ -169,10 +169,10 @@
     return figCache[key];
   }
   /** A new figure item, centred on c (page units), at a size that suits the page. */
-  function figureItem(spec, c) {
+  function figureItem(spec, c, scale) {
     var b = window.FluxFigures.build(spec);
     if (b.error) return null;
-    var k = Math.min(1.3, (W * 0.8) / b.w, (H * 0.8) / b.h), w = b.w * k, h = b.h * k;
+    var k = Math.min(1.3, (W * 0.8) / b.w, (H * 0.8) / b.h) * (scale || 1), w = b.w * k, h = b.h * k;
     c = c || [W / 2, H / 2];
     return { type: 'figure', fig: window.FluxFigures.clean(spec), color: '#111827',
       x: Math.max(0, Math.min(W - w, c[0] - w / 2)), y: Math.max(0, Math.min(H - h, c[1] - h / 2)), w: w, h: h };
@@ -1172,10 +1172,15 @@
           });
         };
         if (clear(first)) return first;
-        var dx = first.w + gap, dy = first.h + gap, tries = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1], [2, 0], [-2, 0]];
-        for (var i = 0; i < tries.length; i++) {
-          var cand = figureItem(spec, [c[0] + tries[i][0] * dx, c[1] + tries[i][1] * dy]);
-          if (cand && clear(cand)) return cand;
+        // Beside what is there; on a crowded page, smaller, so it still fits in a gap.
+        var tries = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1], [2, 0], [-2, 0]];
+        for (var sc = 1; sc >= 0.3; sc -= 0.2) {
+          var probe = figureItem(spec, c, sc), dx = probe.w + gap, dy = probe.h + gap;
+          if (sc < 1 && clear(probe)) return probe;
+          for (var i = 0; i < tries.length; i++) {
+            var cand = figureItem(spec, [c[0] + tries[i][0] * dx, c[1] + tries[i][1] * dy], sc);
+            if (cand && clear(cand)) return cand;
+          }
         }
         // A full page: a little down and to the right of the last one, so it can still be seen and grabbed.
         var last = boxes[boxes.length - 1];
@@ -1198,7 +1203,7 @@
       var FIG_TRY = ['right triangle 3 4 5', 'y = x^2 − 4', 'circle r 5 sector 60', 'cylinder r 3 h 8', 'number line x ≥ −2', 'angles on a straight line 40 70'];
       function figStartHTML() {
         return '<div class="px-sec px-fstart"><span class="px-sec-h">Flux Figures</span>'
-          + '<p class="px-hint">Maths figures drawn to scale. Pick one on the left, or type it:</p>'
+          + '<p class="px-hint">Maths figures drawn to scale. Pick one from the tools, or type it:</p>'
           + '<form class="px-fi-ask" id="pxNewFig" autocomplete="off"><label class="px-f-lab" for="pxNewFigIn">Describe it</label><div class="px-fig-ask-row">'
           + '<input class="px-f-in" id="pxNewFigIn" type="text" spellcheck="false" enterkeyhint="go" placeholder="right triangle 3 4 5" aria-describedby="pxNewFigHint">'
           + '<button type="submit" class="px-btn px-btn--small px-btn--primary">Add</button></div>'

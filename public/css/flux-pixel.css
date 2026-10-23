@@ -149,7 +149,7 @@ body.px-full main.px-app { max-width: none; padding: 0; }
   .px-stage { flex: 1; border-radius: 0; }
   .px-tools { order: 2; flex-direction: row; align-self: stretch; max-height: none; border-radius: 0; border-width: 1px 0 0; padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)); overflow-x: auto; overflow-y: hidden; box-shadow: none; }
   .px-tools-sep { width: 1px; height: auto; margin: 6px 3px; }
-  .px-props { position: absolute; z-index: 6; left: 0; right: 0; bottom: 0; width: auto; max-height: min(58dvh, 520px); border-radius: 18px 18px 0 0; border-width: 1px 0 0; box-shadow: 0 -20px 40px -20px #000; }
+  .px-props { position: absolute; z-index: 6; left: 0; right: 0; bottom: calc(62px + env(safe-area-inset-bottom, 0px)); width: auto; max-height: min(58dvh, 520px); border-radius: 18px 18px 0 0; border-width: 1px 0 0; box-shadow: 0 -20px 40px -20px #000; }
   .px-keys { display: none; }
   .px-colors { grid-template-columns: repeat(12, 1fr); }
   .px-stamp-row { grid-template-columns: repeat(6, 1fr); }
