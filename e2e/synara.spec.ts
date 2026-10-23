@@ -162,10 +162,10 @@ test.describe('Synara', () => {
     await expect(page.locator('#emergency[data-open="true"]')).toBeVisible();
   });
 
-  // The nine-dot control is a plain link to the Flux Hub now (no menu), so
+  // The nine-dot control is a plain link to the Flux Suite now (no menu), so
   // these check the link: it lives in Synara's app bar, survives re-renders,
-  // stays on screen on a phone, and leads to the Hub with Synara on it.
-  test('the Flux Hub link lives in its app bar and survives re-renders', async ({ page }) => {
+  // stays on screen on a phone, and leads to Flux Suite with Synara on it.
+  test('the Flux Suite link lives in its app bar and survives re-renders', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 860 });
     await withExampleData(page);
 
@@ -174,17 +174,17 @@ test.describe('Synara', () => {
     await page.locator('.tab[data-to="home"]').click();
     const link = page.locator('#appbar .fxhub-btn');
     await expect(link).toHaveCount(1);
-    await expect(link).toHaveAttribute('href', 'hub.html');
-    await expect(link).toHaveAttribute('aria-label', 'Open the Flux Hub');
+    await expect(link).toHaveAttribute('href', 'suite.html');
+    await expect(link).toHaveAttribute('aria-label', 'Open Flux Suite');
     const b = (await link.boundingBox())!;
     expect(b.x + b.width).toBeLessThanOrEqual(1280);
 
     await link.click();
-    await expect(page).toHaveURL(/\/hub(\.html)?$/);
+    await expect(page).toHaveURL(/\/suite(\.html)?$/);
     await expect(page.locator('#apps a.app--synara .app-name')).toHaveText(/^Synara/);
   });
 
-  test('on a phone the Flux Hub link stays on screen', async ({ page }) => {
+  test('on a phone the Flux Suite link stays on screen', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await withExampleData(page);
     const link = page.locator('#appbar .fxhub-btn');
@@ -192,14 +192,14 @@ test.describe('Synara', () => {
     expect(b.x, 'link runs off the left edge').toBeGreaterThanOrEqual(0);
     expect(b.x + b.width, 'link runs off the right edge').toBeLessThanOrEqual(375);
     await link.click();
-    await expect(page).toHaveURL(/\/hub(\.html)?$/);
+    await expect(page).toHaveURL(/\/suite(\.html)?$/);
     await page.locator('#apps a.app--grapher').click();
     await expect(page).toHaveURL(/grapher/);
   });
 
   test('keeps its own violet even when the planner theme is carried', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'light' });
-    await page.goto('/hub.html');
+    await page.goto('/suite.html');
     await page.evaluate(() => {
       localStorage.setItem('flux_theme', '"ember"');
       localStorage.setItem('flux_accent', '"#f97316"');
@@ -211,8 +211,8 @@ test.describe('Synara', () => {
     expect(brand.toLowerCase()).toBe('#7c4dff');
   });
 
-  test('the hub lists it under the Partners tab, in its own colour', async ({ page }) => {
-    await page.goto('/hub.html');
+  test('Flux Suite lists it under the Partners tab, in its own colour', async ({ page }) => {
+    await page.goto('/suite.html');
     const hrefs = await page.locator('#apps .app').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
     // Flux's own apps first, then the partner app it builds for someone else.
     expect(hrefs[0]).toBe('index.html');
