@@ -69,6 +69,7 @@
     front: svgIcon('<rect x="8" y="8" width="12" height="12" rx="1.5"/><path d="M4 16V5a1 1 0 0 1 1-1h11"/>'),
     vector: svgIcon('<path d="M4 20 18 6"/><path d="M19 5l-1.2 6.2L12.8 6.2z" fill="currentColor"/><path d="M4 20h7" stroke-dasharray="2 2.5"/>'),
     figure: svgIcon('<path d="M3 20h12L3 6z"/><path d="M3 16h4v4"/><circle cx="17.5" cy="7.5" r="3.5"/>'),
+    panel: svgIcon('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>'),
     link: svgIcon('<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>'),
   };
   var ERASE_PREF = 'flux_pixel_eraser';
@@ -510,6 +511,8 @@
 
     function render() {
       if (cleanup) { try { cleanup(); } catch (e) {} cleanup = null; }
+      // The editor takes the whole window; the gallery keeps the page's own header.
+      document.body.classList.toggle('px-full', /^#\/d\//.test(location.hash || ''));
       var fl = (location.hash || '').match(/^#\/fig\/(.+)$/);
       if (fl) {
         // A share link: the gallery behind, the figure's settings in the panel.
@@ -881,6 +884,8 @@
         + '<button type="button" class="px-btn px-btn--small" data-act="copy">' + ICON.copy + '<span>Copy</span></button>'
         + '<button type="button" class="px-btn px-btn--small px-btn--primary" data-act="png">' + ICON.download + '<span>PNG</span></button>'
         + '<button type="button" class="px-btn px-btn--small" data-act="svg"><span>SVG</span></button>'
+        + '<button type="button" class="px-icon px-panel-t" data-act="panel" aria-label="Options" title="Show or hide the options" aria-controls="pxProps">' + ICON.panel + '</button>'
+        + '<div class="px-hub" data-flux-hub="pixel"></div>'
         + '</div>'
         + '<div class="px-body">'
         + '<div class="px-tools" role="toolbar" aria-label="Tools">' + TOOLS.map(function (t) {
@@ -972,9 +977,22 @@
           + (cur[0] === 'circle' ? '<div class="px-sec"><label class="px-sec-h" for="pxEraseSize">Eraser size</label><input type="range" id="pxEraseSize" min="4" max="80" value="' + st.eraseR + '" data-erase-size></div>' : '');
       }
       function drawTools() { $$('[data-tool]', host).forEach(function (b) { b.classList.toggle('is-on', b.dataset.tool === st.tool); b.setAttribute('aria-pressed', b.dataset.tool === st.tool); }); }
+      /** The page's width at 100%: as big as fits the space it has, whole. */
+      function fitWidth() {
+        var r = stage.getBoundingClientRect(), pad = r.width < 500 ? 8 : 20;
+        return Math.max(160, Math.min(r.width - pad * 2, (r.height - pad * 2) * W / H));
+      }
       function applyZoom() {
-        wrap.style.width = Math.round(st.zoom * 100) + '%';
+        wrap.style.width = Math.round(fitWidth() * st.zoom) + 'px';
         $('.px-zoom-v', host).textContent = Math.round(st.zoom * 100) + '%';
+      }
+      /** Options on the right (a sheet from the bottom on a phone), shown or hidden. */
+      function setPanel(open) {
+        st.panel = open;
+        host.querySelector('.px-editor').classList.toggle('is-panel', open);
+        var b = $('[data-act="panel"]', host);
+        if (b) b.setAttribute('aria-expanded', String(open));
+        applyZoom();
       }
 
       /* Saving and history */
@@ -1338,6 +1356,7 @@
         else if (a === 'zoomin') { st.zoom = Math.min(4, st.zoom + 0.25); applyZoom(); }
         else if (a === 'zoomout') { st.zoom = Math.max(0.5, st.zoom - 0.25); applyZoom(); }
         else if (a === 'zoomfit') { st.zoom = 1; applyZoom(); }
+        else if (a === 'panel') setPanel(!st.panel);
         else if (a === 'delete' && it) { doc.items = doc.items.filter(function (x) { return x !== it; }); st.sel = null; drawItems(); drawProps(); commit(); }
         else if (a === 'dup' && it) { var copy = JSON.parse(JSON.stringify(it)); moveItem(copy, 30, 30); var n = addItem(copy); st.sel = n.id; drawSel(); drawProps(); }
         else if (a === 'front' && it) { doc.items = doc.items.filter(function (x) { return x !== it; }).concat([it]); drawItems(); commit(); }
@@ -1427,8 +1446,13 @@
       document.addEventListener('keydown', onKey);
       document.addEventListener('paste', onPaste);
 
-      drawBg(); drawItems(); setTool(doc.items.length ? 'select' : 'pen'); applyZoom();
+      drawBg(); drawItems(); setTool(doc.items.length ? 'select' : 'pen');
+      setPanel(window.innerWidth > 760);
+      if (window.FluxHub) window.FluxHub.mountAll();
+      var ro = typeof ResizeObserver === 'function' ? new ResizeObserver(function () { applyZoom(); }) : null;
+      if (ro) ro.observe(stage); else window.addEventListener('resize', applyZoom);
       cleanup = function () {
+        if (ro) ro.disconnect(); else window.removeEventListener('resize', applyZoom);
         if (editing) closeText(true);
         clearTimeout(saveTimer); putDoc(doc);
         document.removeEventListener('keydown', onKey);
