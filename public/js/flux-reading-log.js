@@ -256,7 +256,7 @@
               '<p class="frl-hint" id="frlEntryPagesHint" aria-live="polite"></p>' +
             '</fieldset>' +
             '<div class="frl-grid frl-grid--2">' +
-              num('frlEntryMin', 'Minutes read', 1440) +
+              '<label class="frl-field"><span>Minutes read</span><input id="frlEntryMin" type="text" autocomplete="off" placeholder="25 or 1h 30"></label>' +
               '<label class="frl-field"><span>Note <span class="frl-opt">(optional)</span></span><input id="frlEntryNote" type="text" maxlength="500" autocomplete="off"></label>' +
             '</div>' +
             '<div class="frl-actions">' +
@@ -494,14 +494,14 @@
     };
     var n = {
       fromPage: C.int(fields.fromPage, 0, 20000), toPage: C.int(fields.toPage, 0, 20000),
-      pages: C.int(fields.pages, 0, 5000), minutes: C.int(fields.minutes, 0, 1440),
+      pages: C.int(fields.pages, 0, 5000), minutes: C.minutes(fields.minutes, 1440),
     };
     var bad = Object.keys(fields).filter(function (k) { return fields[k] !== '' && n[k] == null; });
     if (!C.isYMD(date)) return fail('frlEntryMsg', 'frlEntryDate', 'Pick the date you read.');
     if (date > today()) return fail('frlEntryMsg', 'frlEntryDate', 'That date is in the future. Pick today or an earlier day.');
     if (!bookId) return fail('frlEntryMsg', 'frlEntryBook', 'Pick the book you read.');
     if (bad.length) return fail('frlEntryMsg', bad[0] === 'minutes' ? 'frlEntryMin' : bad[0] === 'pages' ? 'frlEntryPages' : bad[0] === 'fromPage' ? 'frlEntryFrom' : 'frlEntryTo',
-      'Check the numbers: pages up to 5000 in one go, minutes up to 1440.');
+      bad[0] === 'minutes' ? 'Type minutes like 25, 1h 30 or 1:30, up to 24 hours.' : 'Check the numbers: pages up to 5000 in one go.');
     if ((n.fromPage != null) !== (n.toPage != null) && n.pages == null) {
       return fail('frlEntryMsg', n.fromPage == null ? 'frlEntryFrom' : 'frlEntryTo', 'Fill in both the "from" and "to" page, or just the number of pages.');
     }

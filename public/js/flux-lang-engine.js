@@ -1430,9 +1430,11 @@
 
   // ── public API ────────────────────────────────────────────────────────────
 
-  /** Normalise what someone typed: trim, lowercase, drop a leading "to ". */
+  /** Normalise what someone typed: trim, lowercase, drop a leading "to " and
+   *  any punctuation around the word ("tener?", "¡ir!", "\"hablar\""). */
   function clean(verb) {
-    return String(verb == null ? '' : verb).trim().toLowerCase().replace(/^to\s+/, '');
+    return String(verb == null ? '' : verb).normalize('NFC').trim().toLowerCase()
+      .replace(/^[\s¿¡?!.,;:"'«»“”‘’()]+|[\s¿¡?!.,;:"'«»“”‘’()]+$/g, '').replace(/^to\s+/, '');
   }
 
   /** Which of the three tables a language code lands in. */

@@ -127,7 +127,7 @@
         .map(function (n) { return '<option value="' + n + '"' + (cfg.count === n ? ' selected' : '') + '>' + n + ' questions</option>'; }).join('')
       + '</select></label></div></fieldset>'
       + '<label class="fvd-check"><input type="checkbox" id="' + p + 'exact"' + (cfg.exact ? ' checked' : '') + '><span>Accents must be exact</span></label>'
-      + '<p class="fvd-hint">' + (cfg.exact ? 'A missing or wrong accent counts as a mistake.' : 'A missing accent still counts as right, and the correct spelling is shown.') + '</p>';
+      + '<p class="fvd-hint">' + (cfg.exact ? 'A missing or wrong accent counts as a mistake.' : 'A missing accent still counts as right, and the correct spelling is shown.') + ' Capitals, spaces and punctuation never count.</p>';
   }
 
   /** Read a settings form back into a config (plus what the custom list said). */
@@ -499,7 +499,7 @@
     var R = S.round;
     var fb = $('#fvdFb');
     var inp = $('#fvdIn');
-    var why = res.accents ? 'Accents count in this round. ' : '';
+    var why = res.accents ? 'Accents count in this round. ' : res.close ? 'So close — one letter off. ' : '';
     fb.className = 'fvd-fb is-no';
     fb.innerHTML = '<span class="fvd-mark" aria-hidden="true">✗</span> ' + esc(why) + 'The answer is <b lang="' + S.lang + '">' + esc(shown) + '</b>'
       + '<span class="fvd-note">Press Enter to go on.</span>';
