@@ -58,17 +58,19 @@
         ['first', 'First quadrant, 0 to 10', { xmin: 0, xmax: 10, ymin: 0, ymax: 10, xstep: 1, ystep: 1, axes: true, nums: true, lines: true }],
         ['paper', 'Blank graph paper', { xmin: 0, xmax: 20, ymin: 0, ymax: 14, xstep: 1, ystep: 1, axes: false, nums: false, lines: true, eqs: '', pts: '', title: '' }],
       ] },
+      H('Graphs and points'),
+      { k: 'eqs', t: 'area', l: 'Lines and curves, one per line', ph: 'y = 2x + 1\ny > x^2 − 4\nx^2 + y^2 = 25\ny = √x for 0 ≤ x ≤ 9' },
+      { t: 'note', l: 'Type it the way you would write it: 2x + 3y = 6, |x|, sin x, f(x) = x^3. An inequality shades its side, dashed for < and >. Add “for −2 < x < 3” to draw part of a line.' },
+      { k: 'pts', t: 'area', l: 'Points and shapes, one per line', ph: 'A(2, 3)\npolygon P(0,0) Q(4,0) R(4,3)\nsegment (0,0) (3,4)' },
       H('Range'),
       N('xmin', 'Smallest x'), N('xmax', 'Largest x'), N('ymin', 'Smallest y'), N('ymax', 'Largest y'),
       N('xstep', 'Grid step across'), N('ystep', 'Grid step up'),
-      H('Axes'),
+      { t: 'action', a: 'fit', l: 'Fit the grid to my graphs' },
+      H('Axes and labels'),
       C('axes', 'Axes'), C('arrows', 'Arrows on the axes', is(['axes', true])), C('nums', 'Numbers'), C('lines', 'Grid lines'),
       N('every', 'Numbers on every … line (0 picks for you)', is(['nums', true])),
       T('xname', 'Name of the x axis', is(['axes', true])), T('yname', 'Name of the y axis', is(['axes', true])), T('title', 'Title (optional)'),
-      H('Graphs and points'),
-      { k: 'eqs', t: 'area', l: 'Lines and curves, one per line', ph: 'y = 2x + 1\ny = x^2 − 4\nx = 3' },
       C('eqlab', 'Write each equation beside its line'), C('mono', 'Black only, with dashes (for printing)'),
-      { k: 'pts', t: 'area', l: 'Points and shapes, one per line', ph: 'A(2, 3)\npolygon P(0,0) Q(4,0) R(4,3)\nsegment (0,0) (3,4)' },
       C('ptcoord', 'Write the coordinates beside each point'),
     ],
     numline: [
@@ -146,6 +148,18 @@
       C('apo', 'Apothem (centre to the middle of a side)'), C('rad', 'Radius (centre to a corner)'), C('centre', 'Centre point'),
       NOTE, T('sS', 'Label on the side'), T('gI', 'Label in the angle'), T('sA', 'Label on the apothem', is(['apo', true])), T('sR', 'Label on the radius', is(['rad', true])),
       H('Marks'), C('ticks', 'Tick marks (all sides equal)'),
+    ], TURN),
+    circle: [
+      H('Measurements'), N('r', 'Radius'),
+      N('sector', 'Sector angle (°, 0 for none)'),
+      C('rad', 'Radius line'), C('diam', 'Diameter'), C('chord', 'Chord'), C('tangent', 'Tangent, with its right angle'),
+    ].concat(UNIT_ROWS, [
+      H('Labels'), C('giv', 'Show the radius'), C('calc', 'Show worked-out lengths (diameter, chord)'),
+      C('centre', 'Centre point'), C('names', 'Letters'),
+      { t: 'row', l: 'Letters', keys: ['nO', 'nA', 'nB'], show: is(['names', true]) },
+      NOTE,
+      T('sR', 'Label on the radius'), T('sD', 'Label on the diameter', is(['diam', true])), T('sC', 'Label on the chord', is(['chord', true])),
+      T('gS', 'Label in the sector angle', function (s) { return s.sector > 0; }),
     ], TURN),
     angle: [
       H('Angles'),
@@ -266,20 +280,70 @@
 
   var dlg = null, state = null, seq = 0;
 
-  function fieldId(k, i) { return 'pxf-' + k + (i ? '-' + i : ''); }
+  /* ── Describe it ───────────────────────────────────────────────────── */
+
+  var TRY = ['right triangle 3 4 5', 'y = x^2 − 4', 'y > 2x − 1', 'circle r 5 sector 60', 'cylinder r 3 h 8', 'number line x ≥ −2'];
+  var askTimer = 0;
+  /** As the student types, say what Enter will make, or what is missing. */
+  function askHint() {
+    clearTimeout(askTimer);
+    askTimer = setTimeout(function () {
+      if (!dlg) return;
+      var text = dlg.querySelector('#pxFigAskIn').value, hint = dlg.querySelector('#pxFigAskHint');
+      hint.classList.remove('is-err');
+      if (!text.trim()) { hint.textContent = 'Type the figure in words, or pick one below and fill it in.'; return; }
+      var r = F.fromText(text);
+      hint.textContent = r.error ? (text.trim().length > 3 ? r.error : '') : 'Enter makes: ' + r.said + '.';
+    }, 160);
+  }
+  /** Make the figure the box describes, and show its form so every detail can still be changed. */
+  function ask() {
+    var input = dlg.querySelector('#pxFigAskIn'), hint = dlg.querySelector('#pxFigAskHint');
+    clearTimeout(askTimer);
+    var r = F.fromText(input.value);
+    if (r.error && !r.spec) { hint.textContent = r.error; hint.classList.add('is-err'); input.setAttribute('aria-invalid', 'true'); input.focus(); return; }
+    input.removeAttribute('aria-invalid');
+    hint.classList.remove('is-err');
+    state.kind = r.spec.kind;
+    state.spec = F.clean(r.spec);
+    Array.prototype.forEach.call(dlg.querySelectorAll('input[name="pxFigKind"]'), function (b) { b.checked = b.value === state.kind; });
+    renderForm();
+    hint.textContent = r.error ? 'Nearly: ' + r.error : 'Made: ' + r.said + '. Change anything below, then Insert.';
+    if (r.error) hint.classList.add('is-err');
+  }
+
+  /* P is the prefix for every id in a form, so the panel's form and the side
+     panel's form can be on the page at once without sharing ids. */
+  function fieldId(k, i, P) { return (P || 'pxf') + '-' + k + (i ? '-' + i : ''); }
   function labelOf(f, s) { return typeof f.l === 'function' ? f.l(s) : f.l; }
 
-  function formHTML(kind, s) {
-    var html = '', open = false;
+  /* How many sections each figure shows straight away; the rest wait under
+     "More options", so the first thing on screen is only what makes the figure. */
+  var OPEN = { grid: 2, numline: 2 };
+  var MORE = 'flux_pixel_fig_more';
+  function moreOpen() { try { return localStorage.getItem(MORE) === '1'; } catch (e) { return false; } }
+
+  function formHTML(kind, s, P) {
+    P = P || 'pxf';
+    var html = '', open = false, sets = 0, keep = OPEN[kind] || 1, more = [];
+    FORMS[kind].forEach(function (f) { if (f.t === 'head' && ++sets > keep) more.push(f.l); });
+    sets = 0;
     FORMS[kind].forEach(function (f, i) {
       var show = f.show ? ' data-show="' + i + '"' : '';
       if (f.t === 'head') {
         if (open) html += '</fieldset>';
+        if (++sets === keep + 1) {
+          html += '<details class="px-f-more"' + (P === 'pxf' ? ' id="pxFigMore"' : '') + (moreOpen() ? ' open' : '') + '><summary class="px-f-more-sum">More options<span class="px-f-more-what">' + esc(more.join(' · ')) + '</span></summary>';
+        }
         html += '<fieldset class="px-f-set"><legend class="px-f-legend">' + esc(f.l) + '</legend>';
         open = true;
         return;
       }
-      var id = fieldId(f.k, f.dup);
+      if (f.t === 'action') {
+        html += '<p class="px-f-act"' + show + '><button type="button" class="px-btn px-btn--small" data-fig-act="' + f.a + '">' + esc(f.l) + '</button></p>';
+        return;
+      }
+      var id = fieldId(f.k, f.dup, P);
       if (f.t === 'num' || f.t === 'text') {
         html += '<div class="px-f-row"' + show + '><label class="px-f-lab" for="' + id + '" data-lab="' + i + '">' + esc(labelOf(f, s)) + '</label>'
           + '<input class="px-f-in" id="' + id + '" data-k="' + f.k + '" type="text" autocomplete="off" spellcheck="false"'
@@ -290,51 +354,54 @@
       } else if (f.t === 'chk') {
         html += '<div class="px-f-row px-f-row--chk"' + show + '><label class="px-f-chk" for="' + id + '"><input type="checkbox" id="' + id + '" data-k="' + f.k + '"' + (s[f.k] ? ' checked' : '') + '><span data-lab="' + i + '">' + esc(labelOf(f, s)) + '</span></label></div>';
       } else if (f.t === 'sel' || f.t === 'preset') {
-        html += '<div class="px-f-row"' + show + '><label class="px-f-lab" for="' + (f.t === 'preset' ? 'pxf-preset' : id) + '" data-lab="' + i + '">' + esc(labelOf(f, s)) + '</label>'
-          + '<select class="px-f-in" id="' + (f.t === 'preset' ? 'pxf-preset' : id) + '"' + (f.t === 'preset' ? ' data-preset="' + i + '"' : ' data-k="' + f.k + '"') + '>'
+        html += '<div class="px-f-row"' + show + '><label class="px-f-lab" for="' + (f.t === 'preset' ? P + '-preset' : id) + '" data-lab="' + i + '">' + esc(labelOf(f, s)) + '</label>'
+          + '<select class="px-f-in" id="' + (f.t === 'preset' ? P + '-preset' : id) + '"' + (f.t === 'preset' ? ' data-preset="' + i + '"' : ' data-k="' + f.k + '"') + '>'
           + f.opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (f.t === 'sel' && String(s[f.k]) === String(o[0]) ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('')
           + '</select></div>';
       } else if (f.t === 'row') {
-        html += '<div class="px-f-row"' + show + '><span class="px-f-lab" id="pxf-row-' + i + '">' + esc(f.l) + '</span><span class="px-f-trio" role="group" aria-labelledby="pxf-row-' + i + '">'
-          + f.keys.map(function (k, j) { return '<input class="px-f-in px-f-in--short" id="' + fieldId(k) + '" data-k="' + k + '" type="text" maxlength="12" autocomplete="off" aria-label="' + esc(f.l + ' ' + (j + 1)) + '" value="' + esc(s[k]) + '">'; }).join('')
+        html += '<div class="px-f-row"' + show + '><span class="px-f-lab" id="' + P + '-row-' + i + '">' + esc(f.l) + '</span><span class="px-f-trio" role="group" aria-labelledby="' + P + '-row-' + i + '">'
+          + f.keys.map(function (k, j) { return '<input class="px-f-in px-f-in--short" id="' + fieldId(k, 0, P) + '" data-k="' + k + '" type="text" maxlength="12" autocomplete="off" aria-label="' + esc(f.l + ' ' + (j + 1)) + '" value="' + esc(s[k]) + '">'; }).join('')
           + '</span></div>';
       } else if (f.t === 'grid8') {
         html += '<div class="px-f-row px-f-row--wide"' + show + '><div class="px-f-eight">' + f.keys.map(function (k, j) {
-          return '<label class="px-f-mini" for="' + fieldId(k) + '"><span>' + (j + 1) + '</span><input class="px-f-in" id="' + fieldId(k) + '" data-k="' + k + '" type="text" maxlength="20" autocomplete="off" value="' + esc(s[k]) + '" aria-label="Label for angle ' + (j + 1) + '"></label>';
+          return '<label class="px-f-mini" for="' + fieldId(k, 0, P) + '"><span>' + (j + 1) + '</span><input class="px-f-in" id="' + fieldId(k, 0, P) + '" data-k="' + k + '" type="text" maxlength="20" autocomplete="off" value="' + esc(s[k]) + '" aria-label="Label for angle ' + (j + 1) + '"></label>';
         }).join('') + '</div></div>';
       } else if (f.t === 'note') {
         html += '<p class="px-f-note"' + show + '>' + esc(f.l) + '</p>';
       }
     });
     if (open) html += '</fieldset>';
+    if (sets > keep) html += '</details>';
     return html + '<p class="px-f-reset"><button type="button" class="px-link" data-fig-act="reset">Start this figure again</button></p>';
   }
 
-  /** The settings, as the form has them now. */
-  function readForm() {
-    var d = F.DEFAULTS[state.kind], s = { kind: state.kind };
-    Object.keys(d).forEach(function (k) { if (k !== 'kind') s[k] = state.spec[k]; });
+  /** The settings, as the form in root has them now; anything not in the form comes from spec. */
+  function readForm(root, kind, spec) {
+    if (!root) { root = dlg.querySelector('#pxFigForm'); kind = state.kind; spec = state.spec; }
+    var d = F.DEFAULTS[kind], s = { kind: kind };
+    Object.keys(d).forEach(function (k) { if (k !== 'kind') s[k] = spec[k]; });
     // Two fields can share a key (angles around a point have their own "how many"): the one on show wins.
     var shown = function (el) { var row = el.closest('[data-show]'); return !(row && row.hidden); }, byKey = {};
-    Array.prototype.forEach.call(dlg.querySelectorAll('#pxFigForm [data-k]'), function (el) {
+    Array.prototype.forEach.call(root.querySelectorAll('[data-k]'), function (el) {
       var k = el.getAttribute('data-k');
       if (!byKey[k] || (!shown(byKey[k]) && shown(el))) byKey[k] = el;
     });
     Object.keys(byKey).forEach(function (k) {
       var el = byKey[k];
       if (el.type === 'checkbox') s[k] = el.checked;
-      else if (typeof d[k] === 'number') { var o = {}; o.kind = state.kind; o[k] = el.value; s[k] = el.value.trim() === '' ? NaN : F.clean(o)[k]; }
+      else if (typeof d[k] === 'number') { var o = {}; o.kind = kind; o[k] = el.value; s[k] = el.value.trim() === '' ? NaN : F.clean(o)[k]; }
       else s[k] = el.value;
     });
     return s;
   }
-  function syncVisibility(s) {
-    var f = FORMS[state.kind];
-    Array.prototype.forEach.call(dlg.querySelectorAll('#pxFigForm [data-show]'), function (el) {
+  function syncVisibility(s, root) {
+    var f = FORMS[s.kind];
+    root = root || dlg.querySelector('#pxFigForm');
+    Array.prototype.forEach.call(root.querySelectorAll('[data-show]'), function (el) {
       var def = f[+el.getAttribute('data-show')];
       el.hidden = !def.show(s);
     });
-    Array.prototype.forEach.call(dlg.querySelectorAll('#pxFigForm [data-lab]'), function (el) {
+    Array.prototype.forEach.call(root.querySelectorAll('[data-lab]'), function (el) {
       var def = f[+el.getAttribute('data-lab')];
       if (typeof def.l === 'function') el.textContent = def.l(s);
     });
@@ -356,8 +423,11 @@
       prev.innerHTML = '<svg viewBox="' + r.vb.join(' ') + '" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">' + r.svg + '</svg>';
       prev.classList.remove('is-stale');
       prev.setAttribute('aria-label', 'Preview: ' + F.describe(s));
-      if (msg.textContent) msg.textContent = '';
+      var off = (r.info && r.info.offgrid) || [];
+      var note = off.length ? (off.length === 1 ? '“' + off[0] + '” is' : off.length + ' of the graphs are') + ' off the grid. Fit the grid to them with the button below.' : '';
+      if (msg.textContent !== note) msg.textContent = note;
       msg.classList.remove('is-err');
+      dlg.querySelector('#pxFigFit').hidden = !off.length;
       Object.keys(r.auto || {}).forEach(function (k) {
         var el = dlg.querySelector('#pxFigForm [data-k="' + k + '"]');
         if (el && el.type === 'text') el.placeholder = r.auto[k];
@@ -371,8 +441,13 @@
       msg.classList.add('is-err');
       if (r.field) {
         var bad = dlg.querySelector('#pxFigForm [data-k="' + r.field + '"]');
-        if (bad) { bad.setAttribute('aria-invalid', 'true'); bad.setAttribute('aria-describedby', 'pxFigMsg'); }
+        if (bad) {
+          bad.setAttribute('aria-invalid', 'true'); bad.setAttribute('aria-describedby', 'pxFigMsg');
+          var box = bad.closest('details');
+          if (box && !box.open) box.open = true;
+        }
       }
+      dlg.querySelector('#pxFigFit').hidden = true;
     }
     Array.prototype.forEach.call(dlg.querySelectorAll('[data-needs-figure]'), function (b) { b.disabled = !ok; });
   }
@@ -383,14 +458,22 @@
     dlg.className = 'px-fig';
     dlg.setAttribute('aria-labelledby', 'pxFigH');
     dlg.innerHTML = '<div class="px-fig-in">'
-      + '<header class="px-fig-head"><h2 id="pxFigH">Maths figures</h2><span class="px-fig-sub">Drawn to scale, ready to print</span><span class="px-grow"></span>'
+      + '<header class="px-fig-head"><h2 id="pxFigH">Flux Figures</h2><span class="px-fig-sub">Maths figures drawn to scale, ready to print</span><span class="px-grow"></span>'
       + '<button type="button" class="px-icon" data-fig-act="cancel" aria-label="Close">×</button></header>'
+      + '<form class="px-fig-ask" id="pxFigAsk" autocomplete="off">'
+      + '<label class="px-fig-ask-lab" for="pxFigAskIn">Describe it</label>'
+      + '<div class="px-fig-ask-row"><input class="px-f-in px-fig-ask-in" id="pxFigAskIn" type="text" spellcheck="false" enterkeyhint="go" aria-describedby="pxFigAskHint" placeholder="right triangle 3 4 5 · y = x^2 − 4 · cylinder r 3 h 8">'
+      + '<button type="submit" class="px-btn px-btn--small">Make it</button></div>'
+      + '<p class="px-fig-ask-hint" id="pxFigAskHint" aria-live="polite">Type the figure in words, or pick one below and fill it in.</p>'
+      + '<div class="px-fig-try" role="group" aria-label="Examples">' + TRY.map(function (x) { return '<button type="button" class="px-fig-try-b" data-try="' + esc(x) + '">' + esc(x) + '</button>'; }).join('') + '</div>'
+      + '</form>'
       + '<fieldset class="px-fig-kinds"><legend class="px-sr">Figure</legend>' + F.KINDS.map(function (k) {
         return '<label class="px-fig-kind"><input type="radio" name="pxFigKind" value="' + k[0] + '"><span>' + esc(k[1]) + '</span></label>';
       }).join('') + '</fieldset>'
       + '<div class="px-fig-body">'
       + '<div class="px-fig-side"><div class="px-fig-prev" id="pxFigPrev" role="img" aria-label="Preview"></div>'
       + '<p class="px-fig-msg" id="pxFigMsg" role="status" aria-live="polite"></p>'
+      + '<p class="px-fig-fit" id="pxFigFit" hidden><button type="button" class="px-btn px-btn--small" data-fig-act="fit">Fit the grid to my graphs</button></p>'
       + '<div class="px-fig-share" hidden><label class="px-f-lab" for="pxFigLink">Share link: opens these settings</label><input class="px-f-in" id="pxFigLink" readonly></div></div>'
       + '<div class="px-fig-form" id="pxFigForm"></div>'
       + '</div>'
@@ -405,11 +488,13 @@
       + '</footer></div>';
     document.body.appendChild(dlg);
     dlg.addEventListener('input', function (e) {
+      if (e.target.id === 'pxFigAskIn') { askHint(); return; }
       if (e.target.name === 'pxFigKind') return;
       if (e.target.hasAttribute('data-preset')) return;
       schedule();
     });
     dlg.addEventListener('change', function (e) {
+      if (e.target.id === 'pxFigAskIn') return;
       if (e.target.name === 'pxFigKind') { setKind(e.target.value); return; }
       if (e.target.hasAttribute('data-preset')) {
         var f = FORMS[state.kind][+e.target.getAttribute('data-preset')], o = f.opts.filter(function (x) { return x[0] === e.target.value; })[0];
@@ -419,11 +504,17 @@
       schedule();
     });
     dlg.addEventListener('click', function (e) {
+      var tb = e.target.closest('[data-try]');
+      if (tb) { var inp = dlg.querySelector('#pxFigAskIn'); inp.value = tb.getAttribute('data-try'); ask(); return; }
       var b = e.target.closest('[data-fig-act]');
       if (!b || b.disabled) return;
       act(b.getAttribute('data-fig-act'));
     });
     dlg.addEventListener('cancel', function (e) { e.preventDefault(); close(); });
+    dlg.querySelector('#pxFigAsk').addEventListener('submit', function (e) { e.preventDefault(); ask(); });
+    dlg.addEventListener('toggle', function (e) {
+      if (e.target.id === 'pxFigMore') { try { localStorage.setItem(MORE, e.target.open ? '1' : '0'); } catch (er) {} }
+    }, true);
     return dlg;
   }
   function renderForm() {
@@ -440,6 +531,7 @@
     var s = state.spec, built = state.built;
     if (a === 'cancel') { close(); return; }
     if (a === 'reset') { state.spec = F.defaults(state.kind); renderForm(); var first = dlg.querySelector('#pxFigForm .px-f-in'); if (first) first.focus(); return; }
+    if (a === 'fit') { state.spec = F.fitRange(s); renderForm(); toast('The grid now fits your graphs.'); return; }
     if (!built) return;
     if (a === 'done') {
       var cb = state.onDone, spec = F.clean(s);
@@ -487,8 +579,105 @@
     if (on) on.focus();
   }
 
+  /* ── The same form beside the page ─────────────────────────────────
+     For the figure selected on the page: the form sits in Pixel's options
+     rail and every valid change redraws the figure where it is, so a figure
+     is changed in place instead of in a window over it. */
+
+  /**
+   * box: an empty element to fill. spec: the figure. opts.onChange(spec) gets
+   * every change that draws; opts.onMore() opens the full panel.
+   */
+  function inline(box, spec, opts) {
+    opts = opts || {};
+    var cur = F.clean(spec), P = 'pxi', timer = 0;
+    if (!cur) return;
+    function form() { return box.querySelector('[data-inline-form]'); }
+    function render() {
+      box.innerHTML = '<div class="px-fi-head"><label class="px-f-lab" for="pxiKind">Figure</label>'
+        + '<select class="px-f-in" id="pxiKind">' + F.KINDS.map(function (k) { return '<option value="' + k[0] + '"' + (k[0] === cur.kind ? ' selected' : '') + '>' + esc(k[1]) + '</option>'; }).join('') + '</select></div>'
+        + '<form class="px-fi-ask" autocomplete="off"><label class="px-f-lab" for="pxiAsk">Describe it</label><div class="px-fig-ask-row">'
+        + '<input class="px-f-in" id="pxiAsk" type="text" spellcheck="false" enterkeyhint="go" placeholder="' + esc(F.describe(cur)) + '">'
+        + '<button type="submit" class="px-btn px-btn--small">Make it</button></div></form>'
+        + '<p class="px-fig-msg px-fi-msg" role="status" aria-live="polite"></p>'
+        + '<div class="px-fi-form" data-inline-form>' + formHTML(cur.kind, cur, P) + '</div>'
+        + '<button type="button" class="px-btn px-btn--small px-fi-all" data-fi="all">Bigger preview, export and share</button>';
+      var s = readForm(form(), cur.kind, cur);
+      syncVisibility(s, form());
+    }
+    function say(text, err) {
+      var msg = box.querySelector('.px-fi-msg');
+      msg.textContent = text || '';
+      msg.classList.toggle('is-err', !!err);
+    }
+    function apply() {
+      var s = readForm(form(), cur.kind, cur);
+      syncVisibility(s, form());
+      s = readForm(form(), cur.kind, cur);
+      var r = F.build(s);
+      Array.prototype.forEach.call(form().querySelectorAll('[aria-invalid]'), function (el) { el.removeAttribute('aria-invalid'); });
+      if (r.error) {
+        say(r.error, true);
+        var bad = r.field && form().querySelector('[data-k="' + r.field + '"]');
+        if (bad) { bad.setAttribute('aria-invalid', 'true'); var d = bad.closest('details'); if (d && !d.open) d.open = true; }
+        return;
+      }
+      var off = (r.info && r.info.offgrid) || [];
+      say(off.length ? '“' + off[0] + '” is off the grid: “Fit the grid to my graphs” brings it in.' : '');
+      Object.keys(r.auto || {}).forEach(function (k) {
+        var el = form().querySelector('[data-k="' + k + '"]');
+        if (el && el.type === 'text') el.placeholder = r.auto[k];
+      });
+      cur = F.clean(s);
+      saveLast(cur);
+      if (opts.onChange) opts.onChange(cur);
+    }
+    /* A whole new figure (another kind, a sentence, a preset): redraw the form too. */
+    function replace(spec2, said) {
+      cur = F.clean(spec2);
+      render();
+      apply();
+      if (said) say(said);
+    }
+    box.addEventListener('input', function (e) {
+      if (e.target.id === 'pxiAsk') return;
+      clearTimeout(timer);
+      timer = setTimeout(apply, 120);
+    });
+    box.addEventListener('change', function (e) {
+      if (e.target.id === 'pxiKind') { replace(lastSpec(e.target.value)); var k = box.querySelector('#pxiKind'); if (k) k.focus(); return; }
+      if (e.target.id === 'pxiAsk') return;
+      if (e.target.hasAttribute('data-preset')) {
+        var f = FORMS[cur.kind][+e.target.getAttribute('data-preset')], o = f.opts.filter(function (x) { return x[0] === e.target.value; })[0];
+        if (o && o[2]) replace(Object.assign({}, cur, o[2]));
+        return;
+      }
+      clearTimeout(timer);
+      apply();
+    });
+    box.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var r = F.fromText(box.querySelector('#pxiAsk').value);
+      if (r.error && !r.spec) { say(r.error, true); return; }
+      replace(r.spec, r.error ? 'Nearly: ' + r.error : 'Made: ' + r.said + '.');
+    });
+    box.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-fig-act],[data-fi]');
+      if (!b) return;
+      var a = b.getAttribute('data-fig-act');
+      if (a === 'fit') replace(F.fitRange(cur), 'The grid now fits your graphs.');
+      else if (a === 'reset') replace(F.defaults(cur.kind));
+      else if (b.getAttribute('data-fi') === 'all' && opts.onMore) opts.onMore();
+    });
+    box.addEventListener('toggle', function (e) {
+      if (e.target.classList && e.target.classList.contains('px-f-more')) { try { localStorage.setItem(MORE, e.target.open ? '1' : '0'); } catch (er) {} }
+    }, true);
+    render();
+  }
+
   window.FluxPixelFigures = {
     open: open,
+    inline: inline,
     close: function () { close(); },
     isOpen: function () { return !!(dlg && dlg.open); },
     standalone: standalone, svgToPng: svgToPng, figurePng: figurePng, copyPng: copyPng, shareURL: shareURL, lastSpec: lastSpec,

@@ -29,6 +29,11 @@ async function openPanel(page: Page, kind: string) {
   await expect(dlg(page)).toBeVisible();
   await dlg(page).locator(`input[name="pxFigKind"][value="${kind}"]`).check();
 }
+/** Labels, marks and position wait under "More options" until asked for. */
+async function moreOptions(page: Page) {
+  const more = dlg(page).locator('#pxFigMore');
+  if (!(await more.evaluate((d: HTMLDetailsElement) => d.open))) await more.locator('summary').click();
+}
 async function drag(page: Page, box: Box, from: [number, number], to: [number, number]) {
   await page.mouse.move(...at(box, ...from));
   await page.mouse.down();
@@ -49,6 +54,7 @@ test.describe('Flux Pixel: maths figures', () => {
     await expect(page.locator('#pxFigPrev')).toHaveAttribute('aria-label', /Triangle with sides 5, 3 and 4 cm \(right-angled\)/);
     await expect(page.locator('#pxFigPrev svg text')).toContainText(['5 cm']);
     // The worked-out angle shows as a placeholder, ready to be replaced.
+    await moreOptions(page);
     await expect(dlg(page).getByLabel('Label in angle A')).toHaveAttribute('placeholder', /36\.9°/);
     await dlg(page).getByLabel('Label on AB').fill('x + 2');
     await dlg(page).getByRole('button', { name: 'Insert' }).click();
@@ -120,10 +126,10 @@ test.describe('Flux Pixel: maths figures', () => {
     await page.keyboard.press('Control+z');
     await page.waitForTimeout(500);
     expect((await items(page))[0].fig.h).toBe(5);
-    // The Edit figure button does the same as the double click.
+    // The side panel's button to the full panel does the same as the double click.
     await page.locator('[data-tool="select"]').click();
     await page.mouse.click(...at(box, first.x + 4, first.y + first.h / 2));
-    await page.locator('[data-act="figedit"]').click();
+    await page.getByRole('button', { name: 'Bigger preview, export and share' }).click();
     await expect(dlg(page).getByLabel('Height (BC)')).toHaveValue('5');
     await page.keyboard.press('Escape');
     await expect(dlg(page)).toBeHidden();
@@ -180,6 +186,7 @@ test.describe('Flux Pixel: maths figures', () => {
     await expect(dlg(page).getByLabel('Length', { exact: true })).toBeHidden();
     await expect(page.locator('#pxFigPrev [stroke-dasharray]')).toHaveCount(1);
     await expect(page.locator('#pxFigPrev')).toHaveAttribute('aria-label', /Cylinder, radius 3 cm, height 3 cm/);
+    await moreOptions(page);
     await dlg(page).getByLabel('Hidden edges').selectOption('hide');
     await expect(page.locator('#pxFigPrev [stroke-dasharray]')).toHaveCount(0);
     await dlg(page).locator('input[name="pxFigKind"][value="numline"]').check();
@@ -187,6 +194,141 @@ test.describe('Flux Pixel: maths figures', () => {
     await expect(page.locator('#pxFigPrev circle[fill="#ffffff"]')).toHaveCount(1);
     await dlg(page).getByLabel('Dots and inequalities, one per line').fill('x > 9');
     await expect(page.locator('#pxFigMsg')).toContainText('9 is off the number line');
+  });
+
+  test('Flux Figures mode: figure kinds down the left, a sentence or a click adds one, each in free space', async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 860 });
+    await page.goto('/pixel.html');
+    await page.locator('[data-fig-new]').click();
+    await expect(page.locator('[data-mode-set="figures"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.px-tools [data-figkind]')).toHaveCount(12);
+    // Nothing selected: the side panel says what to do.
+    await page.locator('#pxNewFigIn').fill('right triangle 3 4 5');
+    await page.locator('#pxNewFigIn').press('Enter');
+    await expect.poll(async () => (await items(page)).map((i: any) => i.fig.kind)).toEqual(['triangle']);
+    // The rail adds a figure and opens its settings beside the page.
+    await page.locator('[data-figkind="circle"]').click();
+    await expect.poll(async () => (await items(page)).length).toBe(2);
+    await expect(page.locator('#pxFigInline').getByLabel('Radius', { exact: true })).toBeFocused();
+    const [a, b] = await items(page);
+    const apart = a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y;
+    expect(apart, 'the second figure does not land on the first').toBe(true);
+    // A drawing tool goes back to Draw mode; the page remembers the mode it was left in.
+    await page.keyboard.press('Escape');   // out of the field
+    await page.keyboard.press('Escape');   // nothing selected
+    await page.keyboard.press('p');
+    await expect(page.locator('[data-mode-set="draw"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.px-tools [data-tool="pen"]')).toHaveAttribute('aria-pressed', 'true');
+    await page.locator('[data-mode-set="figures"]').click();
+    await page.reload();
+    await expect(page.locator('[data-mode-set="figures"]')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('a selected figure changes in place: side panel, action bar, any corner, and undo says what it undid', async ({ page }) => {
+    const box = await newPage(page);
+    await openPanel(page, 'triangle');
+    await dlg(page).getByLabel('Describe it').fill('right triangle 3 4 5');
+    await dlg(page).getByLabel('Describe it').press('Enter');
+    await dlg(page).getByRole('button', { name: 'Insert' }).click();
+    // Selected: an action bar above it, a grab corner at each corner, its settings beside the page.
+    await expect(page.locator('#pxFloat')).toBeVisible();
+    await expect(page.locator('#pxSel [data-handle]')).toHaveCount(4);
+    const side = page.locator('#pxFigInline');
+    await expect(side.getByLabel('Leg BC')).toHaveValue('3');
+    await side.getByLabel('Leg BC').fill('6');
+    await expect.poll(async () => (await items(page))[0]?.fig.a).toBe(6);
+    await expect(page.locator('#pxItems')).toContainText('6 cm');
+    // A sentence in the side panel makes a different figure in the same place.
+    const before = (await items(page))[0];
+    await side.getByLabel('Describe it').fill('circle r 4 sector 90');
+    await side.getByLabel('Describe it').press('Enter');
+    await expect.poll(async () => (await items(page))[0]?.fig.kind).toBe('circle');
+    const circ = (await items(page))[0];
+    expect(circ.x + circ.w / 2).toBeCloseTo(before.x + before.w / 2, 0);
+    // The top-left corner grows it while the bottom-right corner stays put.
+    const nw = (await page.locator('#pxSel [data-handle="nw"]').boundingBox())!;
+    await page.mouse.move(nw.x + nw.width / 2, nw.y + nw.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(nw.x - 60, nw.y - 60, { steps: 6 });
+    await page.mouse.up();
+    await expect.poll(async () => (await items(page))[0].w).toBeGreaterThan(circ.w * 1.1);
+    const grown = (await items(page))[0];
+    expect(grown.x + grown.w).toBeCloseTo(circ.x + circ.w, 0);
+    // Undo names what it takes back, and the undo button says it first.
+    await expect(page.locator('[data-act="undo"]')).toHaveAttribute('title', /Undo: Resized/);
+    await page.locator('[data-act="undo"]').click();
+    await expect(page.locator('.px-toast').last()).toContainText('Undone: resized');
+    // Delete from the action bar, and get it back from the message.
+    await page.locator('#pxFloat [data-act="delete"]').click();
+    await expect.poll(async () => (await items(page)).length).toBe(0);
+    await page.locator('.px-toast--act').getByRole('button', { name: 'Undo' }).click();
+    await expect.poll(async () => (await items(page)).length).toBe(1);
+    void box;
+  });
+
+  test('describe it in words: the box says what Enter makes, then makes it with the form filled in', async ({ page }) => {
+    await newPage(page);
+    await page.locator('[data-tool="figure"]').click();
+    const ask = dlg(page).getByLabel('Describe it');
+    await ask.fill('cylinder r 3 h 8');
+    await expect(dlg(page).locator('#pxFigAskHint')).toContainText('Enter makes: Cylinder, radius 3 cm, height 8 cm');
+    await ask.press('Enter');
+    await expect(dlg(page).locator('input[name="pxFigKind"][value="solid"]')).toBeChecked();
+    await expect(dlg(page).getByLabel('Shape')).toHaveValue('cylinder');
+    await expect(dlg(page).getByLabel('Height', { exact: true })).toHaveValue('8');
+    await ask.fill('right triangle 3 4 5');
+    await dlg(page).getByRole('button', { name: 'Make it' }).click();
+    await expect(page.locator('#pxFigPrev')).toHaveAttribute('aria-label', /right-angled/);
+    await expect(dlg(page).getByLabel('Make it from')).toHaveValue('right');
+    // Something it cannot read is said in words, and the figure stays as it was.
+    await ask.fill('banana');
+    await ask.press('Enter');
+    await expect(dlg(page).locator('#pxFigAskHint')).toContainText('I could not tell which figure that is');
+    await expect(ask).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#pxFigPrev')).toHaveAttribute('aria-label', /right-angled/);
+    // An example fills the box and makes it.
+    await dlg(page).getByRole('button', { name: 'circle r 5 sector 60' }).click();
+    await expect(page.locator('#pxFigPrev')).toHaveAttribute('aria-label', /Circle, radius 5 cm, with a sector of 60°/);
+    await expect(page.locator('#pxFigPrev svg')).toContainText('60°');
+  });
+
+  test('a grid reads what students type: shading, a circle, a limited line, and a grid that fits', async ({ page }) => {
+    await newPage(page);
+    await openPanel(page, 'grid');
+    const eqs = dlg(page).getByLabel('Lines and curves, one per line');
+    await eqs.fill('y > 2x - 1\nx^2 + y^2 = 25\ny = |x| for -3 < x < 3');
+    await expect(page.locator('#pxFigMsg')).toHaveText('');
+    // The inequality shades its side, behind a dashed line.
+    await expect(page.locator('#pxFigPrev [fill-opacity]')).toHaveCount(1);
+    await expect(page.locator('#pxFigPrev polyline[stroke="#2563eb"][stroke-dasharray]')).not.toHaveCount(0);
+    await expect(page.locator('#pxFigPrev polyline[stroke="#dc2626"]')).not.toHaveCount(0);
+    // The limit ends the line in open dots, and stays out of its label.
+    await expect(page.locator('#pxFigPrev circle[fill="#ffffff"][stroke="#16a34a"]')).toHaveCount(2);
+    await expect(page.locator('#pxFigPrev svg')).toContainText('y = |x|');
+    await expect(page.locator('#pxFigPrev svg')).not.toContainText('for -3');
+    // A curve off the grid is named, and one press fits the grid to it.
+    await eqs.fill('y = x^2 + 50');
+    await expect(page.locator('#pxFigMsg')).toContainText('off the grid');
+    await dlg(page).locator('#pxFigFit').getByRole('button', { name: 'Fit the grid to my graphs' }).click();
+    await expect(dlg(page).getByLabel('Largest y')).not.toHaveValue('10');
+    await expect(page.locator('#pxFigMsg')).toHaveText('');
+    await expect(page.locator('#pxFigPrev polyline[stroke="#2563eb"]')).not.toHaveCount(0);
+  });
+
+  test('More options keeps the form short, and stays the way it was left', async ({ page }) => {
+    await newPage(page);
+    await openPanel(page, 'triangle');
+    await expect(dlg(page).getByLabel('Side AB', { exact: true })).toBeVisible();
+    await expect(dlg(page).getByLabel('Label on AB')).toBeHidden();
+    await expect(dlg(page).locator('#pxFigMore summary')).toContainText('Labels · Marks · Position');
+    await moreOptions(page);
+    await expect(dlg(page).getByLabel('Label on AB')).toBeVisible();
+    // Another figure, and the panel opened again later: still open.
+    await dlg(page).locator('input[name="pxFigKind"][value="rect"]').check();
+    await expect(dlg(page).getByLabel('Label on the width')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.locator('[data-tool="figure"]').click();
+    await expect(dlg(page).locator('#pxFigMore')).toHaveAttribute('open', '');
   });
 
   test('keyboard: M opens the panel, arrows change the figure, Escape closes and focus comes back', async ({ page }) => {
@@ -209,6 +351,8 @@ test.describe('Flux Pixel: maths figures', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/pixel.html');
     await page.locator('[data-fig-new]').click();
+    await expect(page.locator('[data-mode-set="figures"]')).toHaveAttribute('aria-pressed', 'true');
+    await page.keyboard.press('m');
     await expect(dlg(page)).toBeVisible();
     const results = await new AxeBuilder({ page }).include('dialog.px-fig').analyze();
     const bad = results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
