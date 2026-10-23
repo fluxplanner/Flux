@@ -132,13 +132,20 @@
     m.style.left = px + 'px';
     m.style.top  = py + 'px';
 
-    // Entry animation via class
-    requestAnimationFrame(()=>m.classList.add('flux-ctx-open'));
-
     document.addEventListener('keydown', onKey, true);
-    window.addEventListener('scroll', onDismissFromScrollOrResize, {capture:true, passive:true});
     window.addEventListener('blur', onDismissFromScrollOrResize);
-    window.addEventListener('resize', onDismissFromScrollOrResize);
+
+    // Entry animation via class. Scroll and resize only dismiss from the first
+    // frame on: a scroll made just before the right-click (scrolling the row
+    // into view) has its event delivered in the next frame's scroll steps,
+    // which run before animation-frame callbacks — armed earlier, it closed
+    // the menu the instant it opened.
+    requestAnimationFrame(()=>{
+      if(document.getElementById('fluxTaskCtxMenu') !== m || m.classList.contains('flux-ctx-closing')) return;
+      m.classList.add('flux-ctx-open');
+      window.addEventListener('scroll', onDismissFromScrollOrResize, {capture:true, passive:true});
+      window.addEventListener('resize', onDismissFromScrollOrResize);
+    });
   }
 
   // Click outside to close (cheap; no scroll listener until menu is open)
