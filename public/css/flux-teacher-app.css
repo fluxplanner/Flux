@@ -219,6 +219,8 @@ a { color: var(--ft-accent); }
   overflow-wrap: anywhere;
 }
 .ft-loading { color: var(--ft-dim); animation: ft-appear .2s ease .6s both; }
+/* The Flux loading screen (flux-loader.css), shown while the study sets open. */
+.ft-main > .flux-loader { --fl-label: var(--ft-dim); --fl-size: 132px; min-height: 52vh; }
 @keyframes ft-appear { from { opacity: 0; } to { opacity: 1; } }
 
 /* ── Type ────────────────────────────────────────────────────────────── */
