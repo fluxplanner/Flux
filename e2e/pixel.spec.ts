@@ -101,7 +101,7 @@ test.describe('Flux Pixel', () => {
     expect(moved.x).toBeGreaterThan(before.x + 20);
     expect(moved.w).toBeCloseTo(before.w, 0);
 
-    const handle = (await page.locator('#pxSel [data-handle]').boundingBox())!;
+    const handle = (await page.locator('#pxSel [data-handle="se"]').boundingBox())!;
     await page.mouse.move(handle.x + 9, handle.y + 9);
     await page.mouse.down();
     await page.mouse.move(handle.x + 80, handle.y + 60);
@@ -240,5 +240,109 @@ test.describe('Flux Pixel: the eraser', () => {
     await page.reload();
     await page.locator('[data-tool="eraser"]').click();
     await expect(page.locator('[data-erase="box"]')).toHaveAttribute('aria-pressed', 'true');
+  });
+});
+
+/*
+ * "Add ruler, protractor, set square/compass-style tools that sit on the
+ * canvas and snap." They sit on the page, move and turn, guide the pen and
+ * the line, and are never part of the picture.
+ */
+test.describe('Flux Pixel: ruler, protractor, set square and compass', () => {
+  type Box = { x: number; y: number; width: number; height: number };
+  const at = (box: Box, x: number, y: number): [number, number] => [box.x + (x * box.width) / 1600, box.y + (y * box.height) / 1000];
+  async function drag(page: import('@playwright/test').Page, box: Box, from: [number, number], to: [number, number]) {
+    await page.mouse.move(...at(box, ...from));
+    await page.mouse.down();
+    await page.mouse.move(...at(box, ...to), { steps: 10 });
+    await page.mouse.up();
+  }
+
+  test('a line started on the ruler runs along it, with its length in cm while it is drawn', async ({ page }) => {
+    const box = await newPage(page);
+    await page.locator('[data-inst-toggle="ruler"]').click();
+    await expect(page.locator('#pxInst [data-inst="ruler"]')).toHaveCount(1);
+    // The ruler's edge starts at (200, 730) on the page.
+    await page.locator('[data-tool="line"]').click();
+    await page.mouse.move(...at(box, 300, 734));
+    await page.mouse.down();
+    await page.mouse.move(...at(box, 500, 760), { steps: 8 });
+    await expect(page.locator('#pxDraft')).toContainText('cm');
+    await page.mouse.move(...at(box, 620, 772), { steps: 4 });
+    await page.mouse.up();
+    await expect.poll(async () => (await items(page)).length).toBe(1);
+    const ln = (await items(page))[0];
+    expect(ln.y1).toBeCloseTo(730, 0);
+    expect(ln.y2).toBeCloseTo(730, 0);
+    expect(ln.x2 - ln.x1).toBeGreaterThan(250);
+    expect(await page.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem('flux_pixel_docs_v1')!).docs[0].items))).not.toContain('ruler');
+  });
+
+  test('a line from the protractor centre lands on a whole degree', async ({ page }) => {
+    const box = await newPage(page);
+    await page.locator('[data-inst-toggle="protractor"]').click();
+    await page.locator('[data-tool="line"]').click();
+    // Centre at (1200, 730). Aim at about 35°, a little off.
+    const a = 35.4 * Math.PI / 180;
+    await drag(page, box, [1203, 728], [1200 + 200 * Math.cos(a), 730 - 200 * Math.sin(a)]);
+    await expect.poll(async () => (await items(page)).length).toBe(1);
+    const ln = (await items(page))[0];
+    expect(ln.x1).toBeCloseTo(1200, 0);
+    expect(ln.y1).toBeCloseTo(730, 0);
+    const deg = Math.atan2(ln.y1 - ln.y2, ln.x2 - ln.x1) * 180 / Math.PI;
+    expect(deg).toBeCloseTo(35, 3);
+  });
+
+  test('instruments move by their body and turn by their handle, and stay with the drawing', async ({ page }) => {
+    const box = await newPage(page);
+    await page.locator('[data-inst-toggle="square"]').click();
+    await page.locator('[data-tool="select"]').click();
+    // Drag the set square by its body.
+    await drag(page, box, [380, 600], [480, 560]);
+    const inst = () => page.evaluate(() => JSON.parse(localStorage.getItem('flux_pixel_docs_v1')!).docs[0].inst?.square);
+    await expect.poll(async () => (await inst())?.x).toBeGreaterThan(300);
+    const moved = await inst();
+    expect(moved.x).toBeCloseTo(380, -1);
+    expect(moved.y).toBeCloseTo(610, -1);
+    // Turn it by the round handle.
+    const h = (await page.locator('#pxInst [data-inst="square"] [data-inst-rot]').boundingBox())!;
+    await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(h.x + h.width / 2 + 60, h.y + h.height / 2 + 80, { steps: 8 });
+    await page.mouse.up();
+    await expect.poll(async () => (await inst())?.rot).not.toBe(0);
+    const turned = await inst();
+    expect(Number.isInteger(turned.rot)).toBe(true);
+    // 30° 60° shape from the options, and it is still there after a reload.
+    await page.locator('[data-sqkind="30"]').click();
+    await page.reload();
+    await expect(page.locator('#pxInst [data-inst="square"]')).toHaveCount(1);
+    await expect(page.locator('[data-sqkind="30"]')).toHaveAttribute('aria-pressed', 'true');
+    // Never in the picture.
+    expect(await items(page)).toHaveLength(0);
+  });
+
+  test('the compass draws a circle of a whole number of millimetres, and an arc round the same point', async ({ page }) => {
+    const box = await newPage(page);
+    await page.keyboard.press('k');
+    await expect(page.locator('[data-tool="compass"]')).toHaveAttribute('aria-pressed', 'true');
+    await drag(page, box, [800, 400], [921, 401]);
+    await expect.poll(async () => (await items(page)).length).toBe(1);
+    const c = (await items(page))[0];
+    expect(c.type).toBe('ellipse');
+    expect(c.w).toBe(c.h);
+    expect((c.w / 2) % 4).toBeCloseTo(0, 6);     // whole millimetres: 1 mm is 4 page units
+    expect(c.x + c.w / 2).toBeCloseTo(800, 0);
+    // Arc: the point lands on the circle's centre (a point nearby), drag the radius, move round, press.
+    await page.locator('[data-compass="arc"]').click();
+    await drag(page, box, [803, 402], [880, 400]);
+    await page.mouse.move(...at(box, 800, 480), { steps: 6 });
+    await page.mouse.down(); await page.mouse.up();
+    await expect.poll(async () => (await items(page)).length).toBe(2);
+    const arc = (await items(page))[1];
+    expect(arc.type).toBe('pen');
+    const r = (p: number[]) => Math.hypot(p[0] - 800, p[1] - 400);
+    expect(r(arc.pts[0])).toBeCloseTo(80, 0);
+    expect(r(arc.pts[arc.pts.length - 1])).toBeCloseTo(80, 0);
   });
 });

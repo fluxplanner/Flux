@@ -277,3 +277,13 @@ test('preset ranges: this week, last week, last 30 days, everything', () => {
   assert.deepEqual(plain(C.presetRange('all', today, 1, [entry('a', '2026-09-02'), entry('b', '2026-10-01')])), { from: '2026-09-02', to: today });
   assert.deepEqual(plain(C.presetRange('all', today, 1, [])), { from: today, to: today });
 });
+
+/* ── typed minutes ──────────────────────────────────────────────────── */
+
+test('minutes are read the way people type them', () => {
+  const cases = { '25': 25, ' 25 min ': 25, '25 minutes': 25, '1h': 60, '1h 30': 90, '1h30m': 90, '1 hour 30 minutes': 90,
+    '1 hour and 5 minutes': 65, '2 hours': 120, '1:30': 90, '0:45': 45, '1.5 hours': 90, '1,5 h': 90, '90m': 90 };
+  for (const [typed, want] of Object.entries(cases)) assert.equal(C.minutes(typed, 1440), want, typed);
+  for (const typed of ['', 'lots', '1:75', '25 pages', '-5', '25 h']) assert.equal(C.minutes(typed, 1440), null, typed);
+  assert.equal(C.minutes(30, 1440), 30);
+});

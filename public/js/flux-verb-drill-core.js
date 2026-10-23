@@ -243,12 +243,24 @@
 
   /* ── Text helpers ──────────────────────────────────────────────────── */
 
-  /** What someone typed, tidied: one spacing, lower case, straight apostrophes. */
+  /** What someone typed, tidied: one spacing, lower case, straight apostrophes,
+   *  and no punctuation — "¿hablo?", "Yo, hablo" and "hablo," are all "hablo". */
   function norm(s) {
     return String(s == null ? '' : s).normalize('NFC').toLowerCase()
       .replace(/[‘’ʼ`´]/g, "'")
-      .replace(/\s+/g, ' ').replace(/\s*'\s*/g, "'").trim()
-      .replace(/[.!]+$/, '');
+      .replace(/[¿¡?!.,;:"«»“”„()]/g, ' ')
+      .replace(/\s+/g, ' ').replace(/\s*'\s*/g, "'").trim();
+  }
+  /** Is b one typing slip from a — one letter missing, extra, changed, or two swapped? */
+  function oneSlip(a, b) {
+    if (a === b || Math.abs(a.length - b.length) > 1) return false;
+    var i = 0;
+    while (i < a.length && a[i] === b[i]) i++;
+    if (a.length === b.length) {
+      if (a.slice(i + 1) === b.slice(i + 1)) return true;
+      return a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2);
+    }
+    return a.length > b.length ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1);
   }
   /** norm, then every accent, umlaut and cedilla removed (ß → ss, œ → oe). */
   function loose(s) {
@@ -529,6 +541,15 @@
     for (i = 0; i < tries.length; i++) {
       for (j = 0; j < q.answers.length; j++) {
         if (loose(tries[i]) === loose(q.answers[j])) return { ok: !exact, accents: true, expected: q.answers[j] };
+      }
+    }
+    /* Still wrong — spelling is the skill being drilled, and "habla" for
+       "hablas" is one letter too — but a slip gets named as one, so the
+       student sees how near they were rather than only the answer. */
+    for (i = 0; i < tries.length; i++) {
+      for (j = 0; j < q.answers.length; j++) {
+        var want = loose(q.answers[j]);
+        if (want.length >= 4 && oneSlip(loose(tries[i]), want)) return { ok: false, accents: false, close: true, expected: q.answers[j] };
       }
     }
     return { ok: false, accents: false, expected: q.answers[0] };
