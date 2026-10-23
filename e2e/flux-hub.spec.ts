@@ -1,17 +1,17 @@
 import { test, expect } from '@playwright/test';
 import { gotoScenario } from './helpers';
 
-// GitHub Pages serves /hub.html as written; the test server (npx serve) drops
+// GitHub Pages serves /suite.html as written; the test server (npx serve) drops
 // the .html, so accept both spellings of the same page.
-const HUB_URL = /\/hub(\.html)?$/;
+const HUB_URL = /\/suite(\.html)?$/;
 
-test.describe('Flux Hub link', () => {
-  test('the standalone grapher opens the Hub directly', async ({ page }) => {
+test.describe('Flux Suite link', () => {
+  test('the standalone grapher opens Flux Suite directly', async ({ page }) => {
     await page.goto('/grapher.html');
     const link = page.locator('.fxhub-btn:visible');
     await expect(link).toBeVisible();
-    await expect(link).toHaveAttribute('href', 'hub.html');
-    await expect(link).toHaveAttribute('aria-label', 'Open the Flux Hub');
+    await expect(link).toHaveAttribute('href', 'suite.html');
+    await expect(link).toHaveAttribute('aria-label', 'Open Flux Suite');
     await expect(page.locator('.fxhub-panel')).toHaveCount(0);
 
     await link.click();
@@ -19,33 +19,33 @@ test.describe('Flux Hub link', () => {
     await expect(page.locator('#apps .app')).toHaveCount(9);
   });
 
-  test('the planner link opens the Hub on desktop', async ({ page }) => {
+  test('the planner link opens Flux Suite on desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1400, height: 950 });
     await gotoScenario(page, 'student-semester');
     await page.waitForTimeout(2200);
 
     const link = page.locator('.fxhub-btn:visible');
     await expect(link).toBeVisible();
-    await expect(link).toHaveAttribute('href', 'hub.html');
+    await expect(link).toHaveAttribute('href', 'suite.html');
     await link.click();
     await expect(page).toHaveURL(HUB_URL);
   });
 
-  test('the planner phone header also links directly to the Hub', async ({ page }) => {
+  test('the planner phone header also links directly to Flux Suite', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoScenario(page, 'student-semester');
     await page.waitForTimeout(2200);
 
     const link = page.locator('.fxhub-btn:visible');
     await expect(link).toHaveCount(1);
-    await expect(link).toHaveAttribute('href', 'hub.html');
+    await expect(link).toHaveAttribute('href', 'suite.html');
     await link.click();
     await expect(page).toHaveURL(HUB_URL);
     await expect(page.locator('#apps a.app--grapher')).toBeVisible();
   });
 
-  test('the Hub directory contains every product', async ({ page }) => {
-    await page.goto('/hub.html');
+  test('Flux Suite directory contains every product', async ({ page }) => {
+    await page.goto('/suite.html');
     const paths = await page.locator('#apps .app').evaluateAll((apps) =>
       apps.map((app) => app.getAttribute('href')));
     expect(paths).toEqual(expect.arrayContaining([
@@ -55,8 +55,15 @@ test.describe('Flux Hub link', () => {
     ]));
   });
 
+  test('old Flux Hub links still reach Flux Suite, on the same tab', async ({ page }) => {
+    await page.goto('/hub.html#partner');
+    await expect(page).toHaveURL(/\/suite(\.html)?#partner$/);
+    await expect(page).toHaveTitle(/Flux Suite/);
+    await expect(page.locator('#tab-partner')).toHaveAttribute('aria-selected', 'true');
+  });
+
   test('other apps wear the planner theme only when signed in', async ({ page }) => {
-    await page.goto('/hub.html');
+    await page.goto('/suite.html');
     const accent = () => page.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
     await page.evaluate(() => {
