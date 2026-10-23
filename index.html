@@ -1357,7 +1357,6 @@
             <button onclick="setFilter('active',this)" class="tmode-btn active">Active</button>
             <button onclick="setFilter('today',this)" class="tmode-btn">Today</button>
             <button onclick="setFilter('overdue',this)" class="tmode-btn">Overdue</button>
-            <button onclick="setFilter('done',this)" class="tmode-btn">Completed</button>
           </div>
         </div>
 
@@ -1391,7 +1390,6 @@
       <!-- Reading log card (flux-reading-log.js): this week against the
            teacher's goal, the streak, and "Log today". Hidden until drawn so
            it never shows empty; can be switched off in Settings, Layout. -->
-      <section id="readingLogCard" class="frl-dash" data-flux-section="reading" aria-labelledby="frlCardH" hidden></section>
       </div>
 
     </div>
@@ -2904,6 +2902,13 @@
 <div id="dashAddTaskModal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeDashAddTaskModal()">
   <div class="modal-card" onclick="event.stopPropagation()">
     <div class="modal-title">New task</div>
+    <!-- Shown only when "Task" was picked in the calendar's Add dialog, so the
+         other two types stay one tap away instead of vanishing with it. -->
+    <div id="taskCalTypeRow" style="display:none;gap:8px;margin-bottom:16px">
+      <button type="button" id="taskCalTypeTask" style="flex:1;background:var(--accent)" aria-pressed="true">Task</button>
+      <button type="button" id="taskCalTypeEvent" onclick="closeDashAddTaskModal();openAddEventModal('event')" style="flex:1" class="btn-sec" aria-pressed="false">Event</button>
+      <button type="button" id="taskCalTypeEc" onclick="closeDashAddTaskModal();openAddEventModal('ec')" style="flex:1" class="btn-sec" aria-pressed="false">Activity</button>
+    </div>
     <div class="modal-field-group" style="margin-bottom:10px">
       <label class="modal-micro-label" for="taskName">Title</label>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
@@ -3017,9 +3022,9 @@
 <div id="toastLive" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
-<script type="module" src="public/bundles/flux-vendor.a79385df.js"></script>
-<script defer src="public/bundles/flux-core.52023245.js"></script>
-<script defer src="public/bundles/flux-features.394f3aae.js"></script>
+<script type="module" src="public/bundles/flux-vendor.c391de9f.js"></script>
+<script defer src="public/bundles/flux-core.e236b2f5.js"></script>
+<script defer src="public/bundles/flux-features.3f6e8004.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
@@ -3079,6 +3084,12 @@
     </button>
     <button type="button" class="more-sheet-item" data-nav-tab="profile" onclick="navMob('profile')">
       <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2 M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/></svg></span><span class="more-sheet-label">Profile</span>
+    </button>
+    <!-- The nine-dot switcher in the phone top bar is easy to miss, so the
+         rest of the Flux apps get a named way in here too. A button, not a
+         link, so it takes the sheet's pill shape like the rest. -->
+    <button type="button" class="more-sheet-item" data-action="suite" onclick="closeMobileSheet();location.href='suite.html'">
+      <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span><span class="more-sheet-label">Flux Suite</span>
     </button>
     <!-- B2: the floating Report fab collapses into this item on <768px -->
     <button type="button" class="more-sheet-item" data-action="report" onclick="closeMobileSheet();try{openFluxFeedbackModal()}catch(e){}">

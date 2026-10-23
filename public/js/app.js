@@ -3286,33 +3286,9 @@ function migrateCompletedAtBackfill(){
   if(changed){save('tasks',tasks);syncKey('tasks',tasks);}
 }
 
-/* Finished tasks are deleted two weeks after they were completed (Azfer,
-   2026-09-30); the Completed filter on the dashboard says so. The clock runs
-   from the later of completion and the day this arrived, so the tasks people
-   finished months ago are not wiped the moment they update — everyone gets the
-   full two weeks' notice. Deleting syncs, so every device agrees. */
-const FLUX_DONE_KEEP_MS=14*864e5;
-const FLUX_DONE_PURGE_FROM=new Date(2026,8,30).getTime();
-function fluxDoneAtMs(t){
-  const v=t&&t.completedAt;
-  const n=typeof v==='number'?v:Date.parse(v);
-  return Number.isFinite(n)?n:NaN;
-}
-/** When a finished task is deleted, in ms; NaN for a task that is not done. */
-function fluxDoneExpiresMs(t){
-  if(!t||!t.done)return NaN;
-  const at=fluxDoneAtMs(t);
-  return Math.max(Number.isFinite(at)?at:Date.now(),FLUX_DONE_PURGE_FROM)+FLUX_DONE_KEEP_MS;
-}
-function fluxPurgeOldCompleted(){
-  const now=Date.now();
-  const keep=tasks.filter(t=>!(t&&t.done&&fluxDoneExpiresMs(t)<=now));
-  const n=tasks.length-keep.length;
-  if(!n)return 0;
-  tasks=keep;save('tasks',tasks);syncKey('tasks',tasks);
-  return n;
-}
-window.fluxPurgeOldCompleted=fluxPurgeOldCompleted;
+/* Finished tasks stay: the calendar keeps showing them as done (Azfer,
+   2026-10-23). The dashboard leaves them out instead (renderTasks), so they no
+   longer need deleting after two weeks to keep that list short. */
 
 // Tab config — each tab has id, icon, label, visible flag
 /* School-joining is switched off for now (owner request): the "Join your
@@ -4608,12 +4584,11 @@ function toggleTask(id){
     const card=document.querySelector(`.task-item[data-task-id="${id}"]`)||document.querySelector(`[data-task-id="${id}"]`);
     fluxPaintTaskDone(id,true);
     if(card&&motionOn){
-      // One burst and the tick drawing itself. No confetti over the page and no
-      // second particle system: they were most of the lag on a phone.
+      // Just the tick drawing itself. The dot burst that used to fly out of the
+      // box read as a scatter of little icons next to the one check mark.
       const chk=card.querySelector('.check');
       const nameEl=card.querySelector('.task-text.task-primary-line')||card.querySelector('.task-text');
       try{window.FluxMotionMore?.tickAndStrike(chk,nameEl);}catch(_){}
-      if(chk)spawnTaskBurstFromEl(chk);
     }
     addMomentum();
     if(window.FluxIntel&&FluxIntel.recordCompletionStreak)FluxIntel.recordCompletionStreak();
@@ -4668,21 +4643,13 @@ function toggleTask(id){
 // restores the task as un-synced — push it again to put it back on Calendar.
 function deleteTask(id){snapshotTasks();tasks=tasks.filter(x=>x.id!==id&&!(x.planOf!=null&&String(x.planOf)===String(id)&&!x.done));save('tasks',tasks);try{if(typeof window.fluxGCalRemoveTaskFromGCal==='function')Promise.resolve(window.fluxGCalRemoveTaskFromGCal(id)).catch(()=>{});}catch(_){}showUndoSnackbar('Task deleted','undoLastChange');renderStats();renderTasks();renderCalendar();renderCountdown();checkAllPanic();syncKey('tasks',tasks);}
 function setFilter(f,el){
-  if(f==='reading'||f==='snoozed')f='active';
+  // 'done' was the Completed chip, retired with the dashboard's finished list.
+  if(f==='reading'||f==='snoozed'||f==='done')f='active';
   try{if(window.FluxSmartLists?.clearActive)FluxSmartLists.clearActive();}catch(_){}
   taskFilter=f;
   document.querySelectorAll('#filterChips .tmode-btn').forEach(b=>b.classList.remove('active'));
   if(el)el.classList.add('active');
   renderTasks();
-}
-function toggleCompletedTasks(){
-  const show=!load('flux_show_completed',false);
-  save('flux_show_completed',show);
-  const wrap=document.getElementById('completedTasksWrap');
-  const toggle=document.querySelector('.completed-toggle');
-  if(wrap)wrap.style.display=show?'':'none';
-  if(toggle)toggle.classList.toggle('collapsed',!show);
-  if(show&&wrap){try{window.FluxMotionMore?.revealChildren(wrap);}catch(_){}}
 }
 // ── TOPBAR TASK COUNT PILL ──────────────────────────────────
 function updateTopbarStats(){
@@ -4843,28 +4810,6 @@ function updateDashHero(opts){
       setTimeout(()=>{grad.classList.remove('dash-v2-greet-typewriter');grad.style.backgroundSize='';},3200);
     }
   }catch(e){}
-}
-function spawnTaskBurstFromEl(el){
-  if(!el||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  const r=el.getBoundingClientRect();
-  const cx=r.left+r.width/2,cy=r.top+r.height/2;
-  const colors=['#00C2FF','#7C5CFF','#22FF88'];
-  const n=12;
-  for(let i=0;i<n;i++){
-    const p=document.createElement('div');
-    p.className='task-burst-particle';
-    p.style.left=cx+'px';p.style.top=cy+'px';
-    p.style.background=colors[i%colors.length];
-    document.body.appendChild(p);
-    const ang=(Math.PI*2*i)/n+Math.random()*.35;
-    const dist=40+Math.random()*48;
-    const tx=Math.cos(ang)*dist,ty=Math.sin(ang)*dist;
-    p.animate(
-      [{transform:'translate(-50%,-50%) scale(1)',opacity:1},{transform:`translate(calc(-50% + ${tx}px),calc(-50% + ${ty}px)) scale(.35)`,opacity:0}],
-      {duration:480,easing:'cubic-bezier(.22,1,.36,1)'}
-    );
-    setTimeout(()=>p.remove(),500);
-  }
 }
 /** Next 7 days: estimated workload from open tasks (by due date; overdue rolled into today). */
 function renderDashWeekStrip(){
@@ -5312,8 +5257,10 @@ function renderTasks(){
   // 'all' and 'high' lost their chips (the row was too cluttered). A synced or
   // legacy value can still name them, which would filter the list while the
   // chip row still reads "Active" — fold them back to the default instead.
-  if(taskFilter==='all'||taskFilter==='high')taskFilter='active';
-  let list=tasks.filter(fluxTaskVisibleInMode);
+  if(taskFilter==='all'||taskFilter==='high'||taskFilter==='done')taskFilter='active';
+  // Finished tasks live on in the calendar, shown as done; the dashboard is
+  // for what is still to do (Azfer, 2026-10-23).
+  let list=tasks.filter(t=>!t.done&&fluxTaskVisibleInMode(t));
   if(window.FluxSmartLists?.isSmartFilter?.(taskFilter)){
     list=FluxSmartLists.applyFilter(list,taskFilter);
     list.sort((a,b)=>{
@@ -5323,7 +5270,6 @@ function renderTasks(){
     });
   }else{
   if(taskFilter==='active')list=list.filter(t=>!t.done);
-  if(taskFilter==='done')list=list.filter(t=>t.done);
   if(taskFilter==='overdue')list=list.filter(t=>isTaskOverdueDay(t));
   if(taskFilter==='today')list=list.filter(t=>t.date&&t.date===todayStr());
   if(taskFilter==='high')list=list.filter(t=>!t.done&&t.priority==='high');
@@ -5333,9 +5279,6 @@ function renderTasks(){
       if(d!==0)return d;
       return (a.id||0)-(b.id||0);
     });
-  }else if(taskFilter==='done'){
-    // Most recently finished first.
-    list.sort((a,b)=>(fluxDoneAtMs(b)||0)-(fluxDoneAtMs(a)||0));
   }else{
   const energy=readFluxEnergyLevel();
   let moodStress=5;
@@ -5362,14 +5305,12 @@ function renderTasks(){
   }
   const keep=fluxTaskListKeep(el);
   if(!list.length){
-    const msgs={active:"You're free — want to plan your day or add one task?",done:'No completed tasks yet',overdue:'No overdue tasks',today:'Nothing due today',high:'No high-priority tasks',all:'No tasks yet — press T to quick add'};
-    const icons={active:'✓',done:'🎉',overdue:'⏰',today:'📋',high:'🔥',all:'✦'};
+    const msgs={active:"You're free — want to plan your day or add one task?",overdue:'No overdue tasks',today:'Nothing due today',high:'No high-priority tasks',all:'No tasks yet — press T to quick add'};
+    const icons={active:'✓',overdue:'⏰',today:'📋',high:'🔥',all:'✦'};
     const smartMeta=window.FluxSmartLists?.getEmptyMeta?.(taskFilter);
     const emptyTitle=smartMeta?.title||(msgs[taskFilter]||msgs.all);
     const emptyIcon=smartMeta?.icon||(icons[taskFilter]||icons.all);
-    const emptySub=taskFilter==='done'
-      ?'Tasks you finish show here for 2 weeks, then they are deleted.'
-      :'Use the <span class="kbd-hint">+</span> menu or <span class="kbd-hint">T</span> quick add · <span class="kbd-hint">⌘⇧K</span> search · <span class="kbd-hint">⌘K</span> palette';
+    const emptySub='Use the <span class="kbd-hint">+</span> menu or <span class="kbd-hint">T</span> quick add · <span class="kbd-hint">⌘⇧K</span> search · <span class="kbd-hint">⌘K</span> palette';
     el.innerHTML=`<div class="empty flux-empty-smart flux-empty-animated"><div class="empty-icon flux-empty-bounce">${emptyIcon}</div><div class="empty-title">${emptyTitle}</div><div class="empty-sub">${emptySub}</div></div>`;
     requestAnimationFrame(()=>{try{const em=el.querySelector('.empty');if(em)window.FluxAnim?.emptyStateIn?.(em);}catch(e){}});
     return;
@@ -5377,9 +5318,6 @@ function renderTasks(){
   const tm={hw:{l:'HW',c:'var(--muted)'},test:{l:'Test',c:'var(--red)'},quiz:{l:'Quiz',c:'var(--gold)'},project:{l:'Project',c:'var(--purple)'},essay:{l:'Essay',c:'var(--blue)'},lab:{l:'Lab',c:'var(--green)'},reading:{l:'Reading',c:'var(--blue)'},other:{l:'Other',c:'var(--muted)'}};
   const todayS=todayStr();
   const active=list.filter(t=>!t.done);
-  // Finished tasks newest first, whatever order the open ones are in: the one
-  // you just ticked (by accident or not) is at the top of Completed.
-  const done=list.filter(t=>t.done).sort((a,b)=>(fluxDoneAtMs(b)||0)-(fluxDoneAtMs(a)||0));
   const renderCard=t=>{
     const sub=getSubjects()[t.subject];
     const isOver=isTaskOverdueDay(t);
@@ -5453,7 +5391,6 @@ ${ds?`<span class="task-chip task-chip-due ${isOver?'overdue':''}${isToday?' due
 ${t.estTime?`<span class="task-chip task-chip-time">${t.estTime}m</span>`:''}${estHist}
 ${waitChip}${recChip}${snz}
 ${t.planOf!=null&&t.planParts&&!t.weekBlock?`<span class="task-chip task-chip-plan" title="Part of a plan: open it to change the days" onclick="event.stopPropagation();openPlanItOut(${fluxIdArg(t.planOf)})" style="cursor:pointer">Step ${t.planPart} of ${t.planParts}</span>`:''}${fluxWeekPlanChip(t)}${t.plan&&!t.done?(()=>{const ps=tasks.filter(x=>x.planOf!=null&&String(x.planOf)===String(t.id));return ps.length?`<span class="task-chip task-chip-plan" title="Open the plan" onclick="event.stopPropagation();openPlanItOut(${fluxIdArg(t.id)})" style="cursor:pointer">Planned · ${ps.filter(x=>x.done).length}/${ps.length}</span>`:'';})():''}
-${t.done&&taskFilter==='done'&&Number.isFinite(fluxDoneExpiresMs(t))?`<span class="task-chip task-chip-expiry" title="Finished tasks are deleted 2 weeks after you complete them">Deletes ${fmtFluxDate(new Date(fluxDoneExpiresMs(t)),'short')}</span>`:''}
 ${(t.fluxTags||[]).length?(t.fluxTags||[]).map(tg=>`<span class="task-chip" style="background:rgba(var(--purple-rgb),.1);border-color:rgba(var(--purple-rgb),.22);font-size:.6rem">${esc(tg)}</span>`).join(''):''}
 <span class="task-chip" style="background:rgba(255,255,255,.02);color:var(--muted);border:1px solid rgba(255,255,255,.04)">${ti.l}</span>
 </div>
@@ -5481,19 +5418,7 @@ ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick
 </div>`;
   };
   const win=fluxWindowedListHtml(active,renderCard,'tasks',keep&&keep.count);
-  let html=win.html;
-  if(taskFilter==='done'){
-    html=`<div class="flux-done-notice" role="note"><span aria-hidden="true">🗑</span> Finished tasks are deleted 2 weeks after you complete them. Untick one to keep it.</div>`
-      +done.map(renderCard).join('');
-  }else if(done.length){
-    const showDone=load('flux_show_completed',false);
-    html+=`<div class="completed-toggle ${showDone?'':'collapsed'}" onclick="toggleCompletedTasks()">
-      <span class="completed-toggle-label">Completed</span>
-      <span class="completed-toggle-count">${done.length}</span>
-      <span class="completed-toggle-chevron">▾</span>
-    </div>`;
-    html+=`<div id="completedTasksWrap" style="${showDone?'':'display:none'}">${done.map(renderCard).join('')}</div>`;
-  }
+  const html=win.html;
   const listSig=list.map(t=>`${t.id}:${t.done?1:0}`).join('|');
   const prevSig=el.dataset.fluxTaskListSig||'';
   el.dataset.fluxTaskListSig=listSig;
@@ -5538,6 +5463,7 @@ function closeDashAddTaskModal(){
   try{window.FluxA11y?.releaseFocus?.(m);}catch(e){}
   const card=m.querySelector('.modal-card');
   const hide=()=>{m.style.display='none';};
+  const calRow=document.getElementById('taskCalTypeRow');if(calRow)calRow.style.display='none';
   try{
     if(window.FluxAnim?.modalClose)FluxAnim.modalClose(m,card||m,hide);
     else hide();
@@ -6257,6 +6183,7 @@ function openCalendarNewTask(){
   closeAddEventModal();
   openDashAddTaskModal();
   const d=document.getElementById('taskDate');if(d)d.value=ymd;
+  const row=document.getElementById('taskCalTypeRow');if(row)row.style.display='flex';
 }
 function openAddEventModal(preferredType){
   if(preferredType==='task'){openCalendarNewTask();return;}
@@ -11195,7 +11122,7 @@ async function syncFromCloud(opts){
       const _tasksBefore=tasks;
       tasks=fluxApplyCloudList('tasks',tasks,d.tasks,d.listTombstones,_listOpts);
       try{fluxNoteRemoteTaskChanges(_tasksBefore,tasks);}catch(_){}
-      migrateCompletedAtBackfill();fluxPurgeOldCompleted();
+      migrateCompletedAtBackfill();
     }
     if(d.recurringSeries&&typeof d.recurringSeries==='object'){
       try{if(window.FluxRecurring?.applyFromCloud)FluxRecurring.applyFromCloud(d.recurringSeries);else save('flux_recurring_series_v1',d.recurringSeries);}catch(_){}
@@ -15795,9 +15722,6 @@ function handleCheckoutReturn(){
   try{if(window.FluxI18n?.install)FluxI18n.install();}catch(_){}
   try{if(window.FluxStorageRepair?.install)FluxStorageRepair.install();}catch(_){}
   migrateCompletedAtBackfill();
-  fluxPurgeOldCompleted();
-  // A tab left open for days still clears on time.
-  setInterval(()=>{try{if(fluxPurgeOldCompleted()){renderTasks();renderStats();}}catch(_){}},36e5);
   loadSettingsUI();
   const sb=document.getElementById('sidebar');if(sb&&sidebarCollapsed)sb.classList.add('collapsed');
   try{
