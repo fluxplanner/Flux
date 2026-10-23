@@ -80,6 +80,10 @@
     front: svgIcon('<rect x="8" y="8" width="12" height="12" rx="1.5"/><path d="M4 16V5a1 1 0 0 1 1-1h11"/>'),
     vector: svgIcon('<path d="M4 20 18 6"/><path d="M19 5l-1.2 6.2L12.8 6.2z" fill="currentColor"/><path d="M4 20h7" stroke-dasharray="2 2.5"/>'),
     figure: svgIcon('<path d="M3 20h12L3 6z"/><path d="M3 16h4v4"/><circle cx="17.5" cy="7.5" r="3.5"/>'),
+    ruler: svgIcon('<path d="M3 16 16 3l5 5L8 21z"/><path d="M7 12l2 2M10 9l2 2M13 6l2 2"/>'),
+    protractor: svgIcon('<path d="M2 18a10 10 0 0 1 20 0z"/><path d="M12 18l5-7"/>'),
+    square: svgIcon('<path d="M4 20V4l16 16z"/><path d="M4 14h4v6"/>'),
+    compass: svgIcon('<circle cx="12" cy="4" r="1.6"/><path d="M11 5.5 6 20M13 5.5 18 20M8.5 13h7"/>'),
     panel: svgIcon('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>'),
     link: svgIcon('<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>'),
   };
@@ -108,7 +112,7 @@
     ['select', 'Select and move', 'V'], ['pen', 'Pen', 'P'], ['hl', 'Highlighter', 'H'], ['eraser', 'Eraser', 'E'],
     ['line', 'Line', 'L'], ['arrow', 'Arrow', 'A'], ['vector', 'Vector', 'W'], ['rect', 'Box', 'R'], ['ellipse', 'Circle', 'O'],
     ['text', 'Text', 'T'], ['label', 'Label with a line', 'B'], ['stamp', 'Stamps', 'S'], ['image', 'Picture', 'I'],
-    ['figure', 'Flux Figures panel', 'M'],
+    ['compass', 'Compass', 'K'], ['figure', 'Flux Figures panel', 'M'],
   ];
   var VEC_PREF = 'flux_pixel_vector';
   var VEC_DIRS = [['angle', 'Angle from +x'], ['bearing', 'Bearing'], ['compass', 'Compass (N 30\u00b0 E)']];
@@ -944,7 +948,7 @@
         + '<div class="px-stage" id="pxStage"><div class="px-wrap" id="pxWrap">'
         + '<svg class="px-svg" id="pxSvg" viewBox="0 0 ' + W + ' ' + H + '" xmlns="' + NS + '"><defs id="pxDefs"></defs>'
         + '<rect width="' + W + '" height="' + H + '" fill="#fff"/><rect id="pxBgRect" width="' + W + '" height="' + H + '" fill="none"/>'
-        + '<g id="pxItems"></g><g id="pxDraft"></g><g id="pxSel"></g></svg>'
+        + '<g id="pxItems"></g><g id="pxInst"></g><g id="pxDraft"></g><g id="pxSel"></g></svg>'
         + '<textarea class="px-textin" id="pxText" hidden rows="1" aria-label="Text"></textarea>'
         + '<div class="px-float" id="pxFloat" role="toolbar" aria-label="Selected" hidden></div></div></div>'
         + '<div class="px-props" id="pxProps"></div>'
@@ -954,6 +958,66 @@
 
       var svg = $('#pxSvg', host), itemsG = $('#pxItems', host), draftG = $('#pxDraft', host), selG = $('#pxSel', host);
       var wrap = $('#pxWrap', host), stage = $('#pxStage', host), props = $('#pxProps', host), textIn = $('#pxText', host);
+
+      /* ── Ruler, protractor, set square and compass ────────────────────
+         The instruments sit on the page, are dragged by their body and turned
+         by their round handle, and are kept with the drawing (not in it: they
+         never print). A pen stroke or a line started on an edge follows it; a
+         line from the protractor's centre snaps to whole degrees. The compass
+         draws a circle, or an arc, round a point. */
+      var IN = window.FluxPixelInstruments || null, instG = $('#pxInst', host);
+      st.inst = IN ? IN.defaults(W, H) : {};
+      if (IN && doc.inst) Object.keys(st.inst).forEach(function (k) { if (doc.inst[k]) Object.assign(st.inst[k], doc.inst[k]); });
+      st.compass = 'circle';
+      function drawInst() {
+        if (!IN) return;
+        var k = 1 / (pageScale() || 1);
+        instG.innerHTML = IN.NAMES.map(function (n) { return IN.svg(n[0], st.inst[n[0]], k); }).join('');
+      }
+      function saveInst() { doc.inst = JSON.parse(JSON.stringify(st.inst)); save(); }
+      function allEdges() {
+        if (!IN) return [];
+        var out = [];
+        IN.NAMES.forEach(function (n) { out = out.concat(IN.edges(n[0], st.inst[n[0]])); });
+        return out;
+      }
+      /** Points worth landing on: ends of lines, corners, centres, and the protractor's centre. */
+      function snapPoints() {
+        var pts = [];
+        doc.items.forEach(function (it) {
+          if ('x1' in it) { pts.push([it.x1, it.y1], [it.x2, it.y2]); return; }
+          if (it.pts && it.pts.length) { pts.push(it.pts[0], it.pts[it.pts.length - 1]); return; }
+          if (it.type === 'ellipse') { pts.push([it.x + it.w / 2, it.y + it.h / 2]); return; }
+          if (it.type === 'rect') pts.push([it.x, it.y], [it.x + it.w, it.y], [it.x, it.y + it.h], [it.x + it.w, it.y + it.h]);
+        });
+        if (IN && st.inst.protractor.on) pts.push([st.inst.protractor.x, st.inst.protractor.y]);
+        return pts;
+      }
+      function tol() { return 14 / (pageScale() || 1); }
+      function snapPoint(p) {
+        var best = null, d0 = tol();
+        snapPoints().forEach(function (q) { var d = Math.hypot(q[0] - p[0], q[1] - p[1]); if (d <= d0) { d0 = d; best = q; } });
+        return best;
+      }
+      /** A small readout beside the pointer: a length in cm, an angle. */
+      function readout(at, textStr) {
+        var k = 1 / (pageScale() || 1), fs = 15 * k;
+        return '<g pointer-events="none"><rect x="' + r1(at[0] + 12 * k) + '" y="' + r1(at[1] - 30 * k) + '" width="' + r1((textStr.length * 8.6 + 14) * k) + '" height="' + r1(24 * k) + '" rx="' + r1(6 * k) + '" fill="#0f172a" fill-opacity=".86"/>'
+          + '<text x="' + r1(at[0] + 19 * k) + '" y="' + r1(at[1] - 13 * k) + '" font-size="' + r1(fs) + '" font-family="Inter, system-ui, sans-serif" font-weight="700" fill="#fff">' + esc(textStr) + '</text></g>';
+      }
+      function fmtCm(v) { return (Math.round(v * 10) / 10).toFixed(1) + ' cm'; }
+      function arcPts(c, r, a0, a1) {
+        var n = Math.max(8, Math.ceil(Math.abs(a1 - a0) / (Math.PI / 90))), out = [];
+        for (var i = 0; i <= n; i++) { var t = a0 + (a1 - a0) * i / n; out.push([r1(c[0] + r * Math.cos(t)), r1(c[1] + r * Math.sin(t))]); }
+        return out;
+      }
+      function drawCompass(c, r, a0, a1, at) {
+        var k = 1 / (pageScale() || 1);
+        var guide = '<g pointer-events="none"><circle cx="' + r1(c[0]) + '" cy="' + r1(c[1]) + '" r="' + r1(r) + '" fill="none" stroke="#2563eb" stroke-width="' + r1(1.2 * k) + '" stroke-dasharray="' + r1(6 * k) + ' ' + r1(5 * k) + '"/>'
+          + '<line x1="' + r1(c[0]) + '" y1="' + r1(c[1]) + '" x2="' + r1(at[0]) + '" y2="' + r1(at[1]) + '" stroke="#2563eb" stroke-width="' + r1(1.5 * k) + '"/><circle cx="' + r1(c[0]) + '" cy="' + r1(c[1]) + '" r="' + r1(4 * k) + '" fill="#2563eb"/></g>';
+        var arc = a1 != null ? '<path d="' + smoothPath(arcPts(c, r, a0, a1)) + '" fill="none" stroke="' + st.color + '" stroke-width="' + st.width + '" stroke-linecap="round"/>' : '';
+        draftG.innerHTML = guide + arc + readout(at, 'r = ' + fmtCm(r / IN.CM));
+      }
 
       /* Rendering */
       function drawBg() {
@@ -1028,6 +1092,18 @@
             }).join('') + '</div></div>';
           }).join('') + '</div>';
         }
+        if (!it && st.tool === 'compass') {
+          html += '<div class="px-sec"><span class="px-sec-h" id="pxCompH">Compass</span><div class="px-row" role="group" aria-labelledby="pxCompH">'
+            + chip('data-compass', 'circle', st.compass !== 'arc', 'Circle') + chip('data-compass', 'arc', st.compass === 'arc', 'Arc') + '</div>'
+            + '<p class="px-hint">Press where the point goes and drag out to the radius. It lands on the ends of lines and on corners nearby' + (st.compass === 'arc' ? ', then move round and press again to end the arc' : '') + '.</p></div>';
+        }
+        if (IN && st.inst.square.on) {
+          html += '<div class="px-sec"><span class="px-sec-h" id="pxSqH">Set square</span><div class="px-row" role="group" aria-labelledby="pxSqH">'
+            + chip('data-sqkind', '45', st.inst.square.kind !== '30', '45° 45°') + chip('data-sqkind', '30', st.inst.square.kind === '30', '30° 60°') + '</div></div>';
+        }
+        if (IN && IN.NAMES.some(function (n) { return st.inst[n[0]].on; })) {
+          html += '<div class="px-sec"><span class="px-sec-h">Instruments</span><p class="px-hint">Drag one by its body, turn it by its round handle (hold Shift for 15° steps). Start a line or a pen stroke on an edge to draw along it; start a line at the protractor’s centre for whole degrees. They never print.</p></div>';
+        }
         if (it && it.type === 'figure') html += figSelHTML(it);
         if (FV && it && it.type === 'vector') html += vecSelHTML(it);
         if (FV && !it && st.tool === 'vector') html += vecToolHTML();
@@ -1070,6 +1146,9 @@
             return '<button type="button" class="px-tool" data-tool="' + t[0] + '" aria-label="' + esc(t[1]) + '" title="' + esc(t[1]) + ' (' + t[2] + ')">' + ICON[t[0]] + '</button>';
           }).join('');
         }
+        if (IN) rail.innerHTML += '<span class="px-tools-sep" role="separator"></span>' + IN.NAMES.map(function (n) {
+          return '<button type="button" class="px-tool px-tool--inst" data-inst-toggle="' + n[0] + '" aria-pressed="' + !!st.inst[n[0]].on + '" aria-label="' + n[1] + '" title="' + n[1] + ' (put it on the page)">' + ICON[n[0]] + '</button>';
+        }).join('');
         drawTools();
       }
       function drawTools() { $$('[data-tool]', host).forEach(function (b) { b.classList.toggle('is-on', b.dataset.tool === st.tool); b.setAttribute('aria-pressed', b.dataset.tool === st.tool); }); }
@@ -1140,6 +1219,7 @@
       }
       function applyZoom() {
         wrap.style.width = Math.round(fitWidth() * st.zoom) + 'px';
+        if (typeof drawInst === 'function') requestAnimationFrame(function () { drawInst(); drawSel(); });
         $('.px-zoom-v', host).textContent = Math.round(st.zoom * 100) + '%';
       }
       /** Options on the right (a sheet from the bottom on a phone), shown or hidden. */
@@ -1324,6 +1404,36 @@
         var p = toPage(e);
         try { svg.setPointerCapture(e.pointerId); } catch (er) {}
         var t = st.tool;
+        // A compass arc in progress: this press puts it down.
+        if (st.arc) {
+          var A = st.arc; st.arc = null; draftG.innerHTML = '';
+          var a1 = Math.atan2(p[1] - A.c[1], p[0] - A.c[0]);
+          while (a1 < A.a0) a1 += Math.PI * 2;
+          if (a1 - A.a0 > 0.02) addItem({ type: 'pen', pts: arcPts(A.c, A.r, A.a0, a1), color: st.color, width: st.width }, 'Drew an arc');
+          return;
+        }
+        var drawsLine = /^(line|arrow|pen|hl|compass)$/.test(t);
+        var onInst = e.target.closest && e.target.closest('[data-inst]');
+        var pro = st.inst.protractor;
+        var atCentre = IN && pro && pro.on && Math.hypot(p[0] - pro.x, p[1] - pro.y) <= tol();
+        var edgeHit = IN && drawsLine && t !== 'compass' ? IN.snapEdge(p, allEdges(), tol()) : null;
+        if (onInst && !(drawsLine && (atCentre || edgeHit))) {
+          var nm = onInst.getAttribute('data-inst'), I = st.inst[nm];
+          if (e.target.closest('[data-inst-rot]')) st.drag = { mode: 'instrot', name: nm, a0: Math.atan2(p[1] - I.y, p[0] - I.x), rot0: I.rot || 0 };
+          else st.drag = { mode: 'instmove', name: nm, last: p };
+          return;
+        }
+        if (t === 'compass') {
+          var cc = snapPoint(p) || p;
+          st.drag = { mode: 'compass', c: cc, r: 0, a0: 0 };
+          drawCompass(cc, 0, 0, null, cc);
+          return;
+        }
+        if (drawsLine && t !== 'compass') {
+          if (atCentre && (t === 'line' || t === 'arrow')) p = [pro.x, pro.y];
+          else if (edgeHit) p = edgeHit.q;
+          else if (t === 'line' || t === 'arrow') p = snapPoint(p) || p;
+        }
         if (t === 'select') {
           var hd = e.target.getAttribute('data-handle');
           if (hd) {
@@ -1368,12 +1478,48 @@
         if (t === 'pen' || t === 'hl') st.draft = Object.assign(base, { type: t, pts: [p], width: t === 'hl' ? Math.max(st.width * 4, 18) : st.width });
         else if (t === 'line' || t === 'arrow' || t === 'label') st.draft = Object.assign(base, { type: t === 'label' ? 'line' : t, x1: p[0], y1: p[1], x2: p[0], y2: p[1], dash: t === 'label' ? false : st.dash, _label: t === 'label' });
         else if (t === 'rect' || t === 'ellipse') st.draft = Object.assign(base, { type: t, x: p[0], y: p[1], w: 0, h: 0, fill: st.fill, dash: st.dash, _ox: p[0], _oy: p[1] });
-        st.drag = { mode: 'draw' };
+        var fromCentre = !!(atCentre && (t === 'line' || t === 'arrow'));
+        // From the protractor's centre the angle rules; anywhere else an edge does.
+        st.drag = { mode: 'draw', edge: edgeHit && !fromCentre ? edgeHit.seg : null, pro: fromCentre };
         drawDraft();
       });
       svg.addEventListener('pointermove', function (e) {
+        if (st.arc && !st.drag) {
+          var pa = toPage(e), A = st.arc, a1 = Math.atan2(pa[1] - A.c[1], pa[0] - A.c[0]);
+          while (a1 < A.a0) a1 += Math.PI * 2;
+          drawCompass(A.c, A.r, A.a0, a1, [A.c[0] + A.r * Math.cos(a1), A.c[1] + A.r * Math.sin(a1)]);
+          return;
+        }
         if (!st.drag) { if (st.tool === 'eraser' && st.eraseMode === 'circle') ring(toPage(e)); return; }
         var p = toPage(e);
+        if (st.drag.mode === 'instmove') {
+          var I = st.inst[st.drag.name];
+          I.x += p[0] - st.drag.last[0]; I.y += p[1] - st.drag.last[1]; st.drag.last = p;
+          drawInst(); return;
+        }
+        if (st.drag.mode === 'instrot') {
+          var J = st.inst[st.drag.name], ang = Math.atan2(p[1] - J.y, p[0] - J.x);
+          var deg = st.drag.rot0 + (ang - st.drag.a0) * 180 / Math.PI;
+          J.rot = ((Math.round(e.shiftKey ? deg / 15 : deg) * (e.shiftKey ? 15 : 1)) % 360 + 360) % 360;
+          drawInst();
+          draftG.innerHTML = readout(p, Math.round(J.rot) + '°');
+          return;
+        }
+        if (st.drag.mode === 'compass') {
+          var C = st.drag;
+          var snapR = snapPoint(p);
+          var at = snapR || p, rr = Math.hypot(at[0] - C.c[0], at[1] - C.c[1]);
+          if (!snapR) rr = Math.round(rr / (IN.CM / 10)) * (IN.CM / 10);   // whole millimetres
+          C.r = rr; C.a0 = Math.atan2(at[1] - C.c[1], at[0] - C.c[0]);
+          drawCompass(C.c, rr, 0, null, [C.c[0] + rr * Math.cos(C.a0), C.c[1] + rr * Math.sin(C.a0)]);
+          return;
+        }
+        // Along an instrument's edge, or round the protractor in whole degrees.
+        if (st.drag.mode === 'draw' && st.draft) {
+          if (st.drag.edge) p = IN.onLine(p, st.drag.edge);
+          else if (st.drag.pro) { var pl = IN.protractorLine(st.inst.protractor, [st.draft.x1, st.draft.y1], p); if (pl) { p = pl.end; st.drag.deg = pl.deg; } }
+          else if ('x1' in st.draft && st.draft.type !== 'vector' && !e.shiftKey) p = snapPoint(p) || p;
+        }
         if (st.drag.mode === 'erase') { eraseAt(e); return; }
         if (st.drag.mode === 'cut') { cutAlong(st.drag.last, p); st.drag.last = p; ring(p); return; }
         if (st.drag.mode === 'boxerase') { st.drag.end = p; drawEraseBox(); return; }
@@ -1420,6 +1566,14 @@
       function endPointer() {
         var drag = st.drag; st.drag = null;
         if (!drag) return;
+        if (drag.mode === 'instmove' || drag.mode === 'instrot') { draftG.innerHTML = ''; saveInst(); return; }
+        if (drag.mode === 'compass') {
+          draftG.innerHTML = '';
+          if (drag.r < 4) return;
+          if (st.compass === 'arc') { st.arc = { c: drag.c, r: drag.r, a0: drag.a0 }; drawCompass(drag.c, drag.r, drag.a0, drag.a0, [drag.c[0] + drag.r * Math.cos(drag.a0), drag.c[1] + drag.r * Math.sin(drag.a0)]); toast('Move round to draw the arc, then press to put it down.'); return; }
+          addItem({ type: 'ellipse', x: drag.c[0] - drag.r, y: drag.c[1] - drag.r, w: drag.r * 2, h: drag.r * 2, color: st.color, width: st.width, fill: false, dash: false }, 'Drew a circle');
+          return;
+        }
         if (drag.mode === 'cut') {
           doc.items = doc.items.filter(function (it) { return !(drag.touched[it.id] && rubbedOut(it)); });
           drawItems(); commit(); return;
@@ -1473,7 +1627,16 @@
         if (it && (it.type === 'text' || it.type === 'label')) { st.sel = it.id; editTextOf(it); }
         if (it && it.type === 'figure') { st.sel = it.id; drawSel(); drawProps(); openFigures(it); }
       });
-      function drawDraft() { draftG.innerHTML = st.draft ? itemSVG(Object.assign({ id: 'draft' }, st.draft, { type: st.draft.type }), false) : ''; }
+      function drawDraft() {
+        var d = st.draft;
+        draftG.innerHTML = d ? itemSVG(Object.assign({ id: 'draft' }, d, { type: d.type }), false) : '';
+        if (!d || !IN || !('x1' in d) || d.type === 'vector') return;
+        var anyOn = IN.NAMES.some(function (n) { return st.inst[n[0]].on; });
+        if (!anyOn && !(st.drag && st.drag.edge)) return;
+        var label = fmtCm(IN.cm([d.x1, d.y1], [d.x2, d.y2]));
+        if (st.drag && st.drag.pro && st.drag.deg != null) label = st.drag.deg + '° · ' + label;
+        draftG.innerHTML += readout([d.x2, d.y2], label);
+      }
 
       /* Pictures */
       $('#pxFile', host).addEventListener('change', function (e) {
@@ -1506,10 +1669,21 @@
 
       /* Buttons */
       host.onclick = function (e) {
-        var t = e.target.closest('[data-tool],[data-act],[data-color],[data-toggle],[data-bg],[data-stamp],[data-erase],[data-vtog],[data-ventry],[data-mode-set],[data-figkind],[data-newfig]');
+        var t = e.target.closest('[data-tool],[data-act],[data-color],[data-toggle],[data-bg],[data-stamp],[data-erase],[data-vtog],[data-ventry],[data-mode-set],[data-figkind],[data-newfig],[data-inst-toggle],[data-compass],[data-sqkind]');
         if (!t) return;
         var it = selected();
         if (t.dataset.modeSet) { setMode(t.dataset.modeSet); return; }
+        if (t.dataset.instToggle) {
+          var inm = t.dataset.instToggle, I0 = st.inst[inm];
+          I0.on = !I0.on;
+          // Taken out somewhere it cannot be seen (off the page): back to where it starts.
+          if (I0.on && (I0.x < -200 || I0.x > W + 200 || I0.y < -200 || I0.y > H + 200)) { var dflt = IN.defaults(W, H)[inm]; I0.x = dflt.x; I0.y = dflt.y; I0.rot = 0; }
+          t.setAttribute('aria-pressed', String(I0.on));
+          drawInst(); saveInst(); drawProps();
+          return;
+        }
+        if (t.dataset.compass) { st.compass = t.dataset.compass; drawProps(); return; }
+        if (t.dataset.sqkind) { st.inst.square.kind = t.dataset.sqkind; drawInst(); saveInst(); drawProps(); return; }
         if (t.dataset.figkind) {
           var ks = window.FluxPixelFigures ? window.FluxPixelFigures.lastSpec(t.dataset.figkind) : window.FluxFigures.defaults(t.dataset.figkind);
           addFigure(ks, true);
@@ -1651,7 +1825,7 @@
         if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
         if (mod && e.key.toLowerCase() === 'd' && selected()) { e.preventDefault(); host.querySelector('[data-act="dup"]').click(); return; }
         if ((e.key === 'Delete' || e.key === 'Backspace') && selected()) { e.preventDefault(); host.querySelector('[data-act="delete"]').click(); return; }
-        if (e.key === 'Escape') { st.sel = null; drawSel(); drawProps(); return; }
+        if (e.key === 'Escape') { if (st.arc) { st.arc = null; draftG.innerHTML = ''; } st.sel = null; drawSel(); drawProps(); return; }
         var nudge = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
         if (nudge && selected()) {
           e.preventDefault();
@@ -1669,15 +1843,20 @@
 
       st.mode = doc.mode === 'figures' ? 'figures' : 'draw';
       drawRail();
+      drawInst();
       drawBg(); drawItems(); setTool(doc.items.length || st.mode === 'figures' ? 'select' : 'pen');
       setPanel(window.innerWidth > 760);
       setMode(st.mode);
       drawUndo();
       if (window.FluxHub) window.FluxHub.mountAll();
-      var ro = typeof ResizeObserver === 'function' ? new ResizeObserver(function () { applyZoom(); }) : null;
+      // Saving waits a moment after each change; closing or reloading the page in that moment must not lose it.
+      function flush() { if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; putDoc(doc); } }
+      window.addEventListener('pagehide', flush);
+            var ro = typeof ResizeObserver === 'function' ? new ResizeObserver(function () { applyZoom(); }) : null;
       if (ro) ro.observe(stage); else window.addEventListener('resize', applyZoom);
       cleanup = function () {
         if (ro) ro.disconnect(); else window.removeEventListener('resize', applyZoom);
+        window.removeEventListener('pagehide', flush);
         if (editing) closeText(true);
         clearTimeout(saveTimer); putDoc(doc);
         document.removeEventListener('keydown', onKey);

@@ -316,3 +316,11 @@ select.px-f-in { appearance: auto; }
   .px-mode span { display: none; }
   .px-tool--fig { width: 58px; }
 }
+/* A shorter window: the tools in two columns, so none is out of reach. */
+@media (min-width: 761px) and (max-height: 980px) {
+  .px-tools { display: grid; grid-template-columns: repeat(2, 42px); grid-auto-rows: 42px; align-content: start; gap: 3px; }
+  .px-tools .px-tool { width: 42px; height: 42px; }
+  .px-tools-sep { grid-column: 1 / -1; height: 1px; margin: 2px 4px; }
+  .px-editor.is-figures .px-tools { grid-template-columns: repeat(2, 64px); grid-auto-rows: auto; }
+  .px-editor.is-figures .px-tools .px-tool { width: 64px; height: auto; min-height: 42px; }
+}
