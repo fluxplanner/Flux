@@ -312,7 +312,9 @@
     if (r.error) hint.classList.add('is-err');
   }
 
-  function fieldId(k, i) { return 'pxf-' + k + (i ? '-' + i : ''); }
+  /* P is the prefix for every id in a form, so the panel's form and the side
+     panel's form can be on the page at once without sharing ids. */
+  function fieldId(k, i, P) { return (P || 'pxf') + '-' + k + (i ? '-' + i : ''); }
   function labelOf(f, s) { return typeof f.l === 'function' ? f.l(s) : f.l; }
 
   /* How many sections each figure shows straight away; the rest wait under
@@ -321,7 +323,8 @@
   var MORE = 'flux_pixel_fig_more';
   function moreOpen() { try { return localStorage.getItem(MORE) === '1'; } catch (e) { return false; } }
 
-  function formHTML(kind, s) {
+  function formHTML(kind, s, P) {
+    P = P || 'pxf';
     var html = '', open = false, sets = 0, keep = OPEN[kind] || 1, more = [];
     FORMS[kind].forEach(function (f) { if (f.t === 'head' && ++sets > keep) more.push(f.l); });
     sets = 0;
@@ -330,7 +333,7 @@
       if (f.t === 'head') {
         if (open) html += '</fieldset>';
         if (++sets === keep + 1) {
-          html += '<details class="px-f-more" id="pxFigMore"' + (moreOpen() ? ' open' : '') + '><summary class="px-f-more-sum">More options<span class="px-f-more-what">' + esc(more.join(' · ')) + '</span></summary>';
+          html += '<details class="px-f-more"' + (P === 'pxf' ? ' id="pxFigMore"' : '') + (moreOpen() ? ' open' : '') + '><summary class="px-f-more-sum">More options<span class="px-f-more-what">' + esc(more.join(' · ')) + '</span></summary>';
         }
         html += '<fieldset class="px-f-set"><legend class="px-f-legend">' + esc(f.l) + '</legend>';
         open = true;
@@ -340,7 +343,7 @@
         html += '<p class="px-f-act"' + show + '><button type="button" class="px-btn px-btn--small" data-fig-act="' + f.a + '">' + esc(f.l) + '</button></p>';
         return;
       }
-      var id = fieldId(f.k, f.dup);
+      var id = fieldId(f.k, f.dup, P);
       if (f.t === 'num' || f.t === 'text') {
         html += '<div class="px-f-row"' + show + '><label class="px-f-lab" for="' + id + '" data-lab="' + i + '">' + esc(labelOf(f, s)) + '</label>'
           + '<input class="px-f-in" id="' + id + '" data-k="' + f.k + '" type="text" autocomplete="off" spellcheck="false"'
@@ -351,17 +354,17 @@
       } else if (f.t === 'chk') {
         html += '<div class="px-f-row px-f-row--chk"' + show + '><label class="px-f-chk" for="' + id + '"><input type="checkbox" id="' + id + '" data-k="' + f.k + '"' + (s[f.k] ? ' checked' : '') + '><span data-lab="' + i + '">' + esc(labelOf(f, s)) + '</span></label></div>';
       } else if (f.t === 'sel' || f.t === 'preset') {
-        html += '<div class="px-f-row"' + show + '><label class="px-f-lab" for="' + (f.t === 'preset' ? 'pxf-preset' : id) + '" data-lab="' + i + '">' + esc(labelOf(f, s)) + '</label>'
-          + '<select class="px-f-in" id="' + (f.t === 'preset' ? 'pxf-preset' : id) + '"' + (f.t === 'preset' ? ' data-preset="' + i + '"' : ' data-k="' + f.k + '"') + '>'
+        html += '<div class="px-f-row"' + show + '><label class="px-f-lab" for="' + (f.t === 'preset' ? P + '-preset' : id) + '" data-lab="' + i + '">' + esc(labelOf(f, s)) + '</label>'
+          + '<select class="px-f-in" id="' + (f.t === 'preset' ? P + '-preset' : id) + '"' + (f.t === 'preset' ? ' data-preset="' + i + '"' : ' data-k="' + f.k + '"') + '>'
           + f.opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (f.t === 'sel' && String(s[f.k]) === String(o[0]) ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('')
           + '</select></div>';
       } else if (f.t === 'row') {
-        html += '<div class="px-f-row"' + show + '><span class="px-f-lab" id="pxf-row-' + i + '">' + esc(f.l) + '</span><span class="px-f-trio" role="group" aria-labelledby="pxf-row-' + i + '">'
-          + f.keys.map(function (k, j) { return '<input class="px-f-in px-f-in--short" id="' + fieldId(k) + '" data-k="' + k + '" type="text" maxlength="12" autocomplete="off" aria-label="' + esc(f.l + ' ' + (j + 1)) + '" value="' + esc(s[k]) + '">'; }).join('')
+        html += '<div class="px-f-row"' + show + '><span class="px-f-lab" id="' + P + '-row-' + i + '">' + esc(f.l) + '</span><span class="px-f-trio" role="group" aria-labelledby="' + P + '-row-' + i + '">'
+          + f.keys.map(function (k, j) { return '<input class="px-f-in px-f-in--short" id="' + fieldId(k, 0, P) + '" data-k="' + k + '" type="text" maxlength="12" autocomplete="off" aria-label="' + esc(f.l + ' ' + (j + 1)) + '" value="' + esc(s[k]) + '">'; }).join('')
           + '</span></div>';
       } else if (f.t === 'grid8') {
         html += '<div class="px-f-row px-f-row--wide"' + show + '><div class="px-f-eight">' + f.keys.map(function (k, j) {
-          return '<label class="px-f-mini" for="' + fieldId(k) + '"><span>' + (j + 1) + '</span><input class="px-f-in" id="' + fieldId(k) + '" data-k="' + k + '" type="text" maxlength="20" autocomplete="off" value="' + esc(s[k]) + '" aria-label="Label for angle ' + (j + 1) + '"></label>';
+          return '<label class="px-f-mini" for="' + fieldId(k, 0, P) + '"><span>' + (j + 1) + '</span><input class="px-f-in" id="' + fieldId(k, 0, P) + '" data-k="' + k + '" type="text" maxlength="20" autocomplete="off" value="' + esc(s[k]) + '" aria-label="Label for angle ' + (j + 1) + '"></label>';
         }).join('') + '</div></div>';
       } else if (f.t === 'note') {
         html += '<p class="px-f-note"' + show + '>' + esc(f.l) + '</p>';
@@ -372,31 +375,33 @@
     return html + '<p class="px-f-reset"><button type="button" class="px-link" data-fig-act="reset">Start this figure again</button></p>';
   }
 
-  /** The settings, as the form has them now. */
-  function readForm() {
-    var d = F.DEFAULTS[state.kind], s = { kind: state.kind };
-    Object.keys(d).forEach(function (k) { if (k !== 'kind') s[k] = state.spec[k]; });
+  /** The settings, as the form in root has them now; anything not in the form comes from spec. */
+  function readForm(root, kind, spec) {
+    if (!root) { root = dlg.querySelector('#pxFigForm'); kind = state.kind; spec = state.spec; }
+    var d = F.DEFAULTS[kind], s = { kind: kind };
+    Object.keys(d).forEach(function (k) { if (k !== 'kind') s[k] = spec[k]; });
     // Two fields can share a key (angles around a point have their own "how many"): the one on show wins.
     var shown = function (el) { var row = el.closest('[data-show]'); return !(row && row.hidden); }, byKey = {};
-    Array.prototype.forEach.call(dlg.querySelectorAll('#pxFigForm [data-k]'), function (el) {
+    Array.prototype.forEach.call(root.querySelectorAll('[data-k]'), function (el) {
       var k = el.getAttribute('data-k');
       if (!byKey[k] || (!shown(byKey[k]) && shown(el))) byKey[k] = el;
     });
     Object.keys(byKey).forEach(function (k) {
       var el = byKey[k];
       if (el.type === 'checkbox') s[k] = el.checked;
-      else if (typeof d[k] === 'number') { var o = {}; o.kind = state.kind; o[k] = el.value; s[k] = el.value.trim() === '' ? NaN : F.clean(o)[k]; }
+      else if (typeof d[k] === 'number') { var o = {}; o.kind = kind; o[k] = el.value; s[k] = el.value.trim() === '' ? NaN : F.clean(o)[k]; }
       else s[k] = el.value;
     });
     return s;
   }
-  function syncVisibility(s) {
-    var f = FORMS[state.kind];
-    Array.prototype.forEach.call(dlg.querySelectorAll('#pxFigForm [data-show]'), function (el) {
+  function syncVisibility(s, root) {
+    var f = FORMS[s.kind];
+    root = root || dlg.querySelector('#pxFigForm');
+    Array.prototype.forEach.call(root.querySelectorAll('[data-show]'), function (el) {
       var def = f[+el.getAttribute('data-show')];
       el.hidden = !def.show(s);
     });
-    Array.prototype.forEach.call(dlg.querySelectorAll('#pxFigForm [data-lab]'), function (el) {
+    Array.prototype.forEach.call(root.querySelectorAll('[data-lab]'), function (el) {
       var def = f[+el.getAttribute('data-lab')];
       if (typeof def.l === 'function') el.textContent = def.l(s);
     });
@@ -574,8 +579,105 @@
     if (on) on.focus();
   }
 
+  /* ── The same form beside the page ─────────────────────────────────
+     For the figure selected on the page: the form sits in Pixel's options
+     rail and every valid change redraws the figure where it is, so a figure
+     is changed in place instead of in a window over it. */
+
+  /**
+   * box: an empty element to fill. spec: the figure. opts.onChange(spec) gets
+   * every change that draws; opts.onMore() opens the full panel.
+   */
+  function inline(box, spec, opts) {
+    opts = opts || {};
+    var cur = F.clean(spec), P = 'pxi', timer = 0;
+    if (!cur) return;
+    function form() { return box.querySelector('[data-inline-form]'); }
+    function render() {
+      box.innerHTML = '<div class="px-fi-head"><label class="px-f-lab" for="pxiKind">Figure</label>'
+        + '<select class="px-f-in" id="pxiKind">' + F.KINDS.map(function (k) { return '<option value="' + k[0] + '"' + (k[0] === cur.kind ? ' selected' : '') + '>' + esc(k[1]) + '</option>'; }).join('') + '</select></div>'
+        + '<form class="px-fi-ask" autocomplete="off"><label class="px-f-lab" for="pxiAsk">Describe it</label><div class="px-fig-ask-row">'
+        + '<input class="px-f-in" id="pxiAsk" type="text" spellcheck="false" enterkeyhint="go" placeholder="' + esc(F.describe(cur)) + '">'
+        + '<button type="submit" class="px-btn px-btn--small">Make it</button></div></form>'
+        + '<p class="px-fig-msg px-fi-msg" role="status" aria-live="polite"></p>'
+        + '<div class="px-fi-form" data-inline-form>' + formHTML(cur.kind, cur, P) + '</div>'
+        + '<button type="button" class="px-btn px-btn--small px-fi-all" data-fi="all">Bigger preview, export and share</button>';
+      var s = readForm(form(), cur.kind, cur);
+      syncVisibility(s, form());
+    }
+    function say(text, err) {
+      var msg = box.querySelector('.px-fi-msg');
+      msg.textContent = text || '';
+      msg.classList.toggle('is-err', !!err);
+    }
+    function apply() {
+      var s = readForm(form(), cur.kind, cur);
+      syncVisibility(s, form());
+      s = readForm(form(), cur.kind, cur);
+      var r = F.build(s);
+      Array.prototype.forEach.call(form().querySelectorAll('[aria-invalid]'), function (el) { el.removeAttribute('aria-invalid'); });
+      if (r.error) {
+        say(r.error, true);
+        var bad = r.field && form().querySelector('[data-k="' + r.field + '"]');
+        if (bad) { bad.setAttribute('aria-invalid', 'true'); var d = bad.closest('details'); if (d && !d.open) d.open = true; }
+        return;
+      }
+      var off = (r.info && r.info.offgrid) || [];
+      say(off.length ? '“' + off[0] + '” is off the grid: “Fit the grid to my graphs” brings it in.' : '');
+      Object.keys(r.auto || {}).forEach(function (k) {
+        var el = form().querySelector('[data-k="' + k + '"]');
+        if (el && el.type === 'text') el.placeholder = r.auto[k];
+      });
+      cur = F.clean(s);
+      saveLast(cur);
+      if (opts.onChange) opts.onChange(cur);
+    }
+    /* A whole new figure (another kind, a sentence, a preset): redraw the form too. */
+    function replace(spec2, said) {
+      cur = F.clean(spec2);
+      render();
+      apply();
+      if (said) say(said);
+    }
+    box.addEventListener('input', function (e) {
+      if (e.target.id === 'pxiAsk') return;
+      clearTimeout(timer);
+      timer = setTimeout(apply, 120);
+    });
+    box.addEventListener('change', function (e) {
+      if (e.target.id === 'pxiKind') { replace(lastSpec(e.target.value)); var k = box.querySelector('#pxiKind'); if (k) k.focus(); return; }
+      if (e.target.id === 'pxiAsk') return;
+      if (e.target.hasAttribute('data-preset')) {
+        var f = FORMS[cur.kind][+e.target.getAttribute('data-preset')], o = f.opts.filter(function (x) { return x[0] === e.target.value; })[0];
+        if (o && o[2]) replace(Object.assign({}, cur, o[2]));
+        return;
+      }
+      clearTimeout(timer);
+      apply();
+    });
+    box.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var r = F.fromText(box.querySelector('#pxiAsk').value);
+      if (r.error && !r.spec) { say(r.error, true); return; }
+      replace(r.spec, r.error ? 'Nearly: ' + r.error : 'Made: ' + r.said + '.');
+    });
+    box.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-fig-act],[data-fi]');
+      if (!b) return;
+      var a = b.getAttribute('data-fig-act');
+      if (a === 'fit') replace(F.fitRange(cur), 'The grid now fits your graphs.');
+      else if (a === 'reset') replace(F.defaults(cur.kind));
+      else if (b.getAttribute('data-fi') === 'all' && opts.onMore) opts.onMore();
+    });
+    box.addEventListener('toggle', function (e) {
+      if (e.target.classList && e.target.classList.contains('px-f-more')) { try { localStorage.setItem(MORE, e.target.open ? '1' : '0'); } catch (er) {} }
+    }, true);
+    render();
+  }
+
   window.FluxPixelFigures = {
     open: open,
+    inline: inline,
     close: function () { close(); },
     isOpen: function () { return !!(dlg && dlg.open); },
     standalone: standalone, svgToPng: svgToPng, figurePng: figurePng, copyPng: copyPng, shareURL: shareURL, lastSpec: lastSpec,

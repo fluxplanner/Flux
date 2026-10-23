@@ -101,7 +101,7 @@ test.describe('Flux Pixel', () => {
     expect(moved.x).toBeGreaterThan(before.x + 20);
     expect(moved.w).toBeCloseTo(before.w, 0);
 
-    const handle = (await page.locator('#pxSel [data-handle]').boundingBox())!;
+    const handle = (await page.locator('#pxSel [data-handle="se"]').boundingBox())!;
     await page.mouse.move(handle.x + 9, handle.y + 9);
     await page.mouse.down();
     await page.mouse.move(handle.x + 80, handle.y + 60);

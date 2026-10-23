@@ -43,6 +43,17 @@
     requestAnimationFrame(function () { t.classList.add('is-in'); });
     setTimeout(function () { t.classList.remove('is-in'); setTimeout(function () { t.remove(); }, 300); }, 2400);
   }
+  /** A message with one button in it, like “Deleted · Undo”. */
+  function toastAct(text, label, fn) {
+    var t = document.createElement('div');
+    t.className = 'px-toast px-toast--act';
+    t.setAttribute('role', 'status');
+    t.innerHTML = '<span>' + esc(text) + '</span><button type="button" class="px-toast-b">' + esc(label) + '</button>';
+    t.querySelector('button').addEventListener('click', function () { fn(); t.remove(); });
+    document.body.appendChild(t);
+    requestAnimationFrame(function () { t.classList.add('is-in'); });
+    setTimeout(function () { t.classList.remove('is-in'); setTimeout(function () { t.remove(); }, 300); }, 5000);
+  }
   function svgIcon(d, extra) {
     return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"' + (extra || '') + '>' + d + '</svg>';
   }
@@ -865,10 +876,34 @@
         return window.FluxPixelFigures.svgToPng(text, w * 2, h * 2);
       }
       function figSelHTML(it) {
-        return '<div class="px-sec"><span class="px-sec-h">Maths figure</span><p class="px-hint">' + esc(window.FluxFigures ? window.FluxFigures.describe(it.fig) : '') + '</p><div class="px-row">'
-          + '<button type="button" class="px-btn px-btn--small px-btn--primary" data-act="figedit">' + ICON.figure + 'Edit figure</button>'
+        return '<div class="px-sec px-fi" id="pxFigInline"><span class="px-sec-h">Change this figure</span><div data-fi-box></div></div>'
+          + '<div class="px-sec"><div class="px-row">'
           + '<button type="button" class="px-btn px-btn--small" data-act="itemcopy">' + ICON.copy + 'Copy figure</button>'
           + '<button type="button" class="px-btn px-btn--small" data-act="figlink">' + ICON.link + 'Share link</button></div></div>';
+      }
+      /* The figure follows the side panel as it is typed into: same middle, same
+         scale. One undo step for a burst of typing, not one per key. */
+      var figCommitTimer = 0;
+      function liveFigure(id, spec) {
+        var it = doc.items.filter(function (i) { return i.id === id; })[0];
+        if (!it) return;
+        var old = figureBuilt(it), nb = window.FluxFigures.build(spec);
+        if (nb.error) return;
+        var k = old && !old.error ? Math.min(it.w / old.w, it.h / old.h) : Math.min(1, (W * 0.8) / nb.w, (H * 0.8) / nb.h);
+        var cx = it.x + it.w / 2, cy = it.y + it.h / 2;
+        it.fig = spec; it.w = nb.w * k; it.h = nb.h * k; it.x = cx - it.w / 2; it.y = cy - it.h / 2;
+        drawItems();
+        clearTimeout(figCommitTimer);
+        figCommitTimer = setTimeout(function () { commit('Changed the figure'); }, 500);
+      }
+      function mountFigInline(it) {
+        var box = props.querySelector('[data-fi-box]');
+        if (!box || !window.FluxPixelFigures || !window.FluxPixelFigures.inline) return;
+        var id = it.id;
+        window.FluxPixelFigures.inline(box, it.fig, {
+          onChange: function (spec) { liveFigure(id, spec); },
+          onMore: function () { var cur = doc.items.filter(function (i) { return i.id === id; })[0]; if (cur) openFigures(cur); },
+        });
       }
       var saveTimer = null;
 
@@ -895,7 +930,8 @@
         + '<svg class="px-svg" id="pxSvg" viewBox="0 0 ' + W + ' ' + H + '" xmlns="' + NS + '"><defs id="pxDefs"></defs>'
         + '<rect width="' + W + '" height="' + H + '" fill="#fff"/><rect id="pxBgRect" width="' + W + '" height="' + H + '" fill="none"/>'
         + '<g id="pxItems"></g><g id="pxDraft"></g><g id="pxSel"></g></svg>'
-        + '<textarea class="px-textin" id="pxText" hidden rows="1" aria-label="Text"></textarea></div></div>'
+        + '<textarea class="px-textin" id="pxText" hidden rows="1" aria-label="Text"></textarea>'
+        + '<div class="px-float" id="pxFloat" role="toolbar" aria-label="Selected" hidden></div></div></div>'
         + '<div class="px-props" id="pxProps"></div>'
         + '</div>'
         + '<input type="file" accept="image/*" id="pxFile" hidden>'
@@ -913,10 +949,31 @@
       function selected() { return st.sel ? doc.items.filter(function (i) { return i.id === st.sel; })[0] || null : null; }
       function drawSel() {
         var it = selected();
-        if (!it) { selG.innerHTML = ''; return; }
-        var b = bbox(it), p = 8;
-        selG.innerHTML = '<rect x="' + (b.x - p) + '" y="' + (b.y - p) + '" width="' + (b.w + p * 2) + '" height="' + (b.h + p * 2) + '" fill="none" stroke="#2563eb" stroke-width="2" stroke-dasharray="6 5" pointer-events="none"/>'
-          + '<rect data-handle="1" x="' + (b.x + b.w + p - 9) + '" y="' + (b.y + b.h + p - 9) + '" width="18" height="18" rx="4" fill="#fff" stroke="#2563eb" stroke-width="2.5" style="cursor:nwse-resize"/>';
+        if (!it) { selG.innerHTML = ''; drawFloat(null); return; }
+        var b = bbox(it), p = 8, k = 1 / (pageScale() || 1), hs = Math.max(18, 14 * k);
+        // A grab corner at each corner, big enough for a finger at any zoom.
+        var corners = [['nw', b.x - p, b.y - p, 'nwse'], ['ne', b.x + b.w + p, b.y - p, 'nesw'], ['sw', b.x - p, b.y + b.h + p, 'nesw'], ['se', b.x + b.w + p, b.y + b.h + p, 'nwse']];
+        selG.innerHTML = '<rect x="' + r1(b.x - p) + '" y="' + r1(b.y - p) + '" width="' + r1(b.w + p * 2) + '" height="' + r1(b.h + p * 2) + '" fill="none" stroke="#2563eb" stroke-width="' + r1(2 * k) + '" stroke-dasharray="' + r1(6 * k) + ' ' + r1(5 * k) + '" pointer-events="none"/>'
+          + corners.map(function (c) {
+            return '<rect data-handle="' + c[0] + '" x="' + r1(c[1] - hs / 2) + '" y="' + r1(c[2] - hs / 2) + '" width="' + r1(hs) + '" height="' + r1(hs) + '" rx="' + r1(hs / 4) + '" fill="#fff" stroke="#2563eb" stroke-width="' + r1(2.5 * k) + '" style="cursor:' + c[3] + '-resize"/>';
+          }).join('');
+        drawFloat(it, b);
+      }
+      /** A small bar of the obvious things to do, just above what is selected. */
+      function drawFloat(it, b) {
+        var bar = $('#pxFloat', host);
+        if (!bar) return;
+        if (!it || st.drag) { bar.hidden = true; return; }
+        var s = pageScale(), edit = it.type === 'figure' ? 'Change' : (it.type === 'text' || it.type === 'label') ? 'Edit text' : '';
+        bar.innerHTML = (edit ? '<button type="button" class="px-fl-b px-fl-b--main" data-act="' + (it.type === 'figure' ? 'figfocus' : 'edittext') + '">' + (it.type === 'figure' ? ICON.figure : ICON.text) + '<span>' + edit + '</span></button>' : '')
+          + '<button type="button" class="px-fl-b" data-act="dup" aria-label="Duplicate" title="Duplicate (Ctrl+D)">' + ICON.copy + '</button>'
+          + '<button type="button" class="px-fl-b" data-act="front" aria-label="To front" title="To front">' + ICON.front + '</button>'
+          + '<button type="button" class="px-fl-b px-fl-b--danger" data-act="delete" aria-label="Delete" title="Delete (Del)">' + ICON.trash + '</button>';
+        bar.hidden = false;
+        var w = bar.offsetWidth || 160, x = (b.x + b.w / 2) * s - w / 2, y = (b.y - 8) * s - 48;
+        if (y < 4) y = (b.y + b.h + 8) * s + 10;
+        bar.style.left = Math.max(4, Math.min(wrap.clientWidth - w - 4, x)) + 'px';
+        bar.style.top = Math.max(4, y) + 'px';
       }
       function drawProps() {
         var it = selected();
@@ -966,6 +1023,7 @@
           + '<div class="px-sec"><button type="button" class="px-link px-danger" data-act="clear">Clear the page</button></div>'
           + '<p class="px-keys">V select · P pen · H highlight · E erase · L line · A arrow · W vector · R box · O circle · T text · B label · S stamps · M maths figures · Del delete · Ctrl+Z undo</p>';
         props.innerHTML = html;
+        if (it && it.type === 'figure') mountFigInline(it);
         if (st.stampQ) filterStamps();
         if (it && it.type === 'vector') labCheck();
       }
@@ -1002,17 +1060,43 @@
           if (putDoc(doc)) { var s = $('.px-saved', host); if (s) { s.textContent = 'Saved'; clearTimeout(s._t); s._t = setTimeout(function () { s.textContent = ''; }, 1200); } }
         }, 350);
       }
-      function commit() {
+      /* Every step remembers what it was, so undo can say what it took back. */
+      st.what = [''];
+      function commit(what) {
         var snap = JSON.stringify(doc.items);
         if (snap === st.hist[st.hi]) return;
         st.hist = st.hist.slice(0, st.hi + 1);
+        st.what = st.what.slice(0, st.hi + 1);
         st.hist.push(snap);
-        if (st.hist.length > 80) st.hist.shift();
+        st.what.push(what || 'Change');
+        if (st.hist.length > 80) { st.hist.shift(); st.what.shift(); }
         st.hi = st.hist.length - 1;
         save();
+        drawUndo();
       }
-      function undo() { if (st.hi <= 0) return; st.hi--; doc.items = JSON.parse(st.hist[st.hi]); st.sel = null; drawItems(); drawProps(); save(); }
-      function redo() { if (st.hi >= st.hist.length - 1) return; st.hi++; doc.items = JSON.parse(st.hist[st.hi]); st.sel = null; drawItems(); drawProps(); save(); }
+      function drawUndo() {
+        var u = $('[data-act="undo"]', host), r = $('[data-act="redo"]', host);
+        if (u) { u.disabled = st.hi <= 0; u.title = st.hi > 0 ? 'Undo: ' + st.what[st.hi] + ' (Ctrl+Z)' : 'Nothing to undo'; }
+        if (r) { r.disabled = st.hi >= st.hist.length - 1; r.title = st.hi < st.hist.length - 1 ? 'Redo: ' + st.what[st.hi + 1] + ' (Ctrl+Shift+Z)' : 'Nothing to redo'; }
+      }
+      function restore(sel) {
+        doc.items = JSON.parse(st.hist[st.hi]);
+        st.sel = sel && doc.items.some(function (i) { return i.id === sel; }) ? sel : null;
+        drawItems(); drawProps(); save(); drawUndo();
+      }
+      function undo() {
+        if (st.hi <= 0) return;
+        clearTimeout(figCommitTimer);
+        var what = st.what[st.hi], keep = st.sel;
+        st.hi--; restore(keep);
+        toast('Undone: ' + what.toLowerCase());
+      }
+      function redo() {
+        if (st.hi >= st.hist.length - 1) return;
+        var keep = st.sel;
+        st.hi++; restore(keep);
+        toast('Redone: ' + st.what[st.hi].toLowerCase());
+      }
 
       /* Coordinates */
       function toPage(e) {
@@ -1035,7 +1119,8 @@
         draftG.innerHTML = '';
         drawTools(); drawSel(); drawProps();
       }
-      function addItem(it) { it.id = uid(); doc.items.push(it); drawItems(); commit(); return it; }
+      var ADDED = { pen: 'Drew a line', hl: 'Highlighted', line: 'Added a line', arrow: 'Added an arrow', vector: 'Added a vector', rect: 'Added a box', ellipse: 'Added a circle', text: 'Added text', label: 'Added a label', stamp: 'Added a stamp', image: 'Added a picture', figure: 'Added a figure' };
+      function addItem(it, what) { it.id = uid(); doc.items.push(it); drawItems(); commit(what || ADDED[it.type] || 'Added'); return it; }
 
       /* Text entry, for text and labels */
       var editing = null;
@@ -1141,15 +1226,17 @@
         try { svg.setPointerCapture(e.pointerId); } catch (er) {}
         var t = st.tool;
         if (t === 'select') {
-          if (e.target.getAttribute('data-handle')) {
+          var hd = e.target.getAttribute('data-handle');
+          if (hd) {
             var it0 = selected(); var b0 = bbox(it0);
-            st.drag = { mode: 'resize', start: p, box: b0, orig: JSON.parse(JSON.stringify(it0)) };
+            st.drag = { mode: 'resize', start: p, box: b0, orig: JSON.parse(JSON.stringify(it0)), cx: hd.indexOf('w') >= 0 ? -1 : 1, cy: hd.indexOf('n') >= 0 ? -1 : 1 };
+            drawFloat(null);
             return;
           }
           var g = e.target.closest('#pxItems [data-id]');
           st.sel = g ? g.getAttribute('data-id') : null;
           drawSel(); drawProps();
-          if (st.sel) st.drag = { mode: 'move', last: p, moved: false };
+          if (st.sel) { st.drag = { mode: 'move', last: p, moved: false }; drawFloat(null); }
           return;
         }
         if (t === 'eraser') {
@@ -1199,12 +1286,13 @@
           return;
         }
         if (st.drag.mode === 'resize') {
-          var b = st.drag.box, it2 = selected();
-          var sx = Math.max(0.05, (b.w + p[0] - st.drag.start[0]) / Math.max(1, b.w));
-          var sy = Math.max(0.05, (b.h + p[1] - st.drag.start[1]) / Math.max(1, b.h));
+          var b = st.drag.box, it2 = selected(), dr = st.drag;
+          var sx = Math.max(0.05, (b.w + dr.cx * (p[0] - dr.start[0])) / Math.max(1, b.w));
+          var sy = Math.max(0.05, (b.h + dr.cy * (p[1] - dr.start[1])) / Math.max(1, b.h));
           if (e.shiftKey || it2.type === 'stamp' || it2.type === 'image' || it2.type === 'figure') { var s = Math.max(sx, sy); sx = sy = s; }
           var fresh = JSON.parse(JSON.stringify(st.drag.orig));
-          scaleItem(fresh, sx, sy, b.x, b.y);
+          // The opposite corner stays where it is.
+          scaleItem(fresh, sx, sy, dr.cx > 0 ? b.x : b.x + b.w, dr.cy > 0 ? b.y : b.y + b.h);
           Object.assign(it2, fresh);
           drawItems();
           return;
@@ -1242,7 +1330,11 @@
           if (applyEraseBox(drag)) { drawItems(); commit(); }
           return;
         }
-        if (drag.mode === 'erase' || (drag.mode === 'move' && drag.moved) || drag.mode === 'resize') { commit(); drawProps(); return; }
+        if (drag.mode === 'erase' || (drag.mode === 'move' && drag.moved) || drag.mode === 'resize') {
+          commit(drag.mode === 'erase' ? 'Rubbed out' : drag.mode === 'move' ? 'Moved' : 'Resized');
+          drawProps(); drawSel(); return;
+        }
+        if (drag.mode === 'move') { drawSel(); return; }
         if (drag.mode !== 'draw') return;
         var d = st.draft; st.draft = null; draftG.innerHTML = '';
         if (!d) return;
@@ -1357,9 +1449,17 @@
         else if (a === 'zoomout') { st.zoom = Math.max(0.5, st.zoom - 0.25); applyZoom(); }
         else if (a === 'zoomfit') { st.zoom = 1; applyZoom(); }
         else if (a === 'panel') setPanel(!st.panel);
-        else if (a === 'delete' && it) { doc.items = doc.items.filter(function (x) { return x !== it; }); st.sel = null; drawItems(); drawProps(); commit(); }
-        else if (a === 'dup' && it) { var copy = JSON.parse(JSON.stringify(it)); moveItem(copy, 30, 30); var n = addItem(copy); st.sel = n.id; drawSel(); drawProps(); }
-        else if (a === 'front' && it) { doc.items = doc.items.filter(function (x) { return x !== it; }).concat([it]); drawItems(); commit(); }
+        else if (a === 'delete' && it) {
+          doc.items = doc.items.filter(function (x) { return x !== it; }); st.sel = null; drawItems(); drawProps(); commit('Deleted');
+          toastAct('Deleted', 'Undo', undo);
+        }
+        else if (a === 'dup' && it) { var copy = JSON.parse(JSON.stringify(it)); moveItem(copy, 30, 30); var n = addItem(copy, 'Duplicated'); st.sel = n.id; drawSel(); drawProps(); }
+        else if (a === 'front' && it) { doc.items = doc.items.filter(function (x) { return x !== it; }).concat([it]); drawItems(); commit('Moved to the front'); }
+        else if (a === 'figfocus' && it) {
+          setPanel(true);
+          var first = props.querySelector('#pxFigInline .px-fi-form .px-f-in, #pxFigInline #pxiAsk');
+          if (first) first.focus();
+        }
         else if (a === 'edittext' && it) editTextOf(it);
         else if (a === 'figures') openFigures(null);
         else if (a === 'figedit' && it && it.type === 'figure') openFigures(it);
@@ -1439,6 +1539,14 @@
         if (mod && e.key.toLowerCase() === 'd' && selected()) { e.preventDefault(); host.querySelector('[data-act="dup"]').click(); return; }
         if ((e.key === 'Delete' || e.key === 'Backspace') && selected()) { e.preventDefault(); host.querySelector('[data-act="delete"]').click(); return; }
         if (e.key === 'Escape') { st.sel = null; drawSel(); drawProps(); return; }
+        var nudge = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+        if (nudge && selected()) {
+          e.preventDefault();
+          var step = e.shiftKey ? 20 : 2;
+          moveItem(selected(), nudge[0] * step, nudge[1] * step); drawItems();
+          clearTimeout(st.nudgeT); st.nudgeT = setTimeout(function () { commit('Moved'); }, 400);
+          return;
+        }
         if (mod || e.altKey) return;
         var tool = KEYS[e.key.toLowerCase()];
         if (tool) { e.preventDefault(); setTool(tool); }
@@ -1448,6 +1556,7 @@
 
       drawBg(); drawItems(); setTool(doc.items.length ? 'select' : 'pen');
       setPanel(window.innerWidth > 760);
+      drawUndo();
       if (window.FluxHub) window.FluxHub.mountAll();
       var ro = typeof ResizeObserver === 'function' ? new ResizeObserver(function () { applyZoom(); }) : null;
       if (ro) ro.observe(stage); else window.addEventListener('resize', applyZoom);

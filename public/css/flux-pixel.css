@@ -272,3 +272,29 @@ select.px-f-in { appearance: auto; }
   .px-fig-foot .px-grow, .px-fig-foot [data-fig-act="cancel"] { display: none; }
   .px-fig-foot [data-fig-act="done"] { order: -1; flex: 1 1 100%; min-height: 42px; }
 }
+
+/* ── On the page: what to do with the selected item ─────────────────── */
+.px-float { position: absolute; z-index: 4; display: flex; align-items: center; gap: 2px; padding: 4px; border: 1px solid rgba(15,23,42,.12); border-radius: 12px; background: #fff; color: #1f2937; box-shadow: 0 10px 28px -12px rgba(15,23,42,.45); white-space: nowrap; }
+.px-fl-b { display: inline-flex; align-items: center; gap: 6px; min-width: 36px; height: 36px; padding: 0 9px; border: 0; border-radius: 9px; background: none; color: inherit; font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer; }
+.px-fl-b svg { width: 18px; height: 18px; }
+.px-fl-b:hover { background: #eef2ff; }
+.px-fl-b:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
+.px-fl-b--main { color: #fff; background: #2563eb; }
+.px-fl-b--main:hover { background: #1d4ed8; }
+.px-fl-b--danger:hover { color: #dc2626; background: #fef2f2; }
+.px-top .px-icon:disabled { opacity: .35; cursor: default; background: none; }
+
+/* An undo message has its button in it. */
+.px-toast--act { display: flex; align-items: center; gap: 14px; padding: 8px 8px 8px 16px; }
+.px-toast-b { min-height: 34px; padding: 4px 12px; border: 0; border-radius: 9px; background: var(--accent, #34d399); color: #04140d; font: inherit; font-weight: 800; cursor: pointer; }
+
+/* ── The selected figure's settings, in the options rail ────────────── */
+.px-fi { gap: 10px; }
+.px-fi .px-f-row { grid-template-columns: 1fr; gap: 3px; }
+.px-fi .px-f-row--chk { margin-bottom: 2px; }
+.px-fi .px-f-set { padding: 8px 10px 2px; }
+.px-fi-head { display: flex; flex-direction: column; gap: 3px; }
+.px-fi-ask { display: flex; flex-direction: column; gap: 3px; }
+.px-fi-msg { min-height: 0; }
+.px-fi-msg:empty { display: none; }
+.px-fi-all { align-self: flex-start; }
