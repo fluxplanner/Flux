@@ -298,3 +298,21 @@ select.px-f-in { appearance: auto; }
 .px-fi-msg { min-height: 0; }
 .px-fi-msg:empty { display: none; }
 .px-fi-all { align-self: flex-start; }
+
+/* ── Draw | Flux Figures ────────────────────────────────────────────── */
+.px-modes { display: inline-flex; flex: none; padding: 3px; margin: 0 6px; border: 1px solid var(--border2); border-radius: 12px; background: rgba(255,255,255,.04); }
+.px-mode { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 3px 12px; border: 0; border-radius: 9px; background: none; color: var(--muted2); font: inherit; font-size: .82rem; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.px-mode svg { width: 16px; height: 16px; }
+.px-mode:hover { color: var(--text); }
+.px-mode[aria-pressed="true"] { color: #04140d; background: var(--accent); }
+.px-mode:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.px-tool--fig { width: 64px; height: auto; min-height: 52px; padding: 6px 2px 5px; grid-template-rows: auto auto; gap: 2px; }
+.px-tool--fig span { font-size: .62rem; font-weight: 700; line-height: 1.1; text-align: center; }
+.px-tool--fig:hover { color: var(--text); }
+.px-fstart .px-hint.is-err { color: #fbbf24; }
+@media (max-width: 760px) {
+  .px-modes { margin: 0 2px; }
+  .px-mode { padding: 3px 8px; }
+  .px-mode span { display: none; }
+  .px-tool--fig { width: 58px; }
+}

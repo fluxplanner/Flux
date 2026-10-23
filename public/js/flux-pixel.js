@@ -83,6 +83,21 @@
     panel: svgIcon('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>'),
     link: svgIcon('<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>'),
   };
+  /* Flux Figures mode: one button per kind of figure down the left. */
+  var KIND_ICON = {
+    grid: svgIcon('<path d="M4 20V4M4 20h16"/><path d="M6 17c3-9 6-9 12-12"/>'),
+    numline: svgIcon('<path d="M2 12h20M5 9v6M9 10v4M12 9v6M15 10v4M19 9v6"/>'),
+    triangle: svgIcon('<path d="M4 19h16L9 5z"/>'),
+    rect: svgIcon('<rect x="3" y="6" width="18" height="12" rx="1"/>'),
+    para: svgIcon('<path d="M7 6h14l-4 12H3z"/>'),
+    trap: svgIcon('<path d="M8 6h8l5 12H3z"/>'),
+    kite: svgIcon('<path d="M12 3l6 7-6 11-6-11z"/>'),
+    reg: svgIcon('<path d="M7 4h10l5 8-5 8H7l-5-8z"/>'),
+    circle: svgIcon('<circle cx="12" cy="12" r="9"/><path d="M12 12l7-5"/>'),
+    angle: svgIcon('<path d="M20 19H4l12-12"/><path d="M10 19a6 6 0 0 0-2-4.5"/>'),
+    parallel: svgIcon('<path d="M2 8h20M2 16h20M8 3l8 18"/>'),
+    solid: svgIcon('<path d="M4 8l8-4 8 4v9l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v9"/>'),
+  };
   var ERASE_PREF = 'flux_pixel_eraser';
   var ERASE_MODES = [
     ['whole', 'Whole item', 'Takes away anything it touches'],
@@ -93,7 +108,7 @@
     ['select', 'Select and move', 'V'], ['pen', 'Pen', 'P'], ['hl', 'Highlighter', 'H'], ['eraser', 'Eraser', 'E'],
     ['line', 'Line', 'L'], ['arrow', 'Arrow', 'A'], ['vector', 'Vector', 'W'], ['rect', 'Box', 'R'], ['ellipse', 'Circle', 'O'],
     ['text', 'Text', 'T'], ['label', 'Label with a line', 'B'], ['stamp', 'Stamps', 'S'], ['image', 'Picture', 'I'],
-    ['figure', 'Maths figures', 'M'],
+    ['figure', 'Flux Figures panel', 'M'],
   ];
   var VEC_PREF = 'flux_pixel_vector';
   var VEC_DIRS = [['angle', 'Angle from +x'], ['bearing', 'Bearing'], ['compass', 'Compass (N 30\u00b0 E)']];
@@ -545,7 +560,7 @@
 
     /** Open the Maths figures panel; Insert puts the figure on a new page. */
     function figureToNewPage(spec, fromLink) {
-      if (!window.FluxPixelFigures) { toast('Maths figures could not load. Try refreshing.', 'warn'); return; }
+      if (!window.FluxPixelFigures) { toast('Flux Figures could not load. Try refreshing.', 'warn'); return; }
       window.FluxPixelFigures.open({
         spec: spec,
         onDone: function (sp) {
@@ -565,11 +580,11 @@
     function gallery() {
       var list = docs();
       host.innerHTML = '<section class="px-hero"><div><h1>Draw it, label it, export it</h1>'
-        + '<p>Diagrams for science, maps for geography, sketches for anything. Stamps for lab equipment and circuits, labels with leader lines, maths figures for tests and worksheets drawn to scale (type “right triangle 3 4 5” or “y > 2x − 1” and it draws it), vectors you can add tip to tail, and a crisp PNG for your notes or lab report. Free, no account, no ads.</p></div>'
+        + '<p>Diagrams for science, maps for geography, sketches for anything. Stamps for lab equipment and circuits, labels with leader lines, Flux Figures, its maths figures mode, for tests and worksheets drawn to scale (type “right triangle 3 4 5” or “y > 2x − 1” and it draws it), a ruler, protractor and compass, vectors you can add tip to tail, and a crisp PNG for your notes or lab report. Free, no account, no ads.</p></div>'
         + '<div class="px-new"><span class="px-new-h">Start a new page</span><div class="px-new-row">'
         + BGS.map(function (b) {
           return '<button type="button" class="px-new-btn" data-new="' + b[0] + '"><span class="px-paper px-paper--' + b[0] + '"></span>' + esc(b[1]) + '</button>';
-        }).join('') + '<button type="button" class="px-new-btn" data-fig-new><span class="px-paper px-paper--fig">' + ICON.figure + '</span>Maths figure</button>'
+        }).join('') + '<button type="button" class="px-new-btn" data-fig-new><span class="px-paper px-paper--fig">' + ICON.figure + '</span>Flux Figures</button>'
         + '</div></div></section>'
         + (list.length ? '<h2 class="px-h2">Your drawings</h2><div class="px-grid">' + list.map(function (d) {
           return '<div class="px-card"><a class="px-thumb" href="#/d/' + encodeURIComponent(d.id) + '" aria-label="Open ' + esc(d.title) + '">' + docSVG(d) + '</a>'
@@ -581,7 +596,7 @@
       host.onclick = function (e) {
         var t = e.target.closest('[data-new],[data-del],[data-example],[data-fig-new]');
         if (!t) return;
-        if (t.hasAttribute('data-fig-new')) { figureToNewPage(null, false); return; }
+        if (t.hasAttribute('data-fig-new')) { var fd = newDoc({ title: 'Flux Figures', bg: 'plain' }); fd.mode = 'figures'; putDoc(fd); location.hash = '#/d/' + encodeURIComponent(fd.id); return; }
         if (t.dataset.new) { var d = newDoc({ bg: t.dataset.new }); putDoc(d); location.hash = '#/d/' + encodeURIComponent(d.id); return; }
         if (t.hasAttribute('data-example')) { var ex = exampleDoc(); putDoc(ex); location.hash = '#/d/' + encodeURIComponent(ex.id); return; }
         if (t.dataset.del) {
@@ -839,7 +854,7 @@
 
       /* ── Maths figures ──────────────────────────────────────────────── */
       function openFigures(existing) {
-        if (!window.FluxPixelFigures) { toast('Maths figures could not load. Try refreshing.', 'warn'); return; }
+        if (!window.FluxPixelFigures) { toast('Flux Figures could not load. Try refreshing.', 'warn'); return; }
         var id = existing && existing.id;
         window.FluxPixelFigures.open({
           spec: existing ? existing.fig : null,
@@ -852,7 +867,7 @@
         });
       }
       function insertFigure(spec) {
-        var it = figureItem(spec, visibleCentre());
+        var it = freeSpot(spec);
         if (!it) return;
         addItem(it);
         st.tool = 'select'; svg.setAttribute('data-mode', 'select');
@@ -915,7 +930,9 @@
         + '<button type="button" class="px-icon" data-act="undo" aria-label="Undo" title="Undo (Ctrl+Z)">' + ICON.undo + '</button>'
         + '<button type="button" class="px-icon" data-act="redo" aria-label="Redo" title="Redo (Ctrl+Shift+Z)">' + ICON.redo + '</button>'
         + '<span class="px-zoom"><button type="button" class="px-icon" data-act="zoomout" aria-label="Zoom out">−</button><button type="button" class="px-zoom-v" data-act="zoomfit" title="Fit to screen">100%</button><button type="button" class="px-icon" data-act="zoomin" aria-label="Zoom in">+</button></span>'
-        + '<button type="button" class="px-btn px-btn--small" data-act="figures" aria-label="Maths figures">' + ICON.figure + '<span>Maths figures</span></button>'
+        + '<div class="px-modes" role="group" aria-label="Mode">'
+        + '<button type="button" class="px-mode" data-mode-set="draw">' + ICON.pen + '<span>Draw</span></button>'
+        + '<button type="button" class="px-mode" data-mode-set="figures">' + ICON.figure + '<span>Flux Figures</span></button></div>'
         + '<button type="button" class="px-btn px-btn--small" data-act="copy">' + ICON.copy + '<span>Copy</span></button>'
         + '<button type="button" class="px-btn px-btn--small px-btn--primary" data-act="png">' + ICON.download + '<span>PNG</span></button>'
         + '<button type="button" class="px-btn px-btn--small" data-act="svg"><span>SVG</span></button>'
@@ -923,9 +940,7 @@
         + '<div class="px-hub" data-flux-hub="pixel"></div>'
         + '</div>'
         + '<div class="px-body">'
-        + '<div class="px-tools" role="toolbar" aria-label="Tools">' + TOOLS.map(function (t) {
-          return '<button type="button" class="px-tool" data-tool="' + t[0] + '" aria-label="' + esc(t[1]) + '" title="' + esc(t[1]) + ' (' + t[2] + ')">' + ICON[t[0]] + '</button>';
-        }).join('') + '</div>'
+        + '<div class="px-tools" role="toolbar" aria-label="Tools"></div>'
         + '<div class="px-stage" id="pxStage"><div class="px-wrap" id="pxWrap">'
         + '<svg class="px-svg" id="pxSvg" viewBox="0 0 ' + W + ' ' + H + '" xmlns="' + NS + '"><defs id="pxDefs"></defs>'
         + '<rect width="' + W + '" height="' + H + '" fill="#fff"/><rect id="pxBgRect" width="' + W + '" height="' + H + '" fill="none"/>'
@@ -982,6 +997,12 @@
         var showFill = it ? (it.type === 'rect' || it.type === 'ellipse') : (st.tool === 'rect' || st.tool === 'ellipse');
         var showDash = it ? /^(line|arrow|rect|ellipse|vector)$/.test(it.type) : /^(line|arrow|rect|ellipse)$/.test(st.tool);
         var erasing = st.tool === 'eraser' && !it;
+        if (st.mode === 'figures' && !it) {
+          props.innerHTML = figStartHTML() + '<div class="px-sec"><span class="px-sec-h">Paper</span><div class="px-row">' + BGS.map(function (b) {
+            return '<button type="button" class="px-chip' + (doc.bg === b[0] ? ' is-on' : '') + '" data-bg="' + b[0] + '">' + esc(b[1]) + '</button>';
+          }).join('') + '</div></div>';
+          return;
+        }
         var html = erasing ? eraserHTML() : '<div class="px-sec"><span class="px-sec-h">Colour</span><div class="px-colors">' + COLORS.map(function (c) {
           return '<button type="button" class="px-color' + (c === color ? ' is-on' : '') + '" data-color="' + c + '" style="--c:' + c + '" aria-label="Colour ' + c + '"></button>';
         }).join('') + '<label class="px-color px-color--pick" title="Any colour"><input type="color" value="' + color + '" data-pick aria-label="Pick any colour"></label></div></div>';
@@ -1021,7 +1042,7 @@
           return '<button type="button" class="px-chip' + (doc.bg === b[0] ? ' is-on' : '') + '" data-bg="' + b[0] + '">' + esc(b[1]) + '</button>';
         }).join('') + '</div></div>'
           + '<div class="px-sec"><button type="button" class="px-link px-danger" data-act="clear">Clear the page</button></div>'
-          + '<p class="px-keys">V select · P pen · H highlight · E erase · L line · A arrow · W vector · R box · O circle · T text · B label · S stamps · M maths figures · Del delete · Ctrl+Z undo</p>';
+          + '<p class="px-keys">V select · P pen · H highlight · E erase · L line · A arrow · W vector · R box · O circle · T text · B label · S stamps · M Flux Figures panel · Del delete · Ctrl+Z undo</p>';
         props.innerHTML = html;
         if (it && it.type === 'figure') mountFigInline(it);
         if (st.stampQ) filterStamps();
@@ -1034,7 +1055,84 @@
         }).join('') + '</div><p class="px-hint">' + esc(cur[2]) + '.</p></div>'
           + (cur[0] === 'circle' ? '<div class="px-sec"><label class="px-sec-h" for="pxEraseSize">Eraser size</label><input type="range" id="pxEraseSize" min="4" max="80" value="' + st.eraseR + '" data-erase-size></div>' : '');
       }
+      /* The left rail: drawing tools, or in Flux Figures mode the kinds of figure. */
+      function drawRail() {
+        var rail = $('.px-tools', host);
+        if (st.mode === 'figures') {
+          rail.setAttribute('aria-label', 'Add a figure');
+          rail.innerHTML = '<button type="button" class="px-tool" data-tool="select" aria-label="Select and move" title="Select and move (V)">' + ICON.select + '</button><span class="px-tools-sep" role="separator"></span>'
+            + (window.FluxFigures ? window.FluxFigures.KINDS : []).map(function (k) {
+              return '<button type="button" class="px-tool px-tool--fig" data-figkind="' + k[0] + '" aria-label="Add a ' + esc(k[1].toLowerCase()) + '" title="Add a ' + esc(k[1].toLowerCase()) + '">' + (KIND_ICON[k[0]] || ICON.figure) + '<span>' + esc(k[1].replace('Coordinate grid', 'Graph').replace('Regular polygon', 'Polygon').replace('Parallel lines', 'Parallels')) + '</span></button>';
+            }).join('');
+        } else {
+          rail.setAttribute('aria-label', 'Tools');
+          rail.innerHTML = TOOLS.map(function (t) {
+            return '<button type="button" class="px-tool" data-tool="' + t[0] + '" aria-label="' + esc(t[1]) + '" title="' + esc(t[1]) + ' (' + t[2] + ')">' + ICON[t[0]] + '</button>';
+          }).join('');
+        }
+        drawTools();
+      }
       function drawTools() { $$('[data-tool]', host).forEach(function (b) { b.classList.toggle('is-on', b.dataset.tool === st.tool); b.setAttribute('aria-pressed', b.dataset.tool === st.tool); }); }
+      function setMode(m) {
+        st.mode = m === 'figures' ? 'figures' : 'draw';
+        if (doc.mode !== st.mode) { doc.mode = st.mode; save(); }
+        $$('[data-mode-set]', host).forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.modeSet === st.mode)); });
+        host.querySelector('.px-editor').classList.toggle('is-figures', st.mode === 'figures');
+        if (st.mode === 'figures') { st.tool = 'select'; svg.setAttribute('data-mode', 'select'); setPanel(true); }
+        drawRail(); drawProps();
+      }
+      /** A new figure in the middle of what is on screen, selected, with its settings beside it. */
+      /** Where a new figure goes: the middle of the screen, or the nearest spot clear of what is already there. */
+      function freeSpot(spec) {
+        var c = visibleCentre(), first = figureItem(spec, c);
+        if (!first) return null;
+        var boxes = doc.items.map(bbox), gap = 24;
+        var clear = function (it) {
+          return it.x >= 0 && it.y >= 0 && it.x + it.w <= W && it.y + it.h <= H && boxes.every(function (b) {
+            return it.x + it.w + gap <= b.x || b.x + b.w + gap <= it.x || it.y + it.h + gap <= b.y || b.y + b.h + gap <= it.y;
+          });
+        };
+        if (clear(first)) return first;
+        var dx = first.w + gap, dy = first.h + gap, tries = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1], [2, 0], [-2, 0]];
+        for (var i = 0; i < tries.length; i++) {
+          var cand = figureItem(spec, [c[0] + tries[i][0] * dx, c[1] + tries[i][1] * dy]);
+          if (cand && clear(cand)) return cand;
+        }
+        // A full page: a little down and to the right of the last one, so it can still be seen and grabbed.
+        var last = boxes[boxes.length - 1];
+        return figureItem(spec, last ? [last.x + last.w / 2 + 40, last.y + last.h / 2 + 40] : c);
+      }
+      function addFigure(spec, focus) {
+        var it = freeSpot(spec);
+        if (!it) return null;
+        addItem(it, 'Added a figure');
+        st.tool = 'select'; svg.setAttribute('data-mode', 'select');
+        st.sel = it.id; drawTools(); drawSel(); drawProps();
+        if (focus) {
+          setPanel(true);
+          var first = props.querySelector('#pxFigInline .px-fi-form .px-f-in');
+          if (first) first.focus();
+        }
+        return it;
+      }
+      /* Flux Figures mode with nothing selected: say what to do, in words or by picking. */
+      var FIG_TRY = ['right triangle 3 4 5', 'y = x^2 − 4', 'circle r 5 sector 60', 'cylinder r 3 h 8', 'number line x ≥ −2', 'angles on a straight line 40 70'];
+      function figStartHTML() {
+        return '<div class="px-sec px-fstart"><span class="px-sec-h">Flux Figures</span>'
+          + '<p class="px-hint">Maths figures drawn to scale. Pick one on the left, or type it:</p>'
+          + '<form class="px-fi-ask" id="pxNewFig" autocomplete="off"><label class="px-f-lab" for="pxNewFigIn">Describe it</label><div class="px-fig-ask-row">'
+          + '<input class="px-f-in" id="pxNewFigIn" type="text" spellcheck="false" enterkeyhint="go" placeholder="right triangle 3 4 5" aria-describedby="pxNewFigHint">'
+          + '<button type="submit" class="px-btn px-btn--small px-btn--primary">Add</button></div>'
+          + '<p class="px-hint" id="pxNewFigHint" aria-live="polite"></p></form>'
+          + '<div class="px-fig-try" role="group" aria-label="Examples">' + FIG_TRY.map(function (x) { return '<button type="button" class="px-fig-try-b" data-newfig="' + esc(x) + '">' + esc(x) + '</button>'; }).join('') + '</div>'
+          + '<p class="px-hint">Then change it beside the page, drag it, or pull a corner to resize it. Ctrl+Z undoes.</p></div>';
+      }
+      function newFigFromText(text) {
+        var hint = $('#pxNewFigHint', host), r = window.FluxFigures.fromText(text);
+        if (r.error && !r.spec) { if (hint) { hint.textContent = r.error; hint.classList.add('is-err'); } return; }
+        addFigure(r.spec, false);
+        toast('Added: ' + (r.said || window.FluxFigures.describe(r.spec)));
+      }
       /** The page's width at 100%: as big as fits the space it has, whole. */
       function fitWidth() {
         var r = stage.getBoundingClientRect(), pad = r.width < 500 ? 8 : 20;
@@ -1111,6 +1209,7 @@
       function setTool(t) {
         if (t === 'image') { $('#pxFile', host).click(); return; }
         if (t === 'figure') { openFigures(null); return; }
+        if (st.mode === 'figures' && t !== 'select') { st.mode = 'draw'; doc.mode = 'draw'; save(); host.querySelector('.px-editor').classList.remove('is-figures'); $$('[data-mode-set]', host).forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.modeSet === 'draw')); }); drawRail(); }
         st.tool = t;
         if (t !== 'select') st.sel = null;
         if (t === 'stamp' && !st.stamp) st.stamp = 'beaker';
@@ -1407,9 +1506,16 @@
 
       /* Buttons */
       host.onclick = function (e) {
-        var t = e.target.closest('[data-tool],[data-act],[data-color],[data-toggle],[data-bg],[data-stamp],[data-erase],[data-vtog],[data-ventry]');
+        var t = e.target.closest('[data-tool],[data-act],[data-color],[data-toggle],[data-bg],[data-stamp],[data-erase],[data-vtog],[data-ventry],[data-mode-set],[data-figkind],[data-newfig]');
         if (!t) return;
         var it = selected();
+        if (t.dataset.modeSet) { setMode(t.dataset.modeSet); return; }
+        if (t.dataset.figkind) {
+          var ks = window.FluxPixelFigures ? window.FluxPixelFigures.lastSpec(t.dataset.figkind) : window.FluxFigures.defaults(t.dataset.figkind);
+          addFigure(ks, true);
+          return;
+        }
+        if (t.dataset.newfig) { var ni = $('#pxNewFigIn', host); if (ni) ni.value = t.dataset.newfig; newFigFromText(t.dataset.newfig); return; }
         if (t.dataset.tool) return setTool(t.dataset.tool);
         if (t.dataset.erase) {
           st.eraseMode = t.dataset.erase; saveErasePref();
@@ -1499,6 +1605,11 @@
         var none = $('.px-stamp-none', host);
         if (none) none.hidden = any;
       }
+      host.onsubmit = function (e) {
+        if (e.target.id !== 'pxNewFig') return;
+        e.preventDefault();
+        newFigFromText($('#pxNewFigIn', host).value);
+      };
       host.oninput = function (e) {
         if (e.target.matches('.px-stamp-q')) { st.stampQ = e.target.value; filterStamps(); return; }
         if (e.target.matches('[data-vset]') && e.target.tagName === 'INPUT') {
@@ -1532,6 +1643,8 @@
       var KEYS = {}; TOOLS.forEach(function (t) { KEYS[t[2].toLowerCase()] = t[0]; });
       function onKey(e) {
         if (e.target && e.target.closest && e.target.closest('dialog')) return;
+        // Escape in a field beside the page leaves the field, so the keys work on the page again.
+        if (e.key === 'Escape' && !editing && e.target && e.target.closest && e.target.closest('#pxProps') && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.target.blur(); return; }
         if (editing || /INPUT|TEXTAREA|SELECT/.test((e.target && e.target.tagName) || '')) return;
         var mod = e.metaKey || e.ctrlKey;
         if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
@@ -1554,8 +1667,11 @@
       document.addEventListener('keydown', onKey);
       document.addEventListener('paste', onPaste);
 
-      drawBg(); drawItems(); setTool(doc.items.length ? 'select' : 'pen');
+      st.mode = doc.mode === 'figures' ? 'figures' : 'draw';
+      drawRail();
+      drawBg(); drawItems(); setTool(doc.items.length || st.mode === 'figures' ? 'select' : 'pen');
       setPanel(window.innerWidth > 760);
+      setMode(st.mode);
       drawUndo();
       if (window.FluxHub) window.FluxHub.mountAll();
       var ro = typeof ResizeObserver === 'function' ? new ResizeObserver(function () { applyZoom(); }) : null;
@@ -1566,7 +1682,7 @@
         clearTimeout(saveTimer); putDoc(doc);
         document.removeEventListener('keydown', onKey);
         document.removeEventListener('paste', onPaste);
-        host.onclick = host.oninput = host.onchange = null;
+        host.onclick = host.oninput = host.onchange = host.onsubmit = null;
       };
     }
 

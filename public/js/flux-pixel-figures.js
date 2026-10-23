@@ -458,7 +458,7 @@
     dlg.className = 'px-fig';
     dlg.setAttribute('aria-labelledby', 'pxFigH');
     dlg.innerHTML = '<div class="px-fig-in">'
-      + '<header class="px-fig-head"><h2 id="pxFigH">Maths figures</h2><span class="px-fig-sub">Drawn to scale, ready to print</span><span class="px-grow"></span>'
+      + '<header class="px-fig-head"><h2 id="pxFigH">Flux Figures</h2><span class="px-fig-sub">Maths figures drawn to scale, ready to print</span><span class="px-grow"></span>'
       + '<button type="button" class="px-icon" data-fig-act="cancel" aria-label="Close">×</button></header>'
       + '<form class="px-fig-ask" id="pxFigAsk" autocomplete="off">'
       + '<label class="px-fig-ask-lab" for="pxFigAskIn">Describe it</label>'

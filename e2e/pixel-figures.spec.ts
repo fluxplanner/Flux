@@ -196,6 +196,34 @@ test.describe('Flux Pixel: maths figures', () => {
     await expect(page.locator('#pxFigMsg')).toContainText('9 is off the number line');
   });
 
+  test('Flux Figures mode: figure kinds down the left, a sentence or a click adds one, each in free space', async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 860 });
+    await page.goto('/pixel.html');
+    await page.locator('[data-fig-new]').click();
+    await expect(page.locator('[data-mode-set="figures"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.px-tools [data-figkind]')).toHaveCount(12);
+    // Nothing selected: the side panel says what to do.
+    await page.locator('#pxNewFigIn').fill('right triangle 3 4 5');
+    await page.locator('#pxNewFigIn').press('Enter');
+    await expect.poll(async () => (await items(page)).map((i: any) => i.fig.kind)).toEqual(['triangle']);
+    // The rail adds a figure and opens its settings beside the page.
+    await page.locator('[data-figkind="circle"]').click();
+    await expect.poll(async () => (await items(page)).length).toBe(2);
+    await expect(page.locator('#pxFigInline').getByLabel('Radius', { exact: true })).toBeFocused();
+    const [a, b] = await items(page);
+    const apart = a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y;
+    expect(apart, 'the second figure does not land on the first').toBe(true);
+    // A drawing tool goes back to Draw mode; the page remembers the mode it was left in.
+    await page.keyboard.press('Escape');   // out of the field
+    await page.keyboard.press('Escape');   // nothing selected
+    await page.keyboard.press('p');
+    await expect(page.locator('[data-mode-set="draw"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.px-tools [data-tool="pen"]')).toHaveAttribute('aria-pressed', 'true');
+    await page.locator('[data-mode-set="figures"]').click();
+    await page.reload();
+    await expect(page.locator('[data-mode-set="figures"]')).toHaveAttribute('aria-pressed', 'true');
+  });
+
   test('a selected figure changes in place: side panel, action bar, any corner, and undo says what it undid', async ({ page }) => {
     const box = await newPage(page);
     await openPanel(page, 'triangle');
@@ -323,6 +351,8 @@ test.describe('Flux Pixel: maths figures', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/pixel.html');
     await page.locator('[data-fig-new]').click();
+    await expect(page.locator('[data-mode-set="figures"]')).toHaveAttribute('aria-pressed', 'true');
+    await page.keyboard.press('m');
     await expect(dlg(page)).toBeVisible();
     const results = await new AxeBuilder({ page }).include('dialog.px-fig').analyze();
     const bad = results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
