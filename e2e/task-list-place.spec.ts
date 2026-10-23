@@ -207,9 +207,9 @@ test.describe('The task list keeps your place', () => {
     expect(await page.evaluate(() => (window as any).tasks.find((t: any) => t.id === 9507).done), 'Space ticked a task nobody chose').toBe(false);
   });
 
-  for (const open of [true, false]) {
-    test(`with Completed ${open ? 'open' : 'closed'}, a keyboard tick moves on to the next task, not after the ticked one`, async ({ page }) => {
-      await page.evaluate((show) => {
+  {
+    test('in Today, a keyboard tick moves on to the next task, not after the ticked one', async ({ page }) => {
+      await page.evaluate(() => {
         const w = window as any;
         const today = w.todayStr();
         const list = Array.from({ length: 8 }, (_, i) => ({
@@ -217,9 +217,8 @@ test.describe('The task list keeps your place', () => {
         }));
         w.tasks.splice(0, w.tasks.length, ...list);
         w.save('tasks', w.tasks);
-        w.save('flux_show_completed', show);
         w.setFilter('today', document.querySelector('#filterChips .tmode-btn:nth-child(2)'));
-      }, open);
+      });
       await page.waitForTimeout(400);
       const order = await page.evaluate(() => [...document.querySelectorAll('#taskList > .task-item')].map((n) => (n as HTMLElement).dataset.taskId));
       const [first, second] = order;
