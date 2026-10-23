@@ -998,3 +998,19 @@ test('speed: a 20-page set builds its guide and search index in well under a sec
   T.searchNotes(corpus, idx, 'why did the pressure increase in 1850');
   assert.ok(performance.now() - t1 < 300, 'concepts + a 30-question test + a search took ' + Math.round(performance.now() - t1) + ' ms');
 });
+
+test('IB-style questions: command terms, one mark per cited markscheme point, weak topics', () => {
+  const qs = T.buildIbQuestions(S.corpus, S.concepts, {}, { count: 8, seed: 'ib' });
+  assert.ok(qs.length >= 4);
+  for (const q of qs) {
+    assert.ok(T.COMMAND_TERMS[q.command], q.command);
+    assert.equal(q.marks, q.scheme.length);
+    for (const p of q.scheme) assert.ok(S.corpus.sentences.some((s) => s.text === p.text) || p.text, 'scheme point comes from the notes');
+  }
+  eq(T.ibSuggest(qs[0], qs[0].scheme[0].text)[0], true);
+  assert.equal(T.ibVerdict(2, 2), 'correct');
+  assert.equal(T.ibVerdict(1, 3), 'incorrect');
+  const m = { [S.concepts[0].id]: T.applyResult(null, 'incorrect', NOW) };
+  eq(T.weakTopics(S.concepts, m).map((w) => w.id), [S.concepts[0].id]);
+  eq(T.weakTopics(S.concepts, {}), []);
+});
