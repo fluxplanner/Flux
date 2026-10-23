@@ -1,8 +1,8 @@
 /* ============================================================================
-   FLUX HUB  ·  flux-hub.js
+   FLUX SUITE  ·  flux-hub.js
    The shared product directory and one-tap link to it.
 
-   The nine-dot control in each product links straight to hub.html, where the
+   The nine-dot control in each product links straight to suite.html (Flux Suite), where the
    full directory lives. PRODUCTS is shared with that page so every app is
    listed in one place.
 
@@ -22,7 +22,7 @@
 
   /* One list, used by the Hub directory and the planner's Study tools shelf.
      Adding a product here puts it on both without duplicating product data in
-     their markup. `group` places it on the Hub (GROUPS, below): the planner is
+     their markup. `group` places it in Flux Suite (GROUPS, below): the planner is
      the wide bar at the top, and every other group is a pill tab over a grid.
      The list is in display order within each. */
   var GROUPS = [
@@ -128,7 +128,7 @@
     host.classList.add('fxhub');
 
     host.innerHTML =
-      '<a class="fxhub-btn" href="hub.html" aria-label="Open the Flux Hub" title="Open Flux Hub">'
+      '<a class="fxhub-btn" href="suite.html" aria-label="Open Flux Suite" title="Open Flux Suite">'
       + '<span class="fxhub-btn-mark" aria-hidden="true">'
       + '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">'
       + '<circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/>'

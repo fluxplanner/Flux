@@ -1,14 +1,14 @@
 import { test, expect } from '@playwright/test';
 import { gotoScenario, openSidebarTab } from './helpers';
 
-/* Where the features merged in October 2026 are found: the Hub with the
+/* Where the features merged in October 2026 are found: Flux Suite with the
    planner as a bar on top and Study apps / Partners tabs below, a "More Flux apps" row in Study tools
    for the apps that open on their own page, and Reading log as a tab of its
    own under Learn. */
 
 test.describe('feature organization', () => {
-  test('the Hub: the planner as a bar on top, then Study apps and Partners tabs', async ({ page }) => {
-    await page.goto('/hub.html');
+  test('Flux Suite: the planner as a bar on top, then Study apps and Partners tabs', async ({ page }) => {
+    await page.goto('/suite.html');
     await expect(page.locator('#apps .app')).toHaveCount(9);
     // The planner is the wide bar above the tabs.
     const bar = page.locator('#apps > a.app--feature');
@@ -44,9 +44,9 @@ test.describe('feature organization', () => {
     await expect(study).toBeVisible();
   });
 
-  test('the Hub fits a phone without sideways scrolling', async ({ page }) => {
+  test('Flux Suite fits a phone without sideways scrolling', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/hub.html');
+    await page.goto('/suite.html');
     await expect(page.locator('#apps > a.app--feature')).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);

@@ -2,9 +2,6 @@
    FLUX READING LOG  ·  flux-reading-log.js   (+ public/css/flux-reading-log.css)
    A reading log for literature classes, asked for by a teacher.
 
-     · Dashboard card (#readingLogCard, dashboard section "reading"): this
-       week against the goal, the streak, and "Log today" in one line. It can
-       be hidden like any dashboard section (Settings → Layout).
      · Its own page (#readingLog panel): the daily log, books, quotes, the
        weekly goal, and a printout for a chosen date range to hand in.
      · Study tools → English → Literature → Reading log opens the page too,
@@ -29,8 +26,6 @@
 
   var KEY = C.KEY;
   var SLICE = 'readingLog';
-  var SECTION = 'reading';
-  var HIDDEN_KEY = 'flux_dashboard_hidden_sections_v1';
 
   /* ── storage ─────────────────────────────────────────────────────────────
      Read fresh for every change rather than trusting a copy held in memory:
@@ -170,7 +165,7 @@
     if (want) sel.value = want;
   }
 
-  /* ── weekly summary bits (card and page) ─────────────────────────────── */
+  /* ── weekly summary bits ─────────────────────────────── */
 
   function weekInfo(s) {
     var t = today();
@@ -199,119 +194,6 @@
     if (st.current >= 2) return 'Read ' + st.current + ' days in a row';
     if (st.current === 1) return st.readToday ? 'Read today: day 1 of a streak' : 'Read yesterday: keep it going today';
     return 'Read today to start a streak';
-  }
-
-  /* ════════════════════════════════════════════════════════════════════════
-     DASHBOARD CARD
-     ════════════════════════════════════════════════════════════════════════ */
-
-  function cardShell() {
-    return '<div class="frl-card card">' +
-      '<div class="frl-card-head">' +
-        '<h2 class="frl-card-title" id="frlCardH">Reading log</h2>' +
-        '<div class="frl-card-links">' +
-          '<button type="button" class="frl-link" data-frl-act="open">Open reading log</button>' +
-          '<button type="button" class="frl-link frl-link--quiet" data-frl-act="hide-card" aria-label="Hide the reading log card from the dashboard">Hide</button>' +
-        '</div>' +
-      '</div>' +
-      '<div id="frlCardStats" class="frl-card-stats"></div>' +
-      '<form id="frlQuickForm" class="frl-quick" novalidate aria-label="Log today\'s reading">' +
-        '<div class="frl-quick-row">' +
-          '<label class="frl-field frl-field--grow"><span>Book</span><select id="frlQuickBook"></select></label>' +
-          '<label class="frl-field frl-field--num"><span>Minutes</span><input id="frlQuickMin" type="number" inputmode="numeric" min="1" max="1440" step="1"></label>' +
-          '<label class="frl-field frl-field--num"><span>Pages</span><input id="frlQuickPages" type="number" inputmode="numeric" min="1" max="5000" step="1"></label>' +
-          '<button type="submit" class="frl-btn frl-btn--primary frl-quick-go">Log today</button>' +
-        '</div>' +
-        '<p class="frl-msg" role="status" id="frlQuickMsg"></p>' +
-      '</form>' +
-      '<form id="frlQuickBookForm" class="frl-quick" novalidate hidden aria-label="Add the book you are reading">' +
-        '<div class="frl-quick-row">' +
-          '<label class="frl-field frl-field--grow"><span>What are you reading?</span><input id="frlQuickTitle" type="text" maxlength="200" autocomplete="off"></label>' +
-          '<button type="submit" class="frl-btn frl-btn--primary frl-quick-go">Add book</button>' +
-        '</div>' +
-        '<p class="frl-msg" role="status" id="frlQuickBookMsg"></p>' +
-      '</form>' +
-    '</div>';
-  }
-
-  function mountCard() {
-    var host = $('readingLogCard');
-    if (!host) return null;
-    if (!host.querySelector('.frl-card')) {
-      host.innerHTML = cardShell();
-      $('frlQuickForm').addEventListener('submit', function (ev) { ev.preventDefault(); quickLog(); });
-      $('frlQuickBookForm').addEventListener('submit', function (ev) { ev.preventDefault(); quickAddBook(); });
-    }
-    return host;
-  }
-
-  function renderCard(s) {
-    var host = mountCard();
-    if (!host) return;
-    s = s || cur();
-    var info = weekInfo(s);
-    var td = info.todayTotals;
-    var todayBits = td.minutes || td.pages
-      ? 'Today: ' + [td.minutes ? shortMinutes(td.minutes) : '', td.pages ? plural(td.pages, 'page') : ''].filter(Boolean).join(', ')
-      : 'Nothing logged today yet';
-    $('frlCardStats').innerHTML = progressHTML(info) +
-      '<ul class="frl-chips" aria-label="Reading so far">' +
-        '<li class="frl-chip' + (info.streak.current ? ' is-on' : '') + '">' + esc(streakText(info.streak)) + '</li>' +
-        '<li class="frl-chip">' + esc(todayBits) + '</li>' +
-      '</ul>';
-    var hasBooks = C.live(s.books).length > 0;
-    $('frlQuickForm').hidden = !hasBooks;
-    $('frlQuickBookForm').hidden = hasBooks;
-    fillBookSelect($('frlQuickBook'), s, { prefer: likelyBook(s) });
-    host.hidden = false;
-  }
-
-  function quickLog() {
-    var bookId = val('frlQuickBook');
-    var minutes = C.int(val('frlQuickMin'), 0, 1440);
-    var pages = C.int(val('frlQuickPages'), 0, 5000);
-    if (!bookId) return say('frlQuickMsg', 'Pick the book you read.', true);
-    if ((val('frlQuickMin') && minutes == null) || (val('frlQuickPages') && pages == null)) {
-      return say('frlQuickMsg', 'Minutes go up to 1440 and pages up to 5000. Check the numbers.', true);
-    }
-    if (!minutes && !pages) {
-      say('frlQuickMsg', 'Fill in the minutes you read, the pages, or both.', true);
-      var m = $('frlQuickMin'); if (m) m.focus();
-      return;
-    }
-    var title = '';
-    mutate(function (s) {
-      title = bookTitle(s, bookId);
-      s.entries.push({ id: C.uid('e'), date: today(), bookId: bookId, minutes: minutes || null, pages: pages || null, updated: Date.now() });
-    });
-    setVal('frlQuickMin', ''); setVal('frlQuickPages', '');
-    var what = [minutes ? minutesText(minutes) : '', pages ? plural(pages, 'page') : ''].filter(Boolean).join(' and ');
-    say('frlQuickMsg', 'Logged ' + what + ' of ' + title + ' for today.');
-  }
-
-  function quickAddBook() {
-    var title = String(val('frlQuickTitle')).trim();
-    if (!title) {
-      say('frlQuickBookMsg', 'Type the title of the book first.', true);
-      var t = $('frlQuickTitle'); if (t) t.focus();
-      return;
-    }
-    addBook({ title: title, status: 'reading', started: today() });
-    setVal('frlQuickTitle', '');
-    say('frlQuickMsg', 'Added ' + title + '. Now log what you read today.');
-    var m = $('frlQuickMin'); if (m) m.focus();
-  }
-
-  function hideCard() {
-    var hidden = [];
-    try { hidden = (typeof window.load === 'function' ? window.load(HIDDEN_KEY, []) : []) || []; } catch (e) {}
-    if (hidden.indexOf(SECTION) < 0) hidden = hidden.concat(SECTION);
-    if (window.FluxPersonal && typeof window.FluxPersonal.setDashboardHidden === 'function') window.FluxPersonal.setDashboardHidden(hidden);
-    else if (typeof window.save === 'function') window.save(HIDDEN_KEY, hidden);
-    // The button that had focus has gone; hand focus to the next thing on the dashboard.
-    var next = document.querySelector('#dashboard .dash-v2-work-title');
-    if (next) { next.setAttribute('tabindex', '-1'); try { next.focus({ preventScroll: true }); } catch (e) {} }
-    toast('Reading log card hidden. Bring it back in Settings, Layout. The page stays in the sidebar, under Learn.', 'info');
   }
 
   /* ════════════════════════════════════════════════════════════════════════
@@ -917,6 +799,7 @@
     var range = dayText(p.from, true) + ' to ' + dayText(p.to, true);
     var meta = [['Name', o.name], ['Class', o.className], ['Teacher', o.teacher], ['Dates', range]];
     var h = '<div class="frl-p">' +
+      '<div class="frl-p-brand"><img src="public/flux-planner-logo.png" alt="" width="36" height="36"><span>Flux Planner</span></div>' +
       '<h1>Reading log</h1>' +
       '<table class="frl-p-meta"><tbody>' + meta.map(function (m) {
         return '<tr><th scope="row">' + m[0] + '</th><td>' + (m[1] ? esc(m[1]) : '<span class="frl-p-blank"></span>') + '</td></tr>';
@@ -1000,7 +883,15 @@
     if (navigator.standalone === true) {
       say('frlPrintMsg', 'Printing does not work in the home-screen app on iPhone and iPad. Open Flux in Safari, then print from there.', true);
     } else say('frlPrintMsg', 'Opening the print window…');
-    try { window.print(); } catch (e) { done(); say('frlPrintMsg', 'Printing is not available here.', true); }
+    // The logo is fetched the first time; printing before it arrives leaves a blank space on the paper.
+    var go = function () { try { window.print(); } catch (e) { done(); say('frlPrintMsg', 'Printing is not available here.', true); } };
+    var logo = rootEl.querySelector('.frl-p-brand img');
+    if (!logo || logo.complete) return go();
+    var started = false;
+    var once = function () { if (!started) { started = true; go(); } };
+    logo.addEventListener('load', once);
+    logo.addEventListener('error', once);
+    setTimeout(once, 1500);
   }
 
   /* ════════════════════════════════════════════════════════════════════════
@@ -1031,7 +922,6 @@
 
   function renderAll() {
     var s = cur();
-    try { renderCard(s); } catch (e) { console.warn('[FluxReadingLog] card', e); }
     try { renderPage(s); } catch (e) { console.warn('[FluxReadingLog] page', e); }
   }
 
@@ -1066,7 +956,6 @@
     var act = t.getAttribute('data-frl-act'), kind = t.getAttribute('data-kind'), id = t.getAttribute('data-id');
     if (act === 'open') open();
     else if (act === 'open-goal') open('goal');
-    else if (act === 'hide-card') hideCard();
     else if (act === 'tab') { showTab(t.getAttribute('data-tab'), true); }
     else if (act === 'edit') { if (kind === 'entry') editEntry(id); if (kind === 'book') editBook(id); if (kind === 'quote') editQuote(id); }
     else if (act === 'cancel-edit') {
@@ -1096,7 +985,6 @@
   document.addEventListener('flux-nav', function (e) {
     var id = e && e.detail && e.detail.panel;
     if (id === 'readingLog') { mountPage(); renderAll(); }
-    else if (id === 'dashboard') { try { renderCard(); } catch (err) {} }
   });
   // Another tab changed the log, or the day rolled over while Flux sat open.
   window.addEventListener('storage', function (e) { if (e.key && e.key.indexOf(KEY) >= 0) renderAll(); });
