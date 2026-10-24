@@ -54,6 +54,29 @@
     return String(t?.subject || t?.classId || 'general').toLowerCase().trim();
   }
 
+  /* t.subject is a class key, 'CLS' + the class id, and Canvas class ids are
+     fractional (Date.now()+Math.random()). Look the readable name up in the
+     planner's subjects rather than printing the key; a key that lost its
+     fraction somewhere (parseInt) still finds its class by the whole part. */
+  function subjectLabel(t) {
+    const key = String(t?.subject || (t?.classId != null ? 'CLS' + t.classId : ''));
+    try {
+      const subs = typeof window.getSubjects === 'function' ? window.getSubjects() : {};
+      let sub = subs[key];
+      if (!sub && /^CLS/i.test(key)) {
+        const parse = typeof window.fluxParseId === 'function' ? window.fluxParseId : Number;
+        const whole = Math.trunc(Number(parse(key.slice(3))));
+        if (Number.isFinite(whole)) {
+          const hit = Object.keys(subs).find((k) => Math.trunc(Number(parse(k.slice(3)))) === whole);
+          if (hit) sub = subs[hit];
+        }
+      }
+      if (sub && sub.name) return sub.name;
+    } catch (_) {}
+    // Never show a raw id: a class that has since been deleted is just "a class".
+    return /^CLS/i.test(key) ? 'A class' : key;
+  }
+
   function openTasks() {
     return taskList().filter((t) => t && !t.done && t.date);
   }
@@ -93,8 +116,11 @@
 
       const bySubject = {};
       items.forEach((t) => {
+        // Tasks with no class all share the 'general' key; a test in one and
+        // homework in another is not a clash within one subject.
+        if (!t.subject && !t.classId) return;
         const sk = subjectKey(t);
-        if (!bySubject[sk]) bySubject[sk] = { assess: 0, work: 0, name: t.subject || sk };
+        if (!bySubject[sk]) bySubject[sk] = { assess: 0, work: 0, name: subjectLabel(t) };
         if (ASSESS_TYPES.has(t.type)) bySubject[sk].assess += 1;
         else if (WORK_TYPES.has(t.type)) bySubject[sk].work += 1;
       });
