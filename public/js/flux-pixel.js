@@ -484,6 +484,7 @@
         var g = cv.getContext('2d');
         g.drawImage(img, 0, 0, cv.width, cv.height);
         URL.revokeObjectURL(url);
+        if (window.FluxHub && window.FluxHub.markCanvas) window.FluxHub.markCanvas(cv);
         cv.toBlob(function (b) { b ? resolve(b) : reject(new Error('Could not make the picture')); }, 'image/png');
       };
       img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('Could not make the picture')); };

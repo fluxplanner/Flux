@@ -610,3 +610,22 @@ html.flux-lowend #app * { transition: none !important; }
 .flux-no-ai #ecAICard,
 .flux-no-ai #obScheduleImportRoot,
 .flux-no-ai #weeklyReviewBanner { display: none !important; }
+
+/* Printing: paper is white whatever the theme. A dark theme printed its pale
+   text onto white paper (browsers leave backgrounds out by default), so it
+   came out faint grey. Printing always uses the Cloud (light) colours, with
+   the accent darkened so links and highlights still read on paper. */
+@media print {
+  :root, body, body[data-theme] {
+    --bg: #ffffff !important; --bg2: #ffffff !important; --bg3: #ffffff !important;
+    --card: #ffffff !important; --card2: #f6f8fa !important; --card3: #f6f8fa !important; --card-solid: #ffffff !important;
+    --border: #d8dee4 !important; --border2: #d0d7de !important;
+    --text: #1f2328 !important; --text2: #424a53 !important;
+    --muted: #57606a !important; --muted2: #424a53 !important;
+    --accent: #0969da !important; --accent2: #0969da !important; --accent-rgb: 9, 105, 218 !important;
+    --green: #1a7f37 !important; --red: #cf222e !important; --gold: #9a6700 !important;
+    --purple: #8250df !important; --orange: #bc4c00 !important;
+  }
+  html, body { background: #ffffff !important; color: #1f2328 !important; }
+  body::before, body::after { display: none !important; }
+}
