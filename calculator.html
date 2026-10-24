@@ -22,7 +22,7 @@
   any school computer and needs no account. Its memory (variables, lists,
   programs) stays in this browser, like the handheld's RAM.
 -->
-<link rel="stylesheet" href="public/css/flux-ti84.css?v=23eecc99">
+<link rel="stylesheet" href="public/css/flux-ti84.css?v=4429f3ff">
 <link rel="stylesheet" href="public/css/flux-hub.css?v=6a462093">
 <link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
 <style>
@@ -87,30 +87,14 @@
     main { grid-template-columns: minmax(0, 420px); padding-top: 14px; }
     .tips { position: static; }
   }
-  /* A screen wider than it is tall (an iPad held sideways, a laptop): the
-     keys go beside the screen, so the whole calculator fits without
-     scrolling. --col is one column, sized so the keys fit the height. Each
-     part becomes its own container, so the keys' cqw sizes still follow
-     one column rather than the doubled-up calculator. */
-  @media (orientation: landscape) and (min-width: 900px) and (max-height: 1000px) {
-    main {
-      --col: min(42vw, calc((100dvh - 52px - env(safe-area-inset-top, 0px) - 84px) / 1.55));
-      grid-template-columns: auto; padding-top: 16px;
-    }
-    .tips { position: static; max-width: calc(var(--col) * 2 + 64px); margin: 0 auto; }
-    #calcHost .t84-wrap { max-width: none; width: auto; container-type: normal; }
-    #calcHost .t84 {
-      display: grid; grid-template-columns: var(--col) var(--col); grid-template-rows: auto 1fr;
-      column-gap: 24px; width: auto; container-type: normal;
-      padding: 18px 20px 22px; border-radius: 32px;
-    }
-    #calcHost .t84-brand, #calcHost .t84-bezel, #calcHost .t84-keys { container-type: inline-size; grid-column: 1; }
-    #calcHost .t84-brand { padding: 0 10px 10px; }
-    #calcHost .t84-bezel { padding: 11px 11px 14px; border-radius: 13px 13px 19px 19px; display: flex; flex-direction: column; }
-    /* The screen runs the full height of the keys beside it. */
-    #calcHost .t84-screen { flex: 1; aspect-ratio: auto; min-height: calc(var(--col) * .75); }
-    #calcHost .t84-keys { grid-column: 2; grid-row: 1 / -1; margin-top: 0; }
+  /* Wide view (the switch above the calculator) takes the whole row and
+     sizes one column so the keys fit the height; the tips go underneath. */
+  main:has(.t84-wrap.is-wide) {
+    --col: min(42vw, calc((100dvh - 52px - env(safe-area-inset-top, 0px) - 130px) / 1.55));
+    grid-template-columns: minmax(0, calc(var(--col) * 2 + 64px)); padding-top: 16px;
   }
+  main:has(.t84-wrap.is-wide) .tips { position: static; }
+  @media (max-width: 760px) { main:has(.t84-wrap.is-wide) { --col: 50vw; grid-template-columns: minmax(0, 1fr); } }
 </style>
 <script src="public/js/flux-theme-carry.js?v=41b239bd"></script>
 <script src="public/js/flux-purple-day.js?v=1966eb3d"></script>
@@ -150,7 +134,7 @@
   <script src="public/js/flux-ti84-engine.js?v=03f82963"></script>
   <script src="public/js/flux-ti84-editor.js?v=178081b9"></script>
   <script src="public/js/flux-ti84-menus.js?v=b874681c"></script>
-  <script src="public/js/flux-ti84.js?v=13ba2a70"></script>
+  <script src="public/js/flux-ti84.js?v=61e1f239"></script>
   <script src="public/js/flux-ti84-graph.js?v=13d83a13"></script>
   <script src="public/js/flux-ti84-apps.js?v=d1b62e48"></script>
   <script src="public/js/flux-ti84-prgm.js?v=29626875"></script>
