@@ -74,7 +74,23 @@ function tab(page: Page, name: string) {
   return page.getByRole('navigation', { name: 'Study set' }).getByRole('link', { name, exact: true });
 }
 
+/* Mirrors DP_EXAMS in flux-teacher-app.js: IB practice, mock exams and
+   predicted grades are paused. Set both to true to test them again. */
+const DP_EXAMS = false;
+
 test.describe('Flux Tutor', () => {
+  test('IB practice and mock exams stay hidden while paused', async ({ page }) => {
+    test.skip(DP_EXAMS, 'DP exam features are on');
+    await openSample(page);
+    await expect(tab(page, 'Practice test')).toBeVisible();
+    await expect(page.locator('.ft-tabs a', { hasText: /IB practice|Mock exam/ })).toHaveCount(0);
+    await tab(page, 'Topics').click();
+    await expect(page.getByRole('button', { name: 'Practise this topic' })).toHaveCount(0);
+    await page.getByRole('link', { name: 'All study sets' }).click();
+    await expect(page.locator('.ft-progress')).toContainText('day');
+    await expect(page.locator('.ft-progress')).not.toContainText(/mock exam|Predicted/i);
+  });
+
   test('a sample set: guide, Learn, practice test, flashcards, ask, plan, and all of it after a reload', async ({ page }) => {
     test.setTimeout(150_000);
     const errors: string[] = [];
@@ -699,13 +715,15 @@ test.describe('Flux Tutor', () => {
     await tab(page, 'Topics').click();
     await page.locator('details.ft-topic summary').first().click();
     await check('topics');
-    await tab(page, 'Mock exam').click();
-    await page.getByRole('button', { name: 'Start the exam' }).click();
-    await check('mock exam');
-    await page.getByRole('button', { name: 'Finish the exam' }).click();
-    await check('mock exam marking');
-    await page.getByRole('button', { name: 'Save my marks' }).click();
-    await check('mock exam result');
+    if (DP_EXAMS) {
+      await tab(page, 'Mock exam').click();
+      await page.getByRole('button', { name: 'Start the exam' }).click();
+      await check('mock exam');
+      await page.getByRole('button', { name: 'Finish the exam' }).click();
+      await check('mock exam marking');
+      await page.getByRole('button', { name: 'Save my marks' }).click();
+      await check('mock exam result');
+    }
     await page.getByRole('link', { name: 'All study sets' }).click();
     await expect(page.locator('.ft-progress')).toBeVisible();
     await check('library with progress');
@@ -794,6 +812,7 @@ test.describe('Flux Tutor', () => {
   });
 
   test('IB practice: command terms, a cited markscheme, self-marking that feeds weak topics, and the stuck links', async ({ page }) => {
+    test.skip(!DP_EXAMS, 'DP exam features are paused');
     await openSample(page);
     const stuck = page.locator('details.ft-stuck');
     await stuck.locator('summary').click();
@@ -868,6 +887,7 @@ test.describe('Flux Tutor', () => {
   });
 
   test('question bank: paper 1 multiple choice marks itself; topic filter limits the questions', async ({ page }) => {
+    test.skip(!DP_EXAMS, 'DP exam features are paused');
     await openSample(page);
     await tab(page, 'IB practice').click();
     await page.locator('#ftIbPaper').selectOption('1');
@@ -882,6 +902,7 @@ test.describe('Flux Tutor', () => {
   });
 
   test('mock exam, topic pages and the progress dashboard, at phone width', async ({ page }) => {
+    test.skip(!DP_EXAMS, 'DP exam features are paused');
     await page.setViewportSize({ width: 390, height: 844 });
     const wide = () => page.evaluate(() => document.documentElement.scrollWidth);
     await openSample(page);
