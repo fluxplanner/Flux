@@ -1035,3 +1035,58 @@ test('question bank: paper 1 is multiple choice with the passage as markscheme; 
   assert.ok(p2.length >= 1);
   for (const q of p2) assert.ok(topic.conceptIds.includes(q.conceptIds[0]));
 });
+
+test('mock exams: both papers, timed by marks, marked and saved', () => {
+  const m = T.buildMockExam(S.corpus, S.concepts, {}, { seed: 'mock' });
+  assert.ok(m.questions.some((q) => q.paper === 1) && m.questions.some((q) => q.paper === 2), 'a Paper 1 and a Paper 2 section');
+  assert.equal(m.marks, m.questions.reduce((n, q) => n + q.marks, 0));
+  assert.equal(m.minutes, Math.max(5, Math.ceil(m.marks * 1.5)));
+  assert.ok(m.questions.every((q) => q.scheme.length && q.scheme.every((p) => p.text)), 'every question has a markscheme from the notes');
+  const awarded = {};
+  m.questions.forEach((q) => { awarded[q.id] = q.marks + 5; });
+  const rec = T.examRecord(m.questions, awarded, { programme: 'DP', minutes: m.minutes, seconds: 60, now: NOW });
+  assert.equal(rec.got, rec.total, 'marks never go above the question total');
+  assert.equal(rec.pct, 100);
+  const set = T.normalizeSet(Object.assign(T.sampleSet(), { exams: [rec, { p1: { got: 9, total: 2 } }, 'junk'] }));
+  assert.equal(set.exams.length, 2);
+  assert.equal(set.exams[1].p1.got, 2, 'a saved mark is clamped to its total');
+});
+
+test('predicted grade: nothing to go on, then from exams and tests', () => {
+  const set = T.sampleSet();
+  set.guide = S.guide;
+  assert.equal(T.predictGrade(set), null);
+  set.tests = [{ pct: 50, total: 10 }];
+  eq(T.predictGrade(set).grade, 4);
+  set.exams = [{ pct: 90, total: 20 }, { pct: 85, total: 20 }];
+  const p = T.predictGrade(set);
+  assert.equal(p.grade, 7);
+  assert.equal(p.confidence, 'high');
+  eq([0, 19, 20, 45, 67, 68, 80, 100].map(T.gradeFor), [1, 1, 2, 4, 5, 6, 7, 7]);
+  assert.ok('predicted' in T.summarizeSet(set, '2026-10-11'));
+});
+
+test('study streak: days in a row across sets, kept until today ends', () => {
+  const a = {};
+  const b = {};
+  T.logActivity({ activity: a }, '2026-10-20');
+  const s1 = { activity: a };
+  T.logActivity(s1, '2026-10-22');
+  T.logActivity(s1, '2026-10-23');
+  const s2 = { activity: b };
+  T.logActivity(s2, '2026-10-21');
+  T.logActivity(s2, '2026-10-21');
+  eq(T.studyStreak([s1.activity, s2.activity], '2026-10-24'), { current: 4, best: 4, today: 0, days: 4 });
+  eq(T.studyStreak([s1.activity], '2026-10-26').current, 0);
+  const n = T.normalizeSet(Object.assign(T.sampleSet(), { activity: { '2026-10-01': 3, bad: 1, '2026-10-02': -1 } }));
+  eq(n.activity, { '2026-10-01': 3 });
+});
+
+test('topic pages: each topic has its summary, terms and facts', () => {
+  const pages = T.topicPages(S.corpus, S.guide, S.concepts, {});
+  assert.ok(pages.length >= 1);
+  const terms = pages.reduce((n, p) => n + p.terms.length, 0);
+  assert.equal(terms, S.concepts.length, 'every term is on one topic page');
+  assert.ok(pages.every((p) => p.mastery.total === p.terms.length));
+  assert.ok(pages.some((p) => p.summary.length));
+});

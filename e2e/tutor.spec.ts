@@ -696,6 +696,19 @@ test.describe('Flux Tutor', () => {
     await page.getByLabel('Exam date').fill(exam);
     await page.getByRole('button', { name: 'Make my plan' }).click();
     await check('plan');
+    await tab(page, 'Topics').click();
+    await page.locator('details.ft-topic summary').first().click();
+    await check('topics');
+    await tab(page, 'Mock exam').click();
+    await page.getByRole('button', { name: 'Start the exam' }).click();
+    await check('mock exam');
+    await page.getByRole('button', { name: 'Finish the exam' }).click();
+    await check('mock exam marking');
+    await page.getByRole('button', { name: 'Save my marks' }).click();
+    await check('mock exam result');
+    await page.getByRole('link', { name: 'All study sets' }).click();
+    await expect(page.locator('.ft-progress')).toBeVisible();
+    await check('library with progress');
   });
 
   test('no BETA badge; the light / dark switch flips the page, is remembered, and wins over the device and the planner\'s theme', async ({ page }) => {
@@ -866,5 +879,47 @@ test.describe('Flux Tutor', () => {
     await first.getByRole('button', { name: 'Check my answer' }).click();
     await expect(first.locator('.ft-ib-score')).toContainText(/of 1/);
     await expect(first.locator('.ft-ib-scheme cite')).toContainText('Sample biology notes');
+  });
+
+  test('mock exam, topic pages and the progress dashboard, at phone width', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const wide = () => page.evaluate(() => document.documentElement.scrollWidth);
+    await openSample(page);
+
+    await tab(page, 'Topics').click();
+    const topic = page.locator('details.ft-topic').first();
+    await topic.locator('summary').click();
+    await expect(topic.locator('.ft-topic-terms dt').first()).toBeVisible();
+    await expect(topic.locator('cite').first()).toContainText('Sample biology notes');
+    expect(await wide()).toBeLessThanOrEqual(390);
+
+    await tab(page, 'Mock exam').click();
+    await page.getByLabel('Length').selectOption('short');
+    await page.getByRole('button', { name: 'Start the exam' }).click();
+    await expect(page.locator('#ftTimerText')).toHaveText(/\d+:\d\d/);
+    await expect(page.getByRole('heading', { name: /Paper 1/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Paper 2/ })).toBeVisible();
+    expect(await wide()).toBeLessThanOrEqual(390);
+    const firstMc = page.locator('.ft-ib-q input[type=radio]').first();
+    await firstMc.check();
+    await page.locator('.ft-ib-q textarea').first().fill('something from my notes');
+    await page.reload();
+    await expect(page.locator('.ft-ib-q input[type=radio]').first()).toBeChecked();
+    await page.getByRole('button', { name: 'Finish the exam' }).click();
+    await expect(page.locator('.ft-ib-scheme').first()).toBeVisible();
+    await page.getByRole('button', { name: 'Save my marks' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'You scored' })).toBeVisible();
+    await expect(page.locator('.ft-grade-num').first()).toHaveText(/^[1-7]$/);
+    await saved(page);
+    const set: any = await stored(page);
+    expect(set.exams.length).toBe(1);
+    expect(Object.keys(set.activity).length).toBe(1);
+    expect(await wide()).toBeLessThanOrEqual(390);
+
+    await page.getByRole('link', { name: 'All study sets' }).click();
+    const prog = page.locator('.ft-progress');
+    await expect(prog.locator('.ft-stat').first()).toContainText('1');
+    await expect(prog.locator('.ft-grades .ft-grade-num')).toHaveText(/^[1-7]$/);
+    expect(await wide()).toBeLessThanOrEqual(390);
   });
 });

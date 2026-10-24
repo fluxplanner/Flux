@@ -2192,6 +2192,151 @@
       .map((x) => ({ id: x.c.id, label: x.c.label, status: statusOf(x.m), right: x.m.right, wrong: x.m.wrong }));
   }
 
+  /* ── Mock exams, predicted grades, streaks, topic pages ─────────────── */
+
+  /*
+   * A timed mock paper: a Paper 1 section (multiple choice) and a Paper 2
+   * section (command-term written answers), all from the student's notes.
+   * The time follows the IB's rough pace of about a minute and a half a mark.
+   * Returns { questions, marks, minutes } (questions have ids m1…, m2…).
+   */
+  function buildMockExam(corpus, concepts, mastery, opts) {
+    const o = opts || {};
+    const seed = o.seed || uid('M');
+    const size = o.size === 'short' ? [4, 3] : o.size === 'long' ? [10, 8] : [6, 5];
+    const base0 = { programme: o.programme, topic: o.topic || '', focus: o.focus || 'all' };
+    const p1 = buildIbQuestions(corpus, concepts, mastery, Object.assign({}, base0, { paper: 1, count: size[0], seed: seed + '1' }));
+    const p2 = buildIbQuestions(corpus, concepts, mastery, Object.assign({}, base0, { paper: 2, count: size[1], seed: seed + '2' }));
+    const questions = p1.map((q, i) => Object.assign(q, { id: 'm1-' + (i + 1) }))
+      .concat(p2.map((q, i) => Object.assign(q, { id: 'm2-' + (i + 1) })));
+    const marks = questions.reduce((n, q) => n + q.marks, 0);
+    return { questions, marks, minutes: marks ? Math.max(5, Math.ceil(marks * 1.5)) : 0 };
+  }
+  /**
+   * What a marked mock saves in set.exams. awarded: { [qid]: marks given }.
+   * opts: { programme, minutes, seconds, now }.
+   */
+  function examRecord(questions, awarded, opts) {
+    const o = opts || {};
+    const part = (paper) => {
+      const qs = (questions || []).filter((q) => q.paper === paper);
+      return { got: qs.reduce((n, q) => n + Math.min(q.marks, clampInt(awarded && awarded[q.id], 0, q.marks, 0)), 0), total: qs.reduce((n, q) => n + q.marks, 0) };
+    };
+    const p1 = part(1);
+    const p2 = part(2);
+    const got = p1.got + p2.got;
+    const total = p1.total + p2.total;
+    return {
+      id: uid('exam-'),
+      at: o.now || new Date().toISOString(),
+      programme: o.programme === 'MYP' ? 'MYP' : 'DP',
+      minutes: clampInt(o.minutes, 0, 600, 0),
+      seconds: clampInt(o.seconds, 0, 1e6, 0),
+      got, total, pct: total ? Math.round(got / total * 100) : 0, p1, p2,
+    };
+  }
+  /*
+   * Rough percentage-to-grade lines. Real IB boundaries change by subject and
+   * session, so this is only a guide, and the screen says so.
+   */
+  const GRADE_LINES = [[80, 7], [68, 6], [56, 5], [45, 4], [34, 3], [20, 2]];
+  function gradeFor(pct) {
+    for (const [line, grade] of GRADE_LINES) if (pct >= line) return grade;
+    return 1;
+  }
+  /**
+   * A predicted IB grade (1–7) for a set, from its recent mock exams (they
+   * count most), its practice tests and how many terms are mastered. Recent
+   * results count more than old ones. null until there is something to go on.
+   * Returns { grade, pct, basis: { exams, tests }, confidence: 'low'|'medium'|'high' }.
+   */
+  function predictGrade(set) {
+    const s = set || {};
+    const recent = (list) => (Array.isArray(list) ? list : []).slice(-5);
+    const exams = recent(s.exams).filter((e) => e.total > 0);
+    const tests = recent(s.tests).filter((t) => t.total > 0);
+    const terms = (s.guide && s.guide.terms) || [];
+    const seen = terms.filter((t) => s.mastery && s.mastery[t.id] && s.mastery[t.id].seen).length;
+    let sum = 0;
+    let weight = 0;
+    const add = (list, w) => list.forEach((x, i) => { const k = w * (1 + i / list.length); sum += x.pct * k; weight += k; });
+    add(exams, 3);
+    add(tests, 1);
+    if (terms.length && seen >= Math.min(5, terms.length)) {
+      const k = 0.5 + (exams.length || tests.length ? 0 : 1);
+      sum += masterySummary(terms, s.mastery).percent * k;
+      weight += k;
+    }
+    if (!weight) return null;
+    const pct = Math.round(sum / weight);
+    const confidence = exams.length >= 2 ? 'high' : exams.length || tests.length >= 3 ? 'medium' : 'low';
+    return { grade: gradeFor(pct), pct, basis: { exams: exams.length, tests: tests.length }, confidence };
+  }
+  /** Note one study action on day ('YYYY-MM-DD', default today) in set.activity. */
+  function logActivity(set, day) {
+    const d = isYmd(day) ? day : ymd();
+    if (!plainObject(set.activity)) set.activity = {};
+    set.activity[d] = Math.min(1e6, (Number(set.activity[d]) || 0) + 1);
+    const days = Object.keys(set.activity).sort();
+    days.slice(0, Math.max(0, days.length - 400)).forEach((k) => { delete set.activity[k]; });
+    return set.activity;
+  }
+  /**
+   * The study streak across any number of activity maps: days in a row
+   * ending today (or yesterday, so it is not lost before today's study).
+   * Returns { current, best, today (actions today), days (days studied) }.
+   */
+  function studyStreak(maps, today) {
+    const day = isYmd(today) ? today : ymd();
+    const all = new Map();
+    (maps || []).forEach((m) => {
+      if (!plainObject(m)) return;
+      Object.keys(m).forEach((k) => { if (isYmd(k) && Number(m[k]) > 0) all.set(k, (all.get(k) || 0) + Number(m[k])); });
+    });
+    const days = Array.from(all.keys()).sort();
+    let best = 0;
+    let run = 0;
+    days.forEach((d, i) => {
+      run = i && daysBetween(days[i - 1], d) === 1 ? run + 1 : 1;
+      best = Math.max(best, run);
+    });
+    let current = 0;
+    let d = all.has(day) ? day : addDays(day, -1);
+    while (all.has(d)) { current++; d = addDays(d, -1); }
+    return { current, best, today: all.get(day) || 0, days: days.length };
+  }
+  /**
+   * One topic's notes page: its heading, summary, the key terms and facts
+   * from that part of the notes, and how well the terms are known.
+   * Returns [{ id, title, level, ref, summary, terms, facts, mastery }].
+   */
+  function topicPages(corpus, guide, concepts, mastery) {
+    if (!guide) return [];
+    const topics = topicsFor(corpus, concepts);
+    const termById = new Map((guide.terms || []).map((t) => [t.id, t]));
+    const outlineBy = new Map((guide.outline || []).map((o) => [o.sectionId, o]));
+    const factsBy = new Map();
+    (guide.facts || []).forEach((f) => {
+      const sent = f.sentenceId ? corpus.byId[f.sentenceId] : null;
+      const key = sent ? sent.sectionId : '';
+      if (!factsBy.has(key)) factsBy.set(key, []);
+      factsBy.get(key).push(f);
+    });
+    return topics.map((t) => {
+      const o = outlineBy.get(t.id);
+      return {
+        id: t.id || 'own',
+        title: t.title,
+        level: t.level,
+        ref: t.ref,
+        summary: o ? o.summary : [],
+        terms: t.conceptIds.map((id) => termById.get(id)).filter(Boolean),
+        facts: t.id ? (factsBy.get(t.id) || []) : [],
+        mastery: masterySummary(t.conceptIds, mastery),
+      };
+    });
+  }
+
   /* ── Ask your notes (BM25) ──────────────────────────────────────────── */
 
   function buildSearchIndex(corpus) {
@@ -2433,6 +2578,8 @@
       mastery: {},
       learn: null,
       tests: [],
+      exams: [],
+      activity: {},
       cards: {},
       flashDeckId: '',
       plan: null,
@@ -2642,6 +2789,25 @@
       })),
     };
   }
+  function normExam(e) {
+    if (!plainObject(e)) return null;
+    const part = (p) => {
+      const total = clampInt(p && p.total, 0, 1000, 0);
+      return { got: clampInt(p && p.got, 0, total, 0), total };
+    };
+    const p1 = part(e.p1);
+    const p2 = part(e.p2);
+    const total = p1.total + p2.total;
+    const got = p1.got + p2.got;
+    return {
+      id: safeKey(e.id) ? e.id : uid('exam-'),
+      at: isoOr(e.at, new Date().toISOString()),
+      programme: e.programme === 'MYP' ? 'MYP' : 'DP',
+      minutes: clampInt(e.minutes, 0, 600, 0),
+      seconds: clampInt(e.seconds, 0, 1e6, 0),
+      got, total, pct: total ? Math.round(got / total * 100) : 0, p1, p2,
+    };
+  }
   function normCardState(s) {
     if (!plainObject(s) || !['learning', 'relearning', 'review'].includes(s.state)) return null;
     const out = { state: s.state };
@@ -2704,6 +2870,9 @@
     out.mastery = normMap(raw.mastery, normMastery);
     out.learn = normLearn(raw.learn);
     out.tests = (Array.isArray(raw.tests) ? raw.tests : []).slice(-LIMITS.tests).map(normTest).filter(Boolean);
+    out.exams = (Array.isArray(raw.exams) ? raw.exams : []).slice(-LIMITS.tests).map(normExam).filter(Boolean);
+    out.activity = normMap(raw.activity, (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Math.min(1e6, Math.round(Number(v))) : null), 400);
+    Object.keys(out.activity).forEach((k) => { if (!isYmd(k)) delete out.activity[k]; });
     out.cards = normMap(raw.cards, normCardState);
     out.flashDeckId = typeof raw.flashDeckId === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(raw.flashDeckId) ? raw.flashDeckId : '';
     out.plan = normPlan(raw.plan);
@@ -2772,6 +2941,10 @@
       fresh: m.fresh,
       percent: m.percent,
       lastTestPct: lastTest ? lastTest.pct : null,
+      predicted: predictGrade(s),
+      exams: Array.isArray(s.exams) ? s.exams.length : 0,
+      cardsDue: s.guide ? cardCounts(s).due : 0,
+      activity: plainObject(s.activity) ? Object.assign({}, s.activity) : {},
       sample: (s.sources || []).some((src) => src && src.kind === 'Sample'),
     };
   }
@@ -3084,6 +3257,7 @@
     simplerFor, examplesFor,
     buildPracticeTest, gradePracticeTest, practiceRecord, questionText,
     COMMAND_TERMS, buildIbQuestions, ibSuggest, ibVerdict, weakTopics,
+    buildMockExam, examRecord, gradeFor, predictGrade, logActivity, studyStreak, topicPages,
     buildSearchIndex, searchNotes, highlightSegments, answerFromNotes, groundedParts,
     buildStudyPlan,
     newSet, newSource, normalizeSet, cloneSet, guideStale, hasNotes, summarizeSet, wordCount,
