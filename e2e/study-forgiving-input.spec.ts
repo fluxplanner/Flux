@@ -110,6 +110,9 @@ test.describe('Study tools: forgiving input', () => {
     await expect(out).toContainText('You can also type it in English');
 
     await page.evaluate(() => (window as any).fluxStudyHub.openTool('german', 'conj'));
+    // German draws once its engine is in; typing before that went into the
+    // Spanish box, and German then showed its sample verb.
+    await expect(page.locator('#lgOut').locator('xpath=..').locator('h3')).toContainText('German conjugator');
     await page.locator('#lgVerb').fill('to run');
     await page.locator('#lgVerb').press('Enter');
     await expect(page.locator('#lgOut')).toContainText('“to run” in German is laufen.');
