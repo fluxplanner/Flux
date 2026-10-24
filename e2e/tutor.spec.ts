@@ -779,4 +779,38 @@ test.describe('Flux Tutor', () => {
       expect(await wide()).toBeLessThanOrEqual(390);
     }
   });
+
+  test('IB practice: command terms, a cited markscheme, self-marking that feeds weak topics, and the stuck links', async ({ page }) => {
+    await openSample(page);
+    const stuck = page.locator('details.ft-stuck');
+    await stuck.locator('summary').click();
+    const khan = stuck.getByRole('link', { name: /Khan Academy: Biology/ });
+    await expect(khan).toHaveAttribute('target', '_blank');
+    await expect(khan).toHaveAttribute('rel', /noopener/);
+
+    await tab(page, 'IB practice').click();
+    await expect(page.getByRole('heading', { name: 'IB practice' })).toBeVisible();
+    await page.getByRole('button', { name: 'Make the questions' }).click();
+    const first = page.locator('.ft-ib-q').first();
+    await expect(first.locator('.ft-score-pill')).toHaveText(/^(Define|State|Outline|Describe|Explain|Compare)$/);
+    await first.locator('textarea').fill('no idea');
+    await first.getByRole('button', { name: 'Show the markscheme' }).click();
+    await expect(first.locator('.ft-ib-scheme cite').first()).toContainText('Sample biology notes');
+    await expect(first.locator('.ft-ib-scheme input:checked')).toHaveCount(0);
+    await first.getByRole('button', { name: 'Save my mark' }).click();
+    await expect(first.locator('.ft-ib-score')).toContainText('You gave yourself 0 of');
+    await saved(page);
+    await expect(page.locator('.ft-weak li')).not.toHaveCount(0);
+    await page.reload();
+    await expect(page.locator('.ft-weak li')).not.toHaveCount(0);
+  });
+
+  test('flashcard reveal animates, and not at all with reduced motion', async ({ page }) => {
+    await openSample(page);
+    await tab(page, 'Flashcards').click();
+    await page.locator('#ftFlipBtn').click();
+    expect(await page.locator('.ft-flip-in').evaluate((e) => getComputedStyle(e).animationName)).toBe('ft-flip-in');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    expect(await page.locator('.ft-flip-in').evaluate((e) => parseFloat(getComputedStyle(e).animationDuration))).toBeLessThan(0.01);
+  });
 });

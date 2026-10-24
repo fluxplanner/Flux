@@ -283,5 +283,5 @@
 
 /* Flashcard reveal: the answer turns into view; instant when motion is reduced. */
 .fnb-card.flipped .fnb-card-a { animation: fnb-flip-in .38s cubic-bezier(.3, .7, .25, 1) both; transform-origin: top center; }
-@keyframes fnb-flip-in { from { opacity: 0; transform: perspective(800px) rotateX(-70deg); } to { opacity: 1; transform: none; } }
+@keyframes fnb-flip-in { from { transform: perspective(800px) rotateX(-70deg); } to { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .fnb-card.flipped .fnb-card-a { animation: none; } }
