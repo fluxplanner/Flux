@@ -55,9 +55,11 @@
   const TABS = [
     { id: 'notes', label: 'Notes', icon: 'notes' },
     { id: 'guide', label: 'Study guide', icon: 'guide' },
+    { id: 'topics', label: 'Topics', icon: 'guide' },
     { id: 'learn', label: 'Learn', icon: 'learn' },
     { id: 'test', label: 'Practice test', icon: 'test' },
     { id: 'ib', label: 'IB practice', icon: 'test' },
+    { id: 'exam', label: 'Mock exam', icon: 'plan' },
     { id: 'cards', label: 'Flashcards', icon: 'cards' },
     { id: 'ask', label: 'Ask your notes', icon: 'ask' },
     { id: 'plan', label: 'Study plan', icon: 'plan' },
@@ -184,7 +186,7 @@
     ui: freshUi(),
   };
   function freshUi() {
-    return { editing: null, learnPick: false, learnNote: '', test: null, cards: null, ib: null, askQuery: '', planNote: '' };
+    return { editing: null, learnPick: false, learnNote: '', test: null, exam: null, cards: null, ib: null, askQuery: '', planNote: '' };
   }
   let busy = false;
 
@@ -238,7 +240,7 @@
     return o.index;
   }
   function guideChanged() { app.open.guideVer++; }
-  function studied() { app.open.set.studiedAt = nowIso(); }
+  function studied() { app.open.set.studiedAt = nowIso(); T.logActivity(app.open.set); }
 
   /* ── Saving ─────────────────────────────────────────────────────────── */
 
@@ -593,6 +595,7 @@
     afterRoute(focusTarget());
     if (tab === 'notes' && r.query.get('src')) showPassage(r.query.get('src'), r.query.get('find') || '');
     if (tab === 'test') startTestTimer();
+    if (tab === 'exam') startExamTimer();
   }
 
   /** A citation was opened: select its passage in that source's notes. */
@@ -644,7 +647,7 @@
     app.view = 'set';
     app.notice = '';
     app.tab = '';
-    if (!draft) restoreTest();
+    if (!draft) { restoreTest(); restoreExam(); }
     // The beta's sets (and any set saved before its guide) get a guide when opened.
     if (!draft && !set.guide && T.hasNotes(set)) buildGuide();
     setSaveLabel(draft ? '' : (app.store.persistent ? 'Saved' : 'Only kept in this tab'), app.store.persistent ? 'saved' : 'warn');
@@ -716,6 +719,7 @@
       + '<input type="file" id="ftImportFile" class="ft-visually-hidden" accept=".json,application/json" tabindex="-1" aria-label="Choose a Flux Tutor export to import">'
       + '</div></div>'
       + (app.notice ? '<p class="ft-notice" role="status">' + icon('info', 17) + '<span>' + esc(app.notice) + '</span></p>' : '')
+      + progressHtml(sets)
       + '<p id="ftLibAlert" class="ft-alert" role="alert"' + (app.libError ? '' : ' hidden') + '>' + esc(app.libError) + '</p>'
       + (sets.length ? '<ul class="ft-sets" aria-label="Study sets">' + sets.map(setCard).join('') + '</ul>' : emptyLibrary())
       + (app.bin.length ? binHtml() : '')
@@ -725,11 +729,43 @@
       + '</section>';
   }
 
+  /** The progress dashboard: streak, cards due and a predicted grade per subject, from every set. */
+  function progressHtml(sets) {
+    if (!sets.length) return '';
+    const streak = T.studyStreak(sets.map((m) => m.activity));
+    const due = sets.reduce((n, m) => n + (Number(m.cardsDue) || 0), 0);
+    const exams = sets.reduce((n, m) => n + (Number(m.exams) || 0), 0);
+    const subjects = new Map();
+    sets.forEach((m) => {
+      if (!m.predicted) return;
+      const name = m.subject || m.title || 'Untitled study set';
+      const row = subjects.get(name) || { name, pct: 0, n: 0, href: setHash(m.id, 'exam') };
+      row.pct += m.predicted.pct;
+      row.n++;
+      subjects.set(name, row);
+    });
+    const tile = (num, label) => '<li class="ft-stat"><span class="ft-stat-num">' + num + '</span><span class="ft-stat-label">' + esc(label) + '</span></li>';
+    return '<section class="ft-progress" aria-labelledby="ftProgTitle"><h2 class="ft-h2" id="ftProgTitle">Your progress</h2>'
+      + '<ul class="ft-stats">'
+      + tile(streak.current, streak.current === 1 ? 'day streak' : 'days streak')
+      + tile(streak.best, 'best streak')
+      + tile(due, due === 1 ? 'flashcard due' : 'flashcards due')
+      + tile(exams, exams === 1 ? 'mock exam' : 'mock exams')
+      + '</ul>'
+      + (subjects.size
+        ? '<h3 class="ft-h3">Predicted grades</h3><ul class="ft-grades">' + Array.from(subjects.values()).map((r) => {
+          const pct = Math.round(r.pct / r.n);
+          return '<li><a href="' + esc(r.href) + '"><span class="ft-grade-num">' + T.gradeFor(pct) + '</span><span>' + esc(r.name) + ' <span class="ft-help">' + pct + '%</span></span></a></li>';
+        }).join('') + '</ul><p class="ft-help">A guide from your mock exams, practice tests and mastered terms. Real IB grade boundaries change each exam session.</p>'
+        : '<p class="ft-help">Take a mock exam or a practice test in any set to see a predicted grade for that subject.</p>')
+      + '</section>';
+  }
+
   function emptyLibrary() {
     return '<div class="ft-empty"><h2 class="ft-h2">Start with your notes</h2><ol class="ft-steps">'
       + '<li><strong>Add your notes.</strong> Paste them, or add a PDF, a Word document or a photo of your notes.</li>'
       + '<li><strong>Get a study guide.</strong> An outline, key terms, key facts and short summaries, each with where in your notes it came from.</li>'
-      + '<li><strong>Study it.</strong> Learn one step at a time, take practice tests, review flashcards, ask your notes, and plan the days to your exam.</li>'
+      + '<li><strong>Study it.</strong> Learn one step at a time, revise topic pages, take practice tests and timed mock exams, review flashcards, ask your notes, and plan the days to your exam. Your predicted grade and streak show here.</li>'
       + '</ol><p class="ft-help">New here? “Try it with a sample” opens a short set of biology notes to explore.</p></div>';
   }
 
@@ -889,6 +925,8 @@
       case 'learn': screen = learnScreen(); break;
       case 'test': screen = testScreen(); break;
       case 'ib': screen = ibScreen(); break;
+      case 'exam': screen = examScreen(); break;
+      case 'topics': screen = topicsScreen(); break;
       case 'cards': screen = cardsScreen(); break;
       case 'ask': screen = askScreen(); break;
       case 'plan': screen = planScreen(); break;
@@ -2068,7 +2106,7 @@
         + '<form data-form="ib-setup" novalidate><div class="ft-grid">'
         + '<div class="ft-field"><label class="ft-label" for="ftIbPaper">Paper</label><select class="ft-select" id="ftIbPaper" name="paper"><option value="2">Paper 2 · written answers</option><option value="1">Paper 1 · multiple choice</option></select></div>'
         + '<div class="ft-field"><label class="ft-label" for="ftIbTopic">Topic</label><select class="ft-select" id="ftIbTopic" name="topic"><option value="">All topics</option>'
-        + T.topicsFor(corpusNow(), concepts).filter((t) => t.id).map((t) => '<option value="' + esc(t.id) + '">' + esc(t.title) + '</option>').join('') + '</select></div>'
+        + T.topicsFor(corpusNow(), concepts).filter((t) => t.id).map((t) => '<option value="' + esc(t.id) + '"' + (t.id === app.ui.ibTopic ? ' selected' : '') + '>' + esc(t.title) + '</option>').join('') + '</select></div>'
         + '<div class="ft-field"><label class="ft-label" for="ftIbProg">Programme</label><select class="ft-select" id="ftIbProg" name="programme"><option value="DP">DP (Diploma)</option><option value="MYP">MYP</option></select></div>'
         + '<div class="ft-field"><label class="ft-label" for="ftIbLevel">Difficulty</label><select class="ft-select" id="ftIbLevel" name="level"><option value="0">Any</option><option value="1">1 · Recall (Define, State)</option><option value="2">2 · Understand (Outline, Describe)</option><option value="3">3 · Apply (Explain, Compare)</option></select></div>'
         + '<div class="ft-field"><label class="ft-label" for="ftIbCount">Questions</label><select class="ft-select" id="ftIbCount" name="count">' + [3, 6, 10].map((n) => '<option value="' + n + '"' + (n === 6 ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></div>'
@@ -2150,6 +2188,183 @@
     save();
     renderScreen('#ftIb-' + qid);
     announce('Saved: ' + awarded + ' of ' + q.marks + '.');
+  }
+
+  /* ── Mock exam ──────────────────────────────────────────────────────── */
+
+  // A timed paper under exam conditions: answer everything, then mark it
+  // yourself against the markscheme. Kept in this tab's session so a reload
+  // does not lose a paper half done.
+  const EXAM_KEY = 'flux_tutor.v2.exam.';
+  function persistExam() {
+    if (!app.open) return;
+    try {
+      const x = app.ui.exam;
+      if (!x) sessionStorage.removeItem(EXAM_KEY + app.open.set.id);
+      else sessionStorage.setItem(EXAM_KEY + app.open.set.id, JSON.stringify(x));
+    } catch (_) { /* a reload then starts again */ }
+  }
+  function restoreExam() {
+    try {
+      const raw = sessionStorage.getItem(EXAM_KEY + app.open.set.id);
+      const x = raw ? JSON.parse(raw) : null;
+      if (x && Array.isArray(x.qs) && x.qs.length && ['running', 'marking', 'done'].includes(x.phase)) app.ui.exam = x;
+    } catch (_) { app.ui.exam = null; }
+  }
+  function startExamTimer() {
+    stopTestTimer();
+    const x = app.ui.exam;
+    if (!app.open || app.tab !== 'exam' || !x || x.phase !== 'running') return;
+    const tick = () => {
+      if (app.ui.exam !== x || x.phase !== 'running') { stopTestTimer(); return; }
+      const left = x.deadline - Date.now();
+      const el = document.getElementById('ftTimerText');
+      if (el) el.textContent = clock(left);
+      if (left <= 5 * 60000 && !x.warned) { x.warned = true; persistExam(); announce('Five minutes left.'); }
+      if (left <= 0) { stopTestTimer(); endExam(true); }
+    };
+    tick();
+    if (app.ui.exam === x && x.phase === 'running') timerHandle = setInterval(tick, 1000);
+  }
+  function gradeHtml(p) {
+    if (!p) return '<p class="ft-help">Do a mock exam or a practice test and your predicted grade shows here.</p>';
+    return '<p class="ft-grade"><span class="ft-grade-num">' + p.grade + '</span><span>Predicted grade <span class="ft-help">(' + p.pct + '% · '
+      + ({ high: 'good evidence', medium: 'some evidence', low: 'early guess' })[p.confidence] + ')</span></span></p>';
+  }
+  function examScreen() {
+    const set = app.open.set;
+    if (!set.guide) return needGuide('Mock exam');
+    const concepts = conceptsNow();
+    if (!concepts.length) return noTerms('Mock exam');
+    const x = app.ui.exam;
+    const head = (sticky) => '<section class="ft-panel" aria-labelledby="ftScreenTitle"><div class="ft-panel-head' + (sticky ? ' ft-panel-head--sticky' : '') + '"><h2 class="ft-h2" id="ftScreenTitle" tabindex="-1">Mock exam</h2>'
+      + (sticky ? '<p class="ft-timer"><span class="ft-visually-hidden">Time left: </span>' + icon('plan', 16) + '<span id="ftTimerText">' + clock(x.deadline - Date.now()) + '</span></p>' : '') + '</div>';
+    if (!x) {
+      return head(false)
+        + '<p class="ft-lead">A full timed paper from your notes: a Paper 1 section (multiple choice) and a Paper 2 section (written answers with IB command terms). When the time is up you mark it yourself against the markscheme, and your predicted grade updates.</p>'
+        + gradeHtml(T.predictGrade(set))
+        + '<form data-form="exam-setup" novalidate><div class="ft-grid">'
+        + '<div class="ft-field"><label class="ft-label" for="ftExSize">Length</label><select class="ft-select" id="ftExSize" name="size"><option value="short">Short (about 15 minutes)</option><option value="normal" selected>Standard (about 30 minutes)</option><option value="long">Long (about 50 minutes)</option></select></div>'
+        + '<div class="ft-field"><label class="ft-label" for="ftExTopic">Topic</label><select class="ft-select" id="ftExTopic" name="topic"><option value="">All topics</option>'
+        + T.topicsFor(corpusNow(), concepts).filter((t) => t.id).map((t) => '<option value="' + esc(t.id) + '">' + esc(t.title) + '</option>').join('') + '</select></div>'
+        + '<div class="ft-field"><label class="ft-label" for="ftExProg">Programme</label><select class="ft-select" id="ftExProg" name="programme"><option value="DP">DP (Diploma)</option><option value="MYP">MYP</option></select></div>'
+        + '</div><p class="ft-error" role="alert"></p><div class="ft-row"><button type="submit" class="ft-btn">Start the exam</button></div></form>'
+        + examHistoryHtml(set) + '</section>';
+    }
+    const qHtml = (q, i) => {
+      const locked = x.phase !== 'running';
+      const ans = x.answers[q.id] || '';
+      let body = q.paper === 1
+        ? '<fieldset class="ft-fieldset"><legend class="ft-visually-hidden">Your answer</legend>' + q.options.map((opt, k) => '<label class="ft-check ft-check--plain' + (locked && opt === q.answer ? ' ft-ib-right' : '') + '"><input type="radio" name="ex-' + esc(q.id) + '" data-ex-answer="' + esc(q.id) + '" value="' + esc(opt) + '"' + (ans === opt ? ' checked' : '') + (locked ? ' disabled' : '') + '> ' + 'ABCD'[k] + '. ' + esc(opt) + '</label>').join('') + '</fieldset>'
+        : '<label class="ft-visually-hidden" for="ftExA-' + esc(q.id) + '">Your answer</label><textarea class="ft-textarea" id="ftExA-' + esc(q.id) + '" data-ex-answer="' + esc(q.id) + '" rows="3"' + (locked ? ' readonly' : '') + '>' + esc(ans) + '</textarea>';
+      if (locked && q.paper === 1) {
+        body += '<div class="ft-ib-scheme"><p class="ft-label">Markscheme</p><p><strong>' + esc(q.answer) + '</strong> [1]</p>' + quote(q.scheme[0]) + '</div>';
+      } else if (locked) {
+        const ticks = x.ticks[q.id] || [];
+        body += '<fieldset class="ft-fieldset ft-ib-scheme"><legend class="ft-label">Markscheme: tick each point your answer makes</legend>'
+          + q.scheme.map((p, k) => '<label class="ft-check ft-check--plain"><input type="checkbox" data-ex-tick="' + esc(q.id) + '" value="' + k + '"' + (ticks[k] ? ' checked' : '') + (x.phase === 'done' ? ' disabled' : '') + '> <span>' + esc(p.text) + ' ' + cite(p.ref, p.text) + '</span></label>').join('') + '</fieldset>';
+      }
+      return '<li class="ft-ib-q" id="ftEx-' + esc(q.id) + '"><p class="ft-ib-meta"><span class="ft-score-pill" title="' + esc(T.COMMAND_TERMS[q.command].meaning) + '">' + esc(q.command) + '</span> <span class="ft-help">Question ' + (i + 1) + ' · [' + plural(q.marks, 'mark') + ']</span></p>'
+        + '<p class="ft-ib-prompt"><strong>' + esc(q.prompt) + '</strong></p>' + body + '</li>';
+    };
+    const section = (paper, title) => {
+      const qs = x.qs.filter((q) => q.paper === paper);
+      if (!qs.length) return '';
+      return '<h3 class="ft-h3">' + title + ' <span class="ft-help">[' + plural(qs.reduce((n, q) => n + q.marks, 0), 'mark') + ']</span></h3><ol class="ft-ib-list">' + qs.map((q) => qHtml(q, x.qs.indexOf(q))).join('') + '</ol>';
+    };
+    const papers = section(1, 'Paper 1 · multiple choice') + section(2, 'Paper 2 · written answers');
+    if (x.phase === 'running') {
+      return head(true) + '<p class="ft-help">' + esc(x.programme) + ' · ' + plural(x.marks, 'mark') + ' · ' + x.minutes + ' minutes. Nothing is marked until you finish or the time runs out.</p>'
+        + papers + '<div class="ft-row"><button type="button" class="ft-btn" data-act="exam-end">Finish the exam</button>'
+        + '<button type="button" class="ft-btn ft-btn--quiet" data-act="exam-quit">Stop without marking</button></div></section>';
+    }
+    if (x.phase === 'marking') {
+      return head(false) + '<p class="ft-lead">' + (x.timeUp ? 'Time is up. ' : '') + 'Now mark your paper. Paper 1 is marked for you. For Paper 2, tick each markscheme point your answer makes (points it already seems to make are ticked; you decide).</p>'
+        + papers + '<div class="ft-row"><button type="button" class="ft-btn" data-act="exam-save">Save my marks</button></div></section>';
+    }
+    const rec = set.exams.find((e) => e.id === x.recordId) || set.exams[set.exams.length - 1];
+    return head(false) + (rec ? '<p class="ft-lead" role="status">You scored <strong>' + rec.got + ' of ' + rec.total + '</strong> (' + rec.pct + '%): Paper 1 ' + rec.p1.got + '/' + rec.p1.total + ', Paper 2 ' + rec.p2.got + '/' + rec.p2.total + ', about grade ' + T.gradeFor(rec.pct) + '.</p>' : '')
+      + gradeHtml(T.predictGrade(set))
+      + '<div class="ft-row"><button type="button" class="ft-btn" data-act="exam-new">Take another exam</button><a class="ft-btn ft-btn--quiet" href="' + esc(setHash(set.id, 'topics')) + '">Revise my topics</a></div>'
+      + papers + '</section>';
+  }
+  function examHistoryHtml(set) {
+    if (!set.exams.length) return '';
+    return '<section class="ft-guide-sec" aria-labelledby="ftExHist"><h3 class="ft-h3" id="ftExHist">Your past exams</h3><ul class="ft-history">'
+      + set.exams.slice().reverse().map((r) => '<li><span class="ft-score-pill">' + r.pct + '%</span> <span>' + esc(fmtWhen(r.at)) + ' · ' + r.got + ' of ' + r.total + ' marks · about grade ' + T.gradeFor(r.pct) + '</span></li>').join('')
+      + '</ul></section>';
+  }
+  function startExam(form) {
+    const set = app.open.set;
+    const fd = new FormData(form);
+    const programme = String(fd.get('programme')) === 'MYP' ? 'MYP' : 'DP';
+    const m = T.buildMockExam(corpusNow(), conceptsNow(), set.mastery, { programme, size: String(fd.get('size')), topic: String(fd.get('topic') || '') });
+    if (!m.questions.length) { form.querySelector('.ft-error').textContent = 'Your notes do not have enough on these terms for an exam yet. Try “All topics”, or add more notes.'; return; }
+    const now = Date.now();
+    app.ui.exam = { phase: 'running', qs: m.questions, marks: m.marks, minutes: m.minutes, programme, answers: {}, ticks: {}, startedAt: now, deadline: now + m.minutes * 60000, warned: false };
+    persistExam();
+    renderScreen('#ftScreenTitle');
+    startExamTimer();
+    announce('Exam started: ' + m.minutes + ' minutes.');
+  }
+  function endExam(timeUp) {
+    const x = app.ui.exam;
+    if (!x || x.phase !== 'running') return;
+    stopTestTimer();
+    x.phase = 'marking';
+    x.timeUp = !!timeUp;
+    x.seconds = Math.min(x.minutes * 60, Math.round((Date.now() - x.startedAt) / 1000));
+    x.qs.forEach((q) => {
+      x.ticks[q.id] = q.paper === 1 ? [x.answers[q.id] === q.answer] : T.ibSuggest(q, x.answers[q.id] || '');
+    });
+    persistExam();
+    if (app.tab === 'exam') { renderScreen(); window.scrollTo(0, 0); focusEl('#ftScreenTitle'); }
+    announce((timeUp ? 'Time is up. ' : '') + 'Now mark your paper.');
+  }
+  function saveExam() {
+    const set = app.open.set;
+    const x = app.ui.exam;
+    if (!x || x.phase !== 'marking') return;
+    const awarded = {};
+    const at = nowIso();
+    x.qs.forEach((q) => {
+      awarded[q.id] = (x.ticks[q.id] || []).filter(Boolean).length;
+      const verdict = (x.answers[q.id] || '').trim() ? T.ibVerdict(awarded[q.id], q.marks) : 'incorrect';
+      q.conceptIds.forEach((id) => { set.mastery[id] = T.applyResult(set.mastery[id], verdict, at); });
+    });
+    const rec = T.examRecord(x.qs, awarded, { programme: x.programme, minutes: x.minutes, seconds: x.seconds });
+    set.exams.push(rec);
+    if (set.exams.length > T.LIMITS.tests) set.exams.splice(0, set.exams.length - T.LIMITS.tests);
+    x.phase = 'done';
+    x.recordId = rec.id;
+    studied();
+    save();
+    persistExam();
+    renderScreen('#ftScreenTitle');
+    announce('Saved: ' + rec.got + ' of ' + rec.total + ' marks.');
+  }
+
+  /* ── Topic notes ────────────────────────────────────────────────────── */
+
+  function topicsScreen() {
+    const set = app.open.set;
+    if (!set.guide) return needGuide('Topics');
+    const pages = T.topicPages(corpusNow(), set.guide, conceptsNow(), set.mastery);
+    if (!pages.length) return noTerms('Topics');
+    const st = (m) => (m.total ? m.mastered + ' of ' + plural(m.total, 'term') + ' mastered' : 'No terms');
+    return '<section class="ft-panel" aria-labelledby="ftScreenTitle"><h2 class="ft-h2" id="ftScreenTitle" tabindex="-1">Topics</h2>'
+      + '<p class="ft-lead">A notes page for each topic in your notes: the summary, the key terms and facts, and how well you know them. Open one to revise it, then practise just that topic.</p>'
+      + '<ul class="ft-topics">' + pages.map((p) => {
+        const pct = p.mastery.percent;
+        return '<li><details class="ft-details ft-topic" id="ftTopic-' + esc(p.id) + '"><summary><span class="ft-topic-title">' + esc(p.title) + '</span>'
+          + '<span class="ft-meter ft-meter--small" role="progressbar" aria-label="' + esc(p.title) + ' mastered" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><span style="width:' + pct + '%"></span></span>'
+          + '<span class="ft-help">' + esc(st(p.mastery)) + '</span></summary>'
+          + (p.summary.length ? '<h3 class="ft-h4">Summary</h3><ul class="ft-summary">' + p.summary.map((s) => '<li><span>' + esc(s.text) + '</span> ' + cite(s.ref, s.text) + '</li>').join('') + '</ul>' : '')
+          + (p.terms.length ? '<h3 class="ft-h4">Key terms</h3><dl class="ft-topic-terms">' + p.terms.map((t) => '<dt>' + esc(t.term) + ' <span class="ft-help">' + esc(statusText(T.statusOf(set.mastery[t.id]))) + '</span></dt><dd>' + esc(t.def) + ' ' + itemCite(t) + '</dd>').join('') + '</dl>' : '')
+          + (p.facts.length ? '<h3 class="ft-h4">Key facts</h3><ul class="ft-summary">' + p.facts.map((f) => '<li><span>' + esc(f.text) + '</span> ' + itemCite(f) + '</li>').join('') + '</ul>' : '')
+          + (p.id !== 'own' ? '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="topic-ib" data-topic="' + esc(p.id) + '">Practise this topic</button></div>' : '')
+          + '</details></li>';
+      }).join('') + '</ul></section>';
   }
 
   /* ── If you're stuck ────────────────────────────────────────────────── */
@@ -2566,6 +2781,11 @@
       case 'ib-mark': markIb(btn.dataset.q); break;
       case 'ib-new': app.ui.ib = null; renderScreen('#ftScreenTitle'); break;
       case 'ib-weak': startIb(null, 'weak'); break;
+      case 'topic-ib': app.ui.ib = null; app.ui.ibTopic = btn.dataset.topic; go(setHash(app.open.set.id, 'ib')); break;
+      case 'exam-end': endExam(false); break;
+      case 'exam-save': saveExam(); break;
+      case 'exam-quit': app.ui.exam = null; persistExam(); stopTestTimer(); renderScreen('#ftScreenTitle'); announce('Exam stopped. Nothing was marked.'); break;
+      case 'exam-new': app.ui.exam = null; persistExam(); renderScreen('#ftScreenTitle'); break;
       case 'ask-ai': askAi(); break;
       case 'ask-passage': {
         e.preventDefault();
@@ -2604,6 +2824,7 @@
       case 'step': answerStepQ(form, false); break;
       case 'test-setup': startTest(form); break;
       case 'ib-setup': startIb(form); break;
+      case 'exam-setup': startExam(form); break;
       case 'test': finishTest(false); break;
       case 'ask': runAsk(form); break;
       case 'exam': saveExamDate(form); break;
@@ -2615,11 +2836,19 @@
     const t = e.target;
     if (t.dataset && (t.dataset.field || t.dataset.srcText)) { onNotesInput(t); return; }
     if (t.dataset && t.dataset.ibAnswer && app.ui.ib && t.type !== 'radio') { app.ui.ib.answers[t.dataset.ibAnswer] = t.value; return; }
+    if (t.dataset && t.dataset.exAnswer && app.ui.exam && t.type !== 'radio') { app.ui.exam.answers[t.dataset.exAnswer] = t.value; persistExam(); return; }
     if (t.closest && t.closest('form[data-form="test"]')) collectTestAnswer(t);
   });
   root.addEventListener('change', (e) => {
     const t = e.target;
     if (t.dataset && t.dataset.ibAnswer && t.type === 'radio' && app.ui.ib) { app.ui.ib.answers[t.dataset.ibAnswer] = t.value; return; }
+    if (t.dataset && t.dataset.exAnswer && t.type === 'radio' && app.ui.exam) { app.ui.exam.answers[t.dataset.exAnswer] = t.value; persistExam(); return; }
+    if (t.dataset && t.dataset.exTick && app.ui.exam) {
+      const list = app.ui.exam.ticks[t.dataset.exTick] || (app.ui.exam.ticks[t.dataset.exTick] = []);
+      list[Number(t.value)] = t.checked;
+      persistExam();
+      return;
+    }
     if (t.dataset && t.dataset.ibTick && app.ui.ib) {
       const list = app.ui.ib.ticks[t.dataset.ibTick] || (app.ui.ib.ticks[t.dataset.ibTick] = []);
       list[Number(t.value)] = t.checked;

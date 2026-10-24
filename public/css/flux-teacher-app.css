@@ -718,7 +718,28 @@ a { color: var(--ft-accent); }
 
 /* ── Phones ──────────────────────────────────────────────────────────── */
 
+/* Progress dashboard, predicted grades, topic pages */
+.ft-progress { margin: 18px 0; padding: 18px; border: 1px solid var(--ft-line); border-radius: 18px; background: var(--ft-surface); }
+.ft-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 12px 0 4px; padding: 0; list-style: none; }
+.ft-stat { display: flex; flex-direction: column; gap: 2px; padding: 12px; border: 1px solid var(--ft-line); border-radius: 14px; background: var(--ft-surface-2); }
+.ft-stat-num { font-size: 1.6rem; font-weight: 800; color: var(--ft-accent); font-variant-numeric: tabular-nums; }
+.ft-stat-label { color: var(--ft-muted); font-size: .88rem; }
+.ft-grades { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin: 8px 0; padding: 0; list-style: none; }
+.ft-grades a { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 10px 12px; border: 1px solid var(--ft-line); border-radius: 14px; color: var(--ft-text); text-decoration: none; }
+.ft-grades a:hover { border-color: var(--ft-accent-line); }
+.ft-grade { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+.ft-grade-num { display: inline-grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 12px; background: var(--ft-accent-soft); border: 1px solid var(--ft-accent-line); color: var(--ft-accent); font-size: 1.4rem; font-weight: 800; }
+.ft-topics { display: grid; gap: 10px; margin: 12px 0 0; padding: 0; list-style: none; }
+.ft-topic { padding: 12px 14px; border: 1px solid var(--ft-line); border-radius: 14px; background: var(--ft-surface); }
+.ft-topic summary { display: grid; grid-template-columns: minmax(0, 1fr) 90px; gap: 4px 12px; align-items: center; min-height: 44px; cursor: pointer; }
+.ft-topic summary .ft-help { grid-column: 1 / -1; }
+.ft-topic-title { font-weight: 700; overflow-wrap: anywhere; }
+.ft-meter--small { margin-top: 0; height: 6px; }
+.ft-topic-terms dt { margin-top: 10px; font-weight: 700; }
+.ft-topic-terms dd { margin: 2px 0 0; color: var(--ft-muted); }
+
 @media (max-width: 640px) {
+  .ft-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ft-grid { grid-template-columns: minmax(0, 1fr); }
   .ft-field--wide { grid-column: auto; }
   .ft-lib-actions { width: 100%; }
