@@ -117,7 +117,11 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
+<<<<<<< HEAD
 <link rel="stylesheet" href="public/bundles/flux.62ae1585.css">
+=======
+<link rel="stylesheet" href="public/bundles/flux.72a72538.css">
+>>>>>>> origin/main
 </head>
 <body>
 <noscript>
@@ -2912,9 +2916,11 @@
     <div class="modal-field-group" style="margin-bottom:10px">
       <label class="modal-micro-label" for="taskName">Title</label>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <input type="text" id="taskName" placeholder="Assignment, test, project..." style="flex:1;min-width:160px;margin:0">
+        <input type="text" id="taskName" placeholder="e.g. Bio quiz friday, essay due 10/24" enterkeyhint="done" autocomplete="off" style="flex:1;min-width:160px;margin:0">
         <button type="button" onclick="showTemplateMenu()" title="Use a template" style="padding:8px 10px;border-radius:10px;background:var(--card2);border:1px solid var(--border2);cursor:pointer;font-size:.72rem;font-weight:600;flex-shrink:0;white-space:nowrap">Templates</button>
       </div>
+      <!-- Says what the title was read as ("Due Fri, Oct 23 · Quiz"); see ntReadTitle in app.js. -->
+      <div id="taskNameParsed" hidden aria-live="polite" style="margin-top:6px;font-size:.72rem;color:var(--accent)"></div>
     </div>
     <!-- What you need to add a task sits up front; the rest waits behind
          "More options" (Azfer, 2026-10-02: the window was crowded and felt
@@ -3016,15 +3022,15 @@
   </div>
   <div id="quickAddPreviewTitle" class="quick-add-preview-title" aria-live="polite"></div>
   <div id="quickAddParsed" class="quick-add-parsed"></div>
-  <div class="quick-add-hint">Enter to add · Esc to close · <span class="quick-add-hint-strong">Natural language</span> — dates, priorities, subjects, types, “30min” · <span class="quick-add-hint-strong">⌘⇧K</span> search · <span class="quick-add-hint-strong">⌘K</span> palette · <button type="button" class="quick-add-agent-link" onclick="closeQuickAdd();openFluxAgent({prefill:document.getElementById('quickAddInput')?.value?('Help me refine this task idea: '+document.getElementById('quickAddInput').value):'Help me turn a rough idea into a clear task with date, priority, and subject.'})">Flux AI</button></div>
+  <div class="quick-add-hint">Enter to add · Esc to close · <span class="quick-add-hint-strong">Type it like a note</span> — “bio quiz fri 3pm”, “essay due 10/24”, “ch 5 hw tmrw 30 min” · <span class="quick-add-hint-strong">⌘⇧K</span> search · <span class="quick-add-hint-strong">⌘K</span> palette · <button type="button" class="quick-add-agent-link" onclick="closeQuickAdd();openFluxAgent({prefill:document.getElementById('quickAddInput')?.value?('Help me refine this task idea: '+document.getElementById('quickAddInput').value):'Help me turn a rough idea into a clear task with date, priority, and subject.'})">Flux AI</button></div>
 </div>
 
 <div id="toastLive" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c391de9f.js"></script>
-<script defer src="public/bundles/flux-core.f9ec6973.js"></script>
-<script defer src="public/bundles/flux-features.cc8448c2.js"></script>
+<script defer src="public/bundles/flux-core.3556f1ce.js"></script>
+<script defer src="public/bundles/flux-features.a21d0843.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->

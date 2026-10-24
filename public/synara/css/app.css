@@ -1562,3 +1562,21 @@
 .backdrop:not([data-open="true"]) {
   pointer-events: none;
 }
+
+/* One gentle entrance per change of tab (main.js renderScreen); never
+   flashing or looping. Cards settle in one after another, slowly, and
+   all of it stops with reduced motion (--motion-slow is 0s there too). */
+.route-enter { animation: synara-route-in var(--motion-slow) var(--ease) both; }
+.route-enter .card { animation: synara-card-in var(--motion-slow) var(--ease) both; }
+.route-enter .card:nth-child(2) { animation-delay: 60ms; }
+.route-enter .card:nth-child(3) { animation-delay: 120ms; }
+.route-enter .card:nth-child(n+4) { animation-delay: 180ms; }
+@keyframes synara-route-in { from { opacity: .65; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes synara-card-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.sync-prompt { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; animation: synara-card-in var(--motion-slow) var(--ease) both; }
+.sync-prompt .grow { flex: 1 1 200px; min-width: 0; }
+.welcome-links { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; font-size: 13px; margin-top: 10px; }
+.welcome-links a { color: var(--brand-ink); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) {
+  .route-enter, .route-enter .card, .sync-prompt { animation: none; }
+}

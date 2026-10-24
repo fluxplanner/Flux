@@ -751,6 +751,22 @@ a { color: var(--ft-accent); }
 }
 
 @media print {
+  /* Paper is white whatever the screen theme: the dark theme's pale text
+     printed as faint grey on it. Printing always uses the light colours. */
+  :root, :root[data-ft-theme], :root[data-flux-theme] {
+    --ft-bg: #fff !important;
+    --ft-text: #0f172a !important;
+    --ft-muted: #364459 !important;
+    --ft-surface: #fff !important;
+    --ft-surface-2: #f3f6fb !important;
+    --ft-line: rgba(15, 23, 42, .18) !important;
+    --ft-line-strong: rgba(15, 23, 42, .32) !important;
+    --ft-accent: #0369a1 !important;
+    --ft-good: #15803d !important;
+    --ft-bad: #be123c !important;
+    --ft-warn: #92400e !important;
+  }
+  html, body { background: #fff !important; color: #0f172a !important; }
   .ft-top, .ft-tabs, .ft-toasts, .ft-row, .ft-item-actions, .ft-add, .ft-back { display: none !important; }
   .ft-panel, .ft-set-card { box-shadow: none; border-color: #ccc; }
 }

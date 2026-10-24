@@ -1,9 +1,18 @@
 {
+<<<<<<< HEAD
   "build": "f3692a12",
   "assets": [
     "public/bundles/flux-vendor.c391de9f.js",
     "public/bundles/flux-core.f9ec6973.js",
     "public/bundles/flux-features.cc8448c2.js",
     "public/bundles/flux.62ae1585.css"
+=======
+  "build": "fc13e0ec",
+  "assets": [
+    "public/bundles/flux-vendor.c391de9f.js",
+    "public/bundles/flux-core.3556f1ce.js",
+    "public/bundles/flux-features.a21d0843.js",
+    "public/bundles/flux.72a72538.css"
+>>>>>>> origin/main
   ]
 }

@@ -7,7 +7,11 @@
  *   - hashed bundles            → cache-first (content-hashed = immutable)
  *   - other same-origin assets  → stale-while-revalidate
  */
+<<<<<<< HEAD
 const BUILD = 'f3692a12';
+=======
+const BUILD = 'fc13e0ec';
+>>>>>>> origin/main
 const STATIC = 'flux-static-' + BUILD;
 /** Directory of this script (e.g. /Fluxplanner/ or /) — works on GitHub Pages and local dev */
 const APP_BASE = self.location.pathname.replace(/\/[^/]+$/, '/');
