@@ -271,7 +271,7 @@ function statsStrip(stats) {
         <span class="stat-l">Days since last seizure</span>
       </div>
       <div class="stat" data-tone="${stats.streak >= 7 ? 'ok' : ''}" role="listitem">
-        <span class="stat-n">${stats.streak}</span>
+        <span class="stat-n">${stats.adherence == null ? '—' : stats.streak}</span>
         <span class="stat-l">Day streak, every dose on time</span>
       </div>
     </div>

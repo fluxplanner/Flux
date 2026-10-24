@@ -247,7 +247,7 @@
         <span class="stat-l">Days since last seizure</span>
       </div>
       <div class="stat" data-tone="${e.streak>=7?"ok":""}" role="listitem">
-        <span class="stat-n">${e.streak}</span>
+        <span class="stat-n">${e.adherence==null?"\u2014":e.streak}</span>
         <span class="stat-l">Day streak, every dose on time</span>
       </div>
     </div>
