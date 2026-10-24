@@ -752,3 +752,24 @@ a { color: var(--ft-accent); }
   .ft-top, .ft-tabs, .ft-toasts, .ft-row, .ft-item-actions, .ft-add, .ft-back { display: none !important; }
   .ft-panel, .ft-set-card { box-shadow: none; border-color: #ccc; }
 }
+
+/* Flashcard reveal: the card turns over and the answer settles in.
+   The reduced-motion block above cuts both animations to an instant. */
+.ft-flash.is-flipped { animation: ft-card-turn .42s cubic-bezier(.3, .7, .25, 1); }
+.ft-flip-in { animation: ft-flip-in .42s cubic-bezier(.3, .7, .25, 1) both; transform-origin: top center; }
+@keyframes ft-card-turn { 0% { transform: perspective(900px) rotateY(0); } 50% { transform: perspective(900px) rotateY(-12deg); } 100% { transform: none; } }
+@keyframes ft-flip-in { from { opacity: 0; transform: perspective(900px) rotateX(-70deg); } to { opacity: 1; transform: none; } }
+
+/* IB practice */
+.ft-ib-list { margin: 16px 0 0; padding-left: 1.4em; display: grid; gap: 18px; }
+.ft-ib-q { padding: 14px 16px; border: 1px solid var(--ft-line); border-radius: 14px; }
+.ft-ib-meta, .ft-ib-prompt { margin: 0 0 6px; }
+.ft-ib-scheme { margin-top: 10px; }
+.ft-ib-scheme .ft-check { align-items: flex-start; }
+.ft-ib-score { margin: 8px 0 0; font-weight: 700; color: var(--ft-accent); }
+.ft-weak { margin: 8px 0; padding-left: 1.2em; }
+
+/* If you're stuck */
+.ft-stuck { margin-top: 16px; }
+.ft-stuck summary { cursor: pointer; margin: 0; }
+.ft-stuck-list { margin: 8px 0 0; padding-left: 1.2em; display: grid; gap: 6px; }

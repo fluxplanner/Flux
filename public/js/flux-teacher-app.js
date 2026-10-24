@@ -30,7 +30,7 @@
    ROUTES (location.hash, so a reload comes back to the same place)
      #library                     the library (also the default)
      #new                         a new set; it is saved once something is typed or added
-     #set/<id>/<tab>              tab: notes | guide | learn | test | cards | ask | plan
+     #set/<id>/<tab>              tab: notes | guide | learn | test | ib | cards | ask | plan
      #set/<id>/ask?q=<question>   "Ask your notes" with its last question
    UI-only state (an unfinished practice test, the flashcard on screen) stays
    out of the set: the test in progress lives in sessionStorage for a reload.
@@ -57,6 +57,7 @@
     { id: 'guide', label: 'Study guide', icon: 'guide' },
     { id: 'learn', label: 'Learn', icon: 'learn' },
     { id: 'test', label: 'Practice test', icon: 'test' },
+    { id: 'ib', label: 'IB practice', icon: 'test' },
     { id: 'cards', label: 'Flashcards', icon: 'cards' },
     { id: 'ask', label: 'Ask your notes', icon: 'ask' },
     { id: 'plan', label: 'Study plan', icon: 'plan' },
@@ -179,7 +180,7 @@
     ui: freshUi(),
   };
   function freshUi() {
-    return { editing: null, learnPick: false, learnNote: '', test: null, cards: null, askQuery: '', planNote: '' };
+    return { editing: null, learnPick: false, learnNote: '', test: null, cards: null, ib: null, askQuery: '', planNote: '' };
   }
   let busy = false;
 
@@ -850,6 +851,7 @@
       case 'guide': screen = guideScreen(); break;
       case 'learn': screen = learnScreen(); break;
       case 'test': screen = testScreen(); break;
+      case 'ib': screen = ibScreen(); break;
       case 'cards': screen = cardsScreen(); break;
       case 'ask': screen = askScreen(); break;
       case 'plan': screen = planScreen(); break;
@@ -863,7 +865,8 @@
       + (o.draft ? '' : tabsNav())
       + '</div>'
       + '<div id="ftOtherTab">' + (o.conflict ? conflictBanner() : '') + '</div>'
-      + screen;
+      + screen
+      + (o.draft ? '' : stuckPanel(set));
   }
   function renderScreen(target) {
     renderSet();
@@ -2006,6 +2009,125 @@
     const d = app.open.set.examDate;
     return T.isYmd(d) ? dateOf(d).getTime() + 9 * 3600000 : null;
   }
+  /* ── IB practice ────────────────────────────────────────────────────── */
+
+  function ibScreen() {
+    const set = app.open.set;
+    if (!set.guide) return needGuide('IB practice');
+    const concepts = conceptsNow();
+    if (!concepts.length) return noTerms('IB practice');
+    const ui = app.ui.ib;
+    const weak = T.weakTopics(concepts, set.mastery, 5);
+    const weakHtml = '<section class="ft-guide-sec" aria-labelledby="ftWeakTitle"><h3 class="ft-h3" id="ftWeakTitle">Your weak topics</h3>'
+      + (weak.length
+        ? '<ul class="ft-weak">' + weak.map((w) => '<li><strong>' + esc(w.label) + '</strong> <span class="ft-help">' + esc(statusText(w.status)) + ' · ' + plural(w.right, 'right') + ', ' + plural(w.wrong, 'wrong') + '</span></li>').join('') + '</ul>'
+          + '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="ib-weak">Practise my weak topics</button></div>'
+        : '<p class="ft-help">Answer some questions here, in Learn or in a practice test, and the terms you find hardest will show up here.</p>')
+      + '</section>';
+    const head = '<section class="ft-panel" aria-labelledby="ftScreenTitle"><h2 class="ft-h2" id="ftScreenTitle" tabindex="-1">IB practice</h2>'
+      + '<p class="ft-lead">Written questions in the IB style, using command terms and marks. The markscheme comes only from your notes, so you can see where each mark comes from.</p>';
+    if (!ui || !ui.qs.length) {
+      return head + (ui ? '<p class="ft-alert" role="alert">Your notes do not have enough on these terms for IB-style questions yet. Try “Any” difficulty, or add more notes.</p>' : '')
+        + '<form data-form="ib-setup" novalidate><div class="ft-grid">'
+        + '<div class="ft-field"><label class="ft-label" for="ftIbProg">Programme</label><select class="ft-select" id="ftIbProg" name="programme"><option value="DP">DP (Diploma)</option><option value="MYP">MYP</option></select></div>'
+        + '<div class="ft-field"><label class="ft-label" for="ftIbLevel">Difficulty</label><select class="ft-select" id="ftIbLevel" name="level"><option value="0">Any</option><option value="1">1 · Recall (Define, State)</option><option value="2">2 · Understand (Outline, Describe)</option><option value="3">3 · Apply (Explain, Compare)</option></select></div>'
+        + '<div class="ft-field"><label class="ft-label" for="ftIbCount">Questions</label><select class="ft-select" id="ftIbCount" name="count">' + [3, 6, 10].map((n) => '<option value="' + n + '"' + (n === 6 ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></div>'
+        + '</div><div class="ft-row"><button type="submit" class="ft-btn">Make the questions</button></div></form>'
+        + weakHtml + '</section>';
+    }
+    const total = ui.qs.reduce((n, q) => n + q.marks, 0);
+    const got = ui.qs.reduce((n, q) => n + (ui.done[q.id] != null ? ui.done[q.id] : 0), 0);
+    const marked = ui.qs.filter((q) => ui.done[q.id] != null).length;
+    return head + '<p class="ft-help">' + esc(ui.programme) + ' · ' + plural(ui.qs.length, 'question') + ' · ' + plural(total, 'mark')
+      + (marked ? ' · You have ' + got + ' of ' + ui.qs.filter((q) => ui.done[q.id] != null).reduce((n, q) => n + q.marks, 0) + ' so far' : '') + '</p>'
+      + '<ol class="ft-ib-list">' + ui.qs.map((q) => {
+        const term = T.COMMAND_TERMS[q.command];
+        const shown = !!ui.shown[q.id];
+        const ticks = ui.ticks[q.id] || [];
+        const done = ui.done[q.id];
+        return '<li class="ft-ib-q" id="ftIb-' + esc(q.id) + '"><p class="ft-ib-meta"><span class="ft-score-pill" title="' + esc(term.meaning) + '">' + esc(q.command) + '</span> '
+          + '<span class="ft-help">Difficulty ' + q.level + ' · [' + plural(q.marks, 'mark') + ']</span></p>'
+          + '<p class="ft-ib-prompt"><strong>' + esc(q.prompt) + '</strong></p>'
+          + '<p class="ft-help"><em>' + esc(q.command) + '</em>: ' + esc(term.meaning) + '</p>'
+          + '<label class="ft-visually-hidden" for="ftIbA-' + esc(q.id) + '">Your answer</label>'
+          + '<textarea class="ft-textarea" id="ftIbA-' + esc(q.id) + '" data-ib-answer="' + esc(q.id) + '" rows="3"' + (done != null ? ' readonly' : '') + '>' + esc(ui.answers[q.id] || '') + '</textarea>'
+          + (shown
+            ? '<fieldset class="ft-fieldset ft-ib-scheme"><legend class="ft-label">Markscheme: tick each point your answer makes</legend>'
+              + q.scheme.map((p, i) => '<label class="ft-check ft-check--plain"><input type="checkbox" data-ib-tick="' + esc(q.id) + '" value="' + i + '"' + (ticks[i] ? ' checked' : '') + (done != null ? ' disabled' : '') + '> <span>' + esc(p.text) + ' ' + cite(p.ref) + '</span></label>').join('')
+              + '</fieldset>'
+              + (done != null
+                ? '<p class="ft-ib-score" role="status">You gave yourself ' + done + ' of ' + q.marks + '.</p>'
+                : '<div class="ft-row"><button type="button" class="ft-btn" data-act="ib-mark" data-q="' + esc(q.id) + '">Save my mark</button></div>')
+            : '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="ib-show" data-q="' + esc(q.id) + '">Show the markscheme</button></div>')
+          + '</li>';
+      }).join('') + '</ol>'
+      + '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="ib-new">New questions</button></div>'
+      + weakHtml + '</section>';
+  }
+  function startIb(form, focus) {
+    const set = app.open.set;
+    const fd = form ? new FormData(form) : null;
+    const prev = app.ui.ib || {};
+    const programme = fd ? String(fd.get('programme')) : (prev.programme || 'DP');
+    const qs = T.buildIbQuestions(corpusNow(), conceptsNow(), set.mastery, {
+      programme, level: fd ? Number(fd.get('level')) : 0, count: fd ? Number(fd.get('count')) : 6, focus: focus || 'all',
+    });
+    app.ui.ib = { qs, programme, answers: {}, shown: {}, ticks: {}, done: {} };
+    renderScreen('#ftScreenTitle');
+    announce(qs.length ? plural(qs.length, 'question') + ' ready.' : 'No questions could be made from these notes.');
+  }
+  function showIbScheme(qid) {
+    const ui = app.ui.ib;
+    const q = ui && ui.qs.find((x) => x.id === qid);
+    if (!q) return;
+    ui.shown[qid] = true;
+    // Points the answer already seems to make are ticked; the student decides.
+    ui.ticks[qid] = T.ibSuggest(q, ui.answers[qid] || '');
+    renderScreen('#ftIb-' + qid + ' input[type=checkbox]');
+  }
+  function markIb(qid) {
+    const set = app.open.set;
+    const ui = app.ui.ib;
+    const q = ui && ui.qs.find((x) => x.id === qid);
+    if (!q) return;
+    const awarded = (ui.ticks[qid] || []).filter(Boolean).length;
+    ui.done[qid] = awarded;
+    const verdict = T.ibVerdict(awarded, q.marks);
+    q.conceptIds.forEach((id) => { set.mastery[id] = T.applyResult(set.mastery[id], verdict, nowIso()); });
+    studied();
+    save();
+    renderScreen('#ftIb-' + qid);
+    announce('Saved: ' + awarded + ' of ' + q.marks + '.');
+  }
+
+  /* ── If you're stuck ────────────────────────────────────────────────── */
+
+  // Free, well-known study sites, matched by the set's subject (or title).
+  const STUCK = [
+    [/math|calc|algebra|geometr|statistic|aa\b|ai\b/i, [['Khan Academy: Math', 'https://www.khanacademy.org/math'], ['Desmos graphing calculator', 'https://www.desmos.com/calculator'], ['Revision Village (IB Maths)', 'https://www.revisionvillage.com/'], ['Wolfram Alpha', 'https://www.wolframalpha.com/']]],
+    [/physic/i, [['PhET simulations: Physics', 'https://phet.colorado.edu/en/simulations/filter?subjects=physics'], ['Khan Academy: Physics', 'https://www.khanacademy.org/science/physics'], ['HyperPhysics', 'http://hyperphysics.phy-astr.gsu.edu/hbase/index.html']]],
+    [/chem/i, [['PhET simulations: Chemistry', 'https://phet.colorado.edu/en/simulations/filter?subjects=chemistry'], ['Khan Academy: Chemistry', 'https://www.khanacademy.org/science/chemistry'], ['Chemistry LibreTexts', 'https://chem.libretexts.org/']]],
+    [/bio|life|cell|ecolog|genet/i, [['Khan Academy: Biology', 'https://www.khanacademy.org/science/biology'], ['PhET simulations: Biology', 'https://phet.colorado.edu/en/simulations/filter?subjects=biology'], ['Biology LibreTexts', 'https://bio.libretexts.org/']]],
+    [/histor|civics|govern|politic/i, [['Khan Academy: World history', 'https://www.khanacademy.org/humanities/world-history'], ['Crash Course on YouTube', 'https://www.youtube.com/@crashcourse'], ['BBC Bitesize: History', 'https://www.bbc.co.uk/bitesize/subjects/zk26n39']]],
+    [/econ|business/i, [['Khan Academy: Economics', 'https://www.khanacademy.org/economics-finance-domain'], ['Tutor2u Economics', 'https://www.tutor2u.net/economics']]],
+    [/english|literat|language a|writing|essay/i, [['Purdue OWL (writing)', 'https://owl.purdue.edu/owl/purdue_owl.html'], ['Poetry Foundation glossary', 'https://www.poetryfoundation.org/learn/glossary-terms'], ['SparkNotes', 'https://www.sparknotes.com/']]],
+    [/comput|program|coding|\bcs\b/i, [['Khan Academy: Computing', 'https://www.khanacademy.org/computing'], ['W3Schools', 'https://www.w3schools.com/'], ['CS50 (Harvard, free)', 'https://cs50.harvard.edu/x/']]],
+    [/psych/i, [['Khan Academy: Psychology', 'https://www.khanacademy.org/science/health-and-medicine/mental-health'], ['Simply Psychology', 'https://www.simplypsychology.org/']]],
+    [/geog|environment|ess\b/i, [['National Geographic Education', 'https://education.nationalgeographic.org/'], ['BBC Bitesize: Geography', 'https://www.bbc.co.uk/bitesize/subjects/zrw76sg']]],
+    [/spanish|french|german|chinese|mandarin|language b|languag/i, [['Duolingo', 'https://www.duolingo.com/'], ['WordReference dictionary', 'https://www.wordreference.com/']]],
+  ];
+  const STUCK_ALWAYS = [['IB: subjects and programmes', 'https://www.ibo.org/programmes/'], ['Khan Academy', 'https://www.khanacademy.org/']];
+  function stuckLinks(set) {
+    const text = (set.subject || '') + ' ' + (set.title || '');
+    const hit = STUCK.find(([re]) => re.test(text));
+    return (hit ? hit[1] : []).concat(STUCK_ALWAYS);
+  }
+  function stuckPanel(set) {
+    return '<details class="ft-panel ft-stuck"><summary class="ft-h3">If you’re stuck</summary>'
+      + '<p class="ft-help">Good free sites for ' + esc(set.subject || 'this subject') + '. They open in a new tab and are not part of Flux, so check them against your notes.</p>'
+      + '<ul class="ft-stuck-list">' + stuckLinks(set).map(([label, href]) => '<li><a href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">' + esc(label) + '<span class="ft-visually-hidden"> (opens in a new tab)</span></a></li>').join('') + '</ul></details>';
+  }
+
   function cardQueueIds() { return T.cardQueue(app.open.set, Date.now(), 20).map((c) => c.id); }
   function cardsScreen() {
     const set = app.open.set;
@@ -2022,9 +2144,9 @@
       const now = Date.now();
       const pv = FF.preview({ s: card.s }, now, { examAt: examAt() });
       const grades = [[FF.AGAIN, 'Again'], [FF.HARD, 'Hard'], [FF.GOOD, 'Good'], [FF.EASY, 'Easy']];
-      stage = '<div class="ft-flash" id="ftFlash">'
+      stage = '<div class="ft-flash' + (ui.flipped ? ' is-flipped' : '') + '" id="ftFlash">'
         + '<p class="ft-flash-label">Term</p><p class="ft-flash-term">' + esc(card.term) + '</p>'
-        + (ui.flipped ? '<div class="ft-flash-back"><p class="ft-flash-label">Definition</p><p class="ft-flash-def" id="ftFlashDef">' + esc(card.def) + '</p>' + itemCite(set.guide.terms.find((t) => t.id === card.id) || card) + '</div>' : '')
+        + (ui.flipped ? '<div class="ft-flash-back ft-flip-in"><p class="ft-flash-label">Definition</p><p class="ft-flash-def" id="ftFlashDef">' + esc(card.def) + '</p>' + itemCite(set.guide.terms.find((t) => t.id === card.id) || card) + '</div>' : '')
         + '</div>'
         + (ui.flipped
           ? '<div class="ft-rate" role="group" aria-label="How well did you know it?">' + grades.map(([g, label]) => {
@@ -2313,6 +2435,10 @@
       case 'step-example': stepHelp('example'); break;
       case 'test-quit': app.ui.test = null; persistTest(); stopTestTimer(); renderScreen('#ftScreenTitle'); announce('Test stopped. Nothing was marked.'); break;
       case 'test-new': app.ui.test = null; persistTest(); renderScreen('#ftScreenTitle'); break;
+      case 'ib-show': showIbScheme(btn.dataset.q); break;
+      case 'ib-mark': markIb(btn.dataset.q); break;
+      case 'ib-new': app.ui.ib = null; renderScreen('#ftScreenTitle'); break;
+      case 'ib-weak': startIb(null, 'weak'); break;
       case 'card-flip': flipCard(); break;
       case 'card-rate': rateCard(Number(btn.dataset.grade)); break;
       case 'cards-ahead': cardsAhead(); break;
@@ -2343,6 +2469,7 @@
       case 'check': answerCheckQ(form, false); break;
       case 'step': answerStepQ(form, false); break;
       case 'test-setup': startTest(form); break;
+      case 'ib-setup': startIb(form); break;
       case 'test': finishTest(false); break;
       case 'ask': runAsk(form); break;
       case 'exam': saveExamDate(form); break;
@@ -2353,10 +2480,16 @@
   root.addEventListener('input', (e) => {
     const t = e.target;
     if (t.dataset && (t.dataset.field || t.dataset.srcText)) { onNotesInput(t); return; }
+    if (t.dataset && t.dataset.ibAnswer && app.ui.ib) { app.ui.ib.answers[t.dataset.ibAnswer] = t.value; return; }
     if (t.closest && t.closest('form[data-form="test"]')) collectTestAnswer(t);
   });
   root.addEventListener('change', (e) => {
     const t = e.target;
+    if (t.dataset && t.dataset.ibTick && app.ui.ib) {
+      const list = app.ui.ib.ticks[t.dataset.ibTick] || (app.ui.ib.ticks[t.dataset.ibTick] = []);
+      list[Number(t.value)] = t.checked;
+      return;
+    }
     if (t.id === 'ftPhotoFiles' || t.id === 'ftMaterialFiles') {
       importFiles(t.files, t.id === 'ftPhotoFiles' ? 'Photo' : 'File');
       t.value = '';
