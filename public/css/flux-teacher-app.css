@@ -775,3 +775,14 @@ a { color: var(--ft-accent); }
 .ft-stuck { margin-top: 16px; }
 .ft-stuck summary { cursor: pointer; margin: 0; }
 .ft-stuck-list { margin: 8px 0 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.ft-ib-right { font-weight: 700; color: var(--ft-accent); }
+
+/* Ask your notes: the answer and its numbered citations */
+.ft-answer { margin: 16px 0; padding: 14px 16px; border: 1px solid var(--ft-line-strong); border-left-width: 4px; border-left-color: var(--ft-accent); border-radius: 14px; background: var(--ft-surface-2); }
+.ft-answer-label { margin: 0 0 6px; color: var(--ft-muted); font-size: .8rem; }
+.ft-answer-list { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.ft-answer-text { margin: 0; }
+.ft-cite-num { margin-left: 2px; font-size: .8em; font-weight: 800; text-decoration: none; color: var(--ft-accent); }
+.ft-cite-num:hover, .ft-cite-num:focus-visible { text-decoration: underline; }
+.ft-cite-link { color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; }
+.ft-result.is-target { outline: 2px solid var(--ft-accent); outline-offset: 4px; border-radius: 10px; }

@@ -1014,3 +1014,24 @@ test('IB-style questions: command terms, one mark per cited markscheme point, we
   eq(T.weakTopics(S.concepts, m).map((w) => w.id), [S.concepts[0].id]);
   eq(T.weakTopics(S.concepts, {}), []);
 });
+
+test('answers from the notes: only the notes\' own sentences, numbered for their passages; AI text keeps only cited sentences', () => {
+  const idx = T.buildSearchIndex(S.corpus);
+  const r = T.searchNotes(S.corpus, idx, 'what does the cell wall do', S.concepts);
+  const parts = T.answerFromNotes(r, 3);
+  assert.ok(parts.length >= 1);
+  for (const p of parts) assert.ok(S.corpus.sentences.some((s) => s.text === p.text));
+  eq(T.answerFromNotes(T.searchNotes(S.corpus, idx, 'quantum chromodynamics', S.concepts)), []);
+  eq(T.groundedParts('Walls support cells [1]. Purple [7]. No cite here. Both [1][2].', 2),
+    [{ text: 'Walls support cells.', cites: [1] }, { text: 'Both.', cites: [1, 2] }]);
+});
+
+test('question bank: paper 1 is multiple choice with the passage as markscheme; topic filter keeps to one section', () => {
+  const p1 = T.buildIbQuestions(S.corpus, S.concepts, {}, { paper: 1, count: 4, seed: 'p1' });
+  assert.ok(p1.length >= 2);
+  for (const q of p1) { assert.equal(q.paper, 1); assert.ok(q.options.includes(q.answer)); assert.equal(q.marks, 1); }
+  const topic = T.topicsFor(S.corpus, S.concepts).find((t) => t.title === 'Cell structure');
+  const p2 = T.buildIbQuestions(S.corpus, S.concepts, {}, { paper: 2, topic: topic.id, count: 10, seed: 'p2' });
+  assert.ok(p2.length >= 1);
+  for (const q of p2) assert.ok(topic.conceptIds.includes(q.conceptIds[0]));
+});

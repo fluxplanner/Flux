@@ -148,8 +148,12 @@
   }
 
   /** "Biology notes.pdf · page 3 · paragraph 2" as a citation. */
-  function cite(ref) {
-    return '<cite class="ft-cite">' + esc(T.formatRef(ref)) + '</cite>';
+  function cite(ref, text) {
+    const label = esc(T.formatRef(ref));
+    // With the passage's words, the citation opens the notes with it selected.
+    if (!text || !ref || ref.edited || !ref.sourceId || !app.open) return '<cite class="ft-cite">' + label + '</cite>';
+    const href = setHash(app.open.set.id, 'notes', 'src=' + enc(ref.sourceId) + '&find=' + enc(String(text).slice(0, 80)));
+    return '<cite class="ft-cite"><a class="ft-cite-link" href="' + esc(href) + '" title="Show this in your notes">' + label + '</a></cite>';
   }
   /** A text with the matched words marked; each piece is escaped on its own. */
   function highlight(text, stems) {
@@ -161,7 +165,7 @@
     if (!p) return '';
     const own = !p.ref || p.ref.edited;
     return '<figure class="ft-quote"><figcaption class="ft-quote-label">' + (own ? 'From your study guide' : 'From your notes') + '</figcaption>'
-      + '<blockquote><p>' + highlight(p.text, stems) + '</p></blockquote>' + cite(p.ref) + '</figure>';
+      + '<blockquote><p>' + highlight(p.text, stems) + '</p></blockquote>' + cite(p.ref, p.text) + '</figure>';
   }
 
   /* ── App state ──────────────────────────────────────────────────────── */
@@ -587,7 +591,40 @@
     prepareTab(tab);
     renderSet();
     afterRoute(focusTarget());
+    if (tab === 'notes' && r.query.get('src')) showPassage(r.query.get('src'), r.query.get('find') || '');
     if (tab === 'test') startTestTimer();
+  }
+
+  /** A citation was opened: select its passage in that source's notes. */
+  function showPassage(srcId, find) {
+    const box = Array.from(root.querySelectorAll('textarea[data-src-text]')).find((t) => t.dataset.srcText === srcId);
+    if (!box) return;
+    const flat = (x) => x.replace(/\s+/g, ' ');
+    let at = box.value.indexOf(find);
+    let len = find.length;
+    if (at < 0) {
+      // PDF text is joined differently from the sentence; match on spacing-free words.
+      const probe = flat(find).slice(0, 40);
+      const map = [];
+      let squashed = '';
+      for (let i = 0; i < box.value.length; i++) {
+        if (/\s/.test(box.value[i]) && /\s$/.test(squashed)) continue;
+        squashed += /\s/.test(box.value[i]) ? ' ' : box.value[i];
+        map.push(i);
+      }
+      const k = squashed.indexOf(probe);
+      if (k < 0) { focusEl(box); return; }
+      at = map[k];
+      len = map[Math.min(map.length - 1, k + probe.length - 1)] - at + 1;
+    }
+    box.focus({ preventScroll: true });
+    box.setSelectionRange(at, at + len);
+    // Scroll the textarea so the selection is in view, then the page to the textarea.
+    const before = box.value.slice(0, at).split('\n').length - 1;
+    const line = parseFloat(getComputedStyle(box).lineHeight) || 20;
+    box.scrollTop = Math.max(0, before * line - box.clientHeight / 3);
+    box.scrollIntoView({ block: 'center' });
+    announce('Showing that passage in ' + (app.open.set.sources.find((x) => x.id === srcId) || {}).name + '.');
   }
 
   async function leaveSet() {
@@ -1311,7 +1348,7 @@
       + '<ol class="ft-outline">' + g.outline.map((o) => '<li class="ft-outline-item" data-level="' + o.level + '">'
         + '<p class="ft-outline-title">' + esc(o.title) + '</p>'
         + (o.summary.length
-          ? '<ul class="ft-summary">' + o.summary.map((p) => '<li><span>' + esc(p.text) + '</span> ' + cite(p.ref) + '</li>').join('') + '</ul>'
+          ? '<ul class="ft-summary">' + o.summary.map((p) => '<li><span>' + esc(p.text) + '</span> ' + cite(p.ref, p.text) + '</li>').join('') + '</ul>'
           : '<p class="ft-outline-ref">' + cite(o.ref) + '</p>')
         + '</li>').join('') + '</ol></section>';
   }
@@ -2025,10 +2062,13 @@
         : '<p class="ft-help">Answer some questions here, in Learn or in a practice test, and the terms you find hardest will show up here.</p>')
       + '</section>';
     const head = '<section class="ft-panel" aria-labelledby="ftScreenTitle"><h2 class="ft-h2" id="ftScreenTitle" tabindex="-1">IB practice</h2>'
-      + '<p class="ft-lead">Written questions in the IB style, using command terms and marks. The markscheme comes only from your notes, so you can see where each mark comes from.</p>';
+      + '<p class="ft-lead">A question bank in the IB style: pick a paper, topic and difficulty. Questions use IB command terms and marks, and the markscheme comes only from your notes, so you can see where each mark comes from.</p>';
     if (!ui || !ui.qs.length) {
-      return head + (ui ? '<p class="ft-alert" role="alert">Your notes do not have enough on these terms for IB-style questions yet. Try “Any” difficulty, or add more notes.</p>' : '')
+      return head + (ui ? '<p class="ft-alert" role="alert">Your notes do not have enough on these terms for these questions yet. Try another paper, “All topics” or “Any” difficulty, or add more notes.</p>' : '')
         + '<form data-form="ib-setup" novalidate><div class="ft-grid">'
+        + '<div class="ft-field"><label class="ft-label" for="ftIbPaper">Paper</label><select class="ft-select" id="ftIbPaper" name="paper"><option value="2">Paper 2 · written answers</option><option value="1">Paper 1 · multiple choice</option></select></div>'
+        + '<div class="ft-field"><label class="ft-label" for="ftIbTopic">Topic</label><select class="ft-select" id="ftIbTopic" name="topic"><option value="">All topics</option>'
+        + T.topicsFor(corpusNow(), concepts).filter((t) => t.id).map((t) => '<option value="' + esc(t.id) + '">' + esc(t.title) + '</option>').join('') + '</select></div>'
         + '<div class="ft-field"><label class="ft-label" for="ftIbProg">Programme</label><select class="ft-select" id="ftIbProg" name="programme"><option value="DP">DP (Diploma)</option><option value="MYP">MYP</option></select></div>'
         + '<div class="ft-field"><label class="ft-label" for="ftIbLevel">Difficulty</label><select class="ft-select" id="ftIbLevel" name="level"><option value="0">Any</option><option value="1">1 · Recall (Define, State)</option><option value="2">2 · Understand (Outline, Describe)</option><option value="3">3 · Apply (Explain, Compare)</option></select></div>'
         + '<div class="ft-field"><label class="ft-label" for="ftIbCount">Questions</label><select class="ft-select" id="ftIbCount" name="count">' + [3, 6, 10].map((n) => '<option value="' + n + '"' + (n === 6 ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></div>'
@@ -2046,19 +2086,24 @@
         const ticks = ui.ticks[q.id] || [];
         const done = ui.done[q.id];
         return '<li class="ft-ib-q" id="ftIb-' + esc(q.id) + '"><p class="ft-ib-meta"><span class="ft-score-pill" title="' + esc(term.meaning) + '">' + esc(q.command) + '</span> '
-          + '<span class="ft-help">Difficulty ' + q.level + ' · [' + plural(q.marks, 'mark') + ']</span></p>'
+          + '<span class="ft-help">Paper ' + (q.paper || 2) + ' · Difficulty ' + q.level + ' · [' + plural(q.marks, 'mark') + ']</span></p>'
           + '<p class="ft-ib-prompt"><strong>' + esc(q.prompt) + '</strong></p>'
           + '<p class="ft-help"><em>' + esc(q.command) + '</em>: ' + esc(term.meaning) + '</p>'
-          + '<label class="ft-visually-hidden" for="ftIbA-' + esc(q.id) + '">Your answer</label>'
-          + '<textarea class="ft-textarea" id="ftIbA-' + esc(q.id) + '" data-ib-answer="' + esc(q.id) + '" rows="3"' + (done != null ? ' readonly' : '') + '>' + esc(ui.answers[q.id] || '') + '</textarea>'
-          + (shown
+          + (q.paper === 1
+            ? '<fieldset class="ft-fieldset"><legend class="ft-visually-hidden">Your answer</legend>' + q.options.map((opt, i) => '<label class="ft-check ft-check--plain' + (done != null && opt === q.answer ? ' ft-ib-right' : '') + '"><input type="radio" name="ib-' + esc(q.id) + '" data-ib-answer="' + esc(q.id) + '" value="' + esc(opt) + '"' + (ui.answers[q.id] === opt ? ' checked' : '') + (done != null ? ' disabled' : '') + '> ' + 'ABCD'[i] + '. ' + esc(opt) + '</label>').join('') + '</fieldset>'
+            : '<label class="ft-visually-hidden" for="ftIbA-' + esc(q.id) + '">Your answer</label>'
+              + '<textarea class="ft-textarea" id="ftIbA-' + esc(q.id) + '" data-ib-answer="' + esc(q.id) + '" rows="3"' + (done != null ? ' readonly' : '') + '>' + esc(ui.answers[q.id] || '') + '</textarea>')
+          + (shown && q.paper === 1
+            ? '<div class="ft-ib-scheme"><p class="ft-label">Markscheme</p><p><strong>' + esc(q.answer) + '</strong> [1]</p>' + quote(q.scheme[0]) + '</div>'
+              + '<p class="ft-ib-score" role="status">' + (done ? 'Right: 1 of 1.' : 'Not this time: 0 of 1.') + '</p>'
+            : shown
             ? '<fieldset class="ft-fieldset ft-ib-scheme"><legend class="ft-label">Markscheme: tick each point your answer makes</legend>'
-              + q.scheme.map((p, i) => '<label class="ft-check ft-check--plain"><input type="checkbox" data-ib-tick="' + esc(q.id) + '" value="' + i + '"' + (ticks[i] ? ' checked' : '') + (done != null ? ' disabled' : '') + '> <span>' + esc(p.text) + ' ' + cite(p.ref) + '</span></label>').join('')
+              + q.scheme.map((p, i) => '<label class="ft-check ft-check--plain"><input type="checkbox" data-ib-tick="' + esc(q.id) + '" value="' + i + '"' + (ticks[i] ? ' checked' : '') + (done != null ? ' disabled' : '') + '> <span>' + esc(p.text) + ' ' + cite(p.ref, p.text) + '</span></label>').join('')
               + '</fieldset>'
               + (done != null
                 ? '<p class="ft-ib-score" role="status">You gave yourself ' + done + ' of ' + q.marks + '.</p>'
                 : '<div class="ft-row"><button type="button" class="ft-btn" data-act="ib-mark" data-q="' + esc(q.id) + '">Save my mark</button></div>')
-            : '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="ib-show" data-q="' + esc(q.id) + '">Show the markscheme</button></div>')
+            : '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="ib-show" data-q="' + esc(q.id) + '">' + (q.paper === 1 ? 'Check my answer' : 'Show the markscheme') + '</button></div>')
           + '</li>';
       }).join('') + '</ol>'
       + '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="ib-new">New questions</button></div>'
@@ -2070,7 +2115,8 @@
     const prev = app.ui.ib || {};
     const programme = fd ? String(fd.get('programme')) : (prev.programme || 'DP');
     const qs = T.buildIbQuestions(corpusNow(), conceptsNow(), set.mastery, {
-      programme, level: fd ? Number(fd.get('level')) : 0, count: fd ? Number(fd.get('count')) : 6, focus: focus || 'all',
+      programme, paper: fd ? Number(fd.get('paper')) : 2, topic: fd ? String(fd.get('topic') || '') : '',
+      level: fd ? Number(fd.get('level')) : 0, count: fd ? Number(fd.get('count')) : 6, focus: focus || 'all',
     });
     app.ui.ib = { qs, programme, answers: {}, shown: {}, ticks: {}, done: {} };
     renderScreen('#ftScreenTitle');
@@ -2081,6 +2127,12 @@
     const q = ui && ui.qs.find((x) => x.id === qid);
     if (!q) return;
     ui.shown[qid] = true;
+    if (q.paper === 1) {
+      // Multiple choice marks itself.
+      ui.ticks[qid] = [ui.answers[qid] === q.answer];
+      markIb(qid);
+      return;
+    }
     // Points the answer already seems to make are ticked; the student decides.
     ui.ticks[qid] = T.ibSuggest(q, ui.answers[qid] || '');
     renderScreen('#ftIb-' + qid + ' input[type=checkbox]');
@@ -2227,7 +2279,7 @@
     if (!T.hasNotes(set)) return needGuide('Ask your notes');
     const q = app.ui.askQuery;
     return '<section class="ft-panel" aria-labelledby="ftScreenTitle"><h2 class="ft-h2" id="ftScreenTitle" tabindex="-1">Ask your notes</h2>'
-      + '<p class="ft-lead">Type a question or a few key words. You see the passages in your notes that match, best first, with where each one is. Flux Tutor does not write answers of its own.</p>'
+      + '<p class="ft-lead">Type a question or a few key words. You get a short answer made only of sentences from your notes, then the passages it came from, best first. Click a number or a source to see the passage in your notes.</p>'
       + '<form class="ft-ask" data-form="ask" role="search" novalidate><label class="ft-label" for="ftAsk">Your question</label>'
       + '<div class="ft-ask-row"><input class="ft-input" id="ftAsk" name="q" type="search" value="' + esc(q) + '" maxlength="300" autocomplete="off" placeholder="e.g. What does the cell wall do?">'
       + '<button type="submit" class="ft-btn">' + icon('ask', 17) + 'Search</button></div></form>'
@@ -2243,7 +2295,7 @@
     if (r.empty) return '<p class="ft-help">Add a word or two about the topic. Question words like “what” and “why” are not searched.</p>';
     const result = (x) => '<li class="ft-result"><article>' + (x.section ? '<p class="ft-result-section">' + esc(x.section) + '</p>' : '')
       + '<p class="ft-result-text">' + x.sentences.map((p) => highlight(p.text, r.stems)).join(' ') + (x.trimmed ? ' <span class="ft-help">(part of a longer paragraph)</span>' : '') + '</p>'
-      + cite(x.ref) + '</article></li>';
+      + cite(x.ref, x.sentences[0] && x.sentences[0].text) + '</article></li>';
     if (!r.covered) {
       return '<div class="ft-none"><p class="ft-none-title"><strong>' + (r.related.length
         ? 'Nothing in your notes matches all of that.</strong> These passages share some of its words; check whether they answer it.'
@@ -2252,9 +2304,84 @@
         + (r.related.length ? '<h3 class="ft-h4">Closest passages</h3><ol class="ft-results ft-results--near">' + r.related.map(result).join('') + '</ol>' : '')
         + '</div>';
     }
-    return (r.terms.length ? '<div class="ft-ask-terms"><h3 class="ft-h4">Key terms</h3><ul class="ft-term-list">'
+    return answerHtml(r, query) + (r.terms.length ? '<div class="ft-ask-terms"><h3 class="ft-h4">Key terms</h3><ul class="ft-term-list">'
       + r.terms.map((t) => '<li><strong>' + esc(t.term) + '</strong>: ' + esc(t.def) + ' ' + cite(t.ref) + '</li>').join('') + '</ul></div>' : '')
-      + '<h3 class="ft-h4">' + plural(r.results.length, 'passage') + ' from your notes</h3><ol class="ft-results">' + r.results.map(result).join('') + '</ol>';
+      + '<h3 class="ft-h4">' + plural(r.results.length, 'passage') + ' from your notes</h3><ol class="ft-results">' + r.results.map((x, i) => result(x).replace('<li class="ft-result">', '<li class="ft-result" id="ftPassage' + (i + 1) + '">')).join('') + '</ol>';
+  }
+  /** "[2]" linking to passage 2 in the list below and, through it, to the notes. */
+  function citeMark(n, r) {
+    const x = r.results[n - 1];
+    return '<a class="ft-cite-num" href="#ftPassage' + n + '" data-act="ask-passage" data-n="' + n + '" title="' + esc(x ? T.formatRef(x.ref) : '') + '">[' + n + ']</a>';
+  }
+  function answerHtml(r, query) {
+    const parts = T.answerFromNotes(r, 3);
+    if (!parts.length) return '';
+    const ai = app.ui.askAi && app.ui.askAi.query === query ? app.ui.askAi : null;
+    let body = '<p class="ft-answer-label">From your notes</p><ul class="ft-answer-list">'
+      + parts.map((p) => '<li>' + esc(p.text) + ' ' + citeMark(p.n, r) + '</li>').join('') + '</ul>';
+    if (ai && ai.state === 'done') {
+      body = '<p class="ft-answer-label">Written by Flux AI from your notes only. Check each part against its passage.</p><p class="ft-answer-text">'
+        + ai.parts.map((p) => esc(p.text) + ' ' + p.cites.map((n) => citeMark(n, r)).join('')).join(' ') + '</p>';
+    }
+    return '<section class="ft-answer" aria-labelledby="ftAnswerTitle"><h3 class="ft-h4" id="ftAnswerTitle">Answer</h3>' + body
+      + (ai && ai.state === 'busy' ? '<p class="ft-help" role="status">Flux AI is writing an answer from these passages…</p>' : '')
+      + (ai && ai.state === 'error' ? '<p class="ft-help" role="status">' + esc(ai.message) + '</p>' : '')
+      + (tutorAiOn() && (!ai || ai.state === 'error') ? '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="ask-ai">' + icon('sparkle', 16) + 'Write it as a paragraph with Flux AI</button></div>' : '')
+      + '</section>';
+  }
+
+  /* Flux AI is paused across the suite (FLUX_AI_ENABLED in the planner), so
+     this stays off until that switch is turned back on here too. When on, it
+     goes through the same ai-proxy as the planner, with the planner's session. */
+  const TUTOR_AI_ENABLED = false;
+  const SB_URL = 'https://lfigdijuqmbensebnevo.supabase.co';
+  const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaWdkaWp1cW1iZW5zZWJuZXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjEzMDgsImV4cCI6MjA4ODkzNzMwOH0.qG1d9DLKrs0qqLgAp-6UGdaU7xWvlg2sWq-oD-y2kVo';
+  const PLANNER_KEY = 'sb-lfigdijuqmbensebnevo-auth-token';
+  function tutorAiOn() { return TUTOR_AI_ENABLED || window.FLUX_TUTOR_AI === true; }
+  function plannerToken() {
+    try {
+      let s = JSON.parse(localStorage.getItem(PLANNER_KEY) || 'null');
+      if (s && s.currentSession) s = s.currentSession;
+      return s && s.access_token && s.expires_at * 1000 > Date.now() + 60000 ? s.access_token : '';
+    } catch (_) { return ''; }
+  }
+  const ASK_AI_SYSTEM = 'You answer a student\'s question using ONLY the numbered passages from their own notes. '
+    + 'Write 2 to 4 short sentences. End every sentence with the number of the passage it comes from, like [1] or [2][3]. '
+    + 'Do not add facts that are not in the passages. If the passages do not answer the question, reply exactly: NOT IN NOTES';
+  async function askAi() {
+    const query = app.ui.askQuery;
+    const r = app.ui.askResult;
+    if (!r || !r.covered) return;
+    const token = plannerToken();
+    const redraw = () => { const box = document.getElementById('ftAskResults'); if (box) box.innerHTML = askResultsHtml(query); };
+    if (!token) {
+      app.ui.askAi = { query, state: 'error', message: 'Sign in to Flux Planner in this browser to use Flux AI here. The answer from your notes above still works.' };
+      redraw();
+      return;
+    }
+    app.ui.askAi = { query, state: 'busy' };
+    redraw();
+    const passages = r.results.map((x, i) => '[' + (i + 1) + '] ' + x.sentences.map((p) => p.text).join(' ')).join('\n');
+    try {
+      const res = await fetch(SB_URL + '/functions/v1/ai-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, apikey: SB_ANON },
+        body: JSON.stringify({ messages: [{ role: 'system', content: ASK_AI_SYSTEM }, { role: 'user', content: 'Passages:\n' + passages + '\n\nQuestion: ' + query }] }),
+      });
+      if (!res.ok) throw new Error('Flux AI is not available right now (' + res.status + ').');
+      const data = await res.json();
+      const text = (data && data.content && data.content[0] && data.content[0].text) || '';
+      const parts = /NOT IN NOTES/.test(text) ? [] : T.groundedParts(text, r.results.length);
+      if (app.ui.askQuery !== query) return;
+      app.ui.askAi = parts.length
+        ? { query, state: 'done', parts }
+        : { query, state: 'error', message: 'Flux AI could not write an answer that cites your notes, so none is shown. Use the answer from your notes above.' };
+    } catch (e) {
+      if (app.ui.askQuery !== query) return;
+      app.ui.askAi = { query, state: 'error', message: (e && e.message) || 'Flux AI is not available right now.' };
+    }
+    redraw();
+    announce(app.ui.askAi.state === 'done' ? 'Flux AI answer ready.' : app.ui.askAi.message);
   }
   function runAsk(form) {
     const q = String(form.elements.q.value || '').trim().slice(0, 300);
@@ -2439,6 +2566,13 @@
       case 'ib-mark': markIb(btn.dataset.q); break;
       case 'ib-new': app.ui.ib = null; renderScreen('#ftScreenTitle'); break;
       case 'ib-weak': startIb(null, 'weak'); break;
+      case 'ask-ai': askAi(); break;
+      case 'ask-passage': {
+        e.preventDefault();
+        const li = document.getElementById('ftPassage' + btn.dataset.n);
+        if (li) { li.classList.add('is-target'); li.scrollIntoView({ block: 'center' }); const a = li.querySelector('.ft-cite-link'); if (a) a.focus({ preventScroll: true }); setTimeout(() => li.classList.remove('is-target'), 1600); }
+        break;
+      }
       case 'card-flip': flipCard(); break;
       case 'card-rate': rateCard(Number(btn.dataset.grade)); break;
       case 'cards-ahead': cardsAhead(); break;
@@ -2480,11 +2614,12 @@
   root.addEventListener('input', (e) => {
     const t = e.target;
     if (t.dataset && (t.dataset.field || t.dataset.srcText)) { onNotesInput(t); return; }
-    if (t.dataset && t.dataset.ibAnswer && app.ui.ib) { app.ui.ib.answers[t.dataset.ibAnswer] = t.value; return; }
+    if (t.dataset && t.dataset.ibAnswer && app.ui.ib && t.type !== 'radio') { app.ui.ib.answers[t.dataset.ibAnswer] = t.value; return; }
     if (t.closest && t.closest('form[data-form="test"]')) collectTestAnswer(t);
   });
   root.addEventListener('change', (e) => {
     const t = e.target;
+    if (t.dataset && t.dataset.ibAnswer && t.type === 'radio' && app.ui.ib) { app.ui.ib.answers[t.dataset.ibAnswer] = t.value; return; }
     if (t.dataset && t.dataset.ibTick && app.ui.ib) {
       const list = app.ui.ib.ticks[t.dataset.ibTick] || (app.ui.ib.ticks[t.dataset.ibTick] = []);
       list[Number(t.value)] = t.checked;
