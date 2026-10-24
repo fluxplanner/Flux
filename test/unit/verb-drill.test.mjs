@@ -255,3 +255,26 @@ test('config: sanitised, keyed and described in plain words', () => {
   assert.equal(C.fmtDate(20261016), '16 Oct 2026');
   assert.equal(C.fmtSecs(125), '2:05');
 });
+
+test('marking ignores punctuation, and names a one-letter slip without counting it right', () => {
+  const q = { verb: 'hablar', pronoun: 'yo', person: 0, answers: ['hablo'] };
+  for (const typed of ['hablo?', '¿hablo?', 'Yo, hablo', '"hablo"', 'hablo,', '¡Hablo!']) {
+    assert.equal(C.check(typed, q, { lang: 'es' }).ok, true, typed);
+  }
+  for (const typed of ['hablol', 'hbalo', 'habo']) {
+    const r = C.check(typed, q, { lang: 'es' });
+    assert.equal(r.ok, false, typed);
+    assert.equal(r.close, true, typed);
+  }
+  const far = C.check('comes', q, { lang: 'es' });
+  assert.equal(far.ok, false);
+  assert.equal(!!far.close, false);
+  // A short answer is never called close: "va" for "vas" is a real mistake to name plainly.
+  assert.equal(!!C.check('va', { verb: 'ir', pronoun: 'tú', person: 1, answers: ['vas'] }, { lang: 'es' }).close, false);
+});
+
+test('the conjugator engine takes a verb with punctuation round it', () => {
+  assert.equal(E.conjugate('es', 'tener?', 'present').forms[0], 'tengo');
+  assert.equal(E.conjugate('es', '¡ir!', 'present').forms[0], 'voy');
+  assert.equal(E.conjugate('fr', '"manger."', 'present').forms[0], 'mange');
+});

@@ -184,7 +184,140 @@ test('grid: equations use the shared parser; mistakes are named by line', () => 
   close(ok.items[1].fn(3), 5, 'y = x^2 − 4 at 3');
   assert.equal(ok.items[2].kind, 'vline');
   assert.match(F.parseEquations('y = 2x +').error, /^Line 1 of the equations \(“y = 2x \+”\): /);
-  assert.match(F.parseEquations('y = 1\nx = y').error, /^Line 2/);
+  assert.match(F.parseEquations('y = 1\ny = (x').error, /^Line 2/);
+});
+
+test('grid: maths the way students write it', () => {
+  const at = (src, x) => { const r = F.parseEquations(src); assert.ok(!r.error, src + ': ' + r.error); return r.items[0].fn(x); };
+  close(at('y = |x - 1|', -2), 3, '|x − 1|');
+  close(at('y = ln x', Math.E), 1, 'ln without brackets');
+  close(at('y = 3sin 2x', Math.PI / 4), 3, 'sin 2x is sin(2x)');
+  close(at('y = cos^2 x', 1), Math.cos(1) ** 2, 'cos^2 x');
+  close(at('y = √x', 9), 3, '√x');
+  close(at('y = x² − 4', 3), 5, '² and a real minus');
+  close(at('f(x) = x^3', 2), 8, 'f(x) =');
+  close(at('x^2 - 4', 3), 5, 'a bare expression is y =');
+  assert.equal(F.parseEquations('x^2 - 4').items[0].text, 'y = x^2 - 4');
+  assert.equal(F.tidyMath('||x| - 1|'), 'abs(abs(x) - 1)', 'nested bars');
+});
+
+test('grid: any straight equation is solved for y; x alone makes an up-and-down line', () => {
+  const one = (src) => F.parseEquations(src).items[0];
+  close(one('2x + 3y = 6').fn(3), 0, '2x + 3y = 6 at x = 3');
+  close(one('y - 2 = 3(x - 1)').fn(2), 5, 'point-slope form');
+  close(one('x = y').fn(4), 4, 'x = y is the line y = x');
+  close(one('xy = 1').fn(4), 0.25, 'xy = 1');
+  assert.equal(one('2x = 6').kind, 'vline');
+  close(one('2x = 6').x, 3, '2x = 6 is x = 3');
+  assert.equal(one('x^2 + y^2 = 25').kind, 'implicit');
+  assert.match(F.parseEquations('3 = 4').error, /no x or y/);
+});
+
+test('grid: inequalities shade the side that holds, dashed when the line is not included', () => {
+  const one = (src) => F.parseEquations(src).items[0];
+  assert.equal(one('y > 2x').above, true);
+  assert.equal(one('y <= x + 1').above, false);
+  assert.equal(one('-y > x').above, false, 'dividing by a negative turns it round');
+  assert.equal(one('2x + 3y < 6').above, false);
+  assert.equal(one('x > 2').right, true);
+  assert.equal(one('x ≤ -1').right, false);
+  assert.equal(one('y > 2x').strict, true);
+  assert.equal(one('y ≥ 2x').strict, false);
+  assert.equal(one('xy > 1').kind, 'implicit', 'a slope that changes sign cannot be shaded as above or below');
+  const g = F.build({ ...F.defaults('grid'), eqs: 'y > 2x - 1' });
+  assert.ok(!g.error, g.error);
+  assert.match(g.svg, /fill-opacity="0\.16"/);
+  assert.match(g.svg, /stroke-dasharray="10 7"/);
+  const solid = F.build({ ...F.defaults('grid'), eqs: 'y >= 2x - 1' });
+  assert.doesNotMatch(solid.svg, /stroke-dasharray/);
+  const disc = F.build({ ...F.defaults('grid'), eqs: 'x^2 + y^2 < 9' });
+  assert.match(disc.svg, /<path d="M[^"]+" fill="#2563eb" fill-opacity="0\.16"/, 'the inside of the circle is filled');
+});
+
+test('grid: a limit draws part of a line, with filled or open ends', () => {
+  const d = F.splitDomain('y = 2x for -3 < x ≤ 4');
+  assert.equal(d.rest, 'y = 2x');
+  assert.deepEqual(d.lim, { lo: -3, hi: 4, loIn: false, hiIn: true });
+  assert.deepEqual(F.splitDomain('y = x^2 {0 <= x <= 5}').lim, { lo: 0, hi: 5, loIn: true, hiIn: true });
+  assert.equal(F.splitDomain('y = √x, x ≥ 0').lim.lo, 0);
+  assert.equal(F.splitDomain('y = min(x, 2)').lim, null, 'a comma inside brackets is not a limit');
+  assert.match(F.splitDomain('y = x for 5 < x < 1').error, /no x that fits/);
+  const g = F.build({ ...F.defaults('grid'), eqs: 'y = 2x for -3 < x ≤ 4' });
+  assert.equal((g.svg.match(/<circle[^>]+fill="#ffffff"/g) || []).length, 1, 'one open end');
+  assert.equal((g.svg.match(/<circle[^>]+fill="#2563eb"/g) || []).length, 1, 'one filled end');
+  assert.doesNotMatch(g.svg, />[^<]*for -3/, 'the limit stays out of the label');
+});
+
+test('grid: points typed among the equations are points', () => {
+  const g = F.build({ ...F.defaults('grid'), eqs: 'y = x\nA(2, 3)' });
+  assert.ok(!g.error, g.error);
+  assert.match(g.svg, />A</);
+});
+
+test('grid: a curve off the grid is named, and fitRange brings it into view', () => {
+  const s = { ...F.defaults('grid'), eqs: 'y = x^2 + 50' };
+  assert.deepEqual(F.build(s).info.offgrid, ['y = x^2 + 50']);
+  const fit = F.fitRange(s);
+  assert.equal(fit.ymin, 0, 'starts at the x axis');
+  assert.ok(fit.ymax >= 140 && fit.ymax <= 170, 'tops out just above 150: ' + fit.ymax);
+  assert.deepEqual(F.build(fit).info.offgrid, []);
+  const pts = F.fitRange({ ...F.defaults('grid'), pts: 'A(30, 40)' });
+  assert.ok(pts.xmax >= 30 && pts.ymax >= 40, 'points far out widen the grid');
+});
+
+/* ── Circles ───────────────────────────────────────────────────────── */
+
+test('circle: radius, sector, diameter, chord and tangent', () => {
+  const b = F.build({ ...F.defaults('circle'), r: 5, sector: 60, diam: true, chord: true, tangent: true, calc: true });
+  assert.ok(!b.error, b.error);
+  assert.match(b.svg, />5 cm</, 'the radius');
+  assert.match(b.svg, />60°</, 'the sector angle');
+  assert.match(b.svg, />10 cm</, 'the diameter, worked out');
+  assert.match(b.svg, />7\.1 cm</, 'the chord, worked out (2r sin 45°)');
+  assert.match(b.svg, /fill-opacity="0\.1"/, 'the sector is shaded');
+  assert.equal(F.describe({ ...F.defaults('circle'), r: 4, sector: 90 }), 'Circle, radius 4 cm, with a sector of 90°');
+  assert.match(F.build({ ...F.defaults('circle'), r: 0 }).error, /The radius needs to be more than 0/);
+  assert.match(F.build({ ...F.defaults('circle'), sector: 360 }).error, /less than 360°/);
+  assert.equal(F.decode(F.encode({ ...F.defaults('circle'), r: 7, tangent: true })).r, 7, 'share links carry a circle');
+});
+
+/* ── Describe it ───────────────────────────────────────────────────── */
+
+test('describe it: a sentence becomes the figure it names', () => {
+  const k = (text) => { const r = F.fromText(text); assert.ok(!r.error, text + ': ' + r.error); return r.spec; };
+  const rt = k('right triangle 3 4 5');
+  assert.deepEqual([rt.kind, rt.method, rt.a, rt.b], ['triangle', 'right', 3, 4]);
+  const sss = k('triangle 5 6 7 mm');
+  assert.deepEqual([sss.method, sss.c, sss.a, sss.b, sss.u], ['sss', 5, 6, 7, 'mm']);
+  const asa = k('triangle 7, 40°, 60°');
+  assert.deepEqual([asa.method, asa.c, asa.A, asa.B], ['asa', 7, 40, 60]);
+  const named = k('triangle AB=7 A=40 B=60');
+  assert.deepEqual([named.method, named.c, named.A, named.B], ['asa', 7, 40, 60]);
+  assert.deepEqual([k('equilateral triangle 6').a, k('equilateral triangle 6').c], [6, 6]);
+  const rect = k('rectangle 8 by 5');
+  assert.deepEqual([rect.kind, rect.w, rect.h], ['rect', 8, 5]);
+  assert.deepEqual([k('square 4').w, k('square 4').h], [4, 4]);
+  assert.deepEqual([k('hexagon side 4').n, k('hexagon side 4').s], [6, 4]);
+  const cyl = k('cylinder r 3 h 8');
+  assert.deepEqual([cyl.kind, cyl.shape, cyl.r, cyl.h], ['solid', 'cylinder', 3, 8]);
+  assert.equal(k('sphere diameter 10').r, 5);
+  assert.deepEqual([k('cuboid 6 4 3').l, k('cuboid 6 4 3').w, k('cuboid 6 4 3').h], [6, 4, 3]);
+  const circ = k('circle radius 4 with a diameter and a tangent');
+  assert.deepEqual([circ.kind, circ.r, circ.diam, circ.tangent], ['circle', 4, true, true]);
+  assert.equal(k('circle r 5 sector 60').sector, 60);
+  const nl = k('number line -5 to 5, x > 2');
+  assert.deepEqual([nl.kind, nl.from, nl.to, nl.marks], ['numline', -5, 5, 'x > 2']);
+  const ang = k('angles on a straight line 40 70');
+  assert.deepEqual([ang.mode, ang.parts, ang.a1, ang.a2], ['line', 3, 40, 70]);
+  assert.equal(k('vertically opposite angles 70').mode, 'vertical');
+  assert.equal(k('parallel lines 60°').ang, 60);
+  const g = k('graph y = 2x + 1 and y = -x + 4');
+  assert.deepEqual([g.kind, g.eqs], ['grid', 'y = 2x + 1\ny = -x + 4']);
+  assert.equal(k('plot A(2,3) B(-1,4)').pts, 'A(2,3) B(-1,4)');
+  assert.equal(k('y = x^2 + 50').ymin, 0, 'a graph off the usual grid gets a grid that fits');
+  assert.match(F.fromText('banana').error, /could not tell which figure/);
+  assert.match(F.fromText('triangle').error, /Give the triangle its sizes/);
+  assert.match(F.fromText('triangle 2 3 9').error, /can't make a triangle/, 'an impossible figure says why');
 });
 
 test('grid: points and shapes', () => {

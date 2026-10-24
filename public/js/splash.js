@@ -59,50 +59,43 @@ function fluxShiftHueHex(hex,deg){
   return '#'+to(R)+to(G)+to(B);
 }
 
-/** Returning visits: wordmark + laser beam (grows left → right from under “F”) */
+/** The Flux loading screen (styles in flux-loader.css): the infinity mark,
+    the wordmark, a line under it. quick: drawn already, for short waits. */
+function fluxLoaderMarkup(acc,acc2,label,quick){
+  const rgb=fluxSplashHexToRgb(acc);
+  return `
+    <div aria-hidden="true" style="position:absolute;inset:-20%;pointer-events:none;background:radial-gradient(ellipse 50% 42% at 50% 46%,rgba(${rgb.r},${rgb.g},${rgb.b},.20),transparent 70%);animation:fluxIntroGlow 1.85s ease-out both"></div>
+    <div class="flux-loader${quick?' flux-loader--quick':''}" role="img" aria-label="Flux Planner" style="position:relative;--fl-acc:${acc};--fl-acc2:${acc2}">
+      <svg class="flux-loader__mark" viewBox="0 0 440 220" aria-hidden="true">
+        <defs>
+          <linearGradient id="fluxSplashMark" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="${acc}"/>
+            <stop offset="100%" stop-color="${acc2}"/>
+          </linearGradient>
+        </defs>
+        <path class="flux-loader__path" pathLength="1" transform="translate(268,110)" stroke="url(#fluxSplashMark)"
+          d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"/>
+        <path class="flux-loader__run" pathLength="1" transform="translate(268,110)"
+          d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"/>
+        <circle class="flux-loader__dot" cx="268" cy="110" r="13"/>
+      </svg>
+      <div class="flux-loader__word">Flux</div>
+      <div class="flux-loader__label">${label}</div>
+    </div>
+    <style>@keyframes fluxIntroGlow{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}</style>`;
+}
+
+/** Returning visits: the same loading screen as a first visit, already drawn */
 function runShortSplash(callback){
   const splash=document.getElementById('splash');
   if(!splash){callback();return;}
   const reduce=prefersReducedMotion();
-  // The same wordmark and laser, quicker: 2.5s on every open felt slow once
-  // Flux was being opened again and again (demo prep, 2026-10-01).
-  const laserAnim=reduce?'none':'fluxLaserGrow .95s cubic-bezier(.22,1,.36,1) forwards';
+  // Quick on purpose: 2.5s on every open felt slow once Flux was being
+  // opened again and again (demo prep, 2026-10-01).
   const acc=fluxSplashAccentHex();
-  const acc2=fluxShiftHueHex(acc,-22);
-  const rgb=fluxSplashHexToRgb(acc);
-  const rgbStr=`${rgb.r},${rgb.g},${rgb.b}`;
-  const glow=`rgba(${rgbStr},.14)`;
-  const glow2=`rgba(${rgbStr},.95)`;
-  const glow3=`rgba(${rgbStr},.55)`;
-  splash.style.cssText='position:fixed;inset:0;background:#0B0E14;z-index:9999;display:flex;flex-direction:column;align-items:stretch;justify-content:center;width:100%;height:100%;min-height:100dvh;overflow:hidden';
-  splash.innerHTML=`
-    <div style="position:absolute;inset:0;pointer-events:none;opacity:.35;background:radial-gradient(ellipse 85% 60% at 50% 42%,${glow},transparent 58%)"></div>
-    <div style="position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;box-sizing:border-box;padding:max(12px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left))">
-      <div style="width:100%;max-width:272px;display:flex;flex-direction:column;align-items:stretch;gap:4px;margin-top:-24px;animation:splashFadeIn .55s cubic-bezier(.22,1,.36,1) both">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 32" preserveAspectRatio="xMinYMin meet" style="width:100%;max-width:300px;height:auto;display:block;flex-shrink:0;filter:drop-shadow(0 6px 24px ${glow})" aria-hidden="true">
-          <defs>
-            <linearGradient id="fluxWGSplash" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stop-color="#E8F4FC"/>
-              <stop offset="55%" stop-color="${acc}"/>
-              <stop offset="100%" stop-color="${acc2}"/>
-            </linearGradient>
-          </defs>
-          <text x="0" y="26" font-family="'Plus Jakarta Sans',system-ui,sans-serif" font-size="31" font-weight="800" letter-spacing="-0.04em" fill="url(#fluxWGSplash)">Flux</text>
-        </svg>
-        <div style="display:flex;align-items:center;width:100%;gap:6px;margin-top:2px">
-          <div aria-hidden="true" style="flex-shrink:0;width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff,${acc});box-shadow:0 0 14px ${glow2},0 0 5px rgba(255,255,255,.75)"></div>
-          <div style="flex:1;min-width:0;height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;position:relative">
-            <div class="flux-splash-laser-fill" style="position:absolute;left:0;top:50%;transform:translateY(-50%);height:3px;width:${reduce?'100%':'0'};border-radius:2px;background:linear-gradient(90deg,${acc2},${acc});box-shadow:0 0 12px ${glow3};animation:${laserAnim}"></div>
-          </div>
-        </div>
-        <div style="margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:.78rem;letter-spacing:.28em;text-transform:uppercase;color:rgba(195,210,230,.92);text-align:left;line-height:1.35">PLANNER</div>
-        <div style="margin-top:14px;font-family:'JetBrains Mono',monospace;font-size:.74rem;letter-spacing:.1em;text-align:left;color:rgba(150,170,200,.58)">Loading planner</div>
-      </div>
-    </div>
-    <style>
-      @keyframes splashFadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-      @keyframes fluxLaserGrow{from{width:0}to{width:100%}}
-    </style>`;
+  const acc2=fluxShiftHueHex(acc,-24);
+  splash.style.cssText='position:fixed;inset:0;z-index:9999;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#0B0E14;width:100%;height:100%;min-height:100dvh;opacity:1';
+  splash.innerHTML=fluxLoaderMarkup(acc,acc2,'Smart school planner',true);
   /* Start signing in now, behind the splash, rather than after it. This used
      to hold a fixed 1.5s before initAuth() even began, so every open paid the
      animation and then the sign-in on top. Now the splash lifts as soon as
@@ -157,39 +150,9 @@ function runCinematicSplash(callback){
 
   const acc=fluxSplashAccentHex();
   const acc2=fluxShiftHueHex(acc,-24);
-  const rgb=fluxSplashHexToRgb(acc);
-  const rgbStr=`${rgb.r},${rgb.g},${rgb.b}`;
   const T_END=1850;
   splash.style.cssText='position:fixed;inset:0;z-index:9999;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#0B0E14;opacity:1';
-  splash.innerHTML=`
-    <div aria-hidden="true" style="position:absolute;inset:-20%;pointer-events:none;background:radial-gradient(ellipse 50% 42% at 50% 46%,rgba(${rgbStr},.20),transparent 70%);animation:fluxIntroGlow 1.85s ease-out both"></div>
-    <div role="img" aria-label="Flux Planner" style="position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;padding:24px">
-      <svg viewBox="0 0 440 220" width="168" height="84" aria-hidden="true" style="display:block;overflow:visible;filter:drop-shadow(0 0 22px rgba(${rgbStr},.45))">
-        <defs>
-          <linearGradient id="fluxIntroMark" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stop-color="${acc}"/>
-            <stop offset="100%" stop-color="${acc2}"/>
-          </linearGradient>
-        </defs>
-        <path class="fluxIntroPath" pathLength="1" transform="translate(268,110)"
-          d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"
-          fill="none" stroke="url(#fluxIntroMark)" stroke-width="22" stroke-linecap="round"/>
-        <circle class="fluxIntroDot" cx="268" cy="110" r="13" fill="${acc}"/>
-      </svg>
-      <div class="fluxIntroWord" style="font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:clamp(2.4rem,9vw,3.2rem);font-weight:800;letter-spacing:-0.04em;line-height:1;
-        background:linear-gradient(90deg,#E8F4FC 0%,${acc} 60%,${acc2} 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">Flux</div>
-      <div class="fluxIntroTag" style="font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.32em;text-transform:uppercase;color:rgba(190,205,225,.8);margin-right:-.32em">Smart school planner</div>
-    </div>
-    <style>
-      .fluxIntroPath{stroke-dasharray:1;stroke-dashoffset:1;animation:fluxIntroDraw .95s cubic-bezier(.65,0,.35,1) .1s forwards}
-      .fluxIntroDot{opacity:0;transform-origin:268px 110px;animation:fluxIntroPop .4s cubic-bezier(.34,1.56,.64,1) .85s forwards}
-      .fluxIntroWord{opacity:0;animation:fluxIntroRise .55s cubic-bezier(.22,1,.36,1) .55s forwards}
-      .fluxIntroTag{opacity:0;animation:fluxIntroRise .55s cubic-bezier(.22,1,.36,1) .75s forwards}
-      @keyframes fluxIntroDraw{to{stroke-dashoffset:0}}
-      @keyframes fluxIntroPop{from{opacity:0;transform:scale(.2)}to{opacity:1;transform:scale(1)}}
-      @keyframes fluxIntroRise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-      @keyframes fluxIntroGlow{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
-    </style>`;
+  splash.innerHTML=fluxLoaderMarkup(acc,acc2,'Smart school planner',false);
 
   // setTimeout, not rAF: rAF is paused in a background tab, and a first visit
   // opened in a new tab must still reach the app.

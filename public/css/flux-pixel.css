@@ -68,26 +68,40 @@
 .px-foot { max-width: 1100px; margin: 22px auto 0; }
 .px-note { max-width: 1100px; margin: 8px auto 0; color: var(--muted2); font-size: .82rem; }
 
-/* ── Editor ──────────────────────────────────────────────────────────── */
+/* ── Editor ──────────────────────────────────────────────────────────
+   The whole window, like a drawing app: a top bar for the drawing's name,
+   undo and export; the tools down the left; the options down the right
+   (hidden with one button); and the paper in the middle, as big as fits. */
 
-.px-editor { display: flex; flex-direction: column; gap: 10px; height: calc(100dvh - 52px - env(safe-area-inset-top, 0px) - 34px); min-height: 520px; }
-.px-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.px-title { flex: 0 1 320px; min-width: 120px; min-height: 38px; padding: 6px 12px; border: 1px solid transparent; border-radius: 10px; background: none; color: var(--text); font: inherit; font-weight: 800; font-size: 1.02rem; }
+body.px-full { overflow: hidden; }
+body.px-full header.top { display: none; }
+body.px-full main.px-app { max-width: none; padding: 0; }
+.px-editor {
+  position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  background: radial-gradient(120% 90% at 50% 0%, #161c2c 0%, #0b0d14 70%);
+}
+.px-top { display: flex; align-items: center; gap: 4px; flex: none; height: 54px; padding: 0 10px; border-bottom: 1px solid var(--border); background: rgba(13,16,24,.92); overflow: hidden; }
+.px-title { flex: 0 1 300px; min-width: 90px; min-height: 38px; padding: 6px 10px; border: 1px solid transparent; border-radius: 10px; background: none; color: var(--text); font: inherit; font-weight: 800; font-size: 1rem; }
 .px-title:hover { border-color: var(--border2); }
 .px-title:focus { outline: none; border-color: var(--accent); background: rgba(0,0,0,.2); }
-.px-saved { font-size: .78rem; font-weight: 700; color: var(--accent); }
+.px-saved { font-size: .78rem; font-weight: 700; color: var(--accent); white-space: nowrap; }
 .px-grow { flex: 1; }
-.px-zoom { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 11px; margin: 0 4px; }
+.px-zoom { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 11px; margin: 0 4px; flex: none; }
 .px-zoom-v { min-width: 52px; padding: 0 4px; border: 0; background: none; color: var(--muted2); font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; }
+.px-top .px-btn { flex: none; }
+.px-panel-t[aria-expanded="true"] { color: var(--accent); }
+.px-hub { flex: none; margin-left: 2px; }
 
-.px-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 56px minmax(0, 1fr) 270px; gap: 10px; }
-.px-tools { display: flex; flex-direction: column; gap: 4px; padding: 6px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); overflow-y: auto; }
-.px-tool { display: grid; place-items: center; width: 42px; height: 42px; flex: none; border: 0; border-radius: 11px; background: none; color: var(--muted2); cursor: pointer; }
+.px-body { flex: 1; min-height: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; padding: 10px; }
+.px-tools { display: flex; flex-direction: column; gap: 4px; padding: 6px; border: 1px solid var(--border); border-radius: 18px; background: rgba(20,24,36,.92); overflow-y: auto; scrollbar-width: none; align-self: center; max-height: 100%; box-shadow: 0 18px 40px -24px #000; }
+.px-tool { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border: 0; border-radius: 12px; background: none; color: var(--muted2); cursor: pointer; }
 .px-tool:hover { color: var(--text); background: rgba(255,255,255,.07); }
 .px-tool.is-on { color: #04140d; background: var(--accent); }
+.px-tools-sep { flex: none; height: 1px; margin: 3px 6px; background: var(--border2); }
 
-.px-stage { position: relative; min-width: 0; min-height: 0; overflow: auto; border: 1px solid var(--border); border-radius: 16px; background: #1b2030; }
-.px-wrap { position: relative; width: 100%; margin: 0 auto; }
+.px-stage { position: relative; display: flex; min-width: 0; min-height: 0; overflow: auto; border-radius: 16px; }
+.px-wrap { position: relative; flex: none; margin: auto; box-shadow: 0 24px 60px -30px #000, 0 0 0 1px rgba(255,255,255,.06); }
 .px-svg { display: block; width: 100%; height: auto; background: #fff; touch-action: none; user-select: none; -webkit-user-select: none; cursor: crosshair; }
 .px-svg[data-mode="select"] { cursor: default; }
 .px-svg[data-mode="select"] #pxItems [data-id] { cursor: move; }
@@ -100,7 +114,8 @@
   box-shadow: 0 6px 20px -8px rgba(0,0,0,.4);
 }
 
-.px-props { display: flex; flex-direction: column; gap: 14px; padding: 14px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); overflow-y: auto; }
+.px-props { display: flex; flex-direction: column; gap: 14px; width: 288px; padding: 14px; border: 1px solid var(--border); border-radius: 18px; background: rgba(20,24,36,.92); overflow-y: auto; box-shadow: 0 18px 40px -24px #000; }
+.px-editor:not(.is-panel) .px-props { display: none; }
 .px-sec { display: flex; flex-direction: column; gap: 7px; }
 .px-sec-h { font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: var(--muted2); }
 .px-colors { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
@@ -123,23 +138,19 @@
 .px-toast.is-in { transform: translate(-50%, 0); opacity: 1; }
 .px-toast--warn { background: #3a2a0c; color: #fde68a; }
 
-/* ── Tablets and phones: tools along the bottom, settings below ──────── */
+/* ── Phones: tools along the bottom, options as a sheet over the page ─ */
 
-@media (max-width: 1000px) {
-  .px-body { grid-template-columns: 56px minmax(0, 1fr); }
-  .px-props { grid-column: 1 / -1; max-height: 260px; flex-direction: row; flex-wrap: wrap; }
-  .px-props .px-sec { flex: 1 1 220px; }
+@media (max-width: 760px) {
+  .px-top { height: 50px; padding: 0 4px; gap: 2px; }
+  .px-top .px-btn span, .px-top [data-act="svg"], .px-top [data-act="copy"], .px-zoom, .px-saved { display: none; }
+  .px-top .px-btn { padding: 5px 8px; }
+  .px-title { flex: 1 1 auto; min-width: 60px; font-size: .92rem; }
+  .px-body { position: relative; display: flex; flex-direction: column; gap: 0; padding: 0; }
+  .px-stage { flex: 1; border-radius: 0; }
+  .px-tools { order: 2; flex-direction: row; align-self: stretch; max-height: none; border-radius: 0; border-width: 1px 0 0; padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)); overflow-x: auto; overflow-y: hidden; box-shadow: none; }
+  .px-tools-sep { width: 1px; height: auto; margin: 6px 3px; }
+  .px-props { position: absolute; z-index: 6; left: 0; right: 0; bottom: calc(62px + env(safe-area-inset-bottom, 0px)); width: auto; max-height: min(58dvh, 520px); border-radius: 18px 18px 0 0; border-width: 1px 0 0; box-shadow: 0 -20px 40px -20px #000; }
   .px-keys { display: none; }
-}
-@media (max-width: 640px) {
-  .px-editor { height: auto; }
-  .px-top .px-btn:not([data-act="svg"]) span { display: none; }
-  .px-title { flex: 1 1 100%; order: -1; }
-  .px-body { display: flex; flex-direction: column; }
-  .px-tools { flex-direction: row; overflow-x: auto; order: 2; }
-  .px-stage { order: 1; }
-  .px-props { order: 3; max-height: none; flex-direction: column; }
-  .px-props .px-sec { flex: none; }
   .px-colors { grid-template-columns: repeat(12, 1fr); }
   .px-stamp-row { grid-template-columns: repeat(6, 1fr); }
 }
@@ -206,6 +217,27 @@ select.px-f-in { appearance: auto; }
 .px-f-reset { margin: 4px 0 0; }
 .px-fig-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 18px 14px; border-top: 1px solid var(--border, rgba(255,255,255,.08)); }
 .px-fig-foot .px-btn:disabled { opacity: .45; cursor: not-allowed; }
+/* Describe it: the figure in words */
+.px-fig-ask { margin: 0 18px 10px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--accent, #34d399) 45%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--accent, #34d399) 7%, transparent); }
+.px-fig-ask-lab { display: block; margin-bottom: 6px; font-size: .78rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--accent, #34d399); }
+.px-fig-ask-row { display: flex; gap: 8px; }
+.px-fig-ask-in { flex: 1; min-width: 0; min-height: 40px; font-size: .95rem; }
+.px-fig-ask-row .px-btn { flex: none; min-height: 40px; }
+.px-fig-ask-hint { min-height: 1.3em; margin: 6px 0 0; font-size: .82rem; line-height: 1.4; color: var(--muted2, #a3acc6); }
+.px-fig-ask-hint.is-err { color: #fbbf24; }
+.px-fig-try { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.px-fig-try-b { min-height: 30px; padding: 3px 10px; border: 1px dashed var(--border2, rgba(255,255,255,.18)); border-radius: 999px; background: none; color: var(--text, #eef1fb); font: inherit; font-size: .78rem; cursor: pointer; }
+.px-fig-try-b:hover { border-style: solid; border-color: var(--accent, #34d399); }
+.px-fig-try-b:focus-visible { outline: 2px solid var(--accent, #34d399); outline-offset: 2px; }
+.px-fig-fit { margin: 0; }
+/* More options: everything that is not needed to make the figure */
+.px-f-more { margin: 0 0 12px; border: 1px solid var(--border, rgba(255,255,255,.08)); border-radius: 12px; }
+.px-f-more[open] { padding: 0 8px 2px; }
+.px-f-more-sum { display: list-item; padding: 10px 12px; font-size: .88rem; font-weight: 800; cursor: pointer; list-style-position: inside; }
+.px-f-more[open] > .px-f-more-sum { padding-left: 4px; }
+.px-f-more-sum:focus-visible { outline: 2px solid var(--accent, #34d399); outline-offset: 2px; border-radius: 10px; }
+.px-f-more-what { display: block; margin: 2px 0 0 1.1em; font-size: .76rem; font-weight: 600; color: var(--muted2, #a3acc6); }
+.px-f-act { margin: 2px 0 10px; }
 
 /* ── The vector panel ─────────────────────────────────────────────────── */
 .px-vsec { gap: 8px; }
@@ -227,6 +259,9 @@ select.px-f-in { appearance: auto; }
   .px-fig-head { padding: 10px 8px 6px 16px; }
   .px-fig-sub { display: none; }
   .px-fig-kinds { flex-wrap: nowrap; overflow-x: auto; padding: 0 16px 8px; scrollbar-width: none; }
+  .px-fig-ask { margin: 0 16px 8px; padding: 8px 10px; }
+  .px-fig-try { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .px-fig-try-b { flex: none; }
   .px-fig-body { display: flex; flex-direction: column; gap: 8px; padding: 0 16px; overflow-y: auto; }
   .px-fig-side { flex: none; position: sticky; top: 0; z-index: 2; padding-bottom: 4px; background: #121622; }
   .px-fig-form { flex: none; }
@@ -236,4 +271,56 @@ select.px-f-in { appearance: auto; }
   .px-fig-foot { padding: 8px 12px calc(10px + env(safe-area-inset-bottom, 0px)); }
   .px-fig-foot .px-grow, .px-fig-foot [data-fig-act="cancel"] { display: none; }
   .px-fig-foot [data-fig-act="done"] { order: -1; flex: 1 1 100%; min-height: 42px; }
+}
+
+/* ── On the page: what to do with the selected item ─────────────────── */
+.px-float { position: absolute; z-index: 4; display: flex; align-items: center; gap: 2px; padding: 4px; border: 1px solid rgba(15,23,42,.12); border-radius: 12px; background: #fff; color: #1f2937; box-shadow: 0 10px 28px -12px rgba(15,23,42,.45); white-space: nowrap; }
+.px-fl-b { display: inline-flex; align-items: center; gap: 6px; min-width: 36px; height: 36px; padding: 0 9px; border: 0; border-radius: 9px; background: none; color: inherit; font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer; }
+.px-fl-b svg { width: 18px; height: 18px; }
+.px-fl-b:hover { background: #eef2ff; }
+.px-fl-b:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
+.px-fl-b--main { color: #fff; background: #2563eb; }
+.px-fl-b--main:hover { background: #1d4ed8; }
+.px-fl-b--danger:hover { color: #dc2626; background: #fef2f2; }
+.px-top .px-icon:disabled { opacity: .35; cursor: default; background: none; }
+
+/* An undo message has its button in it. */
+.px-toast--act { display: flex; align-items: center; gap: 14px; padding: 8px 8px 8px 16px; }
+.px-toast-b { min-height: 34px; padding: 4px 12px; border: 0; border-radius: 9px; background: var(--accent, #34d399); color: #04140d; font: inherit; font-weight: 800; cursor: pointer; }
+
+/* ── The selected figure's settings, in the options rail ────────────── */
+.px-fi { gap: 10px; }
+.px-fi .px-f-row { grid-template-columns: 1fr; gap: 3px; }
+.px-fi .px-f-row--chk { margin-bottom: 2px; }
+.px-fi .px-f-set { padding: 8px 10px 2px; }
+.px-fi-head { display: flex; flex-direction: column; gap: 3px; }
+.px-fi-ask { display: flex; flex-direction: column; gap: 3px; }
+.px-fi-msg { min-height: 0; }
+.px-fi-msg:empty { display: none; }
+.px-fi-all { align-self: flex-start; }
+
+/* ── Draw | Flux Figures ────────────────────────────────────────────── */
+.px-modes { display: inline-flex; flex: none; padding: 3px; margin: 0 6px; border: 1px solid var(--border2); border-radius: 12px; background: rgba(255,255,255,.04); }
+.px-mode { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 3px 12px; border: 0; border-radius: 9px; background: none; color: var(--muted2); font: inherit; font-size: .82rem; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.px-mode svg { width: 16px; height: 16px; }
+.px-mode:hover { color: var(--text); }
+.px-mode[aria-pressed="true"] { color: #04140d; background: var(--accent); }
+.px-mode:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.px-tool--fig { width: 64px; height: auto; min-height: 52px; padding: 6px 2px 5px; grid-template-rows: auto auto; gap: 2px; }
+.px-tool--fig span { font-size: .62rem; font-weight: 700; line-height: 1.1; text-align: center; }
+.px-tool--fig:hover { color: var(--text); }
+.px-fstart .px-hint.is-err { color: #fbbf24; }
+@media (max-width: 760px) {
+  .px-modes { margin: 0 2px; }
+  .px-mode { padding: 3px 8px; }
+  .px-mode span { display: none; }
+  .px-tool--fig { width: 58px; }
+}
+/* A shorter window: the tools in two columns, so none is out of reach. */
+@media (min-width: 761px) and (max-height: 980px) {
+  .px-tools { display: grid; grid-template-columns: repeat(2, 42px); grid-auto-rows: 42px; align-content: start; gap: 3px; }
+  .px-tools .px-tool { width: 42px; height: 42px; }
+  .px-tools-sep { grid-column: 1 / -1; height: 1px; margin: 2px 4px; }
+  .px-editor.is-figures .px-tools { grid-template-columns: repeat(2, 64px); grid-auto-rows: auto; }
+  .px-editor.is-figures .px-tools .px-tool { width: 64px; height: auto; min-height: 42px; }
 }

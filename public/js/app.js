@@ -4484,7 +4484,11 @@ function closeDrawer(){document.getElementById('drawerOverlay').classList.remove
 // ══ TASKS ══
 function calcUrgency(task){const now=new Date();now.setHours(0,0,0,0);const days=task.date?Math.max(0,Math.floor((new Date(task.date+'T00:00:00')-now)/86400000)):99;const pMap={high:3,med:2,low:1};return(pMap[task.priority]||2)*(task.difficulty||3)/Math.max(days,0.5);}
 function addTask(){
-  const name=document.getElementById('taskName').value.trim();if(!name)return;
+  const rawName=document.getElementById('taskName').value.trim();if(!rawName)return;
+  // Fill the fields from the title once more (a pasted title fires no input
+  // event), then save the name without the date / time / priority words.
+  const parsedTitle=ntReadTitle();
+  const name=(parsedTitle&&parsedTitle.name)||rawName;
   const wo=(document.getElementById('taskWaitingOn')?.value||'').trim();
   const _recTypeAdd=(document.getElementById('taskRecurringType')?.value)||'none';
   const staffPersonal=fluxIsStaffPersonalMode();
@@ -4501,7 +4505,7 @@ function addTask(){
   try{if(window.FluxRecurring?.bindTask)FluxRecurring.bindTask(task);}catch(_){}
   save('tasks',tasks);if(task.subject){if(window.FluxGhostDraftV2?.enabled?.()&&typeof FluxGhostDraftV2.scheduleInject==='function')FluxGhostDraftV2.scheduleInject(task);else setTimeout(()=>injectGhostDraft(task),1500);}
   if(window.Flux100&&typeof Flux100.captureLastTaskFromModal==='function')try{Flux100.captureLastTaskFromModal(task);}catch(e){}
-  document.getElementById('taskName').value='';document.getElementById('taskNotes').value='';{const tt=document.getElementById('taskTime');if(tt)tt.value='';}
+  document.getElementById('taskName').value='';document.getElementById('taskNotes').value='';{const h=document.getElementById('taskNameParsed');if(h){h.textContent='';h.hidden=true;}}{const tt=document.getElementById('taskTime');if(tt)tt.value='';}
   closeDashAddTaskModal();
   renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();panicCheck(task);
   syncKey('tasks',tasks);
@@ -5311,7 +5315,9 @@ function renderTasks(){
     const emptyTitle=smartMeta?.title||(msgs[taskFilter]||msgs.all);
     const emptyIcon=smartMeta?.icon||(icons[taskFilter]||icons.all);
     const emptySub='Use the <span class="kbd-hint">+</span> menu or <span class="kbd-hint">T</span> quick add · <span class="kbd-hint">⌘⇧K</span> search · <span class="kbd-hint">⌘K</span> palette';
-    el.innerHTML=`<div class="empty flux-empty-smart flux-empty-animated"><div class="empty-icon flux-empty-bounce">${emptyIcon}</div><div class="empty-title">${emptyTitle}</div><div class="empty-sub">${emptySub}</div></div>`;
+    // A button, not only keyboard hints: a phone has no T key.
+    const emptyAdd=taskFilter==='overdue'?'':'<button type="button" class="flux-empty-add" style="margin-top:12px" onclick="openDashAddTaskModal()">+ Add a task</button>';
+    el.innerHTML=`<div class="empty flux-empty-smart flux-empty-animated"><div class="empty-icon flux-empty-bounce">${emptyIcon}</div><div class="empty-title">${emptyTitle}</div><div class="empty-sub">${emptySub}</div>${emptyAdd}</div>`;
     requestAnimationFrame(()=>{try{const em=el.querySelector('.empty');if(em)window.FluxAnim?.emptyStateIn?.(em);}catch(e){}});
     return;
   }
@@ -5451,11 +5457,83 @@ function openDashAddTaskModal(){
   fluxSyncSubjectUiForRole();
   populateSubjectSelects();
   const more=document.getElementById('taskMoreOptions');if(more)more.open=false;
+  ntResetForm();
   m.style.display='flex';
   const card=m.querySelector('.modal-card');
   try{if(window.FluxAnim?.modalOpen)FluxAnim.modalOpen(m,card||m);}catch(e){}
   try{window.FluxA11y?.trapFocus?.(m);}catch(e){}
   setTimeout(()=>document.getElementById('taskName')?.focus(),80);
+}
+/* ── New task: the title is read as you type ────────────────────────────────
+   Students type the date into the title ("Algebra quiz friday") and the form
+   ignored it: the task was saved as due today, named "Algebra quiz friday".
+   Enter did nothing, and the form kept the last task's date, type and subject.
+
+   Now each opening starts due today (the last subject and type are still
+   remembered, by flux-enhancements-v100.js applyAddTaskDefaults), the title
+   is read with parseNLTask as it is typed, and what it finds fills Due date,
+   Type, Subject, Priority, Due time and Est. time — never a field you have
+   changed yourself since opening the form. A line under the title says what
+   it read. The date / time / priority / estimate words come out of the saved
+   name. Enter in the title adds the task. */
+const NT_FIELDS={date:'taskDate',type:'taskType',subject:'taskSubject',priority:'taskPriority',time:'taskTime',estTime:'taskEstTime'};
+function ntSaid(p,k){
+  if(!p)return false;
+  if(k==='type')return p.type&&p.type!=='hw';
+  if(k==='priority')return p.priority&&p.priority!=='med';
+  return !!p[k];
+}
+function ntResetForm(){
+  const defaults={taskDate:todayStr(),taskPriority:'med',taskTime:'',taskEstTime:'',taskDifficulty:''};
+  for(const[id,v] of Object.entries(defaults)){
+    const el=document.getElementById(id);if(!el)continue;
+    el.value=v;
+  }
+  Object.values(NT_FIELDS).forEach(id=>{const el=document.getElementById(id);if(el){delete el.dataset.ntTouched;delete el.dataset.ntAuto;}});
+  const h=document.getElementById('taskNameParsed');if(h){h.textContent='';h.hidden=true;}
+  ntBindForm();
+}
+function ntBindForm(){
+  const ni=document.getElementById('taskName');
+  if(!ni||ni.dataset.ntBound)return;
+  ni.dataset.ntBound='1';
+  ni.addEventListener('input',ntReadTitle);
+  ni.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'||e.isComposing||e.shiftKey)return;
+    e.preventDefault();addTask();
+  });
+  Object.values(NT_FIELDS).forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.addEventListener('change',()=>{el.dataset.ntTouched='1';delete el.dataset.ntAuto;});
+  });
+}
+function ntReadTitle(){
+  const ni=document.getElementById('taskName');if(!ni)return null;
+  const p=ni.value.trim()?parseNLTask(ni.value):null;
+  const bits=[];
+  for(const[k,id] of Object.entries(NT_FIELDS)){
+    const el=document.getElementById(id);
+    if(!el||el.dataset.ntTouched)continue;
+    if(ntSaid(p,k)){
+      // What was there before the title spoke (a remembered subject, the
+      // calendar's day) comes back if the words are deleted again.
+      if(!el.dataset.ntAuto)el.dataset.ntDefault=el.value;
+      el.value=String(p[k]);
+      if(el.value!==String(p[k]))continue; // e.g. a subject this form has no option for
+      el.dataset.ntAuto='1';
+      if(k==='date')bits.push('Due '+fmtFluxDate(p.date,'short'));
+      else if(k==='time')bits.push('at '+p.time);
+      else if(k==='type')bits.push(el.options[el.selectedIndex]?.text||p.type);
+      else if(k==='subject')bits.push(el.options[el.selectedIndex]?.text||'');
+      else if(k==='priority')bits.push((p.priority==='high'?'High':'Low')+' priority');
+      else if(k==='estTime')bits.push('~'+p.estTime+' min');
+    }else if(el.dataset.ntAuto){
+      el.value=el.dataset.ntDefault||'';delete el.dataset.ntAuto;
+    }
+  }
+  const h=document.getElementById('taskNameParsed');
+  if(h){h.textContent=bits.length?'Read from the title: '+bits.filter(Boolean).join(' · '):'';h.hidden=!bits.length;}
+  return p;
 }
 function closeDashAddTaskModal(){
   const m=document.getElementById('dashAddTaskModal');
@@ -15738,7 +15816,7 @@ function handleCheckoutReturn(){
   if(ab){const p=document.getElementById('abPill');p.textContent=ab+' Day';p.style.display='block';p.style.background=ab==='A'?'rgba(99,102,241,.15)':'rgba(16,217,160,.15)';p.style.color=ab==='A'?'var(--accent)':'var(--green)';p.style.border='1px solid '+(ab==='A'?'rgba(99,102,241,.3)':'rgba(16,217,160,.3)');}
   updateTopbarStats();
   updateNextClassPill();
-  const td=document.getElementById('taskDate');if(td)td.valueAsDate=TODAY;
+  const td=document.getElementById('taskDate');if(td)td.value=todayStr();
   setEnergy(document.getElementById('energySlider')?.value||3);
   renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();
   renderProfile();
@@ -16507,11 +16585,11 @@ function fluxTourSteps(){
   if(!edu){
     return[
       tab('dashboard','Dashboard','Your tasks for today and the days ahead. Tick one off, or swipe it right on a phone; Undo brings it back. Plan my week, above your tasks, fits study blocks around your classes.'),
-      {sel:'.topbar-new-task-btn',title:'New task',body:'Add a task from any tab. Give it a class, a due date and how long it should take.'},
+      {sel:'.topbar-new-task-btn',title:'New task',body:'Add a task from any tab. Type it the way you would say it — “Bio quiz friday” or “essay due 10/24” — and Flux fills in the date, type and class. Press Enter to add it.'},
       tab('calendar','Calendar','Tasks, classes and no-school days on one month. Pick a day to add something, or count down to it: the countdown then sits in the top bar.'),
       tab('timer','Time','Pomodoro focus sessions with a budget for each subject, plus a clock, stopwatch, countdown and alarms.'),
       tab('school','School Info','Your classes, bell schedule and locker. Upload a photo or PDF of your timetable and Flux fills in your periods.'),
-      tab('toolbox','Study tools','Tools for 16 subjects, sorted into units: a periodic table, an equation balancer, formula sheets, a verb drill and a full graphing calculator. The row at the top opens the other Flux apps: Flux Tutor, the 3D Grapher, Pixel, Flashcards and more.'),
+      tab('toolbox','Study tools','Tools for 16 subjects, sorted into units: a periodic table, an equation balancer, formula sheets, a verb drill and a full graphing calculator. Search finds a tool from a few words, even with a typo. The row at the top opens the other Flux apps: Flux Tutor, the 3D Grapher, Pixel, Flashcards and more.'),
       tab('readingLog','Reading log','Log what you read each day for English class, keep quotes, set a weekly goal and print a log to hand in.'),
       tab('canvas','Canvas','Connect Canvas to bring your assignments in, then add the ones you want to your planner.'),
       tab('profile','Profile','Your details, study style, how confident you feel in each course, and your stats.'),
@@ -18441,65 +18519,169 @@ function switchIntelTab(tab, btn){
 // ════════════════════════════════════════════════════
 
 // ══ 1. NATURAL LANGUAGE TASK INPUT ══
-// Parses: "Physics lab due Tuesday high priority 30min"
-const NLP_DAYS={monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6,sunday:0,
-  mon:1,tue:2,wed:3,thu:4,fri:5,sat:6,sun:0,today:0,tomorrow:1};
-const NLP_TYPES={test:/\btest\b/i,quiz:/\bquiz\b/i,project:/\bproject\b/i,essay:/\bessay\b/i,lab:/\blab\b/i,exam:/\bexam\b/i,hw:/\bhomework\b|\bhw\b/i};
-const NLP_PRI={high:/\bhigh\b|\burgent\b|\basap\b|\bcritical\b/i,low:/\blow\b|\beasy\b/i};
+/* Reads what a student types — "bio lab report due thurs 45 min",
+   "Ch 5 hw tmrw", "essay due 10/24", "spanish test oct 24th at 9am" — into a
+   due date, time, type, subject, priority and estimate, and gives back the
+   name with only the date / time / priority / estimate words taken out.
 
-function parseNLTask(text){
-  if(!text||!text.trim())return null;
-  const result={name:'',priority:'med',date:'',type:'hw',estTime:0,subject:''};
-  let t=text.trim();
+   The old reader stripped "due", "by" and "on" from inside words
+   ("Conclusion" became "Cclusi"), read the "3 h" in "chapter 3 homework" as
+   three hours, took "on photosynthesis" for a date, and knew no short forms
+   or numbered dates. Every pattern here matches whole words only, and
+   anything it doesn't recognise stays in the name. */
+const NLP_WEEKDAYS={sunday:0,sun:0,monday:1,mon:1,tuesday:2,tue:2,tues:2,wednesday:3,wed:3,weds:3,thursday:4,thu:4,thur:4,thurs:4,friday:5,fri:5,saturday:6,sat:6};
+const NLP_MONTHS={jan:0,january:0,feb:1,february:1,mar:2,march:2,apr:3,april:3,may:4,jun:5,june:5,jul:6,july:6,aug:7,august:7,sep:8,sept:8,september:8,oct:9,october:9,nov:10,november:10,dec:11,december:11};
+const NLP_SMALL_NUMS={a:1,an:1,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
+/* "sat" is also the SAT and "sun" is the sun: those two only count as days
+   after due / by / on / this / next. Months always need a day number. */
+const NLP_AMBIGUOUS_DAYS={sat:1,sun:1};
+const NLP_TYPE_RULES=[
+  ['quiz',/\bquiz(?:zes)?\b/i],
+  ['test',/\b(?:tests?|exams?|midterms?|finals|final exam)\b/i],
+  ['lab',/\blabs?\b/i],
+  ['essay',/\b(?:essays?|paper)\b/i],
+  ['project',/\bprojects?\b/i],
+  ['hw',/\b(?:homework|hw|worksheet|problem set|pset)\b/i],
+  ['reading',/\b(?:read|reading|chapters?)\b/i]
+];
+/* Short names students type for a class, matched against the words of the
+   class names they actually have. */
+const NLP_SUBJECT_ALIASES={bio:['biology'],chem:['chemistry'],phys:['physics'],math:['math','algebra','geometry','calculus','precalculus','statistics','trigonometry'],maths:['math','algebra','geometry','calculus','statistics'],calc:['calculus'],stats:['statistics'],eng:['english'],lit:['literature','english'],hist:['history'],gov:['government'],econ:['economics'],psych:['psychology'],cs:['computer'],compsci:['computer'],span:['spanish'],pe:['physical']};
+const NLP_SUBJECT_SKIP=new Set(['ap','ib','hl','sl','honors','honours','and','of','the','i','ii','iii','iv','intro','to','advanced','studies','class']);
 
-  // Extract priority
-  if(NLP_PRI.high.test(t)){result.priority='high';t=t.replace(NLP_PRI.high,'').trim();}
-  else if(NLP_PRI.low.test(t)){result.priority='low';t=t.replace(NLP_PRI.low,'').trim();}
+function nlpAddDays(base,n){const d=new Date(base);d.setDate(d.getDate()+n);return d;}
+/** A month/day with no year: this year, or next year once it has passed. */
+function nlpMonthDay(base,mo,day,year){
+  if(mo==null||mo<0||mo>11||day<1||day>31)return null;
+  const y=year!=null?(year<100?2000+year:year):base.getFullYear();
+  let d=new Date(y,mo,day);
+  if(d.getMonth()!==mo)return null;
+  if(year==null&&d<base)d=new Date(y+1,mo,day);
+  return d;
+}
 
-  // Extract type
-  for(const[type,re] of Object.entries(NLP_TYPES)){if(re.test(t)){result.type=type;break;}}
-
-  // Extract time estimate: "30min", "1h", "2 hours"
-  const timeMatch=t.match(/(\d+)\s*(min(?:utes?)?|h(?:ours?)?)/i);
-  if(timeMatch){
-    result.estTime=timeMatch[2].toLowerCase().startsWith('h')?parseInt(timeMatch[1])*60:parseInt(timeMatch[1]);
-    t=t.replace(timeMatch[0],'').trim();
+/** The earliest date phrase in `t`: {date:'YYYY-MM-DD', match} or null. */
+function nlpFindDate(t,now){
+  const base=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const lead='(\\b(?:due|by|on|for|before|until)\\s+)?';
+  const wd='sunday|monday|tuesday|wednesday|thursday|friday|saturday|thurs|tues|weds|thur|sun|mon|tue|wed|thu|fri|sat';
+  const mon='january|february|march|april|may|june|july|august|september|october|november|december|sept|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec';
+  const rules=[
+    [new RegExp(lead+'\\b(today|tonight|tomorrow|tmrw|tmr|tmw|tomoz|2morrow|2moro)\\b','i'),m=>
+      /^(today|tonight)$/i.test(m[2])?base:nlpAddDays(base,1)],
+    [new RegExp(lead+'\\bday after tomorrow\\b','i'),()=>nlpAddDays(base,2)],
+    [new RegExp(lead+'\\bin\\s+(\\d{1,2}|a|an|one|two|three|four|five|six|seven|eight|nine|ten)\\s+(days?|weeks?)\\b','i'),m=>{
+      const n=/^\d+$/.test(m[2])?parseInt(m[2],10):NLP_SMALL_NUMS[m[2].toLowerCase()];
+      return nlpAddDays(base,/^week/i.test(m[3])?n*7:n);
+    }],
+    [new RegExp(lead+'\\bnext week\\b','i'),()=>nlpAddDays(base,(8-base.getDay())%7||7)],
+    [new RegExp(lead+'\\b(?:this\\s+)?weekend\\b','i'),()=>nlpAddDays(base,(6-base.getDay()+7)%7)],
+    [new RegExp(lead+'\\b(?:(this|next)\\s+)?('+wd+')\\.?(?=[\\s,.!?]|$)','i'),m=>{
+      const w=m[3].toLowerCase();
+      if(NLP_AMBIGUOUS_DAYS[w]&&!m[1]&&!m[2])return null;
+      return nlpAddDays(base,(NLP_WEEKDAYS[w]-base.getDay()+7)%7||7);
+    }],
+    // 10/24 or 10/24/26 — month first, or day first when the first number can't be a month.
+    // Only "/": "pages 10-12" is not a date.
+    [new RegExp(lead+'\\b(\\d{1,2})/(\\d{1,2})(?:/(\\d{2}|\\d{4}))?\\b','i'),m=>{
+      let a=parseInt(m[2],10),b=parseInt(m[3],10);
+      if(a>12&&b<=12){const x=a;a=b;b=x;}
+      return nlpMonthDay(base,a-1,b,m[4]!=null?parseInt(m[4],10):null);
+    }],
+    // oct 24, October 24th, oct 24 2026
+    [new RegExp(lead+'\\b('+mon+')\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b(?:,?\\s+(\\d{4})\\b)?','i'),m=>
+      nlpMonthDay(base,NLP_MONTHS[m[2].toLowerCase()],parseInt(m[3],10),m[4]!=null?parseInt(m[4],10):null)],
+    // 24 oct, 24th of October
+    [new RegExp(lead+'\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?('+mon+')\\b','i'),m=>
+      nlpMonthDay(base,NLP_MONTHS[m[3].toLowerCase()],parseInt(m[2],10),null)],
+    // the 24th — this month, or next month once it has passed
+    [new RegExp(lead+'\\bthe\\s+(\\d{1,2})(?:st|nd|rd|th)\\b','i'),m=>{
+      const day=parseInt(m[2],10);
+      let d=new Date(base.getFullYear(),base.getMonth(),day);
+      if(d<base)d=new Date(base.getFullYear(),base.getMonth()+1,day);
+      return d.getDate()===day?d:null;
+    }]
+  ];
+  let best=null;
+  for(const[re,fn] of rules){
+    const m=t.match(re);
+    if(!m)continue;
+    const d=fn(m);
+    if(d&&(!best||m.index<best.index))best={date:fluxLocalYMD(d),match:m[0],index:m.index};
   }
+  return best;
+}
 
-  // Extract due date: "due Tuesday", "by Friday", "tomorrow", "today"
-  const dateMatch=t.match(/(?:due|by|on)\s+(\w+)|^(today|tomorrow)$/i)||t.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today)\b/i);
-  if(dateMatch){
-    const dayWord=(dateMatch[1]||dateMatch[2]||dateMatch[0]).toLowerCase();
-    const offset=NLP_DAYS[dayWord];
-    if(offset!==undefined){
-      const d=new Date(TODAY);
-      if(dayWord==='today'){}
-      else if(dayWord==='tomorrow')d.setDate(d.getDate()+1);
-      else{
-        const current=d.getDay();
-        let diff=offset-current;
-        if(diff<=0)diff+=7;
-        d.setDate(d.getDate()+diff);
-      }
-      result.date=fluxLocalYMD(d);
-    }
-    t=t.replace(dateMatch[0],'').replace(/due|by|on/gi,'').trim();
-  }
-
-  // Match subject from classes
-  const subjs=getSubjects();
+/** The key of the class named in `t`, or ''. Whole words only. */
+function nlpFindSubject(t){
+  let subjs={};
+  try{subjs=getSubjects()||{};}catch(_){}
+  const words=String(t).toLowerCase().match(/[a-z0-9]+/g)||[];
+  const wordSet=new Set(words);
+  const joined=' '+words.join(' ')+' ';
+  let best=null;
   for(const[key,s] of Object.entries(subjs)){
-    if(t.toLowerCase().includes(s.name.toLowerCase())||t.toLowerCase().includes(key.toLowerCase())){
-      result.subject=key;
-      t=t.replace(new RegExp(s.name,'gi'),'').replace(new RegExp(key,'gi'),'').trim();
-      break;
-    }
+    const allNameWords=String(s&&s.name||'').toLowerCase().match(/[a-z0-9]+/g)||[];
+    const nameWords=allNameWords.filter(w=>!NLP_SUBJECT_SKIP.has(w));
+    const short=String(s&&s.short||'').toLowerCase().trim();
+    let score=0;
+    if(allNameWords.length&&joined.includes(' '+allNameWords.join(' ')+' '))score=3;
+    else if(short.length>=2&&wordSet.has(short))score=2;
+    else if(nameWords.some(w=>w.length>=4&&wordSet.has(w)))score=2;
+    else if(words.some(w=>(NLP_SUBJECT_ALIASES[w]||[]).some(tg=>nameWords.some(nw=>nw.startsWith(tg)))))score=1;
+    if(score&&(!best||score>best.score))best={key,score};
+  }
+  return best?best.key:'';
+}
+
+/** `now` is for tests; everyone else gets today. */
+function parseNLTask(text,now){
+  if(!text||!String(text).trim())return null;
+  const original=String(text).trim();
+  const result={name:'',priority:'med',date:'',time:'',type:'hw',estTime:0,subject:''};
+  let t=' '+original+' ';
+  const cut=s=>{t=t.replace(s,' ');};
+
+  // Priority: only words that clearly mean it, so "high school" stays in the name.
+  const hi=t.match(/\s(?:!!+|!high)(?=\s)|\b(?:high priority|urgent|asap|important)\b/i);
+  const lo=t.match(/\s!low(?=\s)|\blow priority\b/i);
+  if(hi){result.priority='high';cut(hi[0]);}
+  else if(lo){result.priority='low';cut(lo[0]);}
+
+  // Estimate: "45 min", "1h", "1.5 hrs", "for 2 hours". The unit has to end the
+  // word, so the "3 h" at the start of "3 homework" is not three hours.
+  const est=t.match(/\b(?:for\s+|takes\s+)?(\d+(?:\.\d+)?)\s*(minutes?|mins?|hours?|hrs?|h)\b/i);
+  if(est){
+    const n=parseFloat(est[1]);
+    result.estTime=Math.round(/^h/i.test(est[2])?n*60:n);
+    cut(est[0]);
   }
 
-  // Remaining text = task name
-  result.name=t.replace(/\s+/g,' ').trim()||text.trim();
+  // Time of day: "at 3pm", "9:30am", "at 15:00".
+  const tm=t.match(/\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i)||t.match(/\bat\s+(\d{1,2}):(\d{2})\b/i);
+  if(tm){
+    let h=parseInt(tm[1],10);const mi=tm[2]?parseInt(tm[2],10):0;const ap=(tm[3]||'').toLowerCase();
+    if(ap==='pm'&&h<12)h+=12;
+    if(ap==='am'&&h===12)h=0;
+    if(h<24&&mi<60){result.time=String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0');cut(tm[0]);}
+  }
+
+  const dm=nlpFindDate(t,now instanceof Date?now:new Date());
+  if(dm){result.date=dm.date;cut(dm.match);}
+
+  for(const[type,re] of NLP_TYPE_RULES){if(re.test(t)){result.type=type;break;}}
+  result.subject=nlpFindSubject(t);
+
+  // Tidy what's left: a "due" / "by" left hanging at either end, stray punctuation, spaces.
+  let name=t.replace(/\s+/g,' ').trim()
+    .replace(/^(?:due|by|on|for|at)\s+/i,'')
+    .replace(/\s+(?:due|by|on|for|at)$/i,'')
+    .replace(/[\s,;:–—-]+$/,'').replace(/^[\s,;:–—-]+/,'').trim();
+  if(!name)name=original;
+  result.name=name.charAt(0).toUpperCase()+name.slice(1);
   return result;
 }
+window.parseNLTask=parseNLTask;
 
 function addTaskFromNL(text){
   const parsed=parseNLTask(text);
@@ -19336,6 +19518,7 @@ function resolveQuickAddParse(raw){
       type:nl.type||'hw',
       subject:nl.subject||'',
       estTime:nl.estTime||0,
+      time:nl.time||'',
       difficulty:3
     };
   }
@@ -19384,7 +19567,7 @@ function submitQuickAdd(){
     id:Date.now()+Math.random(),name:parsed.name,
     subject:parsed.subject||'',priority:parsed.priority||'med',
     date:parsed.date||'',type:parsed.type||'hw',
-    estTime:parsed.estTime||0,difficulty:parsed.difficulty||3,
+    estTime:parsed.estTime||0,difficulty:parsed.difficulty||3,time:parsed.time||'',
     done:false,rescheduled:0,createdAt:Date.now()
   };
   t.urgencyScore=calcUrgency(t);
@@ -19393,7 +19576,7 @@ function submitQuickAdd(){
   updateQuickAddPreview('');
   renderStats();renderTasks();renderCalendar();renderCountdown();
   checkAllPanic();
-  showToast('Added: '+t.name,'success');
+  showToast('Added: '+t.name+(t.date?' — due '+fmtFluxDate(t.date,'short'):''),'success');
   syncKey('tasks',tasks);panicCheck(t);
 }
 function parseNaturalTask(raw){

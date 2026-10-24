@@ -18,7 +18,8 @@
   browser (IndexedDB) by flux-tutor-store.js. Flux AI is never called.
 -->
 <link rel="stylesheet" href="public/css/flux-hub.css?v=6a462093">
-<link rel="stylesheet" href="public/css/flux-teacher-app.css?v=3b1825d6">
+<link rel="stylesheet" href="public/css/flux-loader.css?v=cd68603a">
+<link rel="stylesheet" href="public/css/flux-teacher-app.css?v=5b9154f1">
 <script src="public/js/flux-theme-carry.js?v=41b239bd"></script>
 <script src="public/js/flux-tutor-theme.js?v=85252ce1"></script>
 </head>
@@ -36,13 +37,21 @@
   </header>
 
   <main id="teacherApp" class="ft-main">
-    <p class="ft-loading">Opening your study sets…</p>
+    <div class="flux-loader flux-loader--quick ft-loading" role="status">
+      <svg class="flux-loader__mark" viewBox="0 0 440 220" aria-hidden="true">
+        <defs><linearGradient id="ftLoaderMark" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#00c2ff"/><stop offset="100%" stop-color="#7c5cff"/></linearGradient></defs>
+        <path class="flux-loader__path" pathLength="1" transform="translate(268,110)" stroke="url(#ftLoaderMark)" d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"/>
+        <path class="flux-loader__run" pathLength="1" transform="translate(268,110)" d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"/>
+        <circle class="flux-loader__dot" cx="268" cy="110" r="13"/>
+      </svg>
+      <div class="flux-loader__label">Opening your study sets</div>
+    </div>
     <noscript><p class="ft-alert">Flux Tutor needs JavaScript to run.</p></noscript>
   </main>
   <div class="ft-toasts" id="ftToasts"></div>
   <div class="ft-visually-hidden" id="ftLive" aria-live="polite" aria-atomic="true"></div>
 
-  <script src="public/js/flux-hub.js?v=ca7939dc"></script>
+  <script src="public/js/flux-hub.js?v=a1d4048b"></script>
   <script src="public/js/flux-tutor-core.js?v=d396ef48"></script>
   <script src="public/js/flux-tutor-store.js?v=d29051a8"></script>
   <script src="public/js/flux-flash-core.js?v=4b8fcb32"></script>
