@@ -150,6 +150,8 @@ test.describe('Flux Pixel', () => {
  * under them, as holes that stay with the item when it moves.
  */
 test.describe('Flux Pixel: the eraser', () => {
+  // These rub out pen strokes; a dead-straight stroke would otherwise be tidied into a line by shape snap.
+  test.beforeEach(async ({ page }) => { await page.addInitScript(() => localStorage.setItem('flux_pixel_snap', '0')); });
   type Box = { x: number; y: number; width: number; height: number };
   const at = (box: Box, x: number, y: number): [number, number] => [box.x + (x * box.width) / 1600, box.y + (y * box.height) / 1000];
   async function stroke(page: import('@playwright/test').Page, box: Box, y: number) {

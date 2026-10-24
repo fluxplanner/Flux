@@ -318,9 +318,21 @@ select.px-f-in { appearance: auto; }
 }
 /* A shorter window: the tools in two columns, so none is out of reach. */
 @media (min-width: 761px) and (max-height: 980px) {
-  .px-tools { display: grid; grid-template-columns: repeat(2, 42px); grid-auto-rows: 42px; align-content: start; gap: 3px; }
+  .px-tools { display: grid; grid-template-columns: repeat(2, 42px); grid-auto-rows: auto; align-content: start; gap: 3px; }
   .px-tools .px-tool { width: 42px; height: 42px; }
   .px-tools-sep { grid-column: 1 / -1; height: 1px; margin: 2px 4px; }
   .px-editor.is-figures .px-tools { grid-template-columns: repeat(2, 64px); grid-auto-rows: auto; }
   .px-editor.is-figures .px-tools .px-tool { width: 64px; height: auto; min-height: 42px; }
 }
+
+/* ── Whiteboard: hand tool, laser, Present ─────────────────────────────── */
+.px-svg[data-mode="hand"] { cursor: grab; }
+.px-svg.is-panning { cursor: grabbing; }
+.px-svg[data-mode="laser"] { cursor: none; }
+.px-svg[data-mode="note"] #pxItems [data-id] { cursor: text; }
+#pxLaser { pointer-events: none; }
+.px-present-exit { display: none; }
+.px-editor.is-present { background: #0b0d14; }
+.px-editor.is-present .px-top,
+.px-editor.is-present .px-props { display: none; }
+.px-editor.is-present .px-present-exit { display: inline-flex; position: fixed; top: max(12px, env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); z-index: 30; box-shadow: 0 10px 30px -12px #000; }

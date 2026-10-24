@@ -6,6 +6,11 @@
    on an SVG page, so it can be picked up, moved, resized, recoloured and
    undone, and exported as a sharp PNG or SVG.
 
+   Whiteboard tools too: sticky notes, a laser pointer for presenting, shape
+   snap (a rough circle, box, triangle or line is tidied up), pinch and
+   Ctrl+scroll zoom round the pointer, a hand tool (or hold Space) to move
+   the view, and Present, which fills the screen with just the page.
+
    ROUTES
      #/          your drawings
      #/d/<id>    the editor
@@ -85,6 +90,10 @@
     square: svgIcon('<path d="M4 20V4l16 16z"/><path d="M4 14h4v6"/>'),
     compass: svgIcon('<circle cx="12" cy="4" r="1.6"/><path d="M11 5.5 6 20M13 5.5 18 20M8.5 13h7"/>'),
     panel: svgIcon('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>'),
+    hand: svgIcon('<path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/>'),
+    note: svgIcon('<path d="M15 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z"/><path d="M15 21v-6h6M7 8h10M7 12h6"/>'),
+    laser: svgIcon('<circle cx="18" cy="6" r="3" fill="currentColor"/><path d="M15.5 8.5 4 20"/><path d="M13 5 11 3M21 11l2 2M18 1v1"/>'),
+    present: svgIcon('<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4M10 7l5 3-5 3z"/>'),
     link: svgIcon('<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>'),
   };
   /* Flux Figures mode: one button per kind of figure down the left. */
@@ -109,11 +118,14 @@
     ['box', 'Box', 'Drag a box: everything inside it is rubbed out'],
   ];
   var TOOLS = [
-    ['select', 'Select and move', 'V'], ['pen', 'Pen', 'P'], ['hl', 'Highlighter', 'H'], ['eraser', 'Eraser', 'E'],
+    ['select', 'Select and move', 'V'], ['hand', 'Move the view (or hold Space)', 'G'], ['pen', 'Pen', 'P'], ['hl', 'Highlighter', 'H'], ['eraser', 'Eraser', 'E'],
     ['line', 'Line', 'L'], ['arrow', 'Arrow', 'A'], ['vector', 'Vector', 'W'], ['rect', 'Box', 'R'], ['ellipse', 'Circle', 'O'],
-    ['text', 'Text', 'T'], ['label', 'Label with a line', 'B'], ['stamp', 'Stamps', 'S'], ['image', 'Picture', 'I'],
-    ['compass', 'Compass', 'K'], ['figure', 'Flux Figures panel', 'M'],
+    ['text', 'Text', 'T'], ['note', 'Sticky note', 'N'], ['label', 'Label with a line', 'B'], ['stamp', 'Stamps', 'S'], ['image', 'Picture', 'I'],
+    ['laser', 'Laser pointer', 'X'], ['compass', 'Compass', 'K'], ['figure', 'Flux Figures panel', 'M'],
   ];
+  var NOTE_COLORS = [['#fef08a', 'Yellow'], ['#fbcfe8', 'Pink'], ['#bfdbfe', 'Blue'], ['#bbf7d0', 'Green'], ['#fed7aa', 'Orange'], ['#e9d5ff', 'Purple']];
+  var SNAP_PREF = 'flux_pixel_snap';
+  var ZOOM_MIN = 0.25, ZOOM_MAX = 6;
   var VEC_PREF = 'flux_pixel_vector';
   var VEC_DIRS = [['angle', 'Angle from +x'], ['bearing', 'Bearing'], ['compass', 'Compass (N 30\u00b0 E)']];
   var RESULTANT = '#dc2626';
@@ -184,6 +196,87 @@
     var longest = lines.reduce(function (m, l) { return Math.max(m, l.length); }, 1);
     return { w: Math.max(it.size * 0.6, longest * it.size * 0.56), h: lines.length * it.size * 1.25 };
   }
+  /* Sticky notes wrap their text to the note and shrink it until it fits. */
+  var measureCtx = null;
+  function textWidth(str, size) {
+    try {
+      measureCtx = measureCtx || document.createElement('canvas').getContext('2d');
+      measureCtx.font = size + 'px Inter, system-ui, -apple-system, Segoe UI, sans-serif';
+      return measureCtx.measureText(str).width;
+    } catch (e) { return str.length * size * 0.56; }
+  }
+  function wrapText(text, maxW, size) {
+    var out = [];
+    textLines(text).forEach(function (para) {
+      var line = '';
+      para.split(/\s+/).forEach(function (word) {
+        while (textWidth(word, size) > maxW && word.length > 1) {
+          var n = word.length - 1;
+          while (n > 1 && textWidth(word.slice(0, n), size) > maxW) n--;
+          if (line) { out.push(line); line = ''; }
+          out.push(word.slice(0, n)); word = word.slice(n);
+        }
+        var next = line ? line + ' ' + word : word;
+        if (line && textWidth(next, size) > maxW) { out.push(line); line = word; } else line = next;
+      });
+      out.push(line);
+    });
+    return out;
+  }
+  var NOTE_PAD = 16;
+  function noteText(it) {
+    var size = it.size || 26, maxW = Math.max(20, it.w - NOTE_PAD * 2), maxH = Math.max(20, it.h - NOTE_PAD * 2), lines;
+    for (;;) {
+      lines = wrapText(it.text, maxW, size);
+      if (lines.length * size * 1.25 <= maxH || size <= 10) break;
+      size = Math.max(10, size * 0.9);
+    }
+    return { lines: lines, size: size };
+  }
+
+  /* ── Shape snap ─────────────────────────────────────────────────────────
+     A pen stroke that is nearly a straight line, a circle, a box or a
+     triangle is redrawn as that shape. Anything else stays as drawn. */
+  function rdp(pts, eps) {
+    if (pts.length < 3) return pts.slice();
+    var a = pts[0], b = pts[pts.length - 1], far = 0, at = 0;
+    for (var i = 1; i < pts.length - 1; i++) { var d = distPtSeg(pts[i], a, b); if (d > far) { far = d; at = i; } }
+    if (far <= eps) return [a, b];
+    return rdp(pts.slice(0, at + 1), eps).slice(0, -1).concat(rdp(pts.slice(at), eps));
+  }
+  function recognise(pts) {
+    if (pts.length < 6) return null;
+    var L = 0;
+    for (var i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    if (L < 60) return null;
+    var first = pts[0], last = pts[pts.length - 1], chord = Math.hypot(last[0] - first[0], last[1] - first[1]);
+    if (chord / L > 0.94) return { kind: 'line', item: { type: 'line', x1: first[0], y1: first[1], x2: last[0], y2: last[1] } };
+    if (chord > Math.max(30, L * 0.2)) return null;
+    var xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
+    var x0 = Math.min.apply(0, xs), y0 = Math.min.apply(0, ys), w = Math.max.apply(0, xs) - x0, h = Math.max.apply(0, ys) - y0;
+    if (w < 16 || h < 16) return null;
+    var cx = x0 + w / 2, cy = y0 + h / 2;
+    // How far each point is from the ellipse that fits the box (1 = on it).
+    var dev = pts.reduce(function (m, p) { return m + Math.abs(Math.hypot((p[0] - cx) / (w / 2), (p[1] - cy) / (h / 2)) - 1); }, 0) / pts.length;
+    var loop = rdp(pts.concat([first]), L * 0.05);
+    var corners = loop.slice(0, -1);
+    // Drop a corner that is only the stroke's start and end meeting.
+    if (corners.length > 3 && Math.hypot(corners[0][0] - corners[corners.length - 1][0], corners[0][1] - corners[corners.length - 1][1]) < L * 0.08) corners.pop();
+    if (corners.length === 4) {
+      var square = corners.every(function (c, k) {
+        var n = corners[(k + 1) % 4], ang = Math.abs(Math.atan2(n[1] - c[1], n[0] - c[0]) * 180 / Math.PI) % 90;
+        return ang < 14 || ang > 76;
+      });
+      if (square && dev > 0.08) return { kind: 'box', item: { type: 'rect', x: x0, y: y0, w: w, h: h, fill: false, dash: false } };
+    }
+    if (corners.length === 3 && dev > 0.1) return { kind: 'triangle', item: { type: 'pen', poly: true, closed: true, pts: corners } };
+    if (dev < 0.14) {
+      if (Math.abs(w - h) / Math.max(w, h) < 0.18) { var m = (w + h) / 2; x0 = cx - m / 2; y0 = cy - m / 2; w = h = m; }
+      return { kind: 'circle', item: { type: 'ellipse', x: x0, y: y0, w: w, h: h, fill: false, dash: false } };
+    }
+    return null;
+  }
+
   function bbox(it) {
     var xs, ys, pad = (it.width || 0) / 2;
     switch (it.type) {
@@ -367,7 +460,7 @@
     var c = it.color || '#111827', w = it.width || 3, out = '', fat = 'stroke="transparent" fill="none" stroke-width="' + (w + 16) + '" pointer-events="stroke" stroke-linecap="round"';
     switch (it.type) {
       case 'pen': case 'hl': {
-        var d = smoothPath(it.pts);
+        var d = it.poly ? 'M' + it.pts.map(function (q) { return r1(q[0]) + ' ' + r1(q[1]); }).join(' L') + (it.closed ? ' Z' : '') : smoothPath(it.pts);
         out = '<path d="' + d + '" fill="none" stroke="' + c + '" stroke-width="' + w + '" stroke-linecap="round" stroke-linejoin="round"' + (it.type === 'hl' ? ' opacity=".38"' : '') + '/>';
         if (it.pts.length === 1) out = '<circle cx="' + r1(it.pts[0][0]) + '" cy="' + r1(it.pts[0][1]) + '" r="' + w / 2 + '" fill="' + c + '"' + (it.type === 'hl' ? ' opacity=".38"' : '') + '/>';
         if (hit) out += '<path d="' + d + '" ' + fat + '/>';
@@ -421,6 +514,13 @@
         var vv = vecDrawn(it);
         out = vv ? vv.svg : '';
         if (hit) out += '<line x1="' + r1(it.x1) + '" y1="' + r1(it.y1) + '" x2="' + r1(it.x2) + '" y2="' + r1(it.y2) + '" ' + fat + '/>';
+        break;
+      }
+      case 'note': {
+        var nt = noteText(it), bg = it.bg || NOTE_COLORS[0][0];
+        out = '<rect x="' + r1(it.x + 3) + '" y="' + r1(it.y + 6) + '" width="' + r1(it.w) + '" height="' + r1(it.h) + '" rx="6" fill="#0f172a" opacity=".14"/>'
+          + '<rect x="' + r1(it.x) + '" y="' + r1(it.y) + '" width="' + r1(it.w) + '" height="' + r1(it.h) + '" rx="6" fill="' + esc(bg) + '" stroke="#0f172a" stroke-opacity=".12" stroke-width="1.5"/>'
+          + (it.text ? textSVG(nt.lines, it.x + NOTE_PAD, it.y + NOTE_PAD, nt.size, c, 'start', it.bold) : '');
         break;
       }
       case 'image':
@@ -620,7 +720,9 @@
         sel: null, zoom: 1, stamp: null, drag: null, draft: null,
         hist: [JSON.stringify(doc.items)], hi: 0,
         eraseMode: 'whole', eraseR: 18,
+        noteBg: NOTE_COLORS[0][0], snap: true,
       };
+      try { st.snap = localStorage.getItem(SNAP_PREF) !== '0'; } catch (e) {}
       try {
         var ep = JSON.parse(localStorage.getItem(ERASE_PREF) || 'null');
         if (ep && ERASE_MODES.some(function (m) { return m[0] === ep.mode; })) st.eraseMode = ep.mode;
@@ -938,6 +1040,7 @@
         + '<div class="px-modes" role="group" aria-label="Mode">'
         + '<button type="button" class="px-mode" data-mode-set="draw">' + ICON.pen + '<span>Draw</span></button>'
         + '<button type="button" class="px-mode" data-mode-set="figures">' + ICON.figure + '<span>Flux Figures</span></button></div>'
+        + '<button type="button" class="px-btn px-btn--small" data-act="present" title="Fill the screen with the page">' + ICON.present + '<span>Present</span></button>'
         + '<button type="button" class="px-btn px-btn--small" data-act="copy">' + ICON.copy + '<span>Copy</span></button>'
         + '<button type="button" class="px-btn px-btn--small px-btn--primary" data-act="png">' + ICON.download + '<span>PNG</span></button>'
         + '<button type="button" class="px-btn px-btn--small" data-act="svg"><span>SVG</span></button>'
@@ -949,10 +1052,11 @@
         + '<div class="px-stage" id="pxStage"><div class="px-wrap" id="pxWrap">'
         + '<svg class="px-svg" id="pxSvg" viewBox="0 0 ' + W + ' ' + H + '" xmlns="' + NS + '"><defs id="pxDefs"></defs>'
         + '<rect width="' + W + '" height="' + H + '" fill="#fff"/><rect id="pxBgRect" width="' + W + '" height="' + H + '" fill="none"/>'
-        + '<g id="pxItems"></g><g id="pxInst"></g><g id="pxDraft"></g><g id="pxSel"></g></svg>'
+        + '<g id="pxItems"></g><g id="pxInst"></g><g id="pxDraft"></g><g id="pxSel"></g><g id="pxLaser"></g></svg>'
         + '<textarea class="px-textin" id="pxText" hidden rows="1" aria-label="Text"></textarea>'
         + '<div class="px-float" id="pxFloat" role="toolbar" aria-label="Selected" hidden></div></div></div>'
         + '<div class="px-props" id="pxProps"></div>'
+        + '<button type="button" class="px-btn px-btn--small px-present-exit" data-act="present">Exit (Esc)</button>'
         + '</div>'
         + '<input type="file" accept="image/*" id="pxFile" hidden>'
         + '</div>';
@@ -1044,7 +1148,7 @@
         var bar = $('#pxFloat', host);
         if (!bar) return;
         if (!it || st.drag) { bar.hidden = true; return; }
-        var s = pageScale(), edit = it.type === 'figure' ? 'Change' : (it.type === 'text' || it.type === 'label') ? 'Edit text' : '';
+        var s = pageScale(), edit = it.type === 'figure' ? 'Change' : (it.type === 'text' || it.type === 'label' || it.type === 'note') ? 'Edit text' : '';
         bar.innerHTML = (edit ? '<button type="button" class="px-fl-b px-fl-b--main" data-act="' + (it.type === 'figure' ? 'figfocus' : 'edittext') + '">' + (it.type === 'figure' ? ICON.figure : ICON.text) + '<span>' + edit + '</span></button>' : '')
           + '<button type="button" class="px-fl-b" data-act="dup" aria-label="Duplicate" title="Duplicate (Ctrl+D)">' + ICON.copy + '</button>'
           + '<button type="button" class="px-fl-b" data-act="front" aria-label="To front" title="To front">' + ICON.front + '</button>'
@@ -1062,6 +1166,8 @@
         var showFill = it ? (it.type === 'rect' || it.type === 'ellipse') : (st.tool === 'rect' || st.tool === 'ellipse');
         var showDash = it ? /^(line|arrow|rect|ellipse|vector)$/.test(it.type) : /^(line|arrow|rect|ellipse)$/.test(st.tool);
         var erasing = st.tool === 'eraser' && !it;
+        var isNote = it ? it.type === 'note' : st.tool === 'note';
+        var texty = it && (it.type === 'text' || it.type === 'label' || it.type === 'note');
         if (st.mode === 'figures' && !it) {
           props.innerHTML = figStartHTML() + '<div class="px-sec"><span class="px-sec-h">Paper</span><div class="px-row">' + BGS.map(function (b) {
             return '<button type="button" class="px-chip' + (doc.bg === b[0] ? ' is-on' : '') + '" data-bg="' + b[0] + '">' + esc(b[1]) + '</button>';
@@ -1072,8 +1178,18 @@
           return '<button type="button" class="px-color' + (c === color ? ' is-on' : '') + '" data-color="' + c + '" style="--c:' + c + '" aria-label="Colour ' + c + '"></button>';
         }).join('') + '<label class="px-color px-color--pick" title="Any colour"><input type="color" value="' + color + '" data-pick aria-label="Pick any colour"></label></div></div>';
         if (!erasing && (!it || (it.type !== 'image' && it.type !== 'figure'))) {
-          html += '<div class="px-sec"><span class="px-sec-h">' + (it && (it.type === 'text' || it.type === 'label') ? 'Text size' : 'Thickness') + '</span>'
-            + (it && (it.type === 'text' || it.type === 'label')
+          if (isNote) {
+            var nbg = it ? (it.bg || NOTE_COLORS[0][0]) : st.noteBg;
+            html += '<div class="px-sec"><span class="px-sec-h" id="pxNoteH">Note colour</span><div class="px-colors" role="group" aria-labelledby="pxNoteH">' + NOTE_COLORS.map(function (n) {
+              return '<button type="button" class="px-color' + (n[0] === nbg ? ' is-on' : '') + '" data-notebg="' + n[0] + '" style="--c:' + n[0] + '" aria-label="' + n[1] + ' note" aria-pressed="' + (n[0] === nbg) + '"></button>';
+            }).join('') + '</div><p class="px-hint">The colour above is the writing. Click the page to add a note; double-click one to write on it.</p></div>';
+          }
+          if (!it && st.tool === 'pen') {
+            html += '<div class="px-sec px-toggles"><button type="button" class="px-chip' + (st.snap ? ' is-on' : '') + '" data-act="snap" aria-pressed="' + st.snap + '">Shape snap</button>'
+              + '<p class="px-hint">Draw a rough circle, box, triangle or straight line and it is tidied up. Undo keeps it as you drew it.</p></div>';
+          }
+          html += '<div class="px-sec"><span class="px-sec-h">' + (texty ? 'Text size' : 'Thickness') + '</span>'
+            + (texty
               ? '<input type="range" min="12" max="120" value="' + Math.round(it.size) + '" data-size aria-label="Text size">'
               : '<input type="range" min="1" max="' + (st.tool === 'hl' || (it && it.type === 'hl') ? 60 : 24) + '" value="' + width + '" data-width aria-label="Thickness">') + '</div>';
         }
@@ -1083,7 +1199,7 @@
             + (showDash ? '<button type="button" class="px-chip' + ((it ? it.dash : st.dash) ? ' is-on' : '') + '" data-toggle="dash">Dashed</button>' : '')
             + '</div>';
         }
-        if (it && (it.type === 'text' || it.type === 'label')) html += '<div class="px-sec px-toggles"><button type="button" class="px-chip' + (it.bold ? ' is-on' : '') + '" data-toggle="bold">Bold</button><button type="button" class="px-chip" data-act="edittext">Edit text</button></div>';
+        if (texty) html += '<div class="px-sec px-toggles"><button type="button" class="px-chip' + (it.bold ? ' is-on' : '') + '" data-toggle="bold">Bold</button><button type="button" class="px-chip" data-act="edittext">Edit text</button></div>';
         if (st.tool === 'stamp') {
           html += '<div class="px-sec px-stamps"><span class="px-sec-h">Stamps — pick one, then tap the page</span>'
             + '<input type="search" class="px-stamp-q" placeholder="Search stamps" aria-label="Search stamps" value="' + esc(st.stampQ || '') + '">'
@@ -1119,7 +1235,7 @@
           return '<button type="button" class="px-chip' + (doc.bg === b[0] ? ' is-on' : '') + '" data-bg="' + b[0] + '">' + esc(b[1]) + '</button>';
         }).join('') + '</div></div>'
           + '<div class="px-sec"><button type="button" class="px-link px-danger" data-act="clear">Clear the page</button></div>'
-          + '<p class="px-keys">V select · P pen · H highlight · E erase · L line · A arrow · W vector · R box · O circle · T text · B label · S stamps · M Flux Figures panel · Del delete · Ctrl+Z undo</p>';
+          + '<p class="px-keys">V select · G move the view (or hold Space) · Ctrl+scroll or pinch to zoom · N sticky note · X laser · P pen · H highlight · E erase · L line · A arrow · W vector · R box · O circle · T text · B label · S stamps · M Flux Figures panel · Del delete · Ctrl+Z undo</p>';
         props.innerHTML = html;
         if (it && it.type === 'figure') mountFigInline(it);
         if (st.stampQ) filterStamps();
@@ -1299,12 +1415,12 @@
         st.tool = t;
         if (t !== 'select') st.sel = null;
         if (t === 'stamp' && !st.stamp) st.stamp = 'beaker';
-        svg.setAttribute('data-mode', t);
+        svg.setAttribute('data-mode', spaceDown ? 'hand' : t);
         svg.setAttribute('data-eraser', st.eraseMode);
         draftG.innerHTML = '';
         drawTools(); drawSel(); drawProps();
       }
-      var ADDED = { pen: 'Drew a line', hl: 'Highlighted', line: 'Added a line', arrow: 'Added an arrow', vector: 'Added a vector', rect: 'Added a box', ellipse: 'Added a circle', text: 'Added text', label: 'Added a label', stamp: 'Added a stamp', image: 'Added a picture', figure: 'Added a figure' };
+      var ADDED = { pen: 'Drew a line', hl: 'Highlighted', line: 'Added a line', arrow: 'Added an arrow', vector: 'Added a vector', rect: 'Added a box', ellipse: 'Added a circle', text: 'Added text', label: 'Added a label', note: 'Added a sticky note', stamp: 'Added a stamp', image: 'Added a picture', figure: 'Added a figure' };
       function addItem(it, what) { it.id = uid(); doc.items.push(it); drawItems(); commit(what || ADDED[it.type] || 'Added'); return it; }
 
       /* Text entry, for text and labels */
@@ -1319,10 +1435,14 @@
         textIn.style.top = (sr.top - wr.top + at[1] * s) + 'px';
         textIn.style.fontSize = Math.max(12, size * s) + 'px';
         textIn.style.color = existing ? existing.color : st.color;
-        editing = { onDone: onDone };
+        editing = { onDone: onDone, fixedW: existing && existing.width ? existing.width * s : 0 };
         setTimeout(function () { textIn.focus(); autosize(); }, 0);
       }
-      function autosize() { textIn.style.height = 'auto'; textIn.style.height = textIn.scrollHeight + 'px'; textIn.style.width = 'auto'; textIn.style.width = Math.max(140, textIn.scrollWidth + 20) + 'px'; }
+      function autosize() {
+        textIn.style.height = 'auto'; textIn.style.height = textIn.scrollHeight + 'px';
+        if (editing && editing.fixedW) { textIn.style.width = editing.fixedW + 'px'; return; }
+        textIn.style.width = 'auto'; textIn.style.width = Math.max(140, textIn.scrollWidth + 20) + 'px';
+      }
       function closeText(keep) {
         if (!editing) return;
         var ed = editing; editing = null;
@@ -1339,6 +1459,15 @@
       textIn.addEventListener('blur', function () { closeText(true); });
 
       function editTextOf(it) {
+        if (it.type === 'note') {
+          var was = it.text;
+          it.text = ''; drawItems();
+          openText([it.x + NOTE_PAD, it.y + NOTE_PAD], { size: noteText({ text: was, w: it.w, h: it.h, size: it.size }).size, color: it.color, text: was, width: it.w - NOTE_PAD * 2 }, function (v) {
+            it.text = v == null ? was : v;
+            drawItems(); drawProps(); commit(was ? 'Changed a note' : 'Wrote on a note');
+          });
+          return;
+        }
         var at = it.type === 'label' ? [it.x2 + (it.x2 >= it.x1 ? 8 : -160), it.y2 - it.size * 0.6] : [it.x, it.y];
         var before = it.text;
         it.text = '';
@@ -1350,6 +1479,81 @@
           drawItems(); drawProps(); commit();
         });
       }
+
+      /* ── Zoom and pan ──────────────────────────────────────────────────
+         Zoom keeps the point under the pointer (or the middle of the view)
+         where it is. Pan scrolls the stage: the hand tool, Space held down,
+         the middle mouse button, or two fingers. */
+      function zoomTo(z, cx, cy) {
+        z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
+        var sr = stage.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+        if (cx == null) { cx = sr.left + sr.width / 2; cy = sr.top + sr.height / 2; }
+        var fx = (cx - wr.left) / (wr.width || 1), fy = (cy - wr.top) / (wr.height || 1);
+        st.zoom = z; applyZoom();
+        var nr = wrap.getBoundingClientRect();
+        stage.scrollLeft += nr.left + fx * nr.width - cx;
+        stage.scrollTop += nr.top + fy * nr.height - cy;
+      }
+      function onWheel(e) {
+        if (!(e.ctrlKey || e.metaKey)) return;   // a plain scroll moves the view
+        e.preventDefault();
+        zoomTo(st.zoom * Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.0025)), e.clientX, e.clientY);
+      }
+      stage.addEventListener('wheel', onWheel, { passive: false });
+      var touches = {}, pinch = null, spaceDown = false;
+      function touchList() { return Object.keys(touches).map(function (k) { return touches[k]; }); }
+      function startPinch() {
+        var t = touchList(); if (t.length < 2) return;
+        // A second finger means zoom: drop whatever the first one started.
+        st.drag = null; st.draft = null; draftG.innerHTML = '';
+        pinch = { d0: Math.hypot(t[0].x - t[1].x, t[0].y - t[1].y) || 1, z0: st.zoom, mx: (t[0].x + t[1].x) / 2, my: (t[0].y + t[1].y) / 2 };
+      }
+      function movePinch() {
+        var t = touchList(); if (!pinch || t.length < 2) return;
+        var d = Math.hypot(t[0].x - t[1].x, t[0].y - t[1].y), mx = (t[0].x + t[1].x) / 2, my = (t[0].y + t[1].y) / 2;
+        stage.scrollLeft -= mx - pinch.mx; stage.scrollTop -= my - pinch.my;
+        pinch.mx = mx; pinch.my = my;
+        zoomTo(pinch.z0 * d / pinch.d0, mx, my);
+      }
+      function panning(e) { return st.tool === 'hand' || spaceDown || e.button === 1; }
+      function setHandCursor() { svg.setAttribute('data-mode', spaceDown ? 'hand' : st.tool); }
+
+      /* ── Laser pointer ─────────────────────────────────────────────────
+         A red trail that fades after a moment. It is never saved. */
+      var laserG = $('#pxLaser', host), laserPts = [], laserRaf = 0, LASER_MS = 700;
+      function drawLaser() {
+        var now = Date.now();
+        laserPts = laserPts.filter(function (q) { return now - q.t < LASER_MS; });
+        var k = 1 / (pageScale() || 1), out = '';
+        for (var i = 1; i < laserPts.length; i++) {
+          var a = laserPts[i - 1], b = laserPts[i], o = 1 - (now - b.t) / LASER_MS;
+          out += '<line x1="' + r1(a.p[0]) + '" y1="' + r1(a.p[1]) + '" x2="' + r1(b.p[0]) + '" y2="' + r1(b.p[1]) + '" stroke="#ef4444" stroke-opacity="' + o.toFixed(2) + '" stroke-width="' + r1(6 * k) + '" stroke-linecap="round"/>';
+        }
+        var head = laserPts[laserPts.length - 1];
+        if (head && st.drag && st.drag.mode === 'laser') out += '<circle cx="' + r1(head.p[0]) + '" cy="' + r1(head.p[1]) + '" r="' + r1(9 * k) + '" fill="#ef4444" opacity=".9"/><circle cx="' + r1(head.p[0]) + '" cy="' + r1(head.p[1]) + '" r="' + r1(18 * k) + '" fill="#ef4444" opacity=".2"/>';
+        laserG.innerHTML = out;
+        laserRaf = laserPts.length || (st.drag && st.drag.mode === 'laser') ? requestAnimationFrame(drawLaser) : 0;
+      }
+      function laserAt(p) {
+        laserPts.push({ p: p, t: Date.now() });
+        if (!laserRaf) laserRaf = requestAnimationFrame(drawLaser);
+      }
+
+      /* ── Present ───────────────────────────────────────────────────────
+         Just the page and the tools, filling the screen. Esc leaves. */
+      function setPresent(on) {
+        var ed = host.querySelector('.px-editor');
+        st.present = on;
+        ed.classList.toggle('is-present', on);
+        try {
+          if (on && ed.requestFullscreen && !document.fullscreenElement) ed.requestFullscreen().catch(function () {});
+          if (!on && document.fullscreenElement) document.exitFullscreen().catch(function () {});
+        } catch (e) {}
+        if (on) { st.zoom = 1; setTool('laser'); toast('Presenting. The laser is on; Esc leaves.'); }
+        applyZoom();
+      }
+      function onFullscreen() { if (!document.fullscreenElement && st.present) setPresent(false); }
+      document.addEventListener('fullscreenchange', onFullscreen);
 
       /* Pointer */
       function eraseAt(e) {
@@ -1405,11 +1609,32 @@
         return changed;
       }
       svg.addEventListener('pointerdown', function (e) {
-        if (e.button && e.button !== 0) return;
+        if (e.button && e.button !== 0 && e.button !== 1) return;
+        if (e.pointerType === 'touch') {
+          touches[e.pointerId] = { x: e.clientX, y: e.clientY };
+          if (touchList().length >= 2) { startPinch(); return; }
+        }
         if (editing) { closeText(true); return; }
-        var p = toPage(e);
         try { svg.setPointerCapture(e.pointerId); } catch (er) {}
+        if (panning(e)) {
+          e.preventDefault();
+          st.drag = { mode: 'pan', x: e.clientX, y: e.clientY, sl: stage.scrollLeft, st: stage.scrollTop };
+          svg.classList.add('is-panning');
+          return;
+        }
+        var p = toPage(e);
         var t = st.tool;
+        if (t === 'laser') { st.drag = { mode: 'laser' }; laserAt(p); return; }
+        if (t === 'note') {
+          var hitN = e.target.closest('#pxItems [data-id]');
+          var hn = hitN && doc.items.filter(function (i) { return i.id === hitN.getAttribute('data-id'); })[0];
+          if (hn && hn.type === 'note') { st.sel = hn.id; drawSel(); editTextOf(hn); return; }
+          var ns = 220;
+          var note = addItem({ type: 'note', x: Math.max(0, Math.min(W - ns, p[0] - ns / 2)), y: Math.max(0, Math.min(H - ns, p[1] - ns / 2)), w: ns, h: ns, text: '', size: 26, color: st.color, bg: st.noteBg });
+          st.sel = note.id; drawSel();
+          editTextOf(note);
+          return;
+        }
         // A compass arc in progress: this press puts it down.
         if (st.arc) {
           var A = st.arc; st.arc = null; draftG.innerHTML = '';
@@ -1490,6 +1715,16 @@
         drawDraft();
       });
       svg.addEventListener('pointermove', function (e) {
+        if (e.pointerType === 'touch' && touches[e.pointerId]) {
+          touches[e.pointerId] = { x: e.clientX, y: e.clientY };
+          if (pinch) { movePinch(); return; }
+        }
+        if (st.drag && st.drag.mode === 'pan') {
+          stage.scrollLeft = st.drag.sl - (e.clientX - st.drag.x);
+          stage.scrollTop = st.drag.st - (e.clientY - st.drag.y);
+          return;
+        }
+        if (st.drag && st.drag.mode === 'laser') { laserAt(toPage(e)); return; }
         if (st.arc && !st.drag) {
           var pa = toPage(e), A = st.arc, a1 = Math.atan2(pa[1] - A.c[1], pa[0] - A.c[0]);
           while (a1 < A.a0) a1 += Math.PI * 2;
@@ -1569,9 +1804,15 @@
         }
         drawDraft();
       });
-      function endPointer() {
+      function endPointer(e) {
+        if (e && e.pointerType === 'touch') {
+          delete touches[e.pointerId];
+          if (pinch) { if (touchList().length < 2) pinch = null; st.drag = null; return; }
+        }
         var drag = st.drag; st.drag = null;
         if (!drag) return;
+        if (drag.mode === 'pan') { svg.classList.remove('is-panning'); return; }
+        if (drag.mode === 'laser') return;
         if (drag.mode === 'instmove' || drag.mode === 'instrot') { draftG.innerHTML = ''; saveInst(); return; }
         if (drag.mode === 'compass') {
           draftG.innerHTML = '';
@@ -1617,9 +1858,26 @@
           });
           return;
         }
-        if (d.pts && d.pts.length) { addItem(clean(d)); return; }
+        if (d.pts && d.pts.length) {
+          var stroke = addItem(clean(d));
+          if (d.type === 'pen' && st.snap && !drag.edge) snapStroke(stroke);
+          return;
+        }
         if ('x1' in d && Math.hypot(d.x2 - d.x1, d.y2 - d.y1) > 4) { addItem(clean(d)); return; }
         if ('w' in d && d.w > 4 && d.h > 4) { addItem(clean(d)); }
+      }
+      /** Shape snap: the stroke just drawn becomes the shape it looks like, as its own undo step. */
+      function snapStroke(it) {
+        var got = recognise(it.pts);
+        if (!got) return;
+        var shape = Object.assign(got.item, { id: it.id, color: it.color, width: it.width });
+        var i = doc.items.indexOf(it);
+        if (i < 0) return;
+        doc.items[i] = shape;
+        drawItems();
+        var what = 'Tidied into a ' + got.kind;
+        commit(what);
+        toastAct(what, 'Undo', undo);
       }
       function clean(d) { var o = {}; Object.keys(d).forEach(function (k) { if (k[0] !== '_') o[k] = d[k]; }); return o; }
       svg.addEventListener('pointerup', endPointer);
@@ -1630,7 +1888,7 @@
         var under = document.elementFromPoint(e.clientX, e.clientY);
         var g = (under && under.closest && under.closest('#pxItems [data-id]')) || e.target.closest('#pxItems [data-id]');
         var it = g && doc.items.filter(function (i) { return i.id === g.getAttribute('data-id'); })[0];
-        if (it && (it.type === 'text' || it.type === 'label')) { st.sel = it.id; editTextOf(it); }
+        if (it && (it.type === 'text' || it.type === 'label' || it.type === 'note')) { st.sel = it.id; editTextOf(it); }
         if (it && it.type === 'figure') { st.sel = it.id; drawSel(); drawProps(); openFigures(it); }
       });
       function drawDraft() {
@@ -1675,7 +1933,7 @@
 
       /* Buttons */
       host.onclick = function (e) {
-        var t = e.target.closest('[data-tool],[data-act],[data-color],[data-toggle],[data-bg],[data-stamp],[data-erase],[data-vtog],[data-ventry],[data-mode-set],[data-figkind],[data-newfig],[data-inst-toggle],[data-compass],[data-sqkind]');
+        var t = e.target.closest('[data-tool],[data-act],[data-color],[data-toggle],[data-bg],[data-stamp],[data-erase],[data-vtog],[data-ventry],[data-mode-set],[data-figkind],[data-newfig],[data-inst-toggle],[data-compass],[data-sqkind],[data-notebg]');
         if (!t) return;
         var it = selected();
         if (t.dataset.modeSet) { setMode(t.dataset.modeSet); return; }
@@ -1727,12 +1985,18 @@
           if (it) { it[k] = !it[k]; drawItems(); commit(); } else st[k] = !st[k];
           drawProps(); return;
         }
+        if (t.dataset.notebg) {
+          if (it && it.type === 'note') { it.bg = t.dataset.notebg; drawItems(); commit('Changed the note colour'); } else st.noteBg = t.dataset.notebg;
+          drawProps(); return;
+        }
         if (t.dataset.bg) { doc.bg = t.dataset.bg; drawBg(); drawProps(); save(); return; }
         var a = t.dataset.act;
         if (a === 'undo') undo();
         else if (a === 'redo') redo();
-        else if (a === 'zoomin') { st.zoom = Math.min(4, st.zoom + 0.25); applyZoom(); }
-        else if (a === 'zoomout') { st.zoom = Math.max(0.5, st.zoom - 0.25); applyZoom(); }
+        else if (a === 'zoomin') zoomTo(st.zoom * 1.25);
+        else if (a === 'zoomout') zoomTo(st.zoom / 1.25);
+        else if (a === 'present') setPresent(!st.present);
+        else if (a === 'snap') { st.snap = !st.snap; try { localStorage.setItem(SNAP_PREF, st.snap ? '1' : '0'); } catch (er) {} drawProps(); var sb = props.querySelector('[data-act="snap"]'); if (sb) sb.focus(); }
         else if (a === 'zoomfit') { st.zoom = 1; applyZoom(); }
         else if (a === 'panel') setPanel(!st.panel);
         else if (a === 'delete' && it) {
@@ -1827,6 +2091,11 @@
         if (e.key === 'Escape' && !editing && e.target && e.target.closest && e.target.closest('#pxProps') && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.target.blur(); return; }
         if (editing || /INPUT|TEXTAREA|SELECT/.test((e.target && e.target.tagName) || '')) return;
         var mod = e.metaKey || e.ctrlKey;
+        if (e.key === ' ' && !mod && !(e.target && e.target.closest && e.target.closest('button,a'))) { e.preventDefault(); if (!spaceDown) { spaceDown = true; setHandCursor(); } return; }
+        if (mod && (e.key === '=' || e.key === '+')) { e.preventDefault(); zoomTo(st.zoom * 1.25); return; }
+        if (mod && e.key === '-') { e.preventDefault(); zoomTo(st.zoom / 1.25); return; }
+        if (mod && e.key === '0') { e.preventDefault(); zoomTo(1); return; }
+        if (e.key === 'Escape' && st.present && !document.fullscreenElement) { setPresent(false); return; }
         if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
         if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
         if (mod && e.key.toLowerCase() === 'd' && selected()) { e.preventDefault(); host.querySelector('[data-act="dup"]').click(); return; }
@@ -1844,7 +2113,11 @@
         var tool = KEYS[e.key.toLowerCase()];
         if (tool) { e.preventDefault(); setTool(tool); }
       }
+      function onKeyUp(e) { if (e.key === ' ' && spaceDown) { spaceDown = false; setHandCursor(); } }
+      function onBlur() { if (spaceDown) { spaceDown = false; setHandCursor(); } }
       document.addEventListener('keydown', onKey);
+      document.addEventListener('keyup', onKeyUp);
+      window.addEventListener('blur', onBlur);
       document.addEventListener('paste', onPaste);
 
       st.mode = doc.mode === 'figures' ? 'figures' : 'draw';
@@ -1866,6 +2139,12 @@
         if (editing) closeText(true);
         clearTimeout(saveTimer); putDoc(doc);
         document.removeEventListener('keydown', onKey);
+        document.removeEventListener('keyup', onKeyUp);
+        window.removeEventListener('blur', onBlur);
+        document.removeEventListener('fullscreenchange', onFullscreen);
+        stage.removeEventListener('wheel', onWheel);
+        if (laserRaf) cancelAnimationFrame(laserRaf);
+        if (st.present && document.fullscreenElement) document.exitFullscreen().catch(function () {});
         document.removeEventListener('paste', onPaste);
         host.onclick = host.oninput = host.onchange = host.onsubmit = null;
       };
@@ -1878,6 +2157,6 @@
 
   window.FluxPixel = {
     mount: mount,
-    _bbox: bbox, _scaleItem: scaleItem, _moveItem: moveItem, _smoothPath: smoothPath, _docSVG: docSVG,
+    _bbox: bbox, _recognise: recognise, _wrapText: wrapText, _scaleItem: scaleItem, _moveItem: moveItem, _smoothPath: smoothPath, _docSVG: docSVG,
   };
 })();
