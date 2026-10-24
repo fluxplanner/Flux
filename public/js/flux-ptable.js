@@ -157,88 +157,98 @@
       across: 'falls towards the middle of each period, then rises again', down: 'increases ↓',
       note: 'Molar mass ÷ density, for solids and liquids. Lothar Meyer plotted this in 1870: a peak at every alkali metal, one of the first pictures of periodicity.' },
 
-    { g: 'Charge and electrons', id: 'z', label: 'Atomic number (nuclear charge)', get: (e) => e.n, f: (v) => v,
+    { g: 'Electrons', id: 'z', label: 'Atomic number (nuclear charge)', get: (e) => e.n, f: (v) => v,
       across: 'increases by one each step →',
       down: 'increases ↓ — by the length of each period (2, 8, 8, 18, 18, 32, 32)',
       note: 'The number of protons, so the positive charge on the nucleus. Everything else on the table follows from it.' },
-    { g: 'Charge and electrons', id: 'zeff', label: 'Effective nuclear charge', get: (e) => P().zeff(e), f: (v) => v.toFixed(2),
+    { g: 'Electrons', id: 'zeff', label: 'Effective nuclear charge', get: (e) => P().zeff(e), f: (v) => v.toFixed(2),
       across: () => trend('zeff').across, down: () => trend('zeff').down, note: () => trend('zeff').note },
-    { g: 'Charge and electrons', id: 'shield', label: 'Shielding (Slater\'s σ)', get: shielding, f: (v) => v.toFixed(2),
+    { g: 'Electrons', id: 'shield', label: 'Shielding (Slater\'s σ)', get: shielding, f: (v) => v.toFixed(2),
       across: 'rises only slightly →  (an electron in the same shell shields just 0.35)',
       down: 'rises steeply ↓  (a whole full shell more underneath)',
       note: 'How much of the nuclear charge the other electrons cancel: σ = Z − Z_eff, by Slater\'s rules. It is why Z_eff barely changes down a group.' },
-    { g: 'Charge and electrons', id: 'shells', label: 'Shells (energy levels)', get: (e) => e.p, f: (v) => v,
+    { g: 'Electrons', id: 'shells', label: 'Shells (energy levels)', get: (e) => e.p, f: (v) => v,
       across: () => trend('shells').across, down: () => trend('shells').down, note: () => trend('shells').note },
-    { g: 'Charge and electrons', id: 'outer', label: 'Outer-shell electrons', get: (e) => P().trendValue('outer', e), f: (v) => v,
+    { g: 'Electrons', id: 'outer', label: 'Outer-shell electrons', get: (e) => P().trendValue('outer', e), f: (v) => v,
       across: () => trend('outer').across, down: () => trend('outer').down, note: () => trend('outer').note },
-    { g: 'Charge and electrons', id: 'core', label: 'Inner-shell (core) electrons', get: coreElectrons, f: (v) => v,
+    { g: 'Electrons', id: 'core', label: 'Inner-shell (core) electrons', get: coreElectrons, f: (v) => v,
       across: 'stays the same → across the main groups (the d-block adds to an inner shell)',
       down: 'increases ↓  (a full shell more each period)',
       note: 'Every electron except those in the outermost shell. These do most of the shielding.' },
-    { g: 'Charge and electrons', id: 'unpaired', label: 'Unpaired electrons', get: unpaired, f: (v) => v,
+    { g: 'Electrons', id: 'unpaired', label: 'Unpaired electrons', get: unpaired, f: (v) => v,
       across: 'rises to the middle of each block, then falls (Hund\'s rule: one per orbital before any pair up)',
       down: 'stays much the same ↓ in the main groups',
       note: 'In the ground-state atom. Gadolinium and curium have the most (8); an atom with unpaired electrons is paramagnetic.' },
 
-    { g: 'Energy and reactivity', id: 'ie', label: 'First ionization energy', unit: 'kJ/mol', get: ieN(0), f: round,
+    { g: 'Energy', id: 'ie', label: 'First ionization energy', unit: 'kJ/mol', get: ieN(0), f: round,
       across: 'increases →  (more protons, same shell) — with small dips at groups 13 and 16',
       down: 'decreases ↓  (the outer electron is further out and more shielded)',
       note: 'Energy to remove one electron from each atom in a mole of gaseous atoms. NIST data.' },
-    { g: 'Energy and reactivity', id: 'ie2', label: 'Second ionization energy', unit: 'kJ/mol', get: ieN(1), f: round,
+    { g: 'Energy', id: 'ie2', label: 'Second ionization energy', unit: 'kJ/mol', get: ieN(1), f: round,
       across: 'generally increases →, but peaks in group 1', down: 'decreases ↓',
       note: 'Removing a second electron. Group 1 is highest: its second electron has to come out of a full inner shell.' },
-    { g: 'Energy and reactivity', id: 'ie3', label: 'Third ionization energy', unit: 'kJ/mol', get: ieN(2), f: round,
+    { g: 'Energy', id: 'ie3', label: 'Third ionization energy', unit: 'kJ/mol', get: ieN(2), f: round,
       across: 'generally increases →, but peaks in group 2', down: 'decreases ↓',
       note: 'Removing a third electron. Group 2 is highest: its third electron comes from a full inner shell.' },
-    { g: 'Energy and reactivity', id: 'ea', label: 'Electron affinity', unit: 'kJ/mol', get: (e) => (e.x.ea != null ? e.x.ea * KJ : null), f: round,
+    { g: 'Energy', id: 'ea', label: 'Electron affinity', unit: 'kJ/mol', get: (e) => (e.x.ea != null ? e.x.ea * KJ : null), f: round,
       across: 'becomes larger →  reaching the halogens',
       down: 'generally smaller ↓  (but chlorine releases more than fluorine)',
       note: 'Energy released when a gaseous atom gains an electron — shown as a positive number here. Noble gases release none.' },
-    { g: 'Energy and reactivity', id: 'en', label: 'Electronegativity (Pauling)', get: (e) => (e.x.en != null ? e.x.en : e.en), f: (v) => v.toFixed(2),
+    { g: 'Energy', id: 'en', label: 'Electronegativity (Pauling)', get: (e) => (e.x.en != null ? e.x.en : e.en), f: (v) => v.toFixed(2),
       across: () => trend('en').across, down: () => trend('en').down, note: () => trend('en').note },
-    { g: 'Energy and reactivity', id: 'enA', label: 'Electronegativity (Allen)', get: (e) => (e.x.enA != null ? e.x.enA : null), f: (v) => v.toFixed(2),
+    { g: 'Energy', id: 'enA', label: 'Electronegativity (Allen)', get: (e) => (e.x.enA != null ? e.x.enA : null), f: (v) => v.toFixed(2),
       across: 'increases →', down: 'decreases ↓',
       note: 'Allen\'s scale (1989): the average energy of an atom\'s valence electrons. Unlike Pauling\'s, it gives the noble gases values — neon is the highest.' },
-    { g: 'Energy and reactivity', id: 'metal', label: 'Metallic character', unit: 'kJ/mol', reverse: true, ends: ['least metallic', 'most metallic'], get: ieN(0), f: round,
+    { g: 'Energy', id: 'metal', label: 'Metallic character', unit: 'kJ/mol', reverse: true, ends: ['least metallic', 'most metallic'], get: ieN(0), f: round,
       across: 'decreases →  (metals on the left, nonmetals on the right)',
       down: 'increases ↓  (the outer electrons are held less tightly)',
       note: 'How readily an atom gives up its outer electrons, shown by its first ionization energy turned round: the lower the energy, the brighter the square. Caesium is the most metallic.' },
 
-    { g: 'Mass and matter', id: 'mass', label: 'Relative atomic mass', get: (e) => e.mass, f: (v) => (v === Math.round(v) ? '[' + v + ']' : dp2(v)),
+    { g: 'Physical', id: 'mass', label: 'Relative atomic mass', get: (e) => e.mass, f: (v) => (v === Math.round(v) ? '[' + v + ']' : dp2(v)),
       across: 'increases with atomic number (argon/potassium and tellurium/iodine are the famous swaps)', down: 'increases ↓',
       note: 'Brackets give the mass number of the longest-lived isotope, for elements with no stable one.' },
-    { g: 'Mass and matter', id: 'neutrons', label: 'Neutrons', get: neutrons, f: (v) => v,
+    { g: 'Physical', id: 'neutrons', label: 'Neutrons', get: neutrons, f: (v) => v,
       across: 'increase →', down: 'increase ↓',
       note: 'In the most common isotope (or the longest-lived one). Light nuclei have about as many neutrons as protons; heavy ones need half as many again to hold together.' },
-    { g: 'Mass and matter', id: 'd', label: 'Density', unit: 'g/cm³', log: true, get: (e) => (e.x.d != null ? e.x.d : e.d), f: (v) => fmt(v, 3),
+    { g: 'Physical', id: 'd', label: 'Density', unit: 'g/cm³', log: true, get: (e) => (e.x.d != null ? e.x.d : e.d), f: (v) => fmt(v, 3),
       across: 'rises to the middle of the transition metals, then falls', down: 'increases ↓',
       note: 'Gases are shown at 0 °C and 1 atm. Osmium and iridium are the densest; the scale is logarithmic.' },
-    { g: 'Mass and matter', id: 'mp', label: 'Melting point', unit: 'temp', get: mpK, f: null,
+    { g: 'Physical', id: 'mp', label: 'Melting point', unit: 'temp', get: mpK, f: null,
       across: 'rises to the middle of each period (to carbon, to silicon), then falls',
       down: 'falls down group 1; rises down group 17',
       note: 'Giant structures melt highest: carbon, tungsten. Molecular elements and noble gases melt lowest.' },
-    { g: 'Mass and matter', id: 'bp', label: 'Boiling point', unit: 'temp', get: bpK, f: null,
+    { g: 'Physical', id: 'bp', label: 'Boiling point', unit: 'temp', get: bpK, f: null,
       across: 'rises to the middle of each period, then falls', down: 'falls down group 1; rises down groups 17 and 18',
       note: 'At standard pressure. Tungsten and rhenium boil hottest; helium lowest.' },
-    { g: 'Mass and matter', id: 'liq', label: 'Liquid range', unit: 'K', get: liquidRange, f: round,
+    { g: 'Physical', id: 'liq', label: 'Liquid range', unit: 'K', get: liquidRange, f: round,
       note: 'Boiling point minus melting point: how many degrees the element stays liquid. Gallium stays liquid for over 2,000 degrees. (A change of 1 K is a change of 1 °C.)' },
 
-    { g: 'More', id: 'oxmax', label: 'Highest oxidation state', get: (e) => { const o = oxStates(e); return o.length ? Math.max.apply(null, o) : null; }, f: (v) => (v > 0 ? '+' + v : String(v)),
+    { g: 'Electrons', id: 'oxmax', label: 'Highest oxidation state', get: (e) => { const o = oxStates(e); return o.length ? Math.max.apply(null, o) : null; }, f: (v) => (v > 0 ? '+' + v : String(v)),
       across: 'rises with the outer electrons, up to +7 for manganese and chlorine', down: 'mostly the same ↓',
       note: 'Common oxidation states, from PubChem.' },
-    { g: 'More', id: 'oxmin', label: 'Lowest oxidation state', get: (e) => { const o = oxStates(e); return o.length ? Math.min.apply(null, o) : null; }, f: (v) => (v > 0 ? '+' + v : String(v)),
+    { g: 'Electrons', id: 'oxmin', label: 'Lowest oxidation state', get: (e) => { const o = oxStates(e); return o.length ? Math.min.apply(null, o) : null; }, f: (v) => (v > 0 ? '+' + v : String(v)),
       across: 'for the nonmetals, from −4 in group 14 up to −1 in group 17', down: 'mostly the same ↓',
       note: 'The most negative common state — the charge on the ion a nonmetal forms.' },
-    { g: 'More', id: 'iso', label: 'Natural isotopes', get: (e) => (e.x.iso ? e.x.iso.length : 0), f: (v) => v,
+    { g: 'Physical', id: 'iso', label: 'Natural isotopes', get: (e) => (e.x.iso ? e.x.iso.length : 0), f: (v) => v,
       note: 'How many isotopes occur in nature. Tin has the most (10); an element with an odd atomic number never has more than two stable ones.' },
-    { g: 'More', id: 'abC', label: 'Abundance in Earth\'s crust', unit: 'mg/kg', log: true, get: (e) => (e.x.abC > 0 ? e.x.abC : null), f: (v) => fmt(v, 2),
+    { g: 'Abundance', id: 'abC', label: 'Abundance in Earth\'s crust', unit: 'mg/kg', log: true, get: (e) => (e.x.abC > 0 ? e.x.abC : null), f: (v) => fmt(v, 2),
       note: 'Oxygen and silicon make up three quarters of the crust. The scale is logarithmic.' },
-    { g: 'More', id: 'abO', label: 'Abundance in seawater', unit: 'mg/L', log: true, get: (e) => (e.x.abO > 0 ? e.x.abO : null), f: (v) => fmt(v, 2),
+    { g: 'Abundance', id: 'abO', label: 'Abundance in seawater', unit: 'mg/L', log: true, get: (e) => (e.x.abO > 0 ? e.x.abO : null), f: (v) => fmt(v, 2),
       note: 'Oxygen and hydrogen top it because they are the water itself; next come chlorine and sodium — the salt. The scale is logarithmic.' },
-    { g: 'More', id: 'year', label: 'Year discovered', get: yearOf, f: (v) => v, note: 'Elements known since antiquity have no date and are left grey.' },
+    { g: 'History', id: 'year', label: 'Year discovered', get: yearOf, f: (v) => v, note: 'Elements known since antiquity have no date and are left grey.' },
   ];
   const PROP = {};
   PROPS.forEach((p) => { PROP[p.id] = p; });
+  /** The trends grouped for the picker, in the order PROPS first names each group. */
+  const TREND_GROUPS = [];
+  PROPS.forEach((p) => {
+    if (p.kind) return;              // categories, blocks and states have tabs of their own
+    let g = TREND_GROUPS.find((x) => x[0] === p.g);
+    if (!g) TREND_GROUPS.push(g = [p.g, []]);
+    g[1].push(p);
+  });
+  /** Pinned until a student chooses their own: the three every syllabus asks about. */
+  const DEFAULT_PINS = ['rc', 'ie', 'en'];
   const text = (v) => (typeof v === 'function' ? v() : v);
   function reducedMotion() {
     try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
@@ -277,6 +287,8 @@
       temp: 298.15, sel: null, tab: pref.tab === 'energy' ? 'energy' : 'overview', query: '', hl: null, hlLabel: '', catFilter: null,
       // The deeper tabs (flux-ptable-explore.js).
       filling: false, ion: 0, spectrum: 'emission', compare: Array.isArray(pref.compare) ? pref.compare.filter((n) => n >= 1 && n <= 118).slice(0, 6) : [1, 2, 11],
+      // The Trends picker: pinned favourites, the category showing, the search.
+      pins: Array.isArray(pref.pins) ? pref.pins.filter(trendOk) : DEFAULT_PINS.slice(), tcat: 'all', tq: '',
       hLo: 2, hHi: 3, isoMode: pref.isoMode === 'rel' ? 'rel' : 'pct', atomMode: pref.atomMode === 'orbitals' ? 'orbitals' : 'bohr', orb: null, orbM: null,
     };
     /* simple: the planner's table. Just the table and what an element is —
@@ -293,7 +305,7 @@
     try {
       localStorage.setItem(STORE, JSON.stringify({
         view: s.view, trend: s.trend, tcolour: s.tcolour, unit: s.unit, tab: s.tab,
-        compare: s.compare, isoMode: s.isoMode, atomMode: s.atomMode,
+        compare: s.compare, isoMode: s.isoMode, atomMode: s.atomMode, pins: s.pins,
       }));
     } catch (e) { /* private window */ }
   };
@@ -307,14 +319,7 @@
   App.prototype.bySym = bySym;
 
   App.prototype.build = function () {
-    const groups = [];
-    PROPS.forEach((p) => {
-      if (p.kind) return;              // categories, blocks and states have tabs of their own
-      let g = groups.find((x) => x[0] === p.g);
-      if (!g) groups.push(g = [p.g, []]);
-      g[1].push(p);
-    });
-    const opts = groups.map((g) => '<optgroup label="' + esc(g[0]) + '">' + g[1].map((p) => '<option value="' + p.id + '">' + esc(p.label) + '</option>').join('') + '</optgroup>').join('');
+    const opts = TREND_GROUPS.map((g) => '<optgroup label="' + esc(g[0]) + '">' + g[1].map((p) => '<option value="' + p.id + '">' + esc(p.label) + '</option>').join('') + '</optgroup>').join('');
     /* No tabindex on the root. Safari never focuses a tapped button, so it
        focused this instead — and scrolled the page up to show all of it,
        which threw a reader back to the top on every tap of Overview. */
@@ -328,7 +333,7 @@
       + '<div class="fpt-unit" role="group" aria-label="Temperature unit"><button type="button" class="fpt-u" data-unit="C">°C</button><button type="button" class="fpt-u" data-unit="K">K</button></div>'
       + '</div>'
       + '<div class="fpt-body">'
-      + '<section class="fpt-main"><div class="fpt-legend"></div><div class="fpt-scroll"><div class="fpt-grid" role="grid" aria-label="Periodic table"></div></div>'
+      + '<section class="fpt-main">' + this.pickerHTML() + '<div class="fpt-legend"></div><div class="fpt-scroll"><div class="fpt-grid" role="grid" aria-label="Periodic table"></div></div>'
       + '<div class="fpt-chart" hidden></div></section>'
       + '<aside class="fpt-side" aria-live="polite"></aside>'
       + '<section class="fpt-explore" aria-live="polite"></section>'
@@ -345,6 +350,8 @@
     this.sugg = this.host.querySelector('.fpt-sugg');
     this.sel = this.host.querySelector('.fpt-sel');
     this.chart = this.host.querySelector('.fpt-chart');
+    this.picker = this.host.querySelector('.fpt-tpick');
+    this.tq = this.host.querySelector('.fpt-tq');
     // Redraw the graph when it crosses between the phone and desktop sizes.
     if (window.ResizeObserver) {
       new ResizeObserver(() => {
@@ -441,6 +448,16 @@
     });
     this.sel.addEventListener('change', () => { this.st.trend = this.sel.value; this.save(); if (this.o.hash) this.writeHash(); this.refresh(); });
     this.q.addEventListener('input', () => this.search(this.q.value));
+    this.tq.addEventListener('input', () => { this.st.tq = this.tq.value; this.filterPicker(); });
+    this.tq.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') { this.tq.value = ''; this.st.tq = ''; this.filterPicker(); }
+      else if (ev.key === 'Enter') {
+        // Enter picks the first trend still showing.
+        ev.preventDefault();
+        const first = this.picker.querySelector('.fpt-tchip:not([hidden]) .fpt-tbtn');
+        if (first) this.action('trend', first);
+      }
+    });
     this.q.addEventListener('keydown', (ev) => {
       const items = [...this.sugg.querySelectorAll('[data-pick]')];
       const cur = items.findIndex((x) => x.classList.contains('is-on'));
@@ -639,6 +656,81 @@
     this.renderChart();
   };
 
+  /* ── The Trends picker ──────────────────────────────────────────────── */
+
+  /* Thirty-odd trends in one long drop-down were hard to find your way
+     through. The picker sorts them into categories, finds them by any word
+     ("radius", "melting", "kJ"), and keeps favourites pinned at the front.
+     It is built once; choosing, pinning and filtering only flip classes and
+     hidden flags, so typing in its search never redraws the table. */
+  App.prototype.pickerHTML = function () {
+    const cats = [['all', 'All'], ['pinned', '★ Pinned']].concat(TREND_GROUPS.map((g) => [g[0], g[0]]));
+    const chip = (p) => '<span class="fpt-tchip" data-id="' + p.id + '" data-g="' + esc(p.g) + '">'
+      + '<button type="button" class="fpt-chip fpt-tbtn" data-act="trend" data-c="' + p.id + '" aria-pressed="false">' + esc(p.label) + '</button>'
+      + '<button type="button" class="fpt-tpin" data-act="tpin" data-c="' + p.id + '" aria-pressed="false" aria-label="Pin ' + esc(p.label) + '" title="Pin to the front">☆</button></span>';
+    return '<div class="fpt-tpick" hidden><div class="fpt-tpick-top">'
+      + '<input class="fpt-in fpt-tq" type="search" autocomplete="off" spellcheck="false" placeholder="Search trends — radius, melting, kJ…" aria-label="Search the trends">'
+      + '<div class="fpt-seg fpt-tcats" role="group" aria-label="Trend categories">' + cats.map((c) => '<button type="button" class="fpt-chip fpt-tcat" data-act="tcat" data-k="' + esc(c[0]) + '" aria-pressed="false">' + esc(c[1]) + '</button>').join('') + '</div></div>'
+      + '<div class="fpt-tpins" aria-label="Pinned trends"></div>'
+      + '<div class="fpt-tlist">' + TREND_GROUPS.map((g) => '<div class="fpt-tgrp" data-g="' + esc(g[0]) + '"><span class="fpt-tgrp-h">' + esc(g[0]) + '</span><div class="fpt-tchips">' + g[1].map(chip).join('') + '</div></div>').join('')
+      + '<p class="fpt-tnone fpt-note" hidden>No trend matches. Try a shorter word.</p></div></div>';
+  };
+  /** Words a trend can be found by: its name, its category, its unit and what its note says. */
+  const nameWords = (p) => (p.label + ' ' + p.g + ' ' + (p.unit && p.unit !== 'temp' ? p.unit : p.unit ? 'temperature kelvin celsius' : '')).toLowerCase();
+  App.prototype.filterPicker = function () {
+    const st = this.st, words = st.tq.toLowerCase().split(/\s+/).filter(Boolean);
+    const has = (t) => words.every((w) => t.indexOf(w) >= 0);
+    /* A word in a trend's name beats one buried in its note: "melting" finds
+       Melting point, not every note that mentions melting. The notes are only
+       searched when no name matches. */
+    const byName = words.length && TREND_GROUPS.some((g) => g[1].some((p) => has(nameWords(p))));
+    const trendWords = (p) => (byName ? nameWords(p) : nameWords(p) + ' ' + text(p.note || '').toLowerCase());
+    // A search looks through every category.
+    const cat = words.length ? 'all' : st.tcat;
+    let any = false;
+    this.picker.querySelectorAll('.fpt-tcat').forEach((b) => {
+      const on = b.dataset.k === cat;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+    this.picker.querySelectorAll('.fpt-tgrp').forEach((g) => {
+      let shown = 0;
+      g.querySelectorAll('.fpt-tchip').forEach((c) => {
+        const p = PROP[c.dataset.id];
+        const ok = (cat === 'all' || (cat === 'pinned' ? st.pins.indexOf(p.id) >= 0 : p.g === cat))
+          && has(trendWords(p));
+        if (c.hidden !== !ok) c.hidden = !ok;
+        if (ok) shown++;
+      });
+      g.hidden = !shown;
+      if (shown) any = true;
+    });
+    this.picker.querySelector('.fpt-tnone').hidden = any;
+    if (!any && cat === 'pinned') this.picker.querySelector('.fpt-tnone').textContent = 'Nothing pinned yet. Tap ☆ beside a trend to keep it here.';
+    else this.picker.querySelector('.fpt-tnone').textContent = 'No trend matches. Try a shorter word.';
+    // The pinned row sits above the list, except where it would only repeat it.
+    this.picker.querySelector('.fpt-tpins').hidden = cat === 'pinned' || !st.pins.length;
+  };
+  /** Which trend is on and which are pinned, written in place. */
+  App.prototype.syncPicker = function () {
+    if (!this.picker) return;
+    const st = this.st;
+    this.picker.querySelectorAll('.fpt-tchip').forEach((c) => {
+      const id = c.dataset.id, on = id === st.trend, pin = st.pins.indexOf(id) >= 0;
+      const b = c.firstChild, s = c.lastChild;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-pressed', String(on));
+      s.classList.toggle('is-on', pin);
+      s.setAttribute('aria-pressed', String(pin));
+      s.textContent = pin ? '★' : '☆';
+      s.setAttribute('aria-label', (pin ? 'Unpin ' : 'Pin ') + PROP[id].label);
+    });
+    const pins = this.picker.querySelector('.fpt-tpins');
+    const html = st.pins.length ? '<span class="fpt-tgrp-h">★ Pinned</span>' + st.pins.map((id) => '<button type="button" class="fpt-chip fpt-tbtn' + (id === st.trend ? ' is-on' : '') + '" data-act="trend" data-c="' + id + '" aria-pressed="' + (id === st.trend) + '">' + esc(PROP[id].label) + '</button>').join('') : '';
+    if (pins._fptHtml !== html) { pins.innerHTML = html; pins._fptHtml = html; }
+    this.filterPicker();
+  };
+
   /* ── The trend against atomic number ────────────────────────────────── */
 
   /** Round steps for a linear axis: 1, 2 or 5 times a power of ten. */
@@ -660,11 +752,16 @@
     if (!box) return;
     const pts = [];
     if (!prop.kind && st.view === 'trends') model().forEach((e) => { const v = prop.get(e); if (v != null && Number.isFinite(v) && (!prop.log || v > 0)) pts.push({ e: e, v: v }); });
-    if (pts.length < 3) { box.hidden = true; box.innerHTML = ''; return; }
+    if (pts.length < 3) { box.hidden = true; box.innerHTML = ''; this.chartKey = null; return; }
     box.hidden = false;
     /* A phone draws the graph at a readable 640 px and lets it scroll sideways,
        instead of shrinking 118 points and their labels to a smudge. */
     const narrow = this.chartNarrow = this.isNarrowChart();
+    /* Picking an element on the same trend moves only the marker. Rebuilding
+       the whole graph (some 400 SVG nodes) on every click was a large share
+       of the restyling each pick cost. */
+    const key = [prop.id, st.unit, narrow, st.hl ? [...st.hl].join() : ''].join('|');
+    if (key === this.chartKey && this.chartMark) { this.chartMark(st.sel); return; }
     const f = (v) => (prop.log ? Math.log10(v) : v);
     let lo = Infinity, hi = -Infinity;
     pts.forEach((p) => { lo = Math.min(lo, f(p.v)); hi = Math.max(hi, f(p.v)); });
@@ -704,28 +801,41 @@
       prev = p.e.n;
     });
     s += '<path d="' + d + '" class="fpt-cline"/>';
-    let selPt = null;
     pts.forEach((p) => {
-      const sel = st.sel === p.e.n;
-      if (sel) selPt = p;
       const dim = st.hl && !st.hl.has(p.e.n);
-      s += '<circle class="fpt-pt' + (sel ? ' is-sel' : '') + (dim ? ' is-dim' : '') + '" data-n="' + p.e.n + '" cx="' + X(p.e.n).toFixed(1) + '" cy="' + Y(p.v).toFixed(1) + '" r="' + (sel ? 5.5 : 3.2)
-        + '" style="--c:' + CAT[p.e.cat].colour + '"><title>' + esc(p.e.name + ' (' + p.e.n + '): ' + show(p.v) + unit) + '</title></circle>';
+      s += '<circle class="fpt-pt' + (dim ? ' is-dim' : '') + '" data-n="' + p.e.n + '" cx="' + X(p.e.n).toFixed(1) + '" cy="' + Y(p.v).toFixed(1) + '" r="3.2"'
+        + ' style="--c:' + CAT[p.e.cat].colour + '"><title>' + esc(p.e.name + ' (' + p.e.n + '): ' + show(p.v) + unit) + '</title></circle>';
     });
-    if (selPt) {
-      const x = X(selPt.e.n), y = Y(selPt.v), right = x > W - 140;
-      s += '<text x="' + (x + (right ? -9 : 9)).toFixed(1) + '" y="' + (y - 8).toFixed(1) + '" class="fpt-clab' + (right ? ' is-end' : '') + '">' + esc(selPt.e.s + ' ' + show(selPt.v) + unit) + '</text>';
-    }
     // Atomic number axis.
     for (let z = 10; z <= zmax; z += 10) s += '<text x="' + X(z).toFixed(1) + '" y="' + (H - B + 15) + '" class="fpt-cax fpt-cax--m">' + z + '</text>';
     s += '<text x="' + ((L + W - R) / 2) + '" y="' + (H - 4) + '" class="fpt-cax fpt-cax--m">atomic number →</text></svg>';
     box.innerHTML = '<div class="fpt-chart-h"><b>' + esc(prop.label) + (unit ? ' <small>(' + esc(unit.trim()) + (prop.log ? ', log scale' : '') + ')</small>' : prop.log ? ' <small>(log scale)</small>' : '')
       + '</b><span>against atomic number</span></div><div class="fpt-chart-wrap">' + s + '</div>'
       + '<p class="fpt-note">The same rise and fall comes back in every period — that repeating pattern is what makes the table periodic. Dashed lines end each period at its noble gas; click a point to open that element.</p>';
-    if (narrow && selPt) {
-      const wrap = box.querySelector('.fpt-chart-wrap');
-      wrap.scrollLeft = Math.max(0, X(selPt.e.n) - wrap.clientWidth / 2);
-    }
+    const svg = box.querySelector('svg'), wrap = box.querySelector('.fpt-chart-wrap');
+    const byPt = {};
+    pts.forEach((p) => { byPt[p.e.n] = p; });
+    let on = null;
+    // The chosen element's point grows and is labelled with its value.
+    this.chartMark = (n) => {
+      const p = byPt[n] || null;
+      if (on === p) return;
+      if (on) {
+        const c = svg.querySelector('.fpt-pt[data-n="' + on.e.n + '"]');
+        if (c) { c.classList.remove('is-sel'); c.setAttribute('r', '3.2'); }
+      }
+      const old = svg.querySelector('.fpt-clab');
+      if (old) old.remove();
+      on = p;
+      if (!p) return;
+      const c = svg.querySelector('.fpt-pt[data-n="' + n + '"]');
+      if (c) { c.classList.add('is-sel'); c.setAttribute('r', '5.5'); }
+      const x = X(n), y = Y(p.v), right = x > W - 140;
+      svg.insertAdjacentHTML('beforeend', '<text x="' + (x + (right ? -9 : 9)).toFixed(1) + '" y="' + (y - 8).toFixed(1) + '" class="fpt-clab' + (right ? ' is-end' : '') + '">' + esc(p.e.s + ' ' + show(p.v) + unit) + '</text>');
+      if (narrow) wrap.scrollLeft = Math.max(0, x - wrap.clientWidth / 2);
+    };
+    this.chartKey = key;
+    this.chartMark(st.sel);
   };
 
   App.prototype.isNarrowChart = function () {
@@ -798,7 +908,9 @@
       // A reversed scale (metallic character) runs from the highest value to the lowest.
       const a = prop.reverse ? hi : lo, b = prop.reverse ? lo : hi;
       const endText = (t, k) => (Number.isFinite(t) ? (prop.ends ? '<b>' + prop.ends[k] + '</b> ' : '') + esc(end(t)) : '');
-      h += '<div class="fpt-key"><div class="fpt-scale"><span>' + endText(a, 0) + '</span><i style="background:linear-gradient(90deg,' + stops + ')"></i>'
+      const unitText = prop.unit === 'temp' ? (st.unit === 'K' ? 'K' : '°C') : prop.unit || '';
+      h += '<div class="fpt-key"><div class="fpt-keyh"><b>' + esc(prop.label) + '</b>' + (unitText ? ' <small>' + esc(unitText) + (prop.log ? ', log scale' : '') + '</small>' : prop.log ? ' <small>log scale</small>' : '')
+        + '<span class="fpt-keyhint">' + (prop.reverse ? 'brighter = more' : 'darker = lower · brighter = higher') + '</span></div><div class="fpt-scale"><span>' + endText(a, 0) + '</span><i style="background:linear-gradient(90deg,' + stops + ')"></i>'
         + '<span>' + endText(b, 1) + '</span><span class="fpt-nodata"><i></i>no data</span></div>';
       const across = text(prop.across), down = text(prop.down), note = text(prop.note);
       if (across || down) h += '<div class="fpt-dirs">' + (across ? '<div><b>Across a period</b> ' + esc(across) + '</div>' : '') + (down ? '<div><b>Down a group</b> ' + esc(down) + '</div>' : '') + '</div>';
@@ -947,10 +1059,25 @@
         return;
       }
       case 'step': this.select(Math.max(1, Math.min(118, st.sel + +el.dataset.d))); return;
-      case 'order': st.filling = !st.filling; this.keepPlace('[data-act="order"]', () => { if (isExplore(st.view)) this.renderExplore(); else this.renderSide(); }); return;
+      case 'order': {
+        st.filling = !st.filling;
+        const X2 = window.FluxPTableExplore;
+        if (!(X2 && X2.reorder(this, byN(st.sel), isExplore(st.view) ? this.explore : this.side))) {
+          this.keepPlace('[data-act="order"]', () => { if (isExplore(st.view)) this.renderExplore(); else this.renderSide(); });
+        }
+        return;
+      }
       case 'spectrum': st.spectrum = el.dataset.mode; this.keepPlace('[data-act="spectrum"]', () => { if (isExplore(st.view)) this.renderExplore(); else this.renderSide(); }); return;
       case 'goto': this.select(+el.dataset.n); return;
       case 'view': this.setView(el.dataset.view); return;
+      case 'tcat': st.tcat = el.dataset.k; this.filterPicker(); return;
+      case 'tpin': {
+        const id = el.dataset.c;
+        st.pins = st.pins.indexOf(id) >= 0 ? st.pins.filter((x) => x !== id) : st.pins.concat(id);
+        this.save();
+        this.syncPicker();
+        return;
+      }
       case 'trend': st.trend = el.dataset.c; this.save(); if (this.st.view !== 'trends') this.setView('trends'); else { if (this.o.hash) this.writeHash(); this.refresh(); } return;
       default:
         if (window.FluxPTableExplore) window.FluxPTableExplore.action(this, act, el);
@@ -968,6 +1095,7 @@
     this.root.querySelectorAll('.fpt-unit button').forEach((b) => b.classList.toggle('is-on', b.dataset.unit === this.st.unit));
     // Only the Trends tab has a trend to pick; only temperatures need a unit.
     this.root.querySelector('.fpt-colour').hidden = v !== 'trends';
+    this.picker.hidden = v !== 'trends' || !!this.o.simple;
     this.root.querySelector('.fpt-unit').hidden = !(v === 'temp' || (v === 'trends' && PROP[this.st.trend].unit === 'temp') || v === 'table');
     this.root.dataset.view = v;
     this.root.classList.toggle('is-explore', isExplore(v));
@@ -975,6 +1103,7 @@
   };
   App.prototype.refresh = function () {
     this.sel.value = this.st.trend;
+    this.syncPicker();
     this.renderTabs();
     this.paint();
     this.renderLegend();
@@ -1486,7 +1615,7 @@
     core: {
       esc: esc, fmt: fmt, trim0: trim0, CAT: CAT, CATS: CATS, PROPS: PROPS, PROP: PROP, KJ: KJ, block: block, stateAt: stateAt,
       mpK: mpK, bpK: bpK, oxStates: oxStates, massText: massText, model: model, wlColour: wlColour, halfText: halfText, STATES: STATES,
-      byN: byN, neutrons: neutrons, bohrSVG: bohrSVG, spectrumSVG: spectrumSVG, VIEWS: VIEWS,
+      byN: byN, neutrons: neutrons, bohrSVG: bohrSVG, spectrumSVG: spectrumSVG, VIEWS: VIEWS, reducedMotion: reducedMotion,
     },
   };
 })();

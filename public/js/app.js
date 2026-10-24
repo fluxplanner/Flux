@@ -10971,7 +10971,9 @@ async function syncToCloud(opts){
 window.FluxSync={
   now:function(){try{return forceSyncNow();}catch(e){return Promise.reject(e);}},
   push:function(){return syncToCloud();},
-  pull:function(){return syncFromCloud();},
+  // A bare syncFromCloud() returns at once while a timed pull is out, and that
+  // pull may have left before the row changed: wait for it, then pull again.
+  pull:function(){return fluxPullBeforePush();},
   status:function(){
     return{
       signedIn:!!currentUser,
@@ -14350,6 +14352,10 @@ async function initAuth(){
         // Hide login immediately
         const ls=document.getElementById('loginScreen');
         if(ls){ls.style.display='none';ls.classList.remove('visible');}
+        // Came from Synara's welcome page to sign in or sign up: go back there.
+        // Only a fixed list of pages, never a URL from the address bar.
+        let back='';try{back=sessionStorage.getItem('flux_return_to')||'';sessionStorage.removeItem('flux_return_to');}catch(_){}
+        if(back==='synara.html'){location.href='synara.html';return;}
         // Only do full sign-in flow if this is a new user or account switch
         if(!currentUser||currentUser.id!==s.user.id){
           await handleSignedIn(s.user,s);

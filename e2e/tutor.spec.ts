@@ -779,4 +779,92 @@ test.describe('Flux Tutor', () => {
       expect(await wide()).toBeLessThanOrEqual(390);
     }
   });
+
+  test('IB practice: command terms, a cited markscheme, self-marking that feeds weak topics, and the stuck links', async ({ page }) => {
+    await openSample(page);
+    const stuck = page.locator('details.ft-stuck');
+    await stuck.locator('summary').click();
+    const khan = stuck.getByRole('link', { name: /Khan Academy: Biology/ });
+    await expect(khan).toHaveAttribute('target', '_blank');
+    await expect(khan).toHaveAttribute('rel', /noopener/);
+
+    await tab(page, 'IB practice').click();
+    await expect(page.getByRole('heading', { name: 'IB practice' })).toBeVisible();
+    await page.getByRole('button', { name: 'Make the questions' }).click();
+    const first = page.locator('.ft-ib-q').first();
+    await expect(first.locator('.ft-score-pill')).toHaveText(/^(Define|State|Outline|Describe|Explain|Compare)$/);
+    await first.locator('textarea').fill('no idea');
+    await first.getByRole('button', { name: 'Show the markscheme' }).click();
+    await expect(first.locator('.ft-ib-scheme cite').first()).toContainText('Sample biology notes');
+    await expect(first.locator('.ft-ib-scheme input:checked')).toHaveCount(0);
+    await first.getByRole('button', { name: 'Save my mark' }).click();
+    await expect(first.locator('.ft-ib-score')).toContainText('You gave yourself 0 of');
+    await saved(page);
+    await expect(page.locator('.ft-weak li')).not.toHaveCount(0);
+    await page.reload();
+    await expect(page.locator('.ft-weak li')).not.toHaveCount(0);
+  });
+
+  test('flashcard reveal animates, and not at all with reduced motion', async ({ page }) => {
+    await openSample(page);
+    await tab(page, 'Flashcards').click();
+    await page.locator('#ftFlipBtn').click();
+    expect(await page.locator('.ft-flip-in').evaluate((e) => getComputedStyle(e).animationName)).toBe('ft-flip-in');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    expect(await page.locator('.ft-flip-in').evaluate((e) => parseFloat(getComputedStyle(e).animationDuration))).toBeLessThan(0.01);
+  });
+
+  test('ask: a cited answer from the notes, numbers jump to passages, sources open the notes with the passage selected', async ({ page }) => {
+    await openSample(page);
+    await tab(page, 'Ask your notes').click();
+    await page.locator('#ftAsk').fill('what does the cell wall do');
+    await page.getByRole('button', { name: 'Search' }).click();
+    const answer = page.locator('.ft-answer');
+    await expect(answer).toContainText('From your notes');
+    await expect(answer).toContainText('cell wall');
+    await expect(page.getByRole('button', { name: /Flux AI/ })).toHaveCount(0);
+    await answer.locator('.ft-cite-num').first().click();
+    await expect(page.locator('#ftPassage1')).toHaveClass(/is-target/);
+    await page.locator('#ftPassage1 .ft-cite-link').click();
+    await expect(page).toHaveURL(/\/notes\?src=/);
+    await expect(page.locator('textarea[data-src-text]').first()).toBeFocused();
+    const sel = await page.evaluate(() => { const t = document.activeElement as HTMLTextAreaElement; return t.value.slice(t.selectionStart, t.selectionEnd); });
+    expect(sel.length).toBeGreaterThan(10);
+  });
+
+  test('ask with Flux AI switched on: only sentences that cite a given passage are kept', async ({ page }) => {
+    await page.addInitScript(() => {
+      (window as any).FLUX_TUTOR_AI = true;
+      localStorage.setItem('sb-lfigdijuqmbensebnevo-auth-token', JSON.stringify({ access_token: 't', expires_at: Math.floor(Date.now() / 1000) + 3600 }));
+    });
+    let sent = '';
+    await page.route('**/functions/v1/ai-proxy', async (route) => {
+      sent = route.request().postData() || '';
+      await route.fulfill({ json: { content: [{ type: 'text', text: 'The cell wall is a rigid layer [1]. It is purple [7]. Unsupported claim.' }] } });
+    });
+    await openSample(page);
+    await tab(page, 'Ask your notes').click();
+    await page.locator('#ftAsk').fill('what does the cell wall do');
+    await page.getByRole('button', { name: 'Search' }).click();
+    await page.getByRole('button', { name: /Flux AI/ }).click();
+    const text = page.locator('.ft-answer-text');
+    await expect(text).toContainText('The cell wall is a rigid layer');
+    await expect(text).not.toContainText('purple');
+    await expect(text).not.toContainText('Unsupported');
+    expect(sent).toContain('ONLY the numbered passages');
+  });
+
+  test('question bank: paper 1 multiple choice marks itself; topic filter limits the questions', async ({ page }) => {
+    await openSample(page);
+    await tab(page, 'IB practice').click();
+    await page.locator('#ftIbPaper').selectOption('1');
+    await page.locator('#ftIbTopic').selectOption({ label: 'Cell structure' });
+    await page.getByRole('button', { name: 'Make the questions' }).click();
+    const first = page.locator('.ft-ib-q').first();
+    await expect(first).toContainText('Paper 1');
+    await first.locator('input[type=radio]').first().check();
+    await first.getByRole('button', { name: 'Check my answer' }).click();
+    await expect(first.locator('.ft-ib-score')).toContainText(/of 1/);
+    await expect(first.locator('.ft-ib-scheme cite')).toContainText('Sample biology notes');
+  });
 });

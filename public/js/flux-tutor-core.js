@@ -2039,6 +2039,159 @@
     };
   }
 
+  /* ── IB-style questions ─────────────────────────────────────────────── */
+
+  /*
+   * Written questions in the IB's style: a command term, a mark total and a
+   * markscheme. The markscheme is only sentences from the student's notes,
+   * one mark each, with where each came from; the student marks their own
+   * answer against it (rules suggest which points it already covers). Only
+   * command terms whose answer the notes can actually hold are used, so there
+   * is no "Evaluate" or "To what extent" here.
+   * Difficulty: 1 = recall (AO1), 2 = understanding (AO2), 3 = explanation and
+   * comparison (AO3).
+   */
+  const COMMAND_TERMS = {
+    Choose: { level: 1, meaning: 'Pick the one answer that fits (multiple choice, as in Paper 1).' },
+    Define: { level: 1, meaning: 'Give the precise meaning of a word or phrase.' },
+    State: { level: 1, meaning: 'Give a specific name, value or other brief answer without explanation.' },
+    Outline: { level: 2, meaning: 'Give a brief account or summary.' },
+    Describe: { level: 2, meaning: 'Give a detailed account.' },
+    Explain: { level: 3, meaning: 'Give a detailed account including reasons or causes.' },
+    Compare: { level: 3, meaning: 'Give an account of the similarities and differences between two (or more) items, referring to both of them throughout.' },
+  };
+  function schemePoint(sent) {
+    return { text: sent.text, ref: copyRef(sent.ref), sentenceId: sent.id };
+  }
+  /** Sentences (beyond the definition) that say something about c, in the notes' order. */
+  function supportFor(corpus, c, skip) {
+    return sentencesOf(corpus, c.mentions).filter((s) => goodLength(s) && !skip.has(s.id) && norm(s.text) !== norm(c.definition.full));
+  }
+  function ibFor(corpus, c, pool, command, programme) {
+    const def = { text: c.definition.full, ref: c.definition.ref, sentenceId: c.definition.sentenceId };
+    // "Matthias Schleiden" is a name and keeps its capitals; "Osmosis" reads as "osmosis".
+    const person = /^\p{Lu}\S*(?:\s+\p{Lu}\S*)+$/u.test(c.label);
+    const name = person || /^\p{Lu}{2,}/u.test(c.label) ? c.label : c.label.charAt(0).toLowerCase() + c.label.slice(1);
+    if (person && (command === 'Define' || command === 'Compare')) return null;
+    const skip = new Set(def.sentenceId ? [def.sentenceId] : []);
+    const support = supportFor(corpus, c, skip);
+    const q = { id: '', conceptIds: [c.id], command, level: COMMAND_TERMS[command].level, programme, paper: 2, prompt: '', marks: 0, scheme: [] };
+    if (command === 'Define') {
+      q.prompt = 'Define ' + name + '.';
+      q.scheme = [def];
+    } else if (command === 'State') {
+      const s = support.find((x) => NUMBER_RE.test(x.text) || YEAR_RE.test(x.text));
+      if (!s) return null;
+      q.prompt = 'State one fact your notes give about ' + name + '.';
+      q.scheme = [schemePoint(s)];
+    } else if (command === 'Outline') {
+      if (!support.length) return null;
+      q.prompt = person ? 'Outline the work of ' + name + '.' : 'Outline ' + name + '.';
+      q.scheme = [def, schemePoint(support[0])];
+    } else if (command === 'Describe') {
+      if (support.length < 2) return null;
+      q.prompt = person ? 'Describe the work of ' + name + '.' : 'Describe ' + name + '.';
+      q.scheme = [def].concat(support.slice(0, 2).map(schemePoint));
+    } else if (command === 'Explain') {
+      const why = support.filter((s) => CAUSE_RE.test(s.text) || EXPLAIN_RE.test(s.text));
+      if (!why.length) return null;
+      q.prompt = 'Explain the importance of ' + name + '.';
+      q.scheme = [def].concat(why.slice(0, 2).map(schemePoint));
+    } else if (command === 'Compare') {
+      const other = pool.find((o) => o.id !== c.id && o.sectionId && o.sectionId === c.sectionId);
+      if (!other) return null;
+      if (/^\p{Lu}\S*(?:\s+\p{Lu}\S*)+$/u.test(other.label)) return null;
+      q.prompt = 'Compare ' + name + ' and ' + (/^\p{Lu}{2,}/u.test(other.label) ? other.label : other.label.charAt(0).toLowerCase() + other.label.slice(1)) + '.';
+      q.conceptIds.push(other.id);
+      q.scheme = [def, { text: other.definition.full, ref: other.definition.ref, sentenceId: other.definition.sentenceId }];
+    }
+    if (!q.scheme.length || q.scheme.some((p) => !p.text)) return null;
+    q.marks = q.scheme.length;
+    return q;
+  }
+  /**
+   * opts: { programme: 'MYP' | 'DP', paper: 1 | 2, level: 0 (any) | 1 | 2 | 3,
+   *         topic: a section id ('' = all), focus: 'weak' | 'all', count, seed }.
+   * Paper 1 is multiple choice (one mark, the passage as the markscheme);
+   * paper 2 is the command-term written questions. Weaker terms come first,
+   * and no term is asked twice.
+   */
+  function buildIbQuestions(corpus, concepts, mastery, opts) {
+    const o = opts || {};
+    const rnd = seeded(o.seed || uid('I'));
+    const count = clampInt(o.count, 1, 20, 6);
+    const programme = o.programme === 'MYP' ? 'MYP' : 'DP';
+    const want = clampInt(o.level, 0, 3, 0);
+    let pool = (concepts || []).slice();
+    if (o.topic) pool = pool.filter((c) => c.sectionId === o.topic);
+    if (o.focus === 'weak') {
+      const weak = pool.filter((c) => statusOf(mastery && mastery[c.id]) !== 'mastered');
+      if (weak.length) pool = weak;
+    }
+    const ordered = pool.map((c) => ({ c, k: Math.pow(rnd(), 1 / (1 + weakness(mastery && mastery[c.id]))) }))
+      .sort((a, b) => b.k - a.k).map((x) => x.c);
+    if (Number(o.paper) === 1) {
+      const out1 = [];
+      ordered.forEach((c, i) => {
+        if (out1.length >= count) return;
+        const mc = makeChoice(corpus, c, concepts, rnd);
+        if (!mc || !mc.source || !mc.source.text) return;
+        out1.push({
+          id: 'ib' + (i + 1), conceptIds: [c.id], command: 'Choose', level: 1, programme, paper: 1,
+          prompt: mc.stem, options: mc.options, answer: mc.answer, marks: 1,
+          scheme: [{ text: mc.source.text, ref: mc.source.ref, sentenceId: mc.source.sentenceId || '' }],
+        });
+      });
+      return out1;
+    }
+    const commands = Object.keys(COMMAND_TERMS).filter((k) => k !== 'Choose' && (!want || COMMAND_TERMS[k].level === want));
+    const out = [];
+    const used = new Set();
+    ordered.forEach((c, i) => {
+      if (out.length >= count || used.has(c.id)) return;
+      // Spread the command terms: each term starts from the next one round.
+      const start = out.length % commands.length;
+      const tries = commands.slice(start).concat(commands.slice(0, start));
+      for (const command of tries) {
+        const q = ibFor(corpus, c, concepts, command, programme);
+        if (!q || q.conceptIds.some((id) => used.has(id) && id !== c.id)) continue;
+        q.id = 'ib' + (i + 1);
+        q.conceptIds.forEach((id) => used.add(id));
+        out.push(q);
+        return;
+      }
+    });
+    return out.sort((a, b) => a.level - b.level);
+  }
+  /** The markscheme points an answer already seems to cover: most of each point's content words. */
+  function ibSuggest(q, given) {
+    const keyStems = (text) => words(text).filter(isContent).map(stem);
+    const have = new Set(keyStems(given || ''));
+    return (q.scheme || []).map((p) => {
+      const need = Array.from(new Set(keyStems(p.text)));
+      if (!need.length || !have.size) return false;
+      return need.filter((w) => have.has(w)).length / need.length >= 0.5;
+    });
+  }
+  /** Marks awarded to a verdict for mastery: full marks right, half or more partial. */
+  function ibVerdict(awarded, marks) {
+    if (!marks) return 'skipped';
+    if (awarded >= marks) return 'correct';
+    if (awarded * 2 >= marks) return 'partial';
+    return 'incorrect';
+  }
+  /**
+   * The terms that most need work, weakest first: only ones the student has
+   * already been asked about, so a fresh set shows nothing rather than guesses.
+   */
+  function weakTopics(concepts, mastery, max) {
+    return (concepts || []).map((c) => ({ c, m: mastery && mastery[c.id] }))
+      .filter((x) => x.m && x.m.seen && statusOf(x.m) !== 'mastered')
+      .sort((a, b) => weakness(b.m) - weakness(a.m))
+      .slice(0, max || 5)
+      .map((x) => ({ id: x.c.id, label: x.c.label, status: statusOf(x.m), right: x.m.right, wrong: x.m.wrong }));
+  }
+
   /* ── Ask your notes (BM25) ──────────────────────────────────────────── */
 
   function buildSearchIndex(corpus) {
@@ -2122,6 +2275,45 @@
     return { empty: false, covered, words: q.map((x) => x.word), stems: q.map((x) => x.stem), missing, results, related, terms };
   }
   /** A text split into plain and matched pieces, for highlighting (the UI escapes each piece). */
+  /**
+   * A short answer made only of the notes' own sentences: from each of the
+   * best passages (up to max), the sentence that uses most of the question's
+   * words. Each part keeps its passage number (1-based) for its citation.
+   */
+  function answerFromNotes(result, max) {
+    if (!result || !result.covered) return [];
+    const seen = new Set();
+    return result.results.slice(0, max || 3).map((x, i) => {
+      const hits = new Set(x.matched);
+      let best = null;
+      let bestN = -1;
+      x.sentences.forEach((p) => {
+        const n = words(p.text).map(stem).filter((st) => hits.has(st)).length;
+        if (n > bestN || (n === bestN && best && p.text.length > best.text.length)) { best = p; bestN = n; }
+      });
+      if (!best || seen.has(norm(best.text))) return null;
+      seen.add(norm(best.text));
+      return { text: best.text, ref: best.ref, n: i + 1 };
+    }).filter(Boolean);
+  }
+  /**
+   * An answer written by Flux AI, kept only where it cites the passages it
+   * was given: "[2]" markers outside 1..count are dropped, and a sentence with
+   * no marker left is dropped too. Returns [{ text, cites: [n] }].
+   */
+  function groundedParts(text, count) {
+    const out = [];
+    String(text || '').replace(/\s+/g, ' ').split(/(?<=[.!?](?:\s*\[\d+\])*)\s+(?=\S)/).forEach((sentence) => {
+      const cites = [];
+      const clean = sentence.replace(/\s*\[(\d+)\]/g, (m, d) => {
+        const n = Number(d);
+        if (n >= 1 && n <= count && !cites.includes(n)) cites.push(n);
+        return '';
+      }).trim();
+      if (clean && cites.length) out.push({ text: clean, cites });
+    });
+    return out;
+  }
   function highlightSegments(text, stems) {
     const s = String(text || '');
     const want = new Set(stems || []);
@@ -2891,7 +3083,8 @@
     startLearn, answerCheck, finishCheck, nextStep, currentStep, answerStep, dontKnow, skipStep, repeatStep, backStep, atLatest, learnSummary,
     simplerFor, examplesFor,
     buildPracticeTest, gradePracticeTest, practiceRecord, questionText,
-    buildSearchIndex, searchNotes, highlightSegments,
+    COMMAND_TERMS, buildIbQuestions, ibSuggest, ibVerdict, weakTopics,
+    buildSearchIndex, searchNotes, highlightSegments, answerFromNotes, groundedParts,
     buildStudyPlan,
     newSet, newSource, normalizeSet, cloneSet, guideStale, hasNotes, summarizeSet, wordCount,
     cardList, cardQueue, cardCounts, flashDeckFrom,

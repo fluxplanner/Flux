@@ -751,6 +751,54 @@ a { color: var(--ft-accent); }
 }
 
 @media print {
+  /* Paper is white whatever the screen theme: the dark theme's pale text
+     printed as faint grey on it. Printing always uses the light colours. */
+  :root, :root[data-ft-theme], :root[data-flux-theme] {
+    --ft-bg: #fff !important;
+    --ft-text: #0f172a !important;
+    --ft-muted: #364459 !important;
+    --ft-surface: #fff !important;
+    --ft-surface-2: #f3f6fb !important;
+    --ft-line: rgba(15, 23, 42, .18) !important;
+    --ft-line-strong: rgba(15, 23, 42, .32) !important;
+    --ft-accent: #0369a1 !important;
+    --ft-good: #15803d !important;
+    --ft-bad: #be123c !important;
+    --ft-warn: #92400e !important;
+  }
+  html, body { background: #fff !important; color: #0f172a !important; }
   .ft-top, .ft-tabs, .ft-toasts, .ft-row, .ft-item-actions, .ft-add, .ft-back { display: none !important; }
   .ft-panel, .ft-set-card { box-shadow: none; border-color: #ccc; }
 }
+
+/* Flashcard reveal: the card turns over and the answer settles in.
+   The reduced-motion block above cuts both animations to an instant. */
+.ft-flash.is-flipped { animation: ft-card-turn .42s cubic-bezier(.3, .7, .25, 1); }
+.ft-flip-in { animation: ft-flip-in .42s cubic-bezier(.3, .7, .25, 1) both; transform-origin: top center; }
+@keyframes ft-card-turn { 0% { transform: perspective(900px) rotateY(0); } 50% { transform: perspective(900px) rotateY(-12deg); } 100% { transform: none; } }
+@keyframes ft-flip-in { from { transform: perspective(900px) rotateX(-70deg); } to { transform: none; } }
+
+/* IB practice */
+.ft-ib-list { margin: 16px 0 0; padding-left: 1.4em; display: grid; gap: 18px; }
+.ft-ib-q { padding: 14px 16px; border: 1px solid var(--ft-line); border-radius: 14px; }
+.ft-ib-meta, .ft-ib-prompt { margin: 0 0 6px; }
+.ft-ib-scheme { margin-top: 10px; }
+.ft-ib-scheme .ft-check { align-items: flex-start; }
+.ft-ib-score { margin: 8px 0 0; font-weight: 700; color: var(--ft-accent); }
+.ft-weak { margin: 8px 0; padding-left: 1.2em; }
+
+/* If you're stuck */
+.ft-stuck { margin-top: 16px; }
+.ft-stuck summary { cursor: pointer; margin: 0; }
+.ft-stuck-list { margin: 8px 0 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.ft-ib-right { font-weight: 700; color: var(--ft-accent); }
+
+/* Ask your notes: the answer and its numbered citations */
+.ft-answer { margin: 16px 0; padding: 14px 16px; border: 1px solid var(--ft-line-strong); border-left-width: 4px; border-left-color: var(--ft-accent); border-radius: 14px; background: var(--ft-surface-2); }
+.ft-answer-label { margin: 0 0 6px; color: var(--ft-muted); font-size: .8rem; }
+.ft-answer-list { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.ft-answer-text { margin: 0; }
+.ft-cite-num { margin-left: 2px; font-size: .8em; font-weight: 800; text-decoration: none; color: var(--ft-accent); }
+.ft-cite-num:hover, .ft-cite-num:focus-visible { text-decoration: underline; }
+.ft-cite-link { color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; }
+.ft-result.is-target { outline: 2px solid var(--ft-accent); outline-offset: 4px; border-radius: 10px; }

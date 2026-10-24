@@ -148,12 +148,13 @@
 
   /* ── Electrons ──────────────────────────────────────────────────────── */
 
-  function electronsHTML(app, e) {
-    const st = app.st, F = C();
+  /** The atom, or the ion picked, as subshell occupancies; null with no configuration on record. */
+  function shown(app, e) {
+    const F = C();
     let atom;
-    try { atom = F.occupancy(e.ec); } catch (err) { return head(e) + '<p class="fpt-lead">No configuration is on record for ' + esc(e.name) + '.</p>'; }
+    try { atom = F.occupancy(e.ec); } catch (err) { return null; }
     const ions = K().oxStates(e).filter((q) => q !== 0 && Math.abs(q) <= 4 && (q < 0 ? e.n - q <= 118 : q <= e.n));
-    const q = ions.indexOf(st.ion) >= 0 ? st.ion : 0;
+    const q = ions.indexOf(app.st.ion) >= 0 ? app.st.ion : 0;
     let occ = atom;
     const lost = {};
     if (q) {
@@ -162,6 +163,15 @@
         Object.keys(atom).forEach((k) => { if ((atom[k] || 0) > (occ[k] || 0)) lost[k] = atom[k] - (occ[k] || 0); });
       } catch (err) { occ = atom; }
     }
+    return { atom: atom, ions: ions, q: q, occ: occ, lost: lost };
+  }
+  const orderLabel = (filling) => (filling ? 'Show in shell order' : 'Show in filling order (4s before 3d)');
+
+  function electronsHTML(app, e) {
+    const st = app.st, F = C();
+    const sh = shown(app, e);
+    if (!sh) return head(e) + '<p class="fpt-lead">No configuration is on record for ' + esc(e.name) + '.</p>';
+    const atom = sh.atom, ions = sh.ions, q = sh.q, occ = sh.occ, lost = sh.lost;
     const t = F.configText(occ, { filling: st.filling });
     const label = q ? e.s + sup(q) : e.s;
     const electrons = e.n - q;
@@ -170,7 +180,7 @@
       + [0].concat(ions).map((c) => '<button type="button" class="fpt-chip' + (c === q ? ' is-on' : '') + '" data-act="xion" data-q="' + c + '">' + esc(c ? e.s + sup(c) : e.s + ' atom') + '</button>').join('') + '</div>';
     h += '<div class="fpt-config"><div class="fpt-config-t">' + esc(t.short) + '</div>'
       + (t.full !== t.short ? '<div class="fpt-config-f">' + esc(t.full) + '</div>' : '')
-      + '<button type="button" class="fpt-link" data-act="order">' + (st.filling ? 'Show in shell order' : 'Show in filling order (4s before 3d)') + '</button></div>';
+      + '<button type="button" class="fpt-link" data-act="order">' + orderLabel(st.filling) + '</button></div>';
     if (q > 0 && Object.keys(lost).length) {
       // In the order they leave: outermost shell first.
       const from = Object.keys(lost).sort((a, b) => (+b[0] - +a[0]) || ('spdf'.indexOf(b[1]) - 'spdf'.indexOf(a[1])))
@@ -407,7 +417,8 @@
         + '<button type="button" class="fpx-cbtn" data-act="a3flat" aria-pressed="false">Flatten</button>'
         + '<button type="button" class="fpx-cbtn" data-act="a3reset">Reset</button></div>'
         + '<p class="fpx-hint">Drag to turn · scroll or pinch to zoom · double-click to reset</p></div>'
-        + '<aside class="fpx-key"></aside></div></div>';
+        + '<aside class="fpx-key"></aside></div>'
+        + '<section class="fpx-card fpx-hist" aria-live="polite"></section></div>';
       if (app.atom) app.atom.destroy();
       app.atom = A3.create(box.querySelector('.fpx-canvas'));
       const key = box.querySelector('.fpx-key');
@@ -455,12 +466,22 @@
         + '<p class="fpt-note">' + (l === 0 ? 'An s orbital is a sphere around the nucleus.' : l === 1 ? 'The three p orbitals are dumbbells along x, y and z, at right angles to each other.' : l === 2 ? 'Four of the d orbitals have four lobes; d<sub>z²</sub> is a dumbbell with a ring round its middle.' : 'The seven f orbitals have six or eight lobes.')
         + ' The cloud is where the electron is most likely to be found; the darker lobes are the wave\'s other phase. The brighter the cloud, the more electrons it holds.</p>';
     }
+    box.querySelector('.fpx-hist').innerHTML = historyHTML(e);
     box.querySelectorAll('.fpx-ctl [data-act]').forEach((b) => {
       const a = b.dataset.act;
       const on = a === 'a3spin' ? v.spin : a === 'a3play' ? v.play : a === 'a3flat' ? v.flatTarget === 1 : null;
       if (on != null) b.setAttribute('aria-pressed', String(!!on));
       if (a === 'a3play' || a === 'a3flat') b.hidden = mode !== 'bohr';
     });
+  }
+
+  /** How the element was found (flux-ptable-history.js), under the model. */
+  function historyHTML(e) {
+    const h = window.FluxPTableHistory && window.FluxPTableHistory[e.n];
+    if (!h) return '';
+    return '<h3>How ' + esc(e.name.toLowerCase()) + ' was discovered</h3><div class="fpt-kvs fpx-hist-kv">'
+      + row('Who', esc(h.who)) + row('When', esc(h.when)) + row('Where', esc(h.where)) + '</div>'
+      + '<p class="fpx-hist-how">' + esc(h.how) + '</p>';
   }
 
   /* ── Wiring ─────────────────────────────────────────────────────────── */
@@ -473,6 +494,28 @@
     box.dataset.view = view;
     box.innerHTML = e ? '<div class="fpx fpx--' + view + '">' + RENDER[view](app, e) + '</div>' : '';
   }
+  /** Shell order ⇄ filling order. Only the configuration's wording changes,
+      so only it is rewritten, with a short cross-fade; the energy levels,
+      the Bohr model and everything else stay as they are. */
+  function reorder(app, e, box) {
+    const cfg = box.querySelector('.fpt-config');
+    const sh = e && shown(app, e);
+    if (!cfg || !sh) return false;
+    const t = C().configText(sh.occ, { filling: app.st.filling });
+    const put = (cls, txt) => {
+      const el = cfg.querySelector('.' + cls);
+      if (!el || el.textContent === txt) return;
+      el.textContent = txt;
+      if (typeof el.animate === 'function' && !K().reducedMotion()) {
+        el.animate([{ opacity: 0, transform: 'translateY(3px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'ease-out' });
+      }
+    };
+    put('fpt-config-t', t.short);
+    put('fpt-config-f', t.full);
+    cfg.querySelector('[data-act="order"]').textContent = orderLabel(app.st.filling);
+    return true;
+  }
+
   /** Stop the 3D model drawing while its tab is not showing. */
   function leave(app) { if (app.atom) app.atom.stop(); }
 
@@ -504,6 +547,7 @@
     render: render,
     leave: leave,
     action: action,
+    reorder: reorder,
     // Pure, for the unit tests.
     aufbauOcc: aufbauOcc,
     exception: exception,
@@ -512,5 +556,6 @@
     hLine: hLine,
     diatomicPeaks: diatomicPeaks,
     atomParts: atomParts,
+    historyHTML: historyHTML,
   };
 })();

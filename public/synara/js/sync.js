@@ -32,6 +32,7 @@ import * as store from './store.js';
 const META_KEY = 'synara.sync';
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // Crockford base32
 const PUSH_DELAY = 3000;
+const PULL_EVERY = 30000;   // while the page is open and visible
 
 /* ============================================================
    Pure helpers (tested in test/sync.test.js)
@@ -395,9 +396,11 @@ export async function join(key) {
 
 /** Stop syncing on this device. The device keeps its record. With
     deleteCopy, the synced copy is removed for every device. */
-export async function stop({ deleteCopy = false } = {}) {
+export async function stop({ deleteCopy = false, optOut = true } = {}) {
   if (deleteCopy) await need(vault()).remove();
-  writeMeta({});
+  // A choice to stop is remembered, so connect() never turns it back on
+  // by itself. Wiping the device forgets it, like a fresh install.
+  writeMeta(optOut ? { off: true } : {});
   clearTimeout(pushTimer);
   setStatus({ phase: 'off', error: '' });
 }
@@ -405,6 +408,33 @@ export async function stop({ deleteCopy = false } = {}) {
 /* ============================================================
    Start
    ============================================================ */
+
+/* Signed in to Flux, sync not on here, never turned off here: connect
+   without a trip to You → Flux. No synced copy yet and a real record on
+   this device (not the example data) → this device starts it. A synced
+   copy already exists → its key is needed, which only the student has;
+   status 'needs-key' lets Home ask for it. A device with nothing in it
+   never starts a copy, so it can't race a device that has the data. */
+export async function connect() {
+  if (!available() || enabled() || readMeta().off) return 'off';
+  const who = status.account || await refreshAccount();
+  if (!who) return 'off';
+  try {
+    const v = need(await vaultReady());
+    if (await v.get()) { setStatus({ phase: 'needs-key', error: '' }); return 'needs-key'; }
+    const s = store.get();
+    const real = !s.settings.seeded && (s.meds.length || s.seizures.length || s.contacts.length);
+    if (!real) return 'off';
+    await startNew();
+    return 'started';
+  } catch (e) {
+    if (e.code === 'has-copy') { setStatus({ phase: 'needs-key', error: '' }); return 'needs-key'; }
+    setStatus({ phase: 'error', error: errorCode(e) });
+    return 'error';
+  }
+}
+
+const tick = () => (enabled() ? syncNow() : connect());
 
 export async function start() {
   // Before anything can compare against the saved hash — and even where
@@ -415,18 +445,22 @@ export async function start() {
 
   // Changes go up a few seconds after the last edit.
   store.subscribe(() => {
-    if (!enabled()) return;
     clearTimeout(pushTimer);
-    pushTimer = setTimeout(syncNow, PUSH_DELAY);
+    pushTimer = setTimeout(tick, PUSH_DELAY);
   });
   // Coming back to the tab is when another device's changes matter.
-  document.addEventListener('visibilitychange', () => {
+  document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState !== 'visible') return;
-    refreshAccount();
-    if (enabled()) syncNow();
+    await refreshAccount();
+    tick();
   });
-  window.addEventListener('online', () => { if (enabled()) syncNow(); });
+  window.addEventListener('online', tick);
+  // Both devices open side by side: the other one's edits arrive anyway.
+  const poll = setInterval(() => {
+    if (document.visibilityState === 'visible' && enabled() && status.phase !== 'conflict') syncNow();
+  }, PULL_EVERY);
+  poll.unref?.();   // Node (unit tests): never what keeps the process alive
 
   await refreshAccount();
-  if (enabled()) syncNow();
+  tick();
 }

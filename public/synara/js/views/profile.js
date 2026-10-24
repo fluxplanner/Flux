@@ -167,6 +167,7 @@ function syncNote() {
   const st = sync.getStatus();
   if (!sync.enabled()) {
     if (st.error === 'gone') return SYNC_ERRORS.gone;
+    if (st.phase === 'needs-key') return 'Synced on another device. Enter its sync key to connect this one.';
     return st.account
       ? 'Off. Encrypted on this device before it leaves, so Flux can’t read it.'
       : 'Sign in to Flux to keep Synara the same on your phone and computer.';
@@ -231,7 +232,7 @@ async function openSyncSheet() {
       `,
       footer: `
         <button class="btn btn-quiet" data-action="close-sheet">Not now</button>
-        <a class="btn btn-primary" href="index.html">Sign in to Flux</a>
+        <a class="btn btn-primary" href="index.html" data-return="synara">Sign in to Flux</a>
       `,
     });
     return;
@@ -456,7 +457,7 @@ function dataCard(state) {
         ${raw(icon('info', 16))}
         <span>
           <strong>Your record stays on this device.</strong> No account needed, and
-          no analytics.${sync.available() ? ' If you turn on Sync, an encrypted copy is kept in your Flux account: Flux can’t read it, but it can see that you use Synara and when it last synced.' : ''}
+          no analytics.${sync.available() ? ' Signed in to Flux, an encrypted copy is kept in your Flux account unless you turn Sync off: Flux can’t read it, but it can see that you use Synara and when it last synced.' : ''}
           Clearing your browser's data deletes what's here, and it won't move to a new
           phone on its own, so download a backup now and then. The font comes from
           Google Fonts, so Google can see the page was opened, but never what's in it.
@@ -682,7 +683,7 @@ export const actions = {
       async onConfirm() {
         // Stop syncing here first, or the empty record would sync over every
         // other device. The synced copy itself is left alone.
-        await sync.stop();
+        await sync.stop({ optOut: false });
         await store.wipe();
         try { sessionStorage.removeItem('synara.timer'); } catch { /* blocked */ }
         // Back to the first-run choice, exactly as if newly installed.
