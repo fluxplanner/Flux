@@ -741,7 +741,8 @@
         const m = st.mats[t.of.v];
         if (!m) fail('UNDEFINED');
         const [r, c] = args;
-        if (r < 1 || c < 1 || r > m.length || c > m[0].length) fail('INVALID DIM');
+        if (!isNum(r) || !isNum(c) || !Number.isInteger(r) || !Number.isInteger(c) ||
+            r < 1 || c < 1 || r > m.length || c > m[0].length) fail('INVALID DIM');
         m[r - 1][c - 1] = v;
         return;
       }
@@ -968,11 +969,19 @@
   }
 
   function permComb(op, n, r) {
-    if (n !== Math.floor(n) || r !== Math.floor(r) || n < 0 || r < 0) fail('DOMAIN');
+    if (!Number.isSafeInteger(n) || !Number.isSafeInteger(r) || n < 0 || r < 0) fail('DOMAIN');
     if (r > n) return 0;
-    let out = 1;
-    if (op === 'nPr') { for (let k = 0; k < r; k++) out *= (n - k); return R(out); }
+    // Results requiring more than 999 multiplicative steps overflow the
+    // calculator's representable range long before those loops finish.
+    if (op === 'nPr') {
+      if (r > 999) fail('OVERFLOW');
+      let out = 1;
+      for (let k = 0; k < r; k++) out *= (n - k);
+      return R(out);
+    }
     const k = Math.min(r, n - r);
+    if (k > 999) fail('OVERFLOW');
+    let out = 1;
     for (let j = 1; j <= k; j++) out = out * (n - k + j) / j;
     return R(Math.round(out));
   }
@@ -1033,11 +1042,20 @@
   function matInv(A) {
     const n = A.length;
     if (n !== A[0].length) fail('INVALID DIM');
-    const M = A.map((r, i) => r.concat(identityM(n)[i]));
+    const I = identityM(n);
+    // Scale each equation before elimination. Scaling both sides keeps the
+    // inverse unchanged and avoids treating a small, well-conditioned matrix
+    // as singular solely because its entries are small.
+    const M = A.map((row, i) => {
+      const scale = Math.max.apply(null, row.map(Math.abs));
+      if (!Number.isFinite(scale) || scale === 0) fail('SINGULAR MAT');
+      return row.map((v) => v / scale).concat(I[i].map((v) => v / scale));
+    });
+    const tol = Number.EPSILON * 16 * Math.max(1, n);
     for (let c = 0; c < n; c++) {
       let p = c;
       for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
-      if (Math.abs(M[p][c]) < 1e-13) fail('SINGULAR MAT');
+      if (Math.abs(M[p][c]) <= tol) fail('SINGULAR MAT');
       [M[c], M[p]] = [M[p], M[c]];
       const d = M[c][c];
       for (let k = 0; k < 2 * n; k++) M[c][k] /= d;
@@ -1070,6 +1088,10 @@
   function needMat(v) { if (!isMat(v)) fail('DATA TYPE'); return v.v; }
   function needList(v) { if (!isList(v)) fail('DATA TYPE'); return v.v; }
   function needInt(v, lo) { if (!isNum(v) || v !== Math.floor(v) || (lo != null && v < lo)) fail('DOMAIN'); return v; }
+  function needSafeInt(v, lo) {
+    if (!Number.isSafeInteger(v) || (lo != null && v < lo)) fail('DOMAIN');
+    return v;
+  }
   function realList(v) { const l = needList(v); l.forEach((x) => { if (!isNum(x)) fail('DATA TYPE'); }); return l; }
 
   /* ── Random numbers: the calculator's own generator ─────────────────────
@@ -1309,21 +1331,26 @@
     'angle(': (a, cx) => map1(a, (x) => R(cx.fromRad(cArg(x)))),
     'rand': (cx) => rand(cx),
     'randInt(': (lo, hi, n, cx) => {
-      const L = Math.min(needInt(lo), needInt(hi)), H = Math.max(lo, hi);
-      return randCount(n, () => L + Math.floor(rand(cx) * (H - L + 1)));
+      const a = needSafeInt(lo), b = needSafeInt(hi);
+      const L = Math.min(a, b), H = Math.max(a, b), span = H - L;
+      if (!Number.isSafeInteger(span) || !Number.isSafeInteger(span + 1)) fail('DOMAIN');
+      return randCount(n, () => L + Math.floor(rand(cx) * (span + 1)));
     },
     'randNorm(': (mu, sigma, n, cx) => randCount(n, () => R(real(mu) + real(sigma) * S().invPhi(Math.min(1 - 1e-15, Math.max(1e-15, rand(cx)))))),
     'randBin(': (nn, p, n, cx) => {
-      needInt(nn, 1); if (!(p >= 0 && p <= 1)) fail('DOMAIN');
-      return randCount(n, () => { let c = 0; for (let k = 0; k < nn; k++) if (rand(cx) < p) c++; return c; });
+      const trials = needSafeInt(nn, 1);
+      if (trials > 999) fail('INVALID DIM');
+      if (!(p >= 0 && p <= 1)) fail('DOMAIN');
+      return randCount(n, () => { let c = 0; for (let k = 0; k < trials; k++) if (rand(cx) < p) c++; return c; });
     },
     'randIntNoRep(': (lo, hi, n, cx) => {
-      const L = Math.min(needInt(lo), needInt(hi)), H = Math.max(lo, hi);
-      const all = [];
-      for (let v = L; v <= H; v++) all.push(v);
-      if (all.length > 999) fail('INVALID DIM');
+      const a = needSafeInt(lo), b = needSafeInt(hi);
+      const L = Math.min(a, b), H = Math.max(a, b), span = H - L;
+      // Validate the range before allocating or iterating over any of it.
+      if (!Number.isSafeInteger(span) || span > 998) fail('INVALID DIM');
+      const all = Array.from({ length: span + 1 }, (_, i) => L + i);
       for (let k = all.length - 1; k > 0; k--) { const j = Math.floor(rand(cx) * (k + 1)); [all[k], all[j]] = [all[j], all[k]]; }
-      return list(n == null ? all : all.slice(0, Math.min(needInt(n, 1), all.length)));
+      return list(n == null ? all : all.slice(0, Math.min(needSafeInt(n, 1), all.length)));
     },
     'R▶Pr(': (x, y) => map2(x, y, (a, b) => R(Math.hypot(real(a), real(b)))),
     'R▶Pθ(': (x, y, cx) => map2(x, y, (a, b) => R(cx.fromRad(Math.atan2(real(b), real(a))))),
@@ -1532,9 +1559,10 @@
       }
       case 'Σ(': {
         const v = varName(a[1]);
-        const s = needInt(real(ev(a[2], cx))), e = needInt(real(ev(a[3], cx)));
+        const s = needSafeInt(real(ev(a[2], cx))), e = needSafeInt(real(ev(a[3], cx)));
         let total = 0;
-        if (e - s > 1e6) fail('INVALID DIM');
+        const count = e >= s ? e - s + 1 : 0;
+        if (!Number.isSafeInteger(count) || count > 1e6) fail('INVALID DIM');
         for (let k = s; k <= e; k++) total = add(total, withVar(cx, v, k, a[0]));
         return total;
       }
