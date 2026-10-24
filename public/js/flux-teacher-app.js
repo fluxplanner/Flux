@@ -52,6 +52,9 @@
   }
 
   const PROMISE = 'Flux Tutor works only from your notes — it doesn\'t make things up.';
+  /* IB-style practice, mock exams and predicted grades are paused until
+     Azfer switches them back on. Flip to true to bring all of it back. */
+  const DP_EXAMS = false;
   const TABS = [
     { id: 'notes', label: 'Notes', icon: 'notes' },
     { id: 'guide', label: 'Study guide', icon: 'guide' },
@@ -63,7 +66,7 @@
     { id: 'cards', label: 'Flashcards', icon: 'cards' },
     { id: 'ask', label: 'Ask your notes', icon: 'ask' },
     { id: 'plan', label: 'Study plan', icon: 'plan' },
-  ];
+  ].filter((t) => DP_EXAMS || (t.id !== 'ib' && t.id !== 'exam'));
   const TAB_IDS = TABS.map((t) => t.id);
   const TEST_KEY = 'flux_tutor.v2.test.';
   const MAX_FILE_BYTES = 15 * 1024 * 1024;
@@ -750,9 +753,9 @@
       + tile(streak.current, streak.current === 1 ? 'day streak' : 'days streak')
       + tile(streak.best, 'best streak')
       + tile(due, due === 1 ? 'flashcard due' : 'flashcards due')
-      + tile(exams, exams === 1 ? 'mock exam' : 'mock exams')
+      + (DP_EXAMS ? tile(exams, exams === 1 ? 'mock exam' : 'mock exams') : '')
       + '</ul>'
-      + (subjects.size
+      + (!DP_EXAMS ? '' : subjects.size
         ? '<h3 class="ft-h3">Predicted grades</h3><ul class="ft-grades">' + Array.from(subjects.values()).map((r) => {
           const pct = Math.round(r.pct / r.n);
           return '<li><a href="' + esc(r.href) + '"><span class="ft-grade-num">' + T.gradeFor(pct) + '</span><span>' + esc(r.name) + ' <span class="ft-help">' + pct + '%</span></span></a></li>';
@@ -765,7 +768,7 @@
     return '<div class="ft-empty"><h2 class="ft-h2">Start with your notes</h2><ol class="ft-steps">'
       + '<li><strong>Add your notes.</strong> Paste them, or add a PDF, a Word document or a photo of your notes.</li>'
       + '<li><strong>Get a study guide.</strong> An outline, key terms, key facts and short summaries, each with where in your notes it came from.</li>'
-      + '<li><strong>Study it.</strong> Learn one step at a time, revise topic pages, take practice tests and timed mock exams, review flashcards, ask your notes, and plan the days to your exam. Your predicted grade and streak show here.</li>'
+      + '<li><strong>Study it.</strong> Learn one step at a time, revise topic pages, take practice tests' + (DP_EXAMS ? ' and timed mock exams' : '') + ', review flashcards, ask your notes, and plan the days to your exam. Your ' + (DP_EXAMS ? 'predicted grade and ' : '') + 'streak show here.</li>'
       + '</ol><p class="ft-help">New here? “Try it with a sample” opens a short set of biology notes to explore.</p></div>';
   }
 
@@ -2096,7 +2099,7 @@
     const weakHtml = '<section class="ft-guide-sec" aria-labelledby="ftWeakTitle"><h3 class="ft-h3" id="ftWeakTitle">Your weak topics</h3>'
       + (weak.length
         ? '<ul class="ft-weak">' + weak.map((w) => '<li><strong>' + esc(w.label) + '</strong> <span class="ft-help">' + esc(statusText(w.status)) + ' · ' + plural(w.right, 'right') + ', ' + plural(w.wrong, 'wrong') + '</span></li>').join('') + '</ul>'
-          + '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="ib-weak">Practise my weak topics</button></div>'
+          + (DP_EXAMS ? '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="ib-weak">Practise my weak topics</button></div>' : '')
         : '<p class="ft-help">Answer some questions here, in Learn or in a practice test, and the terms you find hardest will show up here.</p>')
       + '</section>';
     const head = '<section class="ft-panel" aria-labelledby="ftScreenTitle"><h2 class="ft-h2" id="ftScreenTitle" tabindex="-1">IB practice</h2>'
@@ -2362,7 +2365,7 @@
           + (p.summary.length ? '<h3 class="ft-h4">Summary</h3><ul class="ft-summary">' + p.summary.map((s) => '<li><span>' + esc(s.text) + '</span> ' + cite(s.ref, s.text) + '</li>').join('') + '</ul>' : '')
           + (p.terms.length ? '<h3 class="ft-h4">Key terms</h3><dl class="ft-topic-terms">' + p.terms.map((t) => '<dt>' + esc(t.term) + ' <span class="ft-help">' + esc(statusText(T.statusOf(set.mastery[t.id]))) + '</span></dt><dd>' + esc(t.def) + ' ' + itemCite(t) + '</dd>').join('') + '</dl>' : '')
           + (p.facts.length ? '<h3 class="ft-h4">Key facts</h3><ul class="ft-summary">' + p.facts.map((f) => '<li><span>' + esc(f.text) + '</span> ' + itemCite(f) + '</li>').join('') + '</ul>' : '')
-          + (p.id !== 'own' ? '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="topic-ib" data-topic="' + esc(p.id) + '">Practise this topic</button></div>' : '')
+          + (DP_EXAMS && p.id !== 'own' ? '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="topic-ib" data-topic="' + esc(p.id) + '">Practise this topic</button></div>' : '')
           + '</details></li>';
       }).join('') + '</ul></section>';
   }
