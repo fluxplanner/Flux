@@ -103,6 +103,15 @@
       mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
     },
     {
+      id: 'translate',
+      group: 'study',
+      name: 'Flux Translate',
+      tagline: '35 languages, read aloud',
+      href: 'translate.html',
+      free: true,
+      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>',
+    },
+    {
       // Last, under Partner apps: built by Flux for another organization, so
       // it follows Flux's own study apps rather than sitting among them. Its
       // own brand rather than "Flux …": Synara keeps its name and violet look.

@@ -9,18 +9,18 @@ import { gotoScenario, openSidebarTab } from './helpers';
 test.describe('feature organization', () => {
   test('Flux Suite: the planner as a bar on top, then Study apps and Partners tabs', async ({ page }) => {
     await page.goto('/suite.html');
-    await expect(page.locator('#apps .app')).toHaveCount(9);
+    await expect(page.locator('#apps .app')).toHaveCount(10);
     // The planner is the wide bar above the tabs.
     const bar = page.locator('#apps > a.app--feature');
     await expect(bar).toHaveAttribute('href', 'index.html');
     await expect(bar).toContainText('Open the planner');
     const tabs = page.getByRole('tab');
-    await expect(tabs).toHaveText(['Study apps7', 'Partners1']);
+    await expect(tabs).toHaveText(['Study apps8', 'Partners1']);
     await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
 
     const study = page.getByRole('tabpanel', { name: /Study apps/ });
     const hrefs = await study.locator('a.app').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
-    expect(hrefs).toEqual(['teacher.html', 'grapher.html', 'calculator.html', 'flashcards.html', 'pixel.html', 'periodic.html', 'composer.html']);
+    expect(hrefs).toEqual(['teacher.html', 'grapher.html', 'calculator.html', 'flashcards.html', 'pixel.html', 'periodic.html', 'composer.html', 'translate.html']);
     await expect(page.locator('#apps a.app--synara')).toBeHidden();
     // The descriptions name what shipped: 3D, maths figures, the Evo layout.
     await expect(page.locator('#apps a.app--grapher')).toContainText('3D');
@@ -58,9 +58,9 @@ test.describe('feature organization', () => {
     const shelf = page.getByRole('navigation', { name: 'More Flux apps' });
     await expect(shelf).toBeVisible();
     const links = shelf.locator('a.fsh-app');
-    await expect(links).toHaveCount(7);
+    await expect(links).toHaveCount(8);
     const hrefs = await links.evaluateAll((as) => as.map((a) => a.getAttribute('href')));
-    expect(hrefs).toEqual(['teacher.html', 'grapher.html', 'calculator.html', 'flashcards.html', 'pixel.html', 'periodic.html', 'composer.html']);
+    expect(hrefs).toEqual(['teacher.html', 'grapher.html', 'calculator.html', 'flashcards.html', 'pixel.html', 'periodic.html', 'composer.html', 'translate.html']);
     await expect(links.first()).toHaveAttribute('target', '_blank');
     await expect(links.first()).toContainText('Tutor');
     // The partner app is not a study tool.

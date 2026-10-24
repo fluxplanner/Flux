@@ -16,7 +16,7 @@ test.describe('Flux Suite link', () => {
 
     await link.click();
     await expect(page).toHaveURL(HUB_URL);
-    await expect(page.locator('#apps .app')).toHaveCount(9);
+    await expect(page.locator('#apps .app')).toHaveCount(10);
   });
 
   test('the planner link opens Flux Suite on desktop', async ({ page }) => {
@@ -50,7 +50,7 @@ test.describe('Flux Suite link', () => {
       apps.map((app) => app.getAttribute('href')));
     expect(paths).toEqual(expect.arrayContaining([
       'index.html', 'synara.html', 'teacher.html', 'grapher.html',
-      'periodic.html', 'composer.html', 'flashcards.html', 'pixel.html',
+      'periodic.html', 'composer.html', 'flashcards.html', 'translate.html', 'pixel.html',
       'calculator.html',
     ]));
   });
