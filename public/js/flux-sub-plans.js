@@ -90,7 +90,7 @@
   function openPrintView(p) {
     const w = window.open('', '_blank', 'noopener,width=800,height=900');
     if (!w) return;
-    w.document.write(`<!doctype html><title>Sub plan ${esc(p.date)}</title><style>${PRINT_CSS}</style>${planHtml(p)}`);
+    w.document.write(`<!doctype html><title>Sub plan ${esc(p.date)}</title><style>${PRINT_CSS}</style>${planHtml(p)}${window.FluxHub && window.FluxHub.printMarkHTML ? window.FluxHub.printMarkHTML() : ''}`);
     w.document.close();
     setTimeout(() => { try { w.print(); } catch (_) {} }, 300);
   }
