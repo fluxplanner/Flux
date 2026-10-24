@@ -10,6 +10,8 @@
   const KEY_DASH_HIDDEN='flux_dashboard_hidden_sections_v1';
   const KEY_LAYOUT_CAL='flux_layout_calendar_v1';
   const KEY_PERF_SNAPPY='flux_perf_snappy';
+  /* The reading log card left the dashboard (it has its own tab), so saved
+     orders that still list 'reading' just lose it in saveDashOrder. */
   const DEFAULT_DASH_ORDER=['pulse','countdown','schedule','tasks'];
   /** Previous factory default (before pulse-first). Used to one-time-migrate users who never customized. */
   const PREVIOUS_DEFAULT_DASH_ORDER=['countdown','pulse','schedule','tasks'];

@@ -184,9 +184,15 @@ function saveNotice() {
   `;
 }
 
+// The tab last drawn: only a change of tab plays the entrance, never a
+// re-render of the same one (a sync, a tick, a toggle).
+let shownRoute = '';
+
 function renderScreen(state) {
+  const enter = route !== shownRoute ? ' route-enter' : '';
+  shownRoute = route;
   el.screen.innerHTML = html`
-    <div class="screen-inner" data-route="${route}">${raw(saveNotice())}${raw(VIEWS[route].render(state))}</div>
+    <div class="screen-inner${enter}" data-route="${route}">${raw(saveNotice())}${raw(VIEWS[route].render(state))}</div>
   `;
 }
 
@@ -454,14 +460,25 @@ async function boot() {
   window.matchMedia('(prefers-color-scheme: dark)')
     .addEventListener('change', () => applyTheme(store.get().settings.theme));
 
+  // Sign-in links go through the planner; it sends the student back here.
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-return="synara"]')) return;
+    try { sessionStorage.setItem('flux_return_to', 'synara.html'); } catch { /* blocked */ }
+  });
+
   notify.start();
   registerServiceWorker();
   startClock();
 
   // Sync (inside Flux only, once turned on). Its status shows on You; a
   // conflict is asked about the moment it is found.
+  let askedKey = false;
   sync.onStatus((s) => {
-    if (route === 'you') render();
+    // Home only shows the "enter your sync key" card, so it re-renders
+    // only when that changes, never mid-typing on every sync round.
+    const asking = s.phase === 'needs-key';
+    if (route === 'you' || (route === 'home' && asking !== askedKey)) render();
+    askedKey = asking;
     if (s.phase === 'conflict' && !isSheetOpen() && !isEmergencyOpen()) profile.showConflict();
   });
   sync.start();

@@ -38,10 +38,35 @@
    Every table below is written out rather than derived. Conjugation is exactly
    the kind of domain where a clever rule generates a plausible wrong answer,
    and a plausible wrong answer is the thing this file exists to stop.
+
+   THE VERB DRILL (2026-10)
+   ------------------------
+   The Study tools verb drill asks for every form of every verb in its sets, in
+   every tense it offers, so a wrong cell is no longer something a student
+   might stumble on — it is a question they will be marked wrong on. Sweeping
+   those sets turned up a family of first-year errors: the Spanish subjunctive
+   ignored -car/-gar/-zar ("juege", "busce"), participles lost their accent
+   ("leido", "oido"), French -cer/-ger and the è/ll/tt/-yer verbs came out
+   regular ("mangons", "achete", "appele", "envoye"), and the irregular sheet
+   itself printed "fallois" and "naîts". They are fixed below, each with the
+   reason beside it, and test/unit/lang-conjugation.test.mjs checks every form
+   the drill can ask.
+
+   Two shapes are new. A result may carry `alts`: other spellings that are just
+   as right (je paie / je paye, rió / rio), one list per person, so marking can
+   accept them; `forms` stays the one to show. And compound verbs (obtener,
+   devenir, permettre…) are conjugated as prefix + the base verb's own forms,
+   from a list — never by spotting a prefix, for the reason the German section
+   gives about "an + tworten".
    ========================================================================== */
 (function () {
   'use strict';
   if (window.FluxLangEngine) return;
+
+  /** Lowercase letters with every accent, umlaut and cedilla taken off. */
+  function fold(s) {
+    return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss').replace(/œ/g, 'oe');
+  }
 
   var PRONOUNS = {
     es: ['yo', 'tú', 'él/ella', 'nosotros', 'vosotros', 'ellos/ellas'],
@@ -110,7 +135,7 @@
     /* Not irregular so much as respelled: the future and conditional attach to
        the whole infinitive, and oír's accent disappears once the stress moves
        to the ending — oiré, not "oíré". */
-    oír: 'oir', reír: 'reir',
+    oír: 'oir', reír: 'reir', freír: 'freir',
   };
 
   /* The "boot" verbs. The change hits every form except nosotros/vosotros,
@@ -125,16 +150,22 @@
     ie: ['pensar', 'querer', 'empezar', 'comenzar', 'entender', 'perder', 'cerrar',
       'despertar', 'sentir', 'preferir', 'mentir', 'divertir', 'nevar', 'encender',
       'defender', 'atender', 'convertir', 'sugerir', 'herir', 'calentar', 'sentar',
-      'tener', 'venir'],
+      'tener', 'venir',
+      // Common enough to be typed into a custom drill list.
+      'recomendar', 'negar', 'confesar', 'tropezar', 'merendar', 'apretar',
+      'gobernar', 'atravesar', 'extender', 'descender', 'ascender', 'advertir',
+      'consentir', 'invertir', 'requerir'],
     ue: ['poder', 'dormir', 'volver', 'contar', 'encontrar', 'recordar', 'morir',
       'almorzar', 'costar', 'mostrar', 'llover', 'mover', 'probar', 'resolver',
-      'soñar', 'volar', 'devolver', 'acostar', 'colgar', 'doler'],
+      'soñar', 'volar', 'devolver', 'acostar', 'colgar', 'doler',
+      'aprobar', 'comprobar', 'demostrar', 'sonar', 'soltar', 'rogar', 'morder',
+      'forzar', 'acordar', 'promover', 'renovar'],
     i: ['pedir', 'servir', 'repetir', 'seguir', 'vestir', 'medir',
       'competir', 'impedir', 'despedir', 'conseguir', 'perseguir', 'decir',
       /* elegir and corregir are e→i like the rest, and also swap g→j in the yo
          so the consonant keeps its sound before o. Absent from both tables they
          conjugated as plain regulars: "elego, eleges". */
-      'elegir', 'corregir'],
+      'elegir', 'corregir', 'rendir', 'gemir'],
     // jugar is the only u→ue verb in the language.
     uue: ['jugar'],
   };
@@ -151,6 +182,91 @@
     seguir: 'sigo', conseguir: 'consigo', vencer: 'venzo',
     elegir: 'elijo', corregir: 'corrijo',
   };
+
+  /* Spelling, not irregularity. A consonant that is soft before e and i turns
+     hard before a and o unless it is respelled, so the yo of the present and
+     the whole present subjunctive change letters to keep the sound of the
+     infinitive: recoger → recojo, distinguir → distingo, vencer → venzo,
+     agradecer → agradezco. ES_YO already lists the famous ones; without these
+     rules every other verb of the same shape printed "recogo" and "agradeco".
+
+     The exceptions are real verbs whose yo is something else entirely (hacer
+     → hago, decir → digo, cocer → cuezo), so they never take the rule. */
+  var ES_ZCO_EXCEPT = {
+    hacer: 1, deshacer: 1, rehacer: 1, satisfacer: 1, cocer: 1, recocer: 1,
+    escocer: 1, mecer: 1, torcer: 1, retorcer: 1,
+  };
+  function esOrthKind(verb) {
+    if (/ducir$/.test(verb)) return 'zc';
+    if (/c(er|ir)$/.test(verb)) {
+      if (ES_ZCO_EXCEPT[verb] || /decir$/.test(verb)) return null;
+      return /[aeiouáéíóú]c(er|ir)$/.test(verb) ? 'zc' : 'z';
+    }
+    if (/guir$/.test(verb)) return 'g';
+    if (/g(er|ir)$/.test(verb)) return 'j';
+    return null;
+  }
+  /** Respell the stem's last consonant before an ending in a or o. */
+  function esOrthBack(stem, kind) {
+    if (kind === 'zc') return stem.replace(/c$/, 'zc');
+    if (kind === 'z') return stem.replace(/c$/, 'z');
+    if (kind === 'j') return stem.replace(/g$/, 'j');
+    if (kind === 'g') return stem.replace(/gu$/, 'g');
+    return stem;
+  }
+  /* The same idea in the other direction: -car, -gar and -zar verbs are hard
+     before a and o, so an ending in e needs qu, gu and c. The preterite yo
+     already did this (busqué); the present subjunctive is all six persons of
+     it, and it printed "busce", "llege", "juege" and "empieze" — for some of
+     the commonest verbs in the language. */
+  function esOrthFront(stem, verb) {
+    if (/car$/.test(verb)) return stem.replace(/c$/, 'qu');
+    if (/gar$/.test(verb)) return stem.replace(/g$/, 'gu');
+    if (/zar$/.test(verb)) return stem.replace(/z$/, 'c');
+    return stem;
+  }
+
+  /* -iar and -uar verbs whose i or u is stressed in the boot: envío, continúo.
+     Listed, because nothing in the spelling separates them from cambiar and
+     averiguar, which keep the stress on the a (cambio, averiguo). Verbs whose
+     forms are monosyllables in places (criar, guiar, fiar) are left out on
+     purpose: the 2010 spelling rules and older textbooks disagree about their
+     accents, and a drill must not mark either one wrong. */
+  var ES_IU_ACCENT = {
+    enviar: 1, esquiar: 1, confiar: 1, desconfiar: 1, ampliar: 1, vaciar: 1,
+    variar: 1, espiar: 1, desviar: 1, enfriar: 1, resfriar: 1,
+    continuar: 1, actuar: 1, graduar: 1, evaluar: 1, situar: 1, acentuar: 1,
+    efectuar: 1,
+  };
+  function esAccentIU(stem) {
+    var last = stem.slice(-1);
+    return stem.slice(0, -1) + (last === 'i' ? 'í' : last === 'u' ? 'ú' : last);
+  }
+
+  /* Compound verbs: a prefix on a verb these tables already know, conjugated
+     exactly like it — obtener like tener (obtengo, obtuve, obtendré),
+     componer like poner (compuesto). Listed rather than detected, because a
+     verb that merely ends the same way is not a compound: contener is tener,
+     but sostener is too and detener is too, while "entender" is not "tender".
+     rehacer is missing on purpose: the hiatus gives it accents (rehíce,
+     rehízo) that a plain prefix would not. */
+  var ES_COMPOUND = {
+    obtener: 'tener', mantener: 'tener', contener: 'tener', detener: 'tener',
+    retener: 'tener', sostener: 'tener', entretener: 'tener',
+    componer: 'poner', proponer: 'poner', suponer: 'poner', disponer: 'poner',
+    exponer: 'poner', imponer: 'poner', oponer: 'poner', reponer: 'poner',
+    posponer: 'poner', descomponer: 'poner',
+    prevenir: 'venir', convenir: 'venir', intervenir: 'venir', provenir: 'venir',
+    deshacer: 'hacer',
+    atraer: 'traer', contraer: 'traer', distraer: 'traer', extraer: 'traer', sustraer: 'traer',
+    envolver: 'volver', revolver: 'volver',
+    sonreír: 'reír',
+  };
+  /** Put a compound's prefix on the last word of a form: "he tenido" → "he obtenido". */
+  function prefixLast(pre, form) {
+    var at = form.lastIndexOf(' ');
+    return at === -1 ? pre + form : form.slice(0, at + 1) + pre + form.slice(at + 1);
+  }
 
   var ES_IRREGULAR = {
     ser: { present: ['soy', 'eres', 'es', 'somos', 'sois', 'son'], preterite: ['fui', 'fuiste', 'fue', 'fuimos', 'fuisteis', 'fueron'], imperfect: ['era', 'eras', 'era', 'éramos', 'erais', 'eran'] },
@@ -181,6 +297,30 @@
     reír: {
       present: ['río', 'ríes', 'ríe', 'reímos', 'reís', 'ríen'],
       preterite: ['reí', 'reíste', 'rió', 'reímos', 'reísteis', 'rieron'],
+      /* Built from the yo it came out "rea, reas". The stressed í of the
+         present carries through; nosotros and vosotros lose the accent. */
+      subjunctive: ['ría', 'rías', 'ría', 'riamos', 'riáis', 'rían'],
+    },
+    // Conjugated exactly like reír; its participle, frito, is in ES_PP.
+    freír: {
+      present: ['frío', 'fríes', 'fríe', 'freímos', 'freís', 'fríen'],
+      preterite: ['freí', 'freíste', 'frió', 'freímos', 'freísteis', 'frieron'],
+      subjunctive: ['fría', 'frías', 'fría', 'friamos', 'friáis', 'frían'],
+    },
+  };
+
+  /* Spellings that are just as right as the one shown. The 2010 rules of the
+     Real Academia write some one-syllable forms without an accent (rio, riais,
+     frio) while most school textbooks still print rió and riáis; a drill that
+     marked either one wrong would be teaching an argument, not Spanish. One
+     list per person, in step with `forms`. */
+  var ES_ALTS = {
+    reír: { preterite: [[], [], ['rio'], [], [], []], subjunctive: [[], [], [], [], ['riais'], []] },
+    freír: {
+      preterite: [[], [], ['frio'], [], [], []],
+      subjunctive: [[], [], [], [], ['friais'], []],
+      // Both participles are accepted: he frito, he freído.
+      perfect: [['he freído'], ['has freído'], ['ha freído'], ['hemos freído'], ['habéis freído'], ['han freído']],
     },
   };
 
@@ -195,6 +335,11 @@
   };
   // Stems ending in j drop the i of the ellos ending: dijeron, not dijieron.
   var ES_PRET_STEM_J = { decir: 'dij', traer: 'traj', conducir: 'conduj', traducir: 'traduj', producir: 'produj' };
+  /* Every -ducir verb is conducir with another prefix (introducir, reducir,
+     deducir): the same -duje preterite, the same -duzco yo. */
+  function esPretJ(verb) {
+    return ES_PRET_STEM_J[verb] || (/ducir$/.test(verb) ? verb.slice(0, -3) + 'j' : null);
+  }
 
   /* Present subjunctive endings — the "opposite vowel" rule: -ar verbs borrow
      the -er endings and vice versa. */
@@ -211,8 +356,17 @@
     devolver: 'devuelto', resolver: 'resuelto', morir: 'muerto', abrir: 'abierto',
     cubrir: 'cubierto', descubrir: 'descubierto', escribir: 'escrito',
     describir: 'descrito', romper: 'roto', imprimir: 'impreso', freír: 'frito',
-    satisfacer: 'satisfecho',
+    satisfacer: 'satisfecho', inscribir: 'inscrito', suscribir: 'suscrito',
+    transcribir: 'transcrito', prescribir: 'prescrito',
   };
+  /* The regular participle. After a stem ending in a, e or o the i is stressed
+     and breaks the diphthong, so it carries an accent: leído, traído, caído,
+     oído, creído. Without it the perfect read "he leido" — a spelling a
+     teacher marks wrong every time. After u it does not (construido). */
+  function esRegularParticiple(stem, end) {
+    if (end === 'ar') return stem + 'ado';
+    return stem + (/[aeo]$/.test(stem) ? 'ído' : 'ido');
+  }
   var ES_HABER = ['he', 'has', 'ha', 'hemos', 'habéis', 'han'];
 
   /* A handful of verbs are irregular in the subjunctive in a way no rule
@@ -225,6 +379,8 @@
     estar: ['esté', 'estés', 'esté', 'estemos', 'estéis', 'estén'],
     saber: ['sepa', 'sepas', 'sepa', 'sepamos', 'sepáis', 'sepan'],
     haber: ['haya', 'hayas', 'haya', 'hayamos', 'hayáis', 'hayan'],
+    // The hue- of the present (huelo) carries over; nosotros goes back to ol-.
+    oler: ['huela', 'huelas', 'huela', 'olamos', 'oláis', 'huelan'],
   };
 
   function esStemChange(verb) {
@@ -285,7 +441,27 @@
      are kept apart rather than merged into one clever test. */
   function esIsVowelStem(verb) { return /[aeo]er$/.test(verb) && !/[qg]uer$/.test(verb); }
 
+  /* Compounds and alternative spellings sit around the core: a compound is its
+     base verb's forms with the prefix on the last word, and alternatives are
+     attached afterwards. A compound drops its base's alternatives on purpose —
+     "rio" is a monosyllable, "sonrio" is not, so sonrió keeps its accent. */
   function conjugateEs(verb, tense) {
+    var base = ES_COMPOUND[verb];
+    if (base) {
+      var pre = verb.slice(0, verb.length - base.length);
+      var br = conjugateEs(base, tense);
+      return {
+        forms: br.forms.map(function (f) { return prefixLast(pre, f); }),
+        note: br.note + ' — conjugated like ' + base,
+      };
+    }
+    var r = esCore(verb, tense);
+    var alts = ES_ALTS[verb] && ES_ALTS[verb][tense];
+    if (alts) r.alts = alts.map(function (a) { return a.slice(); });
+    return r;
+  }
+
+  function esCore(verb, tense) {
     /* The ending test reads the last two characters, so an infinitive carrying
        an accent — oír, reír — failed it and the verb was refused outright even
        though ES_IRREGULAR and ES_YO both had entries waiting for it. Fold the
@@ -317,44 +493,55 @@
     }
 
     if (tense === 'perfect') {
-      var pp = ES_PP[verb] || stem + (end === 'ar' ? 'ado' : 'ido');
+      var pp = ES_PP[verb] || esRegularParticiple(stem, end);
       return {
         forms: ES_HABER.map(function (h) { return h + ' ' + pp; }),
-        note: ES_PP[verb] ? 'irregular participle "' + pp + '"' : 'haber + ' + (end === 'ar' ? '-ado' : '-ido'),
+        note: ES_PP[verb] ? 'irregular participle "' + pp + '"'
+          : /ído$/.test(pp) ? 'haber + -ído — the accent keeps the i its own syllable'
+            : 'haber + ' + (end === 'ar' ? '-ado' : '-ido'),
       };
     }
 
     if (tense === 'subjunctive') {
       if (ES_SUBJ_IRREG[verb]) return { forms: ES_SUBJ_IRREG[verb].slice(), note: 'irregular' };
       var sk = esStemChange(verb);
+      var iuS = ES_IU_ACCENT[verb];
+      var orthS = esOrthKind(verb);
       /* The subjunctive is built from the yo form of the present, which is why
          an irregular yo carries into all six: tengo → tenga, tengamos. When it
-         does, that stem wins everywhere and the boot does not apply. */
-      var yoStem = ES_YO[verb] ? ES_YO[verb].replace(/o$/, '') : null;
+         does, that stem wins everywhere and the boot does not apply. -uir verbs
+         count: construyo → construya, construyamos. A yo that only changed for
+         spelling (recojo, venzo) is different — it is the regular subjunctive,
+         respelled, so the boot still applies underneath it. */
+      var yoStem = ES_YO[verb] ? ES_YO[verb].replace(/o$/, '') : esIsUir(verb) ? stem + 'y' : null;
       var sforms = ES_SUBJ[end].map(function (e, i) {
         if (yoStem) return yoStem + e;
         var outsideBoot = i === 3 || i === 4;
-        if (!sk) return stem + e;
+        var s = stem;
+        if (sk && !outsideBoot) s = applyStemChange(stem, sk);
         /* -ir stem-changers are the exception to the exception: nosotros and
            vosotros take a weaker change of their own — durmamos, pidamos —
            rather than escaping it the way -ar and -er verbs do. */
-        if (outsideBoot) {
-          if (end !== 'ir') return stem + e;
-          var weak = sk === 'ue' ? applyStemChange(stem, 'ue').replace('ue', 'u') : applyStemChange(stem, 'i');
-          return weak + e;
-        }
-        return applyStemChange(stem, sk) + e;
+        else if (sk && end === 'ir') s = sk === 'ue' ? applyStemChange(stem, 'ue').replace('ue', 'u') : applyStemChange(stem, 'i');
+        if (iuS && !outsideBoot) s = esAccentIU(s);
+        s = end === 'ar' ? esOrthFront(s, verb) : esOrthBack(s, orthS);
+        return s + e;
       });
+      var respelled = sforms[3] !== stem + ES_SUBJ[end][3];
       return {
         forms: sforms,
-        note: yoStem ? 'built from the yo form "' + ES_YO[verb] + '"' : sk ? 'stem change carries into the subjunctive' : 'regular — opposite endings to the present',
+        note: yoStem ? 'built from the yo form "' + (ES_YO[verb] || stem + 'yo') + '"'
+          : sk ? 'stem change carries into the subjunctive'
+            : iuS ? 'the stressed ' + (/u$/.test(stem) ? 'ú' : 'í') + ' keeps its accent, except in nosotros/vosotros'
+              : respelled ? 'regular, respelled to keep the sound — ' + sforms[0]
+                : 'regular — opposite endings to the present',
       };
     }
 
     if (tense === 'preterite') {
-      var ps = ES_PRET_STEM[verb] || ES_PRET_STEM_J[verb];
+      var ps = ES_PRET_STEM[verb] || esPretJ(verb);
       if (ps) {
-        var isJ = !!ES_PRET_STEM_J[verb];
+        var isJ = !ES_PRET_STEM[verb];
         return {
           forms: esFixSpelling(verb, ES_PRET_ENDINGS.map(function (e, i) {
             return ps + (isJ && i === 5 ? 'eron' : e);
@@ -409,21 +596,31 @@
       if (ES_YO[verb]) uf[0] = ES_YO[verb];
       return { forms: uf, note: 'y before every ending except nosotros/vosotros' };
     }
+    var iu = ES_IU_ACCENT[verb];
+    var orth = esOrthKind(verb);
     var forms = ES_PRESENT[end].map(function (e, i) {
       // Index 3 and 4 are nosotros and vosotros — outside the boot.
-      var s = kind && i !== 3 && i !== 4 ? applyStemChange(stem, kind) : stem;
+      var inBoot = i !== 3 && i !== 4;
+      var s = kind && inBoot ? applyStemChange(stem, kind) : stem;
+      if (iu && inBoot) s = esAccentIU(s);
+      // Only the yo ending starts with o; the rest begin with e or i.
+      if (i === 0) s = esOrthBack(s, orth);
       return s + e;
     });
     var note;
     if (kind) {
       var label = kind === 'uue' ? 'u→ue' : kind === 'ie' ? 'e→ie' : kind === 'ue' ? 'o→ue' : 'e→i';
       note = 'stem change ' + label + ' — not in nosotros/vosotros';
+    } else if (iu) {
+      note = 'the ' + (/u$/.test(stem) ? 'u' : 'i') + ' is stressed and takes an accent, except in nosotros/vosotros';
     } else {
       note = 'regular -' + end;
     }
     if (ES_YO[verb]) {
       forms[0] = ES_YO[verb];
       note = kind ? note + ', irregular yo' : 'irregular yo, otherwise regular -' + end;
+    } else if (orth && forms[0] !== stem + 'o') {
+      note += ', yo respelled to keep the sound — ' + forms[0];
     }
     return { forms: forms, note: note };
   }
@@ -440,8 +637,10 @@
      is explicit rather than inferred. -vrir/-frir verbs (ouvrir, offrir) are
      stranger still: they take -er endings entirely. */
   var FR_IR_BARE_VERBS = ['partir', 'sortir', 'dormir', 'sentir', 'servir', 'mentir',
-    'repartir', 'ressentir', 'consentir', 'endormir', 'desservir'];
-  var FR_IR_AS_ER = ['ouvrir', 'offrir', 'couvrir', 'souffrir', 'découvrir', 'cueillir'];
+    'repartir', 'ressortir', 'ressentir', 'consentir', 'endormir', 'desservir'];
+  /* découvrir moved to FR_COMPOUND: it is couvrir with a prefix, and as a bare
+     -ir verb of its own its participle came out "découvri". */
+  var FR_IR_AS_ER = ['ouvrir', 'offrir', 'couvrir', 'souffrir', 'cueillir'];
 
   var FR_IRREGULAR = {
     'être': { present: ['suis', 'es', 'est', 'sommes', 'êtes', 'sont'] },
@@ -470,6 +669,23 @@
     mourir: { present: ['meurs', 'meurs', 'meurt', 'mourons', 'mourez', 'meurent'] },
     vivre: { present: ['vis', 'vis', 'vit', 'vivons', 'vivez', 'vivent'] },
     suivre: { present: ['suis', 'suis', 'suit', 'suivons', 'suivez', 'suivent'] },
+    /* naître sat on the irregular-verbs sheet with no table behind it, so it
+       fell through to the regular -re rule and the sheet printed "naîts". */
+    'naître': { present: ['nais', 'nais', 'naît', 'naissons', 'naissez', 'naissent'] },
+    rire: { present: ['ris', 'ris', 'rit', 'rions', 'riez', 'rient'] },
+    'paraître': { present: ['parais', 'parais', 'paraît', 'paraissons', 'paraissez', 'paraissent'] },
+    plaire: { present: ['plais', 'plais', 'plaît', 'plaisons', 'plaisez', 'plaisent'] },
+    valoir: { present: ['vaux', 'vaux', 'vaut', 'valons', 'valez', 'valent'] },
+    fuir: { present: ['fuis', 'fuis', 'fuit', 'fuyons', 'fuyez', 'fuient'] },
+    'acquérir': { present: ['acquiers', 'acquiers', 'acquiert', 'acquérons', 'acquérez', 'acquièrent'] },
+    'conquérir': { present: ['conquiers', 'conquiers', 'conquiert', 'conquérons', 'conquérez', 'conquièrent'] },
+    // Like voir in the present, but its future is prévoirai, not "préverrai".
+    'prévoir': { present: ['prévois', 'prévois', 'prévoit', 'prévoyons', 'prévoyez', 'prévoient'] },
+    /* dire's compounds are not dire: "vous dites" but "vous contredisez". Only
+       redire keeps dites, so it is the only one in FR_COMPOUND. */
+    contredire: { present: ['contredis', 'contredis', 'contredit', 'contredisons', 'contredisez', 'contredisent'] },
+    interdire: { present: ['interdis', 'interdis', 'interdit', 'interdisons', 'interdisez', 'interdisent'] },
+    'prédire': { present: ['prédis', 'prédis', 'prédit', 'prédisons', 'prédisez', 'prédisent'] },
   };
 
   /* Imperfect is built from the nous form of the present minus -ons, for every
@@ -482,6 +698,9 @@
     dire: 'dis', lire: 'lis', 'écrire': 'écriv', mettre: 'mett', boire: 'buv',
     croire: 'croy', recevoir: 'recev', 'connaître': 'connaiss', courir: 'cour',
     mourir: 'mour', vivre: 'viv', suivre: 'suiv',
+    'naître': 'naiss', rire: 'ri', 'paraître': 'paraiss', plaire: 'plais',
+    valoir: 'val', fuir: 'fuy', 'acquérir': 'acquér', 'conquérir': 'conquér',
+    'prévoir': 'prévoy', contredire: 'contredis', interdire: 'interdis', 'prédire': 'prédis',
   };
   var FR_IMP_ENDINGS = ['ais', 'ais', 'ait', 'ions', 'iez', 'aient'];
   var FR_FUT_ENDINGS = ['ai', 'as', 'a', 'ons', 'ez', 'ont'];
@@ -492,6 +711,9 @@
     vouloir: 'voudr', devoir: 'devr', savoir: 'saur', voir: 'verr', venir: 'viendr',
     tenir: 'tiendr', recevoir: 'recevr', courir: 'courr', mourir: 'mourr',
     envoyer: 'enverr', falloir: 'faudr', valoir: 'vaudr',
+    'acquérir': 'acquerr', 'conquérir': 'conquerr', 'prévoir': 'prévoir',
+    // An -ir verb conjugated like -er all the way into the future: cueillerai.
+    cueillir: 'cueiller',
   };
 
   /* Past participles, for the passé composé. Only the irregular ones are
@@ -504,6 +726,85 @@
     'connaître': 'connu', vivre: 'vécu', suivre: 'suivi', mourir: 'mort',
     ouvrir: 'ouvert', offrir: 'offert', couvrir: 'couvert', souffrir: 'souffert',
     courir: 'couru', 'naître': 'né', descendre: 'descendu',
+    rire: 'ri', 'paraître': 'paru', plaire: 'plu', valoir: 'valu',
+    'acquérir': 'acquis', 'conquérir': 'conquis', 'prévoir': 'prévu',
+    contredire: 'contredit', interdire: 'interdit', 'prédire': 'prédit',
+  };
+
+  /* Families: verbs that share one irregular pattern, built from that pattern
+     rather than typed out per verb. Membership is by name, never by spelling —
+     "luire" ends like conduire and is not like it. */
+  var FR_UIRE = ['conduire', 'construire', 'détruire', 'produire', 'traduire', 'réduire',
+    'introduire', 'séduire', 'cuire', 'instruire', 'reconstruire', 'reproduire', 'déduire'];
+  var FR_NDRE = ['craindre', 'plaindre', 'contraindre', 'peindre', 'repeindre', 'éteindre',
+    'atteindre', 'teindre', 'feindre', 'joindre', 'rejoindre'];
+  var FR_BATTRE = ['battre', 'combattre', 'abattre', 'débattre'];
+  var FR_ROMPRE = ['rompre', 'interrompre', 'corrompre'];
+  var FR_CEVOIR = ['apercevoir', 'décevoir', 'concevoir', 'percevoir'];
+  var FR_CRIRE = ['décrire', 'inscrire', 'prescrire', 'transcrire', 'réécrire', 'souscrire'];
+
+  function frPattern(verb) {
+    var s;
+    if (FR_UIRE.indexOf(verb) !== -1) {
+      s = verb.slice(0, -2);                                   // condui-
+      return { present: [s + 's', s + 's', s + 't', s + 'sons', s + 'sez', s + 'sent'], imp: s + 's', pp: s + 't', note: 'like conduire — -s- in the plural, participle in -t' };
+    }
+    if (FR_NDRE.indexOf(verb) !== -1) {
+      s = verb.slice(0, -4);                                   // crai-
+      return { present: [s + 'ns', s + 'ns', s + 'nt', s + 'gnons', s + 'gnez', s + 'gnent'], imp: s + 'gn', pp: s + 'nt', note: '-ndre verb — -gn- in the plural (craignons), participle in -t' };
+    }
+    if (FR_BATTRE.indexOf(verb) !== -1) {
+      s = verb.slice(0, -2);                                   // batt-
+      var one = verb.slice(0, -3);                             // bat-
+      return { present: [one + 's', one + 's', one, s + 'ons', s + 'ez', s + 'ent'], note: 'like battre — one t in the singular' };
+    }
+    if (FR_ROMPRE.indexOf(verb) !== -1) {
+      s = verb.slice(0, -2);                                   // romp-
+      return { present: FR_IR_BARE.map(function (x) { return s + x; }), note: 'like rompre — il rompt takes a t' };
+    }
+    if (FR_CEVOIR.indexOf(verb) !== -1) {
+      s = verb.slice(0, -6);                                   // aper-
+      return { present: [s + 'çois', s + 'çois', s + 'çoit', s + 'cevons', s + 'cevez', s + 'çoivent'], imp: s + 'cev', fut: s + 'cevr', pp: s + 'çu', note: 'like recevoir — ç before o' };
+    }
+    if (FR_CRIRE.indexOf(verb) !== -1) {
+      s = verb.slice(0, -2);                                   // décri-
+      return { present: [s + 's', s + 's', s + 't', s + 'vons', s + 'vez', s + 'vent'], imp: s + 'v', pp: s + 't', note: 'like écrire — -v- in the plural' };
+    }
+    return null;
+  }
+
+  /* Impersonal verbs have one person. The other five are a dash rather than
+     an invented form, so a table shows them empty and a drill never asks. */
+  var FR_IMPERSONAL = {
+    falloir: { present: 'faut', imperfect: 'fallait', future: 'faudra', conditional: 'faudrait', passeCompose: 'a fallu' },
+    pleuvoir: { present: 'pleut', imperfect: 'pleuvait', future: 'pleuvra', conditional: 'pleuvrait', passeCompose: 'a plu' },
+  };
+
+  /* Compound verbs: prefix + a verb these tables know, conjugated exactly like
+     it (devenir like venir, permettre like mettre). Listed, not detected — see
+     the German section on "an + tworten". Their auxiliary is their own, not
+     the base verb's: devenir takes être like venir, but prévenir takes avoir,
+     and apparaître takes être where paraître takes avoir. */
+  var FR_COMPOUND = {
+    devenir: 'venir', revenir: 'venir', parvenir: 'venir', intervenir: 'venir',
+    survenir: 'venir', 'prévenir': 'venir', provenir: 'venir',
+    appartenir: 'tenir', contenir: 'tenir', obtenir: 'tenir', maintenir: 'tenir',
+    retenir: 'tenir', soutenir: 'tenir', 'détenir': 'tenir', entretenir: 'tenir',
+    permettre: 'mettre', promettre: 'mettre', admettre: 'mettre', remettre: 'mettre',
+    soumettre: 'mettre', commettre: 'mettre', transmettre: 'mettre', omettre: 'mettre',
+    reprendre: 'prendre', surprendre: 'prendre', entreprendre: 'prendre',
+    revoir: 'voir', entrevoir: 'voir',
+    relire: 'lire', 'élire': 'lire',
+    'reconnaître': 'connaître',
+    'apparaître': 'paraître', 'disparaître': 'paraître', 'comparaître': 'paraître', 'réapparaître': 'paraître',
+    refaire: 'faire', 'défaire': 'faire', satisfaire: 'faire',
+    redire: 'dire',
+    parcourir: 'courir', secourir: 'courir', accourir: 'courir', recourir: 'courir',
+    poursuivre: 'suivre', survivre: 'vivre', revivre: 'vivre',
+    sourire: 'rire',
+    rouvrir: 'ouvrir', entrouvrir: 'ouvrir', 'découvrir': 'couvrir', recouvrir: 'couvrir',
+    accueillir: 'cueillir', recueillir: 'cueillir',
+    'déplaire': 'plaire', renvoyer: 'envoyer', 'renaître': 'naître',
   };
 
   /* Verbs taking être in the passé composé — the DR & MRS VANDERTRAMP set.
@@ -511,25 +812,102 @@
      mistake in school French. */
   var FR_ETRE_VERBS = ['aller', 'venir', 'arriver', 'partir', 'entrer', 'sortir',
     'monter', 'descendre', 'naître', 'mourir', 'rester', 'tomber', 'retourner',
-    'revenir', 'devenir', 'rentrer'];
+    'revenir', 'devenir', 'rentrer',
+    // …and their own compounds.
+    'parvenir', 'intervenir', 'survenir', 'provenir', 'apparaître', 'réapparaître',
+    'renaître', 'repartir', 'ressortir', 'redescendre', 'remonter', 'retomber', 'décéder'];
 
   var FR_AVOIR = ['ai', 'as', 'a', 'avons', 'avez', 'ont'];
   var FR_ETRE = ['suis', 'es', 'est', 'sommes', 'êtes', 'sont'];
   // Agreement on the être verbs: masculine singular, then plural where it shows.
   var FR_ETRE_AGREE = ['', '', '', 's', 's', 's'];
 
+  /* Spelling changes in -er verbs. All of them happen for the same reason —
+     the ending changes how the stem is said — and in the same places:
+       · before a silent ending (je, tu, il, ils in the present: -e, -es, -e,
+         -ent) e and é open to è, l and t double, and y becomes i;
+       · before a or o, c needs a cedilla and g needs an e (nous commençons,
+         je mangeais).
+     Without these the engine taught "nous mangons", "j'achete", "j'appele" and
+     "j'envoye" — four of the first forty verbs a French course teaches. */
+  // e → è: listed, because appeler and jeter double instead and nothing in the
+  // spelling says which a verb does.
+  var FR_E_GRAVE = ['acheter', 'racheter', 'achever', 'amener', 'emmener', 'mener', 'ramener',
+    'promener', 'lever', 'élever', 'enlever', 'relever', 'soulever', 'peser', 'semer',
+    'geler', 'congeler', 'dégeler', 'peler', 'modeler', 'crever', 'harceler'];
+  var FR_DOUBLE = ['appeler', 'rappeler', 'épeler', 'renouveler', 'jeter', 'rejeter',
+    'projeter', 'feuilleter', 'étinceler', 'ficeler'];
+  /* é → è is a rule, not a list: é followed by consonants and -er (préférer,
+     répéter, célébrer). créer has a vowel there and does not change; éviter's
+     last stem vowel is the i, so it does not either. The common ones are
+     listed only so that typing them without accents still finds them. */
+  var FR_E_ACUTE_COMMON = ['préférer', 'espérer', 'répéter', 'célébrer', 'considérer', 'posséder',
+    'suggérer', 'protéger', 'sécher', 'compléter', 'inquiéter', 'régler', 'refléter',
+    'libérer', 'opérer', 'tolérer', 'accélérer', 'céder', 'procéder', 'décéder',
+    'interpréter', 'pénétrer', 'gérer', 'digérer', 'exagérer', 'récupérer', 'révéler'];
+  function frAcute(verb) { return /é[^aeiouyéèêëàâîïôûù]+er$/.test(verb); }
+  function frLastTo(s, from, to) {
+    var at = s.lastIndexOf(from);
+    return at === -1 ? s : s.slice(0, at) + to + s.slice(at + 1);
+  }
+  /** The stem before a silent ending: { main, alt? }. */
+  function frMuteStem(verb, s) {
+    if (FR_E_GRAVE.indexOf(verb) !== -1) return { main: frLastTo(s, 'e', 'è'), how: 'e → è before a silent ending' };
+    if (FR_DOUBLE.indexOf(verb) !== -1) return { main: s + s.slice(-1), how: 'the consonant doubles before a silent ending' };
+    if (frAcute(verb)) return { main: frLastTo(s, 'é', 'è'), how: 'é → è before a silent ending' };
+    if (/[ou]yer$/.test(verb)) return { main: s.slice(0, -1) + 'i', how: 'y → i before a silent ending' };
+    // payer, essayer: je paie and je paye are both right.
+    if (/ayer$/.test(verb)) return { main: s.slice(0, -1) + 'i', alt: s, how: 'y → i before a silent ending, or keep the y — both are right' };
+    return { main: s };
+  }
+  /** The stem before an ending in a or o: commenç-, mange-. */
+  function frSoften(verb, s) {
+    if (/cer$/.test(verb)) return s.slice(0, -1) + 'ç';
+    if (/ger$/.test(verb)) return s + 'e';
+    return s;
+  }
+  /** Future/conditional stem of an -er verb: { main, alt? }. */
+  function frErFuture(verb, s) {
+    if (FR_E_GRAVE.indexOf(verb) !== -1) return { main: frLastTo(s, 'e', 'è') + 'er' };
+    if (FR_DOUBLE.indexOf(verb) !== -1) return { main: s + s.slice(-1) + 'er' };
+    if (/[ou]yer$/.test(verb)) return { main: s.slice(0, -1) + 'ier' };
+    if (/ayer$/.test(verb)) return { main: s.slice(0, -1) + 'ier', alt: verb };
+    /* préférer keeps its é in the future in most textbooks (préférerai); the
+       1990 spelling reform writes préfèrerai. Both are accepted. */
+    if (frAcute(verb)) return { main: verb, alt: frLastTo(s, 'é', 'è') + 'er' };
+    return { main: verb };
+  }
+
+  /* Every -oir verb is irregular, and every -re verb outside -dre, -pre, -ttre
+     and the families above is too (conclure, vaincre, coudre, résoudre). One
+     the tables do not know is refused rather than guessed: a regular rule
+     would print "il conclu" and "nous coudons" with total confidence. */
+  function frRegularRe(verb) {
+    return /dre$/.test(verb) && !/(indre|soudre|coudre|moudre|prendre)$/.test(verb);
+  }
+
   function frFamily(verb) {
+    if (FR_IMPERSONAL[verb]) return 'impersonal';
     if (FR_IRREGULAR[verb]) return 'irregular';
+    if (frPattern(verb)) return 'pattern';
     if (FR_IR_AS_ER.indexOf(verb) !== -1) return 'ir-as-er';
     if (FR_IR_BARE_VERBS.indexOf(verb) !== -1) return 'ir-bare';
     if (verb.slice(-2) === 'er') return 'er';
+    if (/oir$/.test(verb)) return null;
     if (verb.slice(-2) === 'ir') return 'ir-iss';
-    if (verb.slice(-2) === 're') return 're';
+    if (verb.slice(-2) === 're') return frRegularRe(verb) ? 're' : null;
     return null;
   }
 
   function frPastParticiple(verb) {
+    verb = frResolve(verb);
+    var base = FR_COMPOUND[verb];
+    if (base) return verb.slice(0, verb.length - base.length) + frPastParticiple(base);
     if (FR_PP[verb]) return FR_PP[verb];
+    if (verb === 'falloir') return 'fallu';
+    if (verb === 'pleuvoir') return 'plu';
+    var pat = frPattern(verb);
+    if (pat && pat.pp) return pat.pp;
     var end = verb.slice(-2);
     if (end === 'er') return verb.slice(0, -2) + 'é';
     if (end === 'ir') return verb.slice(0, -2) + 'i';
@@ -545,72 +923,144 @@
 
      Accents are folded for the *lookup* only and the table's own spelling is
      what comes back, so a student who types "ecrire" is shown "écrire" with
-     its accents intact and learns the spelling as well as the endings. */
+     its accents intact and learns the spelling as well as the endings. Only a
+     verb typed with no accents at all is folded: "répartir" is a different
+     verb from "repartir", and typing the accent means you meant it. */
   var FR_UNACCENTED = null;
+  function frKnownNames() {
+    return Object.keys(FR_IRREGULAR).concat(Object.keys(FR_COMPOUND), Object.keys(FR_IMPERSONAL),
+      Object.keys(FR_PP), FR_UIRE, FR_NDRE, FR_BATTRE, FR_ROMPRE, FR_CEVOIR, FR_CRIRE,
+      FR_IR_BARE_VERBS, FR_IR_AS_ER, FR_E_GRAVE, FR_DOUBLE, FR_E_ACUTE_COMMON, FR_ETRE_VERBS);
+  }
   function frResolve(verb) {
-    if (FR_IRREGULAR[verb]) return verb;
+    if (FR_IRREGULAR[verb] || FR_COMPOUND[verb]) return verb;
     if (!FR_UNACCENTED) {
       FR_UNACCENTED = {};
-      for (var k in FR_IRREGULAR) {
-        if (!Object.prototype.hasOwnProperty.call(FR_IRREGULAR, k)) continue;
-        var bare = k.normalize('NFD').replace(/[̀-ͯ]/g, '');
+      frKnownNames().forEach(function (k) {
+        var bare = fold(k);
         if (bare !== k && !FR_UNACCENTED[bare]) FR_UNACCENTED[bare] = k;
-      }
+      });
     }
-    return FR_UNACCENTED[verb] || verb;
+    return fold(verb) === verb && FR_UNACCENTED[verb] ? FR_UNACCENTED[verb] : verb;
+  }
+
+  function frPasseCompose(verb, pp) {
+    var withEtre = FR_ETRE_VERBS.indexOf(verb) !== -1;
+    var aux = withEtre ? FR_ETRE : FR_AVOIR;
+    /* The pronoun lives in its own column in the UI, so the elision has to
+       happen there rather than inside the verb: "j'" + "ai parlé", never
+       "je" + "j'ai parlé" (duplicated) or "je" + "ai parlé" (not French).
+       Only avoir triggers it — "je suis allé" keeps its full pronoun. */
+    var pron = PRONOUNS.fr.slice();
+    if (/^[aeiouéêh]/i.test(aux[0])) pron[0] = "j'";
+    /* A participle already ending in s (assis, pris) takes no extra s in the
+       plural. None of the être verbs here does, but the rule costs nothing. */
+    return {
+      forms: aux.map(function (a, i) {
+        return a + ' ' + (withEtre && !/s$/.test(pp) ? pp + FR_ETRE_AGREE[i] : pp);
+      }),
+      pronouns: pron,
+      agree: withEtre,
+      note: withEtre
+        ? 'takes être — the participle agrees with the subject'
+        : 'takes avoir — the participle does not change',
+    };
+  }
+
+  function frCompound(verb, base, tense) {
+    var pre = verb.slice(0, verb.length - base.length);
+    if (tense === 'passeCompose') {
+      var r0 = frPasseCompose(verb, pre + frPastParticiple(base));
+      r0.note += ' — like ' + base;
+      return r0;
+    }
+    var r = conjugateFr(base, tense);
+    var out = { forms: r.forms.map(function (f) { return pre + f; }), note: r.note + ' — like ' + base };
+    if (r.alts) out.alts = r.alts.map(function (a) { return a.map(function (f) { return pre + f; }); });
+    return out;
+  }
+
+  function frImpersonal(verb, tense) {
+    var f = FR_IMPERSONAL[verb][tense] || FR_IMPERSONAL[verb].present;
+    return {
+      forms: ['—', '—', f, '—', '—', '—'],
+      pronouns: ['—', '—', 'il', '—', '—', '—'],
+      note: 'impersonal — only "il" (il ' + f + ')',
+    };
   }
 
   function conjugateFr(verb, tense) {
     verb = frResolve(verb);
+    if (FR_COMPOUND[verb]) return frCompound(verb, FR_COMPOUND[verb], tense);
     var fam = frFamily(verb);
-    if (!fam) throw new Error('French verbs end in -er, -ir or -re. Try parler, finir or vendre.');
+    if (!fam) {
+      if (/(ir|re)$/.test(verb)) {
+        throw new Error('Flux does not have the forms of "' + verb + '" yet: it is irregular in a way these tables do not cover. Check it in a dictionary.');
+      }
+      throw new Error('French verbs end in -er, -ir or -re. Try parler, finir or vendre.');
+    }
+    if (fam === 'impersonal') return frImpersonal(verb, tense);
+    var pat = fam === 'pattern' ? frPattern(verb) : null;
+    var s = verb.slice(0, -2);
+
+    if (tense === 'passeCompose') return frPasseCompose(verb, frPastParticiple(verb));
 
     if (tense === 'imperfect') {
-      var istem = FR_IMP_STEM[verb];
-      if (!istem) {
-        istem = fam === 'ir-iss' ? verb.slice(0, -2) + 'iss' : verb.slice(0, -2);
-      }
+      var istem = FR_IMP_STEM[verb] || (pat && pat.imp);
+      if (!istem) istem = fam === 'ir-iss' ? s + 'iss' : s;
+      /* -cer and -ger keep their sound before a (je commençais, je mangeais)
+         but not before i (nous commencions, nous mangions). */
+      var soft = fam === 'er' ? frSoften(verb, istem) : istem;
       return {
-        forms: FR_IMP_ENDINGS.map(function (x) { return istem + x; }),
-        note: 'built from the nous form — the one tense with no exceptions but être',
+        forms: FR_IMP_ENDINGS.map(function (x, i) { return (i === 3 || i === 4 ? istem : soft) + x; }),
+        note: soft !== istem
+          ? 'built from the nous form — ' + soft + 'ais keeps the sound, nous ' + istem + 'ions does not need to'
+          : 'built from the nous form — the one tense with no exceptions but être',
       };
     }
 
     if (tense === 'future' || tense === 'conditional') {
-      var fstem = FR_FUT_STEM[verb] || (verb.slice(-2) === 're' ? verb.slice(0, -1) : verb);
       var ends = tense === 'future' ? FR_FUT_ENDINGS : FR_COND_ENDINGS;
-      return {
-        forms: ends.map(function (x) { return fstem + x; }),
-        note: FR_FUT_STEM[verb] ? 'irregular stem "' + fstem + '-"' : 'regular — endings join the infinitive',
+      var fixed = FR_FUT_STEM[verb] || (pat && pat.fut);
+      if (fixed) {
+        return { forms: ends.map(function (x) { return fixed + x; }), note: 'irregular stem "' + fixed + '-"' };
+      }
+      var fs = fam === 'er' ? frErFuture(verb, s) : { main: verb.slice(-2) === 're' ? verb.slice(0, -1) : verb };
+      var fres = {
+        forms: ends.map(function (x) { return fs.main + x; }),
+        note: fs.main !== verb && fs.main !== verb.slice(0, -1)
+          ? 'the stem keeps its spelling change — ' + fs.main + '-'
+          : 'regular — endings join the infinitive',
       };
-    }
-
-    if (tense === 'passeCompose') {
-      var pp = frPastParticiple(verb);
-      var withEtre = FR_ETRE_VERBS.indexOf(verb) !== -1;
-      var aux = withEtre ? FR_ETRE : FR_AVOIR;
-      /* The pronoun lives in its own column in the UI, so the elision has to
-         happen there rather than inside the verb: "j'" + "ai parlé", never
-         "je" + "j'ai parlé" (duplicated) or "je" + "ai parlé" (not French).
-         Only avoir triggers it — "je suis allé" keeps its full pronoun. */
-      var pron = PRONOUNS.fr.slice();
-      if (/^[aeiouéêh]/i.test(aux[0])) pron[0] = "j'";
-      return {
-        forms: aux.map(function (a, i) {
-          return a + ' ' + (withEtre ? pp + FR_ETRE_AGREE[i] : pp);
-        }),
-        pronouns: pron,
-        note: withEtre
-          ? 'takes être — the participle agrees with the subject'
-          : 'takes avoir — the participle does not change',
-      };
+      if (fs.alt) fres.alts = ends.map(function (x) { return [fs.alt + x]; });
+      return fres;
     }
 
     // Present.
     if (fam === 'irregular') return { forms: FR_IRREGULAR[verb].present.slice(), note: 'irregular' };
-    var s = verb.slice(0, -2);
+    if (pat) return { forms: pat.present.slice(), note: pat.note };
     if (fam === 'er') {
-      return { forms: FR_ER.map(function (x) { return s + x; }), note: 'regular -er' };
+      var alts = null, how = '';
+      var forms = FR_ER.map(function (x, i) {
+        if (i === 3) return frSoften(verb, s) + x;
+        if (i === 4) return s + x;
+        var m = frMuteStem(verb, s);
+        if (m.how) how = m.how;
+        if (m.alt) {
+          alts = alts || [[], [], [], [], [], []];
+          alts[i].push(m.alt + x);
+        }
+        return m.main + x;
+      });
+      var soft3 = forms[3] !== s + 'ons';
+      var res = {
+        forms: forms,
+        note: how ? 'regular -er, but ' + how
+          : soft3 ? 'regular -er, but nous ' + forms[3] + ' keeps the sound of the ' + (/cer$/.test(verb) ? 'c' : 'g')
+            : 'regular -er',
+      };
+      if (alts) res.alts = alts;
+      return res;
     }
     if (fam === 'ir-as-er') {
       return { forms: FR_ER.map(function (x) { return s + x; }), note: 'ends in -ir but takes -er endings' };
@@ -739,7 +1189,7 @@
     sterben: { du: 'stirb', prat: 'starb', pp: 'gestorben', aux: 's', en: 'to die' },
     stehlen: { du: 'stiehl', prat: 'stahl', pp: 'gestohlen', aux: 'h', en: 'to steal' },
     empfehlen: { du: 'empfiehl', prat: 'empfahl', pp: 'empfohlen', aux: 'h', en: 'to recommend' },
-    geschehen: { du: 'gescheh', prat: 'geschah', pp: 'geschehen', aux: 's', en: 'to happen' },
+    geschehen: { du: 'geschieh', prat: 'geschah', pp: 'geschehen', aux: 's', en: 'to happen' },
     gelten: { du: 'gilt', prat: 'galt', pp: 'gegolten', aux: 'h', en: 'to be valid' },
     treten: { du: 'tritt', prat: 'trat', pp: 'getreten', aux: 's', en: 'to step, kick' },
 
@@ -832,7 +1282,15 @@
     'zuhören': { p: 'zu', base: 'hören', aux: 'h', en: 'to listen' },
     'zurückkommen': { p: 'zurück', base: 'kommen', aux: 's', en: 'to come back' },
     'zurückgeben': { p: 'zurück', base: 'geben', aux: 'h', en: 'to give back' },
+    aufwachen: { p: 'auf', base: 'wachen', aux: 's', en: 'to wake up' },
   };
+
+  /* Weak verbs that still take sein in the Perfekt: travel and change of
+     place, plus folgen and begegnen. Every weak verb defaulted to haben, so
+     the drill would have marked "ich bin gereist" wrong and taught "ich habe
+     gereist". */
+  var DE_WEAK_SEIN = ['reisen', 'wandern', 'folgen', 'begegnen', 'landen', 'klettern',
+    'segeln', 'joggen', 'passieren', 'stolpern', 'eilen'];
 
   // No ge- in the participle after any of these: besucht, verkauft, erklärt.
   var DE_INSEPARABLE = /^(be|emp|ent|er|ge|miss|ver|zer)/;
@@ -951,7 +1409,7 @@
 
     if (tense === 'perfect') {
       var strong = DE_STRONG[verb];
-      var takesSein = strong ? strong.aux === 's' : false;
+      var takesSein = strong ? strong.aux === 's' : DE_WEAK_SEIN.indexOf(verb) !== -1;
       var auxForms = takesSein ? DE_PRESENT_IRREG.sein : DE_PRESENT_IRREG.haben;
       var pp = dePastParticiple(verb);
       return {
@@ -972,9 +1430,11 @@
 
   // ── public API ────────────────────────────────────────────────────────────
 
-  /** Normalise what someone typed: trim, lowercase, drop a leading "to ". */
+  /** Normalise what someone typed: trim, lowercase, drop a leading "to " and
+   *  any punctuation around the word ("tener?", "¡ir!", "\"hablar\""). */
   function clean(verb) {
-    return String(verb == null ? '' : verb).trim().toLowerCase().replace(/^to\s+/, '');
+    return String(verb == null ? '' : verb).normalize('NFC').trim().toLowerCase()
+      .replace(/^[\s¿¡?!.,;:"'«»“”‘’()]+|[\s¿¡?!.,;:"'«»“”‘’()]+$/g, '').replace(/^to\s+/, '');
   }
 
   /** Which of the three tables a language code lands in. */
@@ -990,9 +1450,49 @@
     if (!/^[a-záéíóúüäößñçàâèêëîïôûùœ]+$/.test(v)) throw new Error('Letters only — one verb at a time.');
     var known = TENSES[l].some(function (x) { return x.id === t; });
     if (!known) t = 'present';
+    v = resolve(l, v);
     var r = l === 'es' ? conjugateEs(v, t) : l === 'de' ? conjugateDe(v, t) : conjugateFr(v, t);
     // A tense may override the pronoun column — see the passé composé elision.
-    return { lang: l, verb: v, tense: t, pronouns: r.pronouns || PRONOUNS[l].slice(), forms: r.forms, note: r.note };
+    var out = { lang: l, verb: v, tense: t, pronouns: r.pronouns || PRONOUNS[l].slice(), forms: r.forms, note: r.note };
+    if (r.alts) out.alts = r.alts;
+    // French être verbs: the participle agrees with the subject (allée, allés).
+    if (r.agree) out.agree = true;
+    return out;
+  }
+
+  /* Every verb some table here names, per language — for resolving a verb typed
+     without its accents, and for telling a drill which verbs Flux actually
+     knows rather than conjugates by the regular rule. */
+  var NAMES = {};
+  function namesOf(l) {
+    if (NAMES[l]) return NAMES[l];
+    var list;
+    if (l === 'fr') list = frKnownNames();
+    else if (l === 'de') list = Object.keys(DE_STRONG).concat(Object.keys(DE_PRESENT_IRREG), Object.keys(DE_SEPARABLE), DE_WEAK_SEIN);
+    else {
+      list = Object.keys(ES_IRREGULAR).concat(Object.keys(ES_YO), Object.keys(ES_PRET_STEM), Object.keys(ES_PRET_STEM_J),
+        Object.keys(ES_FUT_STEM), Object.keys(ES_PP), Object.keys(ES_SUBJ_IRREG), Object.keys(ES_COMPOUND), Object.keys(ES_IU_ACCENT));
+      Object.keys(ES_STEM).forEach(function (k) { list = list.concat(ES_STEM[k]); });
+    }
+    var set = {}, bare = {};
+    list.forEach(function (n) { set[n] = 1; var b = fold(n); if (b !== n && !bare[b]) bare[b] = n; });
+    NAMES[l] = { set: set, bare: bare };
+    return NAMES[l];
+  }
+  /** The table's own spelling of a verb typed with no accents (ecrire → écrire). */
+  function resolve(l, v) {
+    if (l === 'fr') return frResolve(v);
+    var n = namesOf(l);
+    if (n.set[v] || fold(v) !== v) return v;
+    return n.bare[v] || v;
+  }
+  /** Spanish participle, compounds included. */
+  function esPastParticiple(v) {
+    var base = ES_COMPOUND[v];
+    if (base) return v.slice(0, v.length - base.length) + esPastParticiple(base);
+    var end = v.slice(-2).replace('í', 'i').replace('é', 'e');
+    if (!ES_PRESENT[end]) return v;
+    return ES_PP[v] || esRegularParticiple(v.slice(0, -2), end);
   }
 
   /* The irregular verbs worth learning, per language.
@@ -1007,12 +1507,9 @@
     ['tener', 'to have'], ['hacer', 'to do, make'], ['decir', 'to say'], ['poder', 'to be able to'],
     ['querer', 'to want'], ['saber', 'to know (a fact)'], ['conocer', 'to know (a person)'],
     ['venir', 'to come'], ['poner', 'to put'], ['salir', 'to go out'], ['dar', 'to give'],
-    /* oír is missing on purpose. It is common enough to belong here, but the
-       Spanish tables key on a two-letter ending and "oír" ends in "ír", so it
-       is rejected before any of the irregular entries are consulted. Listing
-       it would put a verb on the reference sheet that the conjugator beside it
-       refuses — better absent than broken. Same for freír. */
-    ['ver', 'to see'], ['traer', 'to bring'], ['caer', 'to fall'],
+    /* oír was once left off because the conjugator refused it (its ending
+       reads "ír"); it is conjugated now, so it is here. */
+    ['oír', 'to hear'], ['ver', 'to see'], ['traer', 'to bring'], ['caer', 'to fall'],
     ['haber', 'to have (auxiliary)'], ['pensar', 'to think'], ['empezar', 'to begin'],
     ['entender', 'to understand'], ['perder', 'to lose'], ['cerrar', 'to close'],
     ['sentir', 'to feel'], ['preferir', 'to prefer'], ['dormir', 'to sleep'],
@@ -1022,6 +1519,7 @@
     ['repetir', 'to repeat'], ['seguir', 'to follow'], ['vestir', 'to dress'],
     ['abrir', 'to open'], ['escribir', 'to write'], ['romper', 'to break'],
     ['cubrir', 'to cover'], ['andar', 'to walk'], ['caber', 'to fit'], ['valer', 'to be worth'],
+    ['leer', 'to read'], ['construir', 'to build'], ['conducir', 'to drive'], ['reír', 'to laugh'],
   ];
   var FR_IRREG_LIST = [
     ['être', 'to be'], ['avoir', 'to have'], ['aller', 'to go'], ['faire', 'to do, make'],
@@ -1036,7 +1534,10 @@
     ['sentir', 'to feel'], ['servir', 'to serve'], ['mentir', 'to lie'],
     ['ouvrir', 'to open'], ['offrir', 'to offer'], ['couvrir', 'to cover'],
     ['souffrir', 'to suffer'], ['naître', 'to be born'], ['descendre', 'to go down'],
-    ['envoyer', 'to send'], ['falloir', 'to be necessary'],
+    /* falloir left the sheet: it has one person (il faut), so a column headed
+       "je" could only print a dash. The sheet used to print "fallois". */
+    ['envoyer', 'to send'], ['devenir', 'to become'], ['revenir', 'to come back'],
+    ['rire', 'to laugh'], ['conduire', 'to drive'], ['craindre', 'to fear'], ['plaire', 'to please'],
   ];
 
   window.FluxLangEngine = {
@@ -1046,12 +1547,18 @@
     pastParticiple: function (lang, verb) {
       var l = langOf(lang);
       var v = clean(verb);
-      if (l === 'de') return dePastParticiple(v);
+      if (l === 'de') return dePastParticiple(resolve('de', v));
       if (l === 'fr') return frPastParticiple(v);
-      var end = v.slice(-2);
-      if (!ES_PRESENT[end]) return v;
-      return ES_PP[v] || v.slice(0, -2) + (end === 'ar' ? 'ado' : 'ido');
+      return esPastParticiple(resolve('es', v));
     },
+    /** True when a table here names the verb; false means it is conjugated by the regular rule. */
+    known: function (lang, verb) {
+      var l = langOf(lang);
+      var v = resolve(l, clean(verb));
+      return !!namesOf(l).set[v] || (l === 'fr' && frAcute(v));
+    },
+    /** The table's spelling of a verb typed without accents, else the verb as typed. */
+    resolve: function (lang, verb) { var l = langOf(lang); return resolve(l, clean(verb)); },
     tenses: function (lang) { return TENSES[langOf(lang)].slice(); },
     pronouns: function (lang) { return PRONOUNS[langOf(lang)].slice(); },
     /** [infinitive, English gloss] for the irregulars worth knowing. */

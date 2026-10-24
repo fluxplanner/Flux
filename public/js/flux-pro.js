@@ -611,6 +611,12 @@ document.addEventListener('keydown', e=>{
     const list = getNavigableTasks();
     const el = list[_kbdFocusIndex];
     if(!el) return;
+    // Enter on a focused button or link is that control's, not the highlighted
+    // task's — it used to tick the task as well (or instead). And only while
+    // the highlight is still on screen: a re-render drops it.
+    if(!el.classList.contains('flux-kbd-focus')) return;
+    const own = e.target && e.target.closest && e.target.closest('button, a, [role="button"], [role="checkbox"], summary, [contenteditable="true"]');
+    if(own && own !== el) return;
     const rawTid = el.dataset.taskId || (el.id||'').replace(/^task-/,'');
     if(!rawTid) return;
     const tasks = (window.tasks)||[];
@@ -684,12 +690,11 @@ function wrapNavForTransitions(){
 // ────────────────────────────────────────────────────────────────
 function celebrateCompletion(){
   if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  // Light sparkle overlay
-  const messages = ['✓','✦','★','◈','✧','◆'];
-  const msg = messages[Math.floor(Math.random()*messages.length)];
+  // One check mark. A random star or diamond here, on top of the tick in the
+  // box, made finishing a task look like a handful of different icons.
   const overlay = document.createElement('div');
   overlay.className = 'flux-celebrate-overlay';
-  overlay.textContent = msg;
+  overlay.textContent = '✓';
   document.body.appendChild(overlay);
   requestAnimationFrame(()=>overlay.classList.add('show'));
   setTimeout(()=>overlay.remove(), 1000);

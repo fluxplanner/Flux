@@ -164,7 +164,7 @@
   function extractPdfText(file) {
     return loadPdfJs().then(function (pdfjsLib) {
       return readArrayBuffer(file).then(function (buf) {
-        return pdfjsLib.getDocument({ data: buf }).promise.then(function (pdf) {
+        return pdfjsLib.getDocument({ data: buf, isEvalSupported: false }).promise.then(function (pdf) {
           var pages = Math.min(pdf.numPages, 50);
           var chain = Promise.resolve('');
           for (var i = 1; i <= pages; i++) {

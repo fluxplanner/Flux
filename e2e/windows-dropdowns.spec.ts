@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test';
  * white. Every page here must declare color-scheme: dark and give options a
  * solid fill. (The planner sets its own scheme per theme.)
  */
-const PAGES = ['composer.html#beats', 'composer.html#dp', 'periodic.html', 'grapher.html', 'calculator.html', 'flashcards.html', 'pixel.html', 'hub.html', 'partners.html'];
+const PAGES = ['composer.html#beats', 'composer.html#dp', 'periodic.html', 'grapher.html', 'calculator.html', 'flashcards.html', 'pixel.html', 'suite.html', 'partners.html'];
 
 test('every dropdown on the standalone pages has a readable list', async ({ page }) => {
   const bad: string[] = [];

@@ -349,7 +349,7 @@ test.describe('Periodic table page: taps that must not move it, and paper', () =
  */
 test.describe('Periodic table: nothing repaints the screen behind it', () => {
   test('no page paints a fixed body background, signed in or not', async ({ page }) => {
-    const pages = ['periodic', 'composer', 'hub', 'flashcards', 'pixel', 'partners', 'grapher', 'calculator'];
+    const pages = ['periodic', 'composer', 'suite', 'flashcards', 'pixel', 'partners', 'grapher', 'calculator'];
     const fixed = async () => {
       const out: string[] = [];
       for (const p of pages) {
@@ -470,5 +470,96 @@ test.describe('Periodic table: nothing repaints the screen behind it', () => {
     const t = await touched();
     expect(t).toEqual(expect.arrayContaining([31, 55]));
     expect(t.length, 'cells rewritten for a 5-degree step').toBeLessThanOrEqual(4);
+  });
+});
+
+/**
+ * Round 3 of the lag work, and what came with it:
+ *   · in the planner, styles.css gives every button `transition: all .12s
+ *     !important`, so each click started transitions on every property of all
+ *     118 cells (scrollbar colour included) and restyled the table for frames
+ *     on end. The cells now name the few properties they fade;
+ *   · picking an element on the Trends tab moves the graph's marker instead of
+ *     rebuilding the whole graph;
+ *   · shell order ⇄ filling order rewrites only the configuration's text.
+ */
+test.describe('Periodic table, round 3', () => {
+  test.beforeEach(async ({ page }) => { await page.setViewportSize({ width: 1440, height: 950 }); });
+
+  test('in Study tools, a cell fades only its own few properties, never "all"', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate(() => (window as any).nav('toolbox'));
+    await page.evaluate(() => (window as any).fluxStudyHub.selectSubject('chemistry'));
+    const cell = page.locator('.fsh-ptable-host .fpt-el[data-n="30"]');
+    await expect(cell).toBeVisible();
+    const props = await cell.evaluate((el) => getComputedStyle(el).transitionProperty);
+    expect(props).not.toContain('all');
+    expect(props).not.toContain('color,');
+    expect(props).toContain('background-color');
+  });
+
+  test('picking on the Trends tab moves the graph marker without rebuilding the graph', async ({ page }) => {
+    await page.goto('/periodic.html#trend/ie');
+    const svg = page.locator('.fpt-chart svg');
+    await expect(svg).toBeVisible();
+    await svg.evaluate((el) => { (el as any).__same = true; });
+    await page.locator('.fpt-el[data-n="8"]').click();
+    await expect(page.locator('.fpt-pt.is-sel')).toHaveAttribute('data-n', '8');
+    await expect(page.locator('.fpt-clab')).toHaveText(/^O 1314/);
+    await page.locator('.fpt-el[data-n="2"]').click();
+    await expect(page.locator('.fpt-pt.is-sel')).toHaveCount(1);
+    await expect(page.locator('.fpt-pt.is-sel')).toHaveAttribute('data-n', '2');
+    expect(await page.locator('.fpt-chart svg').evaluate((el) => (el as any).__same)).toBe(true);
+  });
+
+  test('shell order and filling order swap in place', async ({ page }) => {
+    await page.goto('/periodic.html#electrons/Fe');
+    const levels = page.locator('.fpx-levels');
+    await expect(levels).toBeVisible();
+    await levels.evaluate((el) => { (el as any).__same = true; });
+    const btn = page.locator('[data-act="order"]');
+    const shell = await page.locator('.fpt-config-f').textContent();
+    await btn.click();
+    await expect(btn).toHaveText('Show in shell order');
+    const fill = await page.locator('.fpt-config-f').textContent();
+    expect(fill).not.toBe(shell);
+    expect(fill).toMatch(/4s² 3d⁶$/);
+    await btn.click();
+    await expect(page.locator('.fpt-config-f')).toHaveText(shell!);
+    expect(await levels.evaluate((el) => (el as any).__same), 'the diagram was not rebuilt').toBe(true);
+  });
+
+  test('3D: how each element was discovered sits under the model', async ({ page }) => {
+    await page.goto('/periodic.html#3d/P');
+    const hist = page.locator('.fpx-hist');
+    await expect(hist).toContainText('Hennig Brand');
+    await expect(hist).toContainText('1669');
+    await expect(hist).toContainText('Hamburg');
+    await page.locator('.fpt-el[data-n="118"]').click();
+    await expect(hist).toContainText('Dubna');
+    const all = await page.evaluate(() => {
+      const H = (window as any).FluxPTableHistory;
+      const out: number[] = [];
+      for (let n = 1; n <= 118; n++) { const h = H[n]; if (!h || !h.who || !h.when || !h.where || !h.how) out.push(n); }
+      return out;
+    });
+    expect(all, 'elements with no who, when, where or how').toEqual([]);
+  });
+
+  test('Trends: categories, search and pinned favourites', async ({ page }) => {
+    await page.goto('/periodic.html#trend/ie');
+    const pick = page.locator('.fpt-tpick');
+    await expect(pick).toBeVisible();
+    await pick.locator('.fpt-tcat[data-k="Size"]').click();
+    await expect(pick.locator('.fpt-tchip:visible')).toHaveCount(4);
+    await pick.locator('.fpt-tq').fill('melting');
+    await expect(pick.locator('.fpt-tchip:visible .fpt-tbtn')).toHaveText(['Melting point']);
+    await pick.locator('.fpt-tq').press('Enter');
+    await expect(page.locator('.fpt-sel')).toHaveValue('mp');
+    await expect(page.locator('.fpt-keyh')).toContainText('Melting point');
+    await pick.locator('.fpt-tpin[data-c="mp"]').click();
+    await expect(pick.locator('.fpt-tpins .fpt-tbtn')).toContainText(['Melting point']);
+    await page.reload();
+    await expect(page.locator('.fpt-tpins .fpt-tbtn')).toContainText(['Melting point']);
   });
 });

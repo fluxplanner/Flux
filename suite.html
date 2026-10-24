@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flux Suite — every Flux app</title>
+<meta name="description" content="Flux Suite: every Flux app in one place — the Flux Planner, Grapher, Periodic Table, Composer and Calculator. The tools are free and need no account.">
+<meta name="theme-color" content="#070b14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/png" href="public/flux-planner-logo.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Flux Suite">
+
+<!--
+  Flux Suite (formerly the Flux Hub): one page with every Flux app on it. Built like periodic.html —
+  no bundles, no sign-in — and drawn from FluxHub.PRODUCTS in flux-hub.js, so
+  every product appears here without duplicating its directory entry.
+-->
+<link rel="stylesheet" href="public/css/flux-hub.css?v=6a462093">
+<link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background-color: #070b14; }
+  body {
+    min-height: 100dvh;
+    /* Its own stacking context, so the fixed glow below paints over the
+       body colour and under everything else. */
+    isolation: isolate;
+    color: var(--text);
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    line-height: 1.5;
+  }
+  /* The glow is its own fixed layer. As a fixed body background it was
+     repainted on every frame of scrolling, which made the page lag. */
+  @media screen {
+    body::after {
+      content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+      background: radial-gradient(120% 70% at 50% -10%, rgba(0,194,255,.13), transparent 55%),
+      radial-gradient(80% 60% at 100% 10%, rgba(167,139,250,.10), transparent 55%),
+      linear-gradient(170deg, #0a0f1c 0%, #070b14 55%, #05070f 100%);
+    }
+  }
+  header.top {
+    display: flex; align-items: center; gap: 10px;
+    height: calc(56px + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px));
+    border-bottom: 1px solid var(--border); background: #080c16;
+  }
+  .brand-mark { width: 32px; height: 32px; border-radius: 9px; display: block; }
+  .brand { font-weight: 800; font-size: 1.05rem; letter-spacing: -.01em; }
+  main { max-width: 1120px; margin: 0 auto; padding: clamp(28px, 6vw, 64px) max(16px, env(safe-area-inset-right, 0px)) calc(56px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+  .hero { text-align: center; margin: 0 auto clamp(26px, 5vw, 44px); max-width: 640px; }
+  .hero h1 { margin: 0 0 10px; font-size: clamp(2rem, 5.5vw, 3.2rem); font-weight: 800; letter-spacing: -.03em; line-height: 1.05; }
+  .hero h1 span { background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 50%, #fff), var(--accent) 45%, color-mix(in srgb, var(--accent) 60%, #a78bfa)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p { margin: 0; color: var(--muted2); font-size: clamp(.98rem, 2vw, 1.1rem); }
+  /* The planner is a wide bar on top; the other groups are pill tabs over a
+     grid (Study apps, Partners). */
+  .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .apps-grid[hidden] { display: none; }
+  .hub-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 28px 0 16px; }
+  .hub-tab {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px;
+    border-radius: 999px; border: 1px solid var(--border2); background: transparent;
+    color: var(--muted2); font: inherit; font-size: .95rem; font-weight: 700; cursor: pointer;
+    transition: color .15s ease, background .15s ease, border-color .15s ease;
+  }
+  .hub-tab:hover { color: var(--text); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+  .hub-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .hub-tab[aria-selected="true"] { color: #061020; background: var(--accent); border-color: transparent; }
+  .hub-tab-n { font-size: .75rem; padding: 1px 8px; border-radius: 999px; background: rgba(255,255,255,.12); }
+  .hub-tab[aria-selected="true"] .hub-tab-n { background: rgba(0,0,0,.16); }
+  .hub-tab--partner[aria-selected="true"] { color: #fff; background: linear-gradient(135deg, #9c7aff, #5926d4); }
+  /* The planner bar: the same card, laid out in a row and spanning the page. */
+  .app.app--feature { flex-direction: row; align-items: center; gap: 20px; padding: 24px 26px; background: linear-gradient(120deg, rgba(0,194,255,.12), rgba(106,125,255,.06) 50%, transparent), var(--card); }
+  .app.app--feature .app-icon { width: 64px; height: 64px; border-radius: 18px; }
+  .app.app--feature .app-icon svg { width: 30px; height: 30px; }
+  .app.app--feature .app-head { display: flex; align-items: center; gap: 14px; flex: none; }
+  .app.app--feature .app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .app.app--feature .app-name { font-size: 1.4rem; }
+  .app.app--feature .app-desc { flex: none; max-width: 70ch; }
+  .app.app--feature .go { padding: 12px 20px; border-radius: 999px; color: #061020; background: linear-gradient(135deg, var(--c1), var(--c2)); }
+  @media (max-width: 640px) {
+    .app.app--feature { flex-direction: column; align-items: stretch; padding: 20px; }
+    .app--feature .go { text-align: center; }
+  }
+  .app {
+    --c1: #00c2ff; --c2: #5c9cff;
+    position: relative; display: flex; flex-direction: column; gap: 14px;
+    padding: 20px; border-radius: 20px; text-decoration: none; color: inherit;
+    background: var(--card); border: 1px solid var(--border);
+    transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+  }
+  .app:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--c1) 55%, transparent); box-shadow: 0 18px 40px -22px var(--c1); }
+  .app:focus-visible { outline: 2px solid var(--c1); outline-offset: 3px; }
+  .app-top { display: flex; align-items: center; gap: 14px; }
+  .app-icon { display: grid; place-items: center; flex: none; width: 54px; height: 54px; border-radius: 16px; color: #061020; background: linear-gradient(135deg, var(--c1), var(--c2)); box-shadow: 0 10px 24px -12px var(--c1); }
+  .app-icon svg { width: 26px; height: 26px; }
+  .app-name { font-size: 1.15rem; font-weight: 800; letter-spacing: -.01em; }
+  .app-tag { font-size: .86rem; color: var(--muted2); }
+  .app-desc { margin: 0; font-size: .92rem; line-height: 1.55; color: #cbd6ea; flex: 1; }
+  .app-foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+  .go { font-size: .9rem; font-weight: 800; color: var(--c1); white-space: nowrap; }
+  .app--planner { --c1: #00c2ff; --c2: #6a7dff; }
+  .app--grapher { --c1: #6ee7b7; --c2: #00c2ff; }
+  .app--periodic { --c1: #7fe3ff; --c2: #3b82f6; }
+  .app--composer { --c1: #c4b5fd; --c2: #a78bfa; }
+  .app--calculator { --c1: #fbbf24; --c2: #f97316; }
+  .app--flashcards { --c1: #f9a8d4; --c2: #f472b6; }
+  .app--pixel { --c1: #6ee7b7; --c2: #34d399; }
+  .app--teacher { --c1: #7dd3fc; --c2: #6366f1; }
+  /* Synara's own violet: purple is the epilepsy awareness colour. It is its
+     own brand, so its card is set apart: its real logo for the icon, a violet
+     gradient frame (a masked ::before, so the rounded corners survive), a
+     faint violet wash inside, and a violet glow. */
+  .app--synara {
+    --c1: #c9a7ff; --c2: #7c4dff;
+    border-color: transparent;
+    background: linear-gradient(155deg, rgba(156,122,255,.16), rgba(89,38,212,.04) 55%), var(--card);
+    box-shadow: 0 22px 48px -28px rgba(124,77,255,.75);
+  }
+  .app--synara::before {
+    content: ''; position: absolute; inset: -1px; padding: 1.5px; border-radius: inherit; pointer-events: none;
+    background: linear-gradient(135deg, #e0cfff, #9c7aff 40%, #5926d4);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+  }
+  .app--synara:hover { border-color: transparent; box-shadow: 0 26px 56px -22px rgba(124,77,255,.95); }
+  .app-icon--logo { color: #fff; background: linear-gradient(135deg, #9c7aff, #5926d4); box-shadow: 0 10px 26px -10px rgba(124,77,255,.95), inset 0 1px 0 rgba(255,255,255,.25); }
+  .app-icon--logo svg { width: 100%; height: 100%; }
+  .note { margin: 28px auto 0; text-align: center; font-size: .85rem; color: var(--muted2); }
+  .note a { color: #7fe3ff; }
+  .pd-slot:not(:empty) { margin: 0 0 18px; }
+  /* Partner apps (Synara) are built and hosted by Flux for another organization. */
+  .app-partner { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; vertical-align: 2px; font-size: .62rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #e0cfff; background: rgba(156,122,255,.18); border: 1px solid rgba(156,122,255,.4); }
+  .partners-strip { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; padding: 16px 20px; border-radius: 18px; background: var(--card); border: 1px solid var(--border); }
+  .partners-strip p { margin: 0; font-size: .92rem; color: #cbd6ea; }
+  .partners-strip strong { color: var(--text); }
+  .partners-strip a { font-weight: 800; font-size: .9rem; color: #c4b5fd; text-decoration: none; white-space: nowrap; }
+  .partners-strip a:hover { text-decoration: underline; }
+</style>
+<script src="public/js/flux-theme-carry.js?v=41b239bd"></script>
+<script src="public/js/flux-purple-day.js?v=1966eb3d"></script>
+</head>
+<body>
+  <header class="top">
+    <img class="brand-mark" src="public/flux-planner-logo.png" alt="" width="32" height="32">
+    <span class="brand">Flux Suite</span>
+  </header>
+  <main>
+    <section class="hero">
+      <h1>Every Flux app, <span style="white-space:nowrap">one tap away.</span></h1>
+      <p>The planner for your whole school life, and free study tools that open on any computer — no account needed.</p>
+    </section>
+    <!-- Filled by flux-purple-day.js on March 26 only. -->
+    <div class="pd-slot" data-purple-day-slot></div>
+    <div class="apps" id="apps" aria-label="Flux apps"></div>
+    <!-- Moved into the Partners tab by the script below. -->
+    <aside class="partners-strip" id="partnersStrip" aria-label="Flux Partners">
+      <p><strong>Flux Partners.</strong> Synara is built and hosted by Flux for the team behind it. Want Flux to build your organization’s app?</p>
+      <a href="partners.html">See Flux Partners →</a>
+    </aside>
+    <p class="note">Bookmark this page, or add it to your home screen, to get to every Flux app.</p>
+  </main>
+
+  <script src="public/js/flux-hub.js?v=ac4ff01d"></script>
+  <script>
+    (function () {
+      /* A sentence each, longer than the switcher's one-line tagline. A
+         product without one here still shows, with its tagline. */
+      var MORE = {
+        planner: 'Tasks, classes, your calendar and bell schedule, Plan my week, study tools, a reading log, college prep and Canvas assignments in one calm place. Sign in to sync across your devices.',
+        teacher: 'Turn your class notes, PDFs, Word documents and photos into a study guide with sources, step-by-step lessons, practice tests and flashcards, built only from what you give it, with no AI. Drag files straight in.',
+        grapher: 'Graph equations, plot lab data with a line of best fit, R² and residuals, and turn points, lines, planes and surfaces in 3D. Print it for your write-up.',
+        calculator: 'A calculator that works like the TI-84, in the Plus CE or Evo layout, with graphs, sequences, tables and statistics, in your browser.',
+        flashcards: 'Decks that schedule every card for when you are about to forget it, plus flip cards, write, practice tests, a match game, cards from your notes and Quizlet import. No ads.',
+        pixel: 'Draw science diagrams, maps and sketches with 88 stamps, Flux Figures (maths figures drawn to scale for tests, typed in words: graphs and shaded inequalities, number lines, triangles, circles, angles, 3D solids), a ruler, protractor and compass, vectors, labels with leader lines, and a crisp PNG or SVG.',
+        periodic: 'Every trend, the table melting and boiling with temperature, electron configurations, spectra, isotopes and every atom in 3D.',
+        composer: 'A table of every key, a keyboard that writes what you play, scales, chords, cadences, an ear trainer, a beat maker and DP Music.',
+        synara: 'For students with epilepsy: dose reminders and a medication calendar, a seizure log that spots patterns with missed doses, sleep and stress, and an emergency card a teacher can follow, one tap away. Stays on this device.',
+      };
+      var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+      var host = document.getElementById('apps');
+      var list = (window.FluxHub && window.FluxHub.PRODUCTS) || [];
+      if (!list.length) {
+        host.innerHTML = '<p style="color:#fbbf24">The app list could not load. <a href="index.html" style="color:#7fe3ff">Open the Flux Planner</a>.</p>';
+        return;
+      }
+      var groups = (window.FluxHub && window.FluxHub.GROUPS) || [{ id: 'study', name: 'Study apps' }];
+      var known = groups.map(function (g) { return g.id; });
+      var groupOf = function (p) { return known.indexOf(p.group) >= 0 ? p.group : 'study'; };
+      var icon = function (p) {
+        return p.logo
+          ? '<span class="app-icon app-icon--logo" aria-hidden="true">' + p.logo + '</span>'
+          : '<span class="app-icon" aria-hidden="true">' + p.mark + '</span>';
+      };
+      var title = function (p) {
+        return '<div class="app-name">' + esc(p.name) + (p.partner ? '<span class="app-partner">Partner</span>' : '') + '</div><div class="app-tag">' + esc(p.tagline) + '</div>';
+      };
+      var card = function (p) {
+        return '<a class="app app--' + esc(p.id) + '" href="' + esc(p.href) + '">'
+          + '<div class="app-top">' + icon(p) + '<div>' + title(p) + '</div></div>'
+          + '<p class="app-desc">' + esc(MORE[p.id] || p.tagline) + '</p>'
+          + '<div class="app-foot"><span class="go">Open →</span></div>'
+          + '</a>';
+      };
+      /* The planner: one wide bar across the top, above the tabs. */
+      var bar = function (p) {
+        return '<a class="app app--feature app--' + esc(p.id) + '" href="' + esc(p.href) + '">'
+          + '<div class="app-head">' + icon(p) + '<div class="app-head-t">' + title(p) + '</div></div>'
+          + '<div class="app-main"><p class="app-desc">' + esc(MORE[p.id] || p.tagline) + '</p></div>'
+          + '<span class="go">Open the planner →</span>'
+          + '</a>';
+      };
+      var inGroup = function (id) { return list.filter(function (p) { return groupOf(p) === id; }); };
+      var tabbed = groups.filter(function (g) { return g.id !== 'planner' && inGroup(g.id).length; });
+      /* suite.html#partners (or any group id) opens on that tab. */
+      var want = (location.hash || '').replace(/^#/, '');
+      if (want === 'partners') want = 'partner';
+      var active = tabbed.some(function (g) { return g.id === want; }) ? want : (tabbed[0] && tabbed[0].id);
+
+      host.innerHTML = inGroup('planner').map(bar).join('')
+        + '<div class="hub-tabs" role="tablist" aria-label="Apps">'
+        + tabbed.map(function (g) {
+          var on = g.id === active;
+          return '<button type="button" role="tab" class="hub-tab hub-tab--' + esc(g.id) + '" id="tab-' + esc(g.id) + '" aria-controls="apps-' + esc(g.id) + '" aria-selected="' + on + '" tabindex="' + (on ? 0 : -1) + '">'
+            + esc(g.name) + '<span class="hub-tab-n">' + inGroup(g.id).length + '</span></button>';
+        }).join('')
+        + '</div>'
+        + tabbed.map(function (g) {
+          return '<div class="apps-grid" role="tabpanel" id="apps-' + esc(g.id) + '" aria-labelledby="tab-' + esc(g.id) + '"' + (g.id === active ? '' : ' hidden') + '>'
+            + inGroup(g.id).map(card).join('') + '</div>';
+        }).join('');
+
+      var strip = document.getElementById('partnersStrip');
+      var partnerPanel = document.getElementById('apps-partner');
+      if (strip && partnerPanel) partnerPanel.appendChild(strip);
+
+      var tabs = [].slice.call(host.querySelectorAll('.hub-tab'));
+      var select = function (tab, focus) {
+        tabs.forEach(function (t) {
+          var on = t === tab;
+          t.setAttribute('aria-selected', String(on));
+          t.tabIndex = on ? 0 : -1;
+          document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+        });
+        if (focus) tab.focus();
+        var id = tab.id.replace(/^tab-/, '');
+        try { history.replaceState(null, '', id === (tabbed[0] && tabbed[0].id) ? location.pathname + location.search : '#' + (id === 'partner' ? 'partners' : id)); } catch (e) {}
+      };
+      tabs.forEach(function (t, i) {
+        t.addEventListener('click', function () { select(t, false); });
+        t.addEventListener('keydown', function (e) {
+          var n = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+          if (e.key === 'Home') { e.preventDefault(); select(tabs[0], true); }
+          else if (e.key === 'End') { e.preventDefault(); select(tabs[tabs.length - 1], true); }
+          else if (n) { e.preventDefault(); select(tabs[(i + n + tabs.length) % tabs.length], true); }
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

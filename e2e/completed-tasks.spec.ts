@@ -2,74 +2,73 @@ import { test, expect } from '@playwright/test';
 import { gotoScenario } from './helpers';
 
 /*
- * The dashboard's Completed filter, and the rule behind it (Azfer,
- * 2026-09-30): a finished task is deleted two weeks after it was completed.
- * The clock runs from the later of completion and 30 Sep 2026, so tasks
- * finished long before the rule arrived get the full two weeks' notice
- * instead of vanishing on the first load after the update.
+ * Finished tasks (Azfer, 2026-10-23): the dashboard is for what is left to do,
+ * so it has no Completed list; the calendar keeps showing a finished task on
+ * its day, ticked and struck through, and it can be unticked there. Because
+ * the calendar keeps them, finished tasks are no longer deleted after two
+ * weeks.
  *
- * The page clock is pinned so the dates here never drift into the rule's
- * grace window by themselves (see the wall-clock-fixtures memory).
+ * The page clock is installed (and keeps running, so the list's rebuild
+ * timers fire) so the dates here never drift (see the wall-clock fixtures memory).
  */
 
 const DAY = 864e5;
 
 test.describe('Completed tasks', () => {
-  test('the Completed button lists finished tasks, newest first, with the two-week notice', async ({ page }) => {
-    await page.clock.setFixedTime(new Date('2026-10-20T12:00:00'));
+  test.beforeEach(async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-10-20T12:00:00') });
     await gotoScenario(page, 'student-semester');
     await page.evaluate((d) => {
       const w = window as any;
       const now = Date.now();
       w.tasks.push(
-        { id: 9001, name: 'Finished yesterday', done: true, completedAt: now - d, priority: 'med', date: '' },
-        { id: 9002, name: 'Finished a week ago', done: true, completedAt: now - 7 * d, priority: 'med', date: '' },
+        { id: 9001, name: 'Finished yesterday', done: true, completedAt: now - d, priority: 'med', date: '2026-10-19' },
+        { id: 9002, name: 'Finished a month ago', done: true, completedAt: now - 30 * d, priority: 'med', date: '2026-10-21' },
+        { id: 9003, name: 'Still to do', done: false, priority: 'med', date: '2026-10-21' },
       );
+      w.save('tasks', w.tasks);
       w.renderTasks();
     }, DAY);
-    const btn = page.locator('#filterChips .tmode-btn', { hasText: 'Completed' });
-    await expect(btn).toBeVisible();
-    await btn.click();
-    await expect(btn).toHaveClass(/active/);
-    await expect(page.locator('.flux-done-notice')).toContainText('deleted 2 weeks after you complete them');
-    const names = page.locator('#taskList .task-item .task-text');
-    await expect(names).toHaveCount(2);
-    await expect(names.nth(0)).toContainText('Finished yesterday');
-    await expect(names.nth(1)).toContainText('Finished a week ago');
-    await expect(page.locator('#taskList .task-chip-expiry').first()).toContainText('Deletes');
-    // Active still shows only what is left to do.
-    await page.locator('#filterChips .tmode-btn', { hasText: 'Active' }).click();
-    await expect(page.locator('#taskList .task-item', { hasText: 'Finished yesterday' })).toHaveCount(0);
   });
 
-  test('a task finished more than two weeks ago is deleted; recent and unfinished ones stay', async ({ page }) => {
-    await page.clock.setFixedTime(new Date('2026-11-20T12:00:00'));
-    await gotoScenario(page, 'student-semester');
-    const left = await page.evaluate((d) => {
-      const w = window as any;
-      const now = Date.now();
-      w.tasks.push(
-        { id: 9101, name: 'Old finished', done: true, completedAt: now - 15 * d, priority: 'med', date: '' },
-        { id: 9102, name: 'Recent finished', done: true, completedAt: now - 13 * d, priority: 'med', date: '' },
-        { id: 9103, name: 'Old but not done', done: false, priority: 'med', date: '' },
-        { id: 9104, name: 'Old finished, date as text', done: true, completedAt: new Date(now - 20 * d).toISOString(), priority: 'med', date: '' },
-      );
-      const removed = w.fluxPurgeOldCompleted();
-      return { removed, names: w.tasks.filter((t: any) => t.id >= 9101 && t.id <= 9104).map((t: any) => t.name) };
-    }, DAY);
-    expect(left.removed).toBe(2);
-    expect(left.names).toEqual(['Recent finished', 'Old but not done']);
+  test('the dashboard lists no finished tasks, under any filter', async ({ page }) => {
+    await expect(page.locator('#filterChips .tmode-btn', { hasText: 'Completed' })).toHaveCount(0);
+    for (const chip of ['Active', 'Today', 'Overdue']) {
+      await page.locator('#filterChips .tmode-btn', { hasText: chip }).click();
+      await expect(page.locator('#taskList .task-item', { hasText: 'Finished' })).toHaveCount(0);
+      await expect(page.locator('.completed-toggle, #completedTasksWrap')).toHaveCount(0);
+    }
+    // A filter saved from before (the old Completed chip) falls back to Active.
+    await page.evaluate(() => (window as any).setFilter('done'));
+    await expect(page.locator('#taskList .task-item', { hasText: 'Still to do' })).toHaveCount(1);
   });
 
-  test('tasks finished long before the rule arrived get the full two weeks from 30 September', async ({ page }) => {
-    await page.clock.setFixedTime(new Date('2026-10-05T12:00:00'));
-    await gotoScenario(page, 'student-semester');
-    const r = await page.evaluate(() => {
+  test('ticking a task takes it off the dashboard but keeps it, done, in the calendar', async ({ page }) => {
+    const row = page.locator('#taskList .task-item', { hasText: 'Still to do' });
+    await row.locator('.check').click();
+    await expect(row).toHaveCount(0);
+    await page.evaluate(() => (window as any).nav('calendar'));
+    await page.waitForTimeout(700);
+    const cell = page.locator('.cal-day[data-cal-date="2026-10-21"]');
+    const bar = cell.locator('.cal-task-bar', { hasText: 'Still to do' });
+    await expect(bar).toHaveCount(1);
+    await expect(bar).toHaveCSS('text-decoration-line', 'line-through');
+    // The day panel shows it ticked, and unticking it there brings it back.
+    await cell.click();
+    const item = page.locator('.task-item', { hasText: 'Still to do' }).locator('.check.done');
+    await expect(item).toHaveCount(1);
+    await item.click();
+    await page.evaluate(() => (window as any).nav('dashboard'));
+    await expect(page.locator('#taskList .task-item', { hasText: 'Still to do' })).toHaveCount(1);
+  });
+
+  test('finished tasks are kept, however long ago they were finished', async ({ page }) => {
+    // The hourly sweep that deleted them is gone; an hour on, the month-old one is still saved.
+    await page.clock.fastForward(61 * 60 * 1000);
+    const kept = await page.evaluate(() => {
       const w = window as any;
-      w.tasks.push({ id: 9201, name: 'Finished in June', done: true, completedAt: new Date('2026-06-01T12:00:00').getTime(), priority: 'med', date: '' });
-      const removed = w.fluxPurgeOldCompleted();
-      return { removed, still: w.tasks.some((t: any) => t.id === 9201) };
+      return [typeof w.fluxPurgeOldCompleted, w.load('tasks', []).filter((t: any) => t.id === 9002).length];
     });
-    expect(r).toEqual({ removed: 0, still: true });
+    expect(kept).toEqual(['undefined', 1]);
   });
 });

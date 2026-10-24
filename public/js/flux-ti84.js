@@ -23,6 +23,15 @@
   const Ed = () => window.FluxTIEditor;
   const MN = () => window.FluxTIMenus;
   const STORE = 'flux_ti84_v1';
+  /* Regular (keys under the screen) or wide (keys beside it). A choice for
+     this screen, not the calculator's memory, so it lives on this device
+     only. With no choice yet, a short wide screen starts wide. */
+  const VIEW_STORE = 'flux_ti84_view';
+  function loadView() {
+    try { const v = localStorage.getItem(VIEW_STORE); if (v === 'wide' || v === 'regular') return v; } catch (e) { /* private mode */ }
+    const short = window.matchMedia && window.matchMedia('(orientation: landscape) and (min-width: 900px) and (max-height: 1000px)').matches;
+    return short ? 'wide' : 'regular';
+  }
   const HISTORY_MAX = 40;
 
   function esc(s) {
@@ -184,9 +193,16 @@
       + '<button type="button" class="t84k t84k--' + k.cls + '" data-k="' + esc(k.id) + '" aria-label="' + esc(k.main) + '">'
       + esc(k.main) + '</button></div>';
     // The wrapper is the size container, so the body's own padding and corners scale with it too.
-    this.host.innerHTML = '<div class="t84-wrap"><div class="t84' + (evo ? ' is-evo' : '') + '" tabindex="0" aria-label="Graphing calculator. Click it, then type or use the keys.">'
+    const view = loadView();
+    const seg = (name, label, cur, opts) => '<div class="t84-seg" role="radiogroup" aria-label="' + label + '" data-seg="' + name + '">'
+      + opts.map((o) => '<button type="button" class="t84-seg-b" role="radio" data-v="' + o[0] + '" aria-checked="' + (o[0] === cur) + '">' + o[1] + '</button>').join('') + '</div>';
+    // The switches sit above the body, not on it: the faceplate stays a
+    // faithful calculator, and they read as page controls, not keys.
+    this.host.innerHTML = '<div class="t84-wrap' + (view === 'wide' ? ' is-wide' : '') + '">'
+      + '<div class="t84-bar">' + seg('model', 'Calculator model', evo ? 'evo' : 'ce', [['ce', 'Plus CE'], ['evo', 'Evo']])
+      + seg('view', 'Calculator view', view, [['regular', 'Regular'], ['wide', 'Wide']]) + '</div>'
+      + '<div class="t84' + (evo ? ' is-evo' : '') + '" tabindex="0" aria-label="Graphing calculator. Click it, then type or use the keys.">'
       + '<div class="t84-brand"><span class="t84-brand-name">Flux<b>·84</b></span>'
-      + '<label class="t84-model-control"><select aria-label="Calculator model"><option value="ce">TI-84 Plus CE</option><option value="evo">TI-84 Evo</option></select></label>'
       + '<span class="t84-brand-model">' + (evo ? 'EVO' : 'PLUS CE') + '</span></div>'
       + '<div class="t84-bezel"><div class="t84-screen" role="application" aria-live="polite">'
       + '<div class="t84-status"></div><div class="t84-scr"></div></div></div>'
@@ -199,13 +215,17 @@
       + '<button type="button" class="t84a t84a--down" data-k="down" aria-label="Down"></button></div></div>'
       + rows.map((r) => '<div class="t84-row' + (r.length === 6 ? ' t84-row--6' : '') + '">' + r.map(keyHTML).join('') + '</div>').join('')
       + '</div></div></div>';
-    const modelSelect = this.host.querySelector('.t84-model-control select');
-    modelSelect.value = evo ? 'evo' : 'ce';
-    modelSelect.addEventListener('change', () => {
-      this.st.mode.model = modelSelect.value === 'evo' ? 'evo' : 'ce';
+    this.host.querySelector('.t84-bar').addEventListener('click', (e) => {
+      const b = e.target.closest('.t84-seg-b');
+      if (!b || b.getAttribute('aria-checked') === 'true') return;
+      const v = b.dataset.v;
+      if (b.parentNode.dataset.seg === 'model') this.st.mode.model = v === 'evo' ? 'evo' : 'ce';
+      else { try { localStorage.setItem(VIEW_STORE, v); } catch (err) { /* private mode: this visit only */ } }
       this.build();
       this.render();
       this.save();
+      const again = this.host.querySelector('[data-seg="' + b.parentNode.dataset.seg + '"] [data-v="' + v + '"]');
+      if (again) again.focus({ preventScroll: true });
     });
     this.el = this.host.querySelector('.t84');
     this.scr = this.host.querySelector('.t84-scr');
