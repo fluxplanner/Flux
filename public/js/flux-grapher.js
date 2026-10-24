@@ -4729,6 +4729,7 @@
         ctx.fillRect(0, 0, W, H);
         ctx.drawImage(img, 0, 0, W, H);
         URL.revokeObjectURL(url);
+        if (window.FluxHub && window.FluxHub.markCanvas) window.FluxHub.markCanvas(cv);
         cv.toBlob((b) => (b ? resolve(b) : reject(new Error('png'))), 'image/png');
       };
       img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('svg')); };

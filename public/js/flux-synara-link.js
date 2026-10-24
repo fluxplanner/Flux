@@ -105,5 +105,17 @@
     stack.insertBefore(card, stack.firstChild);
   }
 
+  var lastFeed;
+  function refreshLink() {
+    var next; try { next=localStorage.getItem(KEY); } catch (_) { return; }
+    if(next===lastFeed)return;
+    lastFeed=next;
+    if(typeof window.renderCalendar==='function')window.renderCalendar();
+    decorateSchool();
+  }
+  window.addEventListener('storage',function(e){if(e.key===KEY||e.key===null)refreshLink();});
+  window.addEventListener('focus',refreshLink);
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')refreshLink();});
+
   window.FluxSynara = { feed: feed, dosesForDate: dosesForDate, decorateSchool: decorateSchool };
 })();
