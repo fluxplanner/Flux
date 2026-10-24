@@ -10971,7 +10971,9 @@ async function syncToCloud(opts){
 window.FluxSync={
   now:function(){try{return forceSyncNow();}catch(e){return Promise.reject(e);}},
   push:function(){return syncToCloud();},
-  pull:function(){return syncFromCloud();},
+  // A bare syncFromCloud() returns at once while a timed pull is out, and that
+  // pull may have left before the row changed: wait for it, then pull again.
+  pull:function(){return fluxPullBeforePush();},
   status:function(){
     return{
       signedIn:!!currentUser,
