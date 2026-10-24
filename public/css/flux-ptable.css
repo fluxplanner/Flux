@@ -107,8 +107,14 @@
   border-radius: 7px; border: 1px solid color-mix(in srgb, var(--c, #888) 45%, transparent);
   background: color-mix(in srgb, var(--c, #888) 20%, var(--fpt-cell)); color: var(--fpt-ink);
   cursor: pointer; overflow: hidden; text-align: center; line-height: 1.05;
+  /* !important because the planner's styles.css gives every button
+     `transition: all .12s !important`: in Study tools each click then started
+     a transition on every property of all 118 cells (scrollbar colour
+     included), restyling the whole table for a frame after frame. Only the
+     fill fades now; the text colour is left out because it is inherited, so
+     animating it restyles every label inside the cell too. */
   transition: transform .14s ease, box-shadow .14s ease, opacity .2s ease, filter .2s ease,
-    background-color .35s ease, border-color .35s ease, color .35s ease;
+    background-color .35s ease !important;
 }
 .fpt .fpt-el::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--c, transparent); opacity: .9; }
 .fpt .fpt-el:hover { transform: translateY(-1px) scale(1.06); z-index: 3; box-shadow: 0 8px 20px -8px rgba(0, 0, 0, .6); }
@@ -512,3 +518,27 @@
 .fpt-fulllinks > span { display: block; margin-bottom: 8px; font-size: .78rem; font-weight: 700; color: var(--fpt-mut); }
 .fpt-fulllinks .fpt-more { margin: 0; }
 :is(#app, #ptHost) .fpt a.fpt-chip, .fpt a.fpt-chip { color: var(--fpt-ink); text-decoration: none; }
+
+/* The Trends picker: categories, search and pinned favourites. */
+.fpt-tpick { display: grid; gap: 8px; margin-bottom: 10px; padding: 10px; border: 1px solid var(--fpt-soft); border-radius: 14px; background: var(--fpt-panel); }
+.fpt-tpick[hidden] { display: none; }
+.fpt-tpick-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.fpt .fpt-tq { flex: 1 1 220px; min-width: 0; }
+.fpt-tcats { display: flex; flex-wrap: wrap; gap: 4px; }
+.fpt-tpins, .fpt-tchips { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.fpt-tpins[hidden], .fpt-tgrp[hidden], .fpt-tchip[hidden] { display: none; }
+.fpt-tlist { display: grid; gap: 6px; max-height: 220px; overflow-y: auto; }
+.fpt-tgrp { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; align-items: start; }
+.fpt-tgrp-h { padding-top: 5px; font-size: .72rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--fpt-mut); }
+.fpt-tchip { display: inline-flex; align-items: center; gap: 1px; }
+.fpt .fpt-tpin { appearance: none; width: 26px; height: 26px; padding: 0; margin: 0; border: 0; border-radius: 50%; background: transparent; color: var(--fpt-mut); font-size: 14px; line-height: 1; cursor: pointer; }
+.fpt .fpt-tpin:hover, .fpt .fpt-tpin.is-on { color: #f2b53a; }
+.fpt-keyh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin-bottom: 6px; }
+.fpt-keyh small { color: var(--fpt-mut); }
+.fpt-keyhint { margin-left: auto; font-size: .75rem; color: var(--fpt-mut); }
+@container (max-width: 560px) { .fpt-tgrp { grid-template-columns: minmax(0, 1fr); gap: 3px; } }
+
+/* How the element was discovered, under the 3D model. */
+.fpx-hist { margin-top: 14px; }
+.fpx-hist:empty { display: none; }
+.fpx-hist-how { margin: 10px 0 0; line-height: 1.55; }
