@@ -221,5 +221,79 @@
     return Promise.resolve(save());
   }
 
-  window.FluxHub = { mount: mount, mountAll: mountAll, openPage: openPage, PRODUCTS: PRODUCTS, GROUPS: GROUPS, canPrint: canPrint, printImage: printImage };
+  /* ── The Flux mark on everything that prints ─────────────────────────
+     Every page of the suite loads this file, so it puts a faint Flux logo in
+     the bottom corner of every printed page from here — the planner's
+     reading log and quizzes, the grapher, the periodic table, Tutor, Synara's
+     safety card, or plain Ctrl+P on any app. Paper only: nothing changes on
+     screen. The logo is drawn for a dark background, so on paper it prints as
+     a light grey silhouette; it sits in the corner because behind the content
+     it would be hidden by filled cells and get in the way of reading. It is
+     its own element, not body::before, because the planner and Tutor already
+     use body::before for their backgrounds. Both bundled (public/bundles/) and
+     plain (public/js/) copies of this file sit one folder below public/. */
+  var LOGO_URL = (function () {
+    try { return new URL('../flux-planner-logo.png', document.currentScript.src).href; } catch (e) { return 'public/flux-planner-logo.png'; }
+  })();
+  (function installPrintMark() {
+    if (document.getElementById('fluxPrintMark')) return;
+    var st = document.createElement('style');
+    st.id = 'fluxPrintMark';
+    // html:root body > div#… outranks every "hide all of body but my sheet"
+    // print rule in the suite (the strongest is (1,1,2)).
+    st.textContent = '#fluxPrintMarkEl{display:none}'
+      + '@media print{html:root body>div#fluxPrintMarkEl{display:block!important;visibility:visible!important;position:fixed;'
+      + 'right:12mm;bottom:12mm;width:30mm;height:30mm;margin:0;padding:0;border:0;'
+      + 'background:url("' + LOGO_URL + '") center/contain no-repeat;filter:grayscale(1) brightness(0);opacity:.12;'
+      + '-webkit-print-color-adjust:exact;print-color-adjust:exact;pointer-events:none;z-index:2147483647}}';
+    (document.head || document.documentElement).appendChild(st);
+    var add = function () {
+      if (document.getElementById('fluxPrintMarkEl') || !document.body) return;
+      var el = document.createElement('div');
+      el.id = 'fluxPrintMarkEl';
+      el.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(el);
+    };
+    if (document.body) add(); else document.addEventListener('DOMContentLoaded', add);
+    // Fetched now, so a print a moment after the page opens has it ready.
+    try { new Image().src = LOGO_URL; } catch (e) { /* no images */ }
+  })();
+  /** The same mark for a page printed from its own window or frame, which
+      this file does not run in: put it anywhere in that page's body. */
+  function printMarkHTML() {
+    return '<img src="' + LOGO_URL + '" alt="" style="position:fixed;right:12mm;bottom:12mm;width:30mm;height:30mm;object-fit:contain;'
+      + 'filter:grayscale(1) brightness(0);opacity:.12;-webkit-print-color-adjust:exact;print-color-adjust:exact;pointer-events:none">';
+  }
+  /** The same mark on a picture made for printing or saving (the grapher's
+      and Pixel's PNGs, and the image a home-screen app prints through the
+      Share sheet): a small Flux tile and name in the bottom-right corner. It
+      is drawn, not loaded, so it is there the moment the picture is made. */
+  function markCanvas(cv) {
+    var g = cv.getContext('2d');
+    var W = cv.width, H = cv.height, s = Math.max(16, Math.round(Math.min(W, H) * 0.03));
+    var pad = Math.round(s * 0.8), x = W - pad - s, y = H - pad - s;
+    var dark = false;
+    try {
+      var px = g.getImageData(Math.max(0, x - s * 4), y, 1, 1).data;
+      dark = px[3] > 0 && (px[0] * 0.299 + px[1] * 0.587 + px[2] * 0.114) < 128;
+    } catch (e) { /* tainted canvas: assume paper */ }
+    g.save();
+    g.globalAlpha = 0.55;
+    g.fillStyle = '#0b0f1a';
+    g.beginPath();
+    if (g.roundRect) g.roundRect(x, y, s, s, s * 0.24); else g.rect(x, y, s, s);
+    g.fill();
+    g.fillStyle = '#7fe3ff';
+    g.font = '800 ' + Math.round(s * 0.6) + 'px -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('F', x + s / 2, y + s / 2 + 1);
+    g.fillStyle = dark ? '#eaf1ff' : '#333';
+    g.font = '700 ' + Math.round(s * 0.5) + 'px -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif';
+    g.textAlign = 'right';
+    g.fillText('Flux', x - s * 0.3, y + s / 2 + 1);
+    g.restore();
+    return cv;
+  }
+
+  window.FluxHub = { mount: mount, mountAll: mountAll, openPage: openPage, PRODUCTS: PRODUCTS, GROUPS: GROUPS, canPrint: canPrint, printImage: printImage, markCanvas: markCanvas, printMarkHTML: printMarkHTML };
 })();

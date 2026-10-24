@@ -1381,6 +1381,7 @@
   };
   P.pngBlob = function (W, H, ink) {
     const cv = this.renderCanvas(W, H, ink && ink.bg, ink && ink.mono);
+    if (window.FluxHub && window.FluxHub.markCanvas) window.FluxHub.markCanvas(cv);
     return new Promise((resolve, reject) => cv.toBlob((b) => (b ? resolve(b) : reject(new Error('png'))), 'image/png'));
   };
 

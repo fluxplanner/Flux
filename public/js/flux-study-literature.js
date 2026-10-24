@@ -46,7 +46,7 @@
         .foot{margin-top:16px;color:#777;font:9pt system-ui,sans-serif}</style></head><body>
         <h1>${esc(title)}</h1><p class="intro">${esc(intro)}</p>
         ${groups.map(([g, terms]) => `<h2>${esc(g)}</h2>${terms.map((t) => `<div class="t"><b>${esc(t[0])}</b> — ${esc(t[1])}${t[2] ? ` <span class="ex">${esc(t[2])}</span>` : ''}</div>`).join('')}`).join('')}
-        <p class="foot">Flux · Study tools</p></body></html>`;
+        <p class="foot">Flux · Study tools</p>${window.FluxHub && window.FluxHub.printMarkHTML ? window.FluxHub.printMarkHTML() : ''}</body></html>`;
       const f = document.createElement('iframe');
       f.setAttribute('aria-hidden', 'true');
       f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
