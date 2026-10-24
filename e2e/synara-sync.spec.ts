@@ -83,10 +83,12 @@ test('changing tab plays the entrance once, and reduced motion turns it off', as
   await page.getByRole('button', { name: 'Look around with example data' }).click();
   await page.locator('.tab[data-to=meds]').click();
   await expect(page.locator('.screen-inner')).toHaveClass(/route-enter/);
-  expect(await page.locator('.screen-inner').evaluate((e) => getComputedStyle(e).animationName)).toBe('synara-route-in');
+  const animation = () => page.locator('.screen-inner').evaluate((e) => getComputedStyle(e).animationName);
+  await expect.poll(animation).toBe('synara-route-in');
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.locator('.tab[data-to=home]').click();
-  expect(await page.locator('.screen-inner').evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
+  // The tab click re-renders on the next task, so a busy machine can still show the old screen here.
+  await expect.poll(animation).toBe('none');
 });
 
 test('the welcome page sends sign-up through Flux and back to Synara', async ({ page }) => {
