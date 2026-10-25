@@ -145,6 +145,8 @@
     test: '<path d="M9 3h6v3H9z"/><path d="M8 4.5H6V21h12V4.5h-2"/><path d="m9 13 2 2 4-4"/>',
     cards: '<rect x="2" y="7" width="15" height="13" rx="2"/><path d="M7 3h13a2 2 0 0 1 2 2v11"/>',
     ask: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+    listen: '<path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>',
+    stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
     plan: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8.5 15.5l2 2 4-4"/>',
   };
   function icon(name, size) {
@@ -590,7 +592,7 @@
     if (set.deletedAt) { renderDeleted(); afterRoute('#ftScreenTitle'); return; }
     const tab = r.tab || (set.guide || set.legacy ? 'guide' : 'notes');
     if (!r.tab) replaceHash(setHash(set.id, tab));
-    if (app.tab !== tab) { app.ui.editing = null; app.ui.planNote = ''; }
+    if (app.tab !== tab) { app.ui.editing = null; app.ui.planNote = ''; stopListening(); }
     app.tab = tab;
     if (tab === 'ask') app.ui.askQuery = r.query.get('q') || '';
     prepareTab(tab);
@@ -639,7 +641,7 @@
     if (!o) return;
     app.open = null;
     app.ui = freshUi();
-    app.tab = '';
+    app.tab = ''; stopListening();
     if (!o.draft) await app.store.flush();
     setSaveLabel(idleLabel(), app.store.persistent ? 'idle' : 'warn');
   }
@@ -649,7 +651,7 @@
     app.ui = freshUi();
     app.view = 'set';
     app.notice = '';
-    app.tab = '';
+    app.tab = ''; stopListening();
     if (!draft) { restoreTest(); restoreExam(); }
     // The beta's sets (and any set saved before its guide) get a guide when opened.
     if (!draft && !set.guide && T.hasNotes(set)) buildGuide();
@@ -1377,11 +1379,45 @@
     const stale = guideStale();
     return '<section class="ft-panel" aria-labelledby="ftScreenTitle">'
       + '<div class="ft-panel-head"><h2 class="ft-h2" id="ftScreenTitle" tabindex="-1">Study guide</h2>'
-      + '<button type="button" class="ft-btn ft-btn--quiet ft-btn--small" data-act="guide-download">' + icon('download', 16) + 'Download</button></div>'
+      + '<div class="ft-row">' + (canSpeak() ? '<button type="button" class="ft-btn ft-btn--quiet ft-btn--small" data-act="guide-listen" aria-pressed="' + speaking + '">' + icon(speaking ? 'stop' : 'listen', 16) + (speaking ? 'Stop' : 'Listen') + '</button>' : '')
+      + '<button type="button" class="ft-btn ft-btn--quiet ft-btn--small" data-act="guide-download">' + icon('download', 16) + 'Download</button></div></div>'
       + '<p class="ft-promise">' + icon('shield', 17) + '<span>' + esc(PROMISE) + ' Every line says where in your notes it came from. Fix it, delete it or add your own.</span></p>'
       + (stale ? '<p class="ft-banner" role="note">Your notes changed, but there is too little text in them now to rebuild this guide, so it still shows your earlier notes.</p>' : '')
       + outlineHtml(g) + itemsHtml('terms') + itemsHtml('facts') + legacyHtml(set)
       + '</section>';
+  }
+  /* ── Audio overview ────────────────────────────────────────────────────
+     The study guide read aloud by the browser's own voice: each section's
+     summary, then the key terms and facts. The words are the guide's own
+     (copied from the notes), so it keeps the grounding rule; only the
+     joining phrases are Flux's. Nothing is sent anywhere. */
+  let speaking = false;
+  function canSpeak() { return typeof window.speechSynthesis !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function'; }
+  function audioScript(set) {
+    const g = set.guide, parts = ['Audio overview of ' + (set.title || 'your notes') + '.'];
+    g.outline.forEach((o) => { if (o.summary.length) parts.push(o.title + '. ' + o.summary.map((x) => x.text).join(' ')); });
+    if (g.terms.length) parts.push('Key terms.', ...g.terms.map((t) => t.term + ': ' + t.def));
+    if (g.facts.length) parts.push('Key facts.', ...g.facts.map((f) => f.text));
+    return parts;
+  }
+  function stopListening() {
+    if (!speaking) return;
+    speaking = false;
+    try { window.speechSynthesis.cancel(); } catch (e) { /* no speech */ }
+  }
+  function toggleListen() {
+    if (speaking) { stopListening(); renderScreen('[data-act="guide-listen"]'); announce('Stopped.'); return; }
+    const parts = audioScript(app.open.set);
+    speaking = true;
+    window.speechSynthesis.cancel();
+    // One utterance per part: a single long one is cut off by some browsers.
+    parts.forEach((text, i) => {
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 1;
+      if (i === parts.length - 1) u.onend = () => { if (speaking) { speaking = false; if (app.tab === 'guide') renderScreen(); } };
+      window.speechSynthesis.speak(u);
+    });
+    renderScreen('[data-act="guide-listen"]');
   }
   function outlineHtml(g) {
     if (!g.outline.length) return '';
@@ -2796,6 +2832,7 @@
         if (li) { li.classList.add('is-target'); li.scrollIntoView({ block: 'center' }); const a = li.querySelector('.ft-cite-link'); if (a) a.focus({ preventScroll: true }); setTimeout(() => li.classList.remove('is-target'), 1600); }
         break;
       }
+      case 'guide-listen': toggleListen(); break;
       case 'card-flip': flipCard(); break;
       case 'card-rate': rateCard(Number(btn.dataset.grade)); break;
       case 'cards-ahead': cardsAhead(); break;
