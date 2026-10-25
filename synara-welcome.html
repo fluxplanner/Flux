@@ -129,8 +129,24 @@ footer{padding:48px 0 40px;margin-top:56px;border-top:1px solid var(--line);colo
 /* reveal: slow, once, never looping (see note at top) */
 .rv{opacity:0;transform:translateY(14px);transition:opacity .7s var(--ease),transform .7s var(--ease)}
 .rv.in{opacity:1;transform:none}
+/* One-time entrances inside a revealed block: each piece arrives a beat
+   after the last. Slow, opacity and movement only, never repeating. */
+.hero .rv.in > *, .rv.in .ph-head, .rv.in .ph-card, .rv.in .ph-row, .rv.in .ph-sos{animation:sy-in .8s var(--ease) both}
+.hero .rv.in > :nth-child(2){animation-delay:.08s}
+.hero .rv.in > :nth-child(3){animation-delay:.16s}
+.hero .rv.in > :nth-child(4){animation-delay:.24s}
+.hero .rv.in > :nth-child(5){animation-delay:.32s}
+.rv.in .ph-card{animation-delay:.25s}
+.rv.in .ph-row:nth-child(1){animation-delay:.45s}
+.rv.in .ph-row:nth-child(2){animation-delay:.6s}
+.rv.in .ph-row:nth-child(3){animation-delay:.75s}
+.rv.in .ph-sos{animation-delay:.9s}
+.cards .card.rv:nth-child(2){transition-delay:.12s}
+.cards .card.rv:nth-child(3){transition-delay:.24s}
+@keyframes sy-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){
   .rv{opacity:1;transform:none;transition:none}
+  .hero .rv.in > *, .rv.in .ph-head, .rv.in .ph-card, .rv.in .ph-row, .rv.in .ph-sos{animation:none}
   .btn,.card{transition:none}
   .btn-pri:hover,.card:hover{transform:none}
 }
