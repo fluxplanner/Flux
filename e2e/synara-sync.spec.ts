@@ -147,6 +147,12 @@ test('a copy from before the key was kept still asks for it, and gets its key st
   await a.reload();
   await expect.poll(() => shared.writes).toBe(1);
   legacy(shared);
+  // A device from before, too: it has never stored the key.
+  await a.evaluate(() => {
+    const m = JSON.parse(localStorage.getItem('synara.sync')!);
+    delete m.keyed;
+    localStorage.setItem('synara.sync', JSON.stringify(m));
+  });
 
   await b.goto('/synara.html');
   await b.getByRole('button', { name: 'Look around with example data' }).click();

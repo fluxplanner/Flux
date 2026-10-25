@@ -276,7 +276,7 @@ async function push(meta, raw) {
   const plain = localRecord();
   const sealed = await encrypt(plain, raw);
   const row = await need(vault()).put({ ...sealed, key: meta.key });
-  writeMeta({ ...meta, hash: await hash(plain), remoteAt: row.updated_at, at: new Date().toISOString() });
+  writeMeta({ ...meta, hash: await hash(plain), remoteAt: row.updated_at, at: new Date().toISOString(), keyed: true });
 }
 
 async function pull(meta, raw, remote) {
@@ -316,7 +316,8 @@ export function syncNow() {
         what = 'none';
       }
       // A copy from before the key was kept in the account: store it now.
-      if (what === 'none' && remote && !remote.key) what = 'push';
+      // Once only: a server that doesn't keep it must not get an upload every round.
+      if (what === 'none' && remote && !remote.key && !meta.keyed) what = 'push';
       if (what === 'push') await push(meta, raw);
       else if (what === 'pull') await pull(meta, raw, remote);
       else if (what === 'gone') {

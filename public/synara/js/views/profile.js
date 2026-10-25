@@ -715,8 +715,10 @@ export const actions = {
       confirmLabel: 'Delete everything',
       async onConfirm() {
         // Stop syncing here first, or the empty record would sync over every
-        // other device. The synced copy itself is left alone.
-        await sync.stop({ optOut: false });
+        // other device. The synced copy itself is left alone. Off for good on
+        // this device (until turned on again): with the key kept in the
+        // account, a fresh start would otherwise pull it straight back.
+        await sync.stop();
         await store.wipe();
         try { sessionStorage.removeItem('synara.timer'); } catch { /* blocked */ }
         // Back to the first-run choice, exactly as if newly installed.

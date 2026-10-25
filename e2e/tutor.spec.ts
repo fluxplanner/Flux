@@ -854,7 +854,7 @@ test.describe('Flux Tutor', () => {
     await page.getByRole('button', { name: 'Listen' }).click();
     const before = await page.evaluate(() => (window as any).__cancels);
     await tab(page, 'Flashcards').click();
-    expect(await page.evaluate(() => (window as any).__cancels)).toBeGreaterThan(before);
+    await expect.poll(() => page.evaluate(() => (window as any).__cancels)).toBeGreaterThan(before);
   });
 
   test('flashcard reveal animates, and not at all with reduced motion', async ({ page }) => {
