@@ -1267,7 +1267,33 @@
   function soonHTML(sid) { const s = subjById(sid); return `<div class="fsh-card fsh-soon fsh-panel"><div class="ic">${s.ico}</div><h3>${esc(s.name)} tools didn't load</h3><p>The ${esc(s.name)} module isn't available right now — try reloading. Meanwhile, here are the best interactive sites.</p></div>`; }
   // Reference-site strips removed per product decision — Study Tools keeps the
   // in-app tools only, no external website links.
-  function refStrip() { return ''; }
+  /* "Need more help?" under every subject: a few trusted, free sites for
+     when the tools here are not enough. Links only, opened in a new tab. */
+  const HELP = {
+    chemistry: [['Khan Academy: Chemistry', 'https://www.khanacademy.org/science/chemistry'], ['ChemLibreTexts', 'https://chem.libretexts.org/'], ['PhET simulations', 'https://phet.colorado.edu/en/simulations/filter?subjects=chemistry']],
+    physics: [['Khan Academy: Physics', 'https://www.khanacademy.org/science/physics'], ['The Physics Classroom', 'https://www.physicsclassroom.com/'], ['PhET simulations', 'https://phet.colorado.edu/en/simulations/filter?subjects=physics']],
+    biology: [['Khan Academy: Biology', 'https://www.khanacademy.org/science/biology'], ['BioLibreTexts', 'https://bio.libretexts.org/'], ['Amoeba Sisters (videos)', 'https://www.youtube.com/@AmoebaSisters']],
+    labgraph: [['Desmos graphing', 'https://www.desmos.com/calculator'], ['NIST: uncertainty basics', 'https://physics.nist.gov/cuu/Uncertainty/index.html']],
+    math: [['Khan Academy: Math', 'https://www.khanacademy.org/math'], ['Paul’s Online Math Notes', 'https://tutorial.math.lamar.edu/'], ['Desmos', 'https://www.desmos.com/calculator'], ['Wolfram|Alpha', 'https://www.wolframalpha.com/']],
+    cs: [['Khan Academy: Computing', 'https://www.khanacademy.org/computing'], ['CS50 (Harvard, free)', 'https://cs50.harvard.edu/x/'], ['MDN Web Docs', 'https://developer.mozilla.org/']],
+    history: [['Khan Academy: History', 'https://www.khanacademy.org/humanities'], ['Crash Course (videos)', 'https://thecrashcourse.com/'], ['Smithsonian Learning Lab', 'https://learninglab.si.edu/']],
+    glopo: [['UN: Global issues', 'https://www.un.org/en/global-issues'], ['Council on Foreign Relations: Education', 'https://education.cfr.org/'], ['iCivics', 'https://www.icivics.org/']],
+    psychology: [['Khan Academy: Psychology', 'https://www.khanacademy.org/test-prep/mcat/behavior'], ['Simply Psychology', 'https://www.simplypsychology.org/'], ['Crash Course Psychology', 'https://thecrashcourse.com/topic/psychology/']],
+    econ: [['Khan Academy: Economics', 'https://www.khanacademy.org/economics-finance-domain'], ['Marginal Revolution University', 'https://mru.org/'], ['Federal Reserve Education', 'https://www.federalreserveeducation.org/']],
+    english: [['Purdue OWL (writing)', 'https://owl.purdue.edu/'], ['SparkNotes / No Fear', 'https://www.sparknotes.com/'], ['CommonLit', 'https://www.commonlit.org/']],
+    french: [['Kwiziq French', 'https://french.kwiziq.com/'], ['TV5Monde: Apprendre', 'https://apprendre.tv5monde.com/'], ['WordReference', 'https://www.wordreference.com/fren/']],
+    german: [['DW: Learn German', 'https://learngerman.dw.com/'], ['Goethe-Institut', 'https://www.goethe.de/en/spr/ueb.html'], ['WordReference', 'https://www.wordreference.com/deen/']],
+    spanish: [['SpanishDict', 'https://www.spanishdict.com/'], ['StudySpanish', 'https://studyspanish.com/'], ['WordReference', 'https://www.wordreference.com/es/en/translation.asp']],
+    music: [['musictheory.net', 'https://www.musictheory.net/'], ['Teoria', 'https://www.teoria.com/'], ['Chrome Music Lab', 'https://musiclab.chromeexperiments.com/']],
+    art: [['Khan Academy: Art History', 'https://www.khanacademy.org/humanities/art-history'], ['Google Arts & Culture', 'https://artsandculture.google.com/'], ['Tate: Art terms', 'https://www.tate.org.uk/art/art-terms']],
+  };
+  function refStrip(sid) {
+    const links = HELP[sid];
+    if (!links) return '';
+    return '<aside class="fsh-help" aria-label="More help"><span class="fsh-help-h">Need more help?</span>'
+      + links.map((l) => '<a class="fsh-help-a" href="' + esc(l[1]) + '" target="_blank" rel="noopener noreferrer">' + esc(l[0]) + ' ↗</a>').join('')
+      + '</aside>';
+  }
 
   /* Geometry only — no scrolling — so this is safe to fire from a
      ResizeObserver while the user is part-way along the strip.
