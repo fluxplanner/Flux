@@ -268,10 +268,11 @@ async function openSyncSheet() {
       <div class="sync-key">
         <span class="label">Your sync key</span>
         <code class="mono">${sync.keyText()}</code>
-        <span class="t-sm ink-3">Enter it on your other devices in You → Flux → Sync. Keep it private:
+        <span class="t-sm ink-3">Open the sync link on your other devices, or enter the key in You → Flux → Sync. Keep it private:
           anyone with it and your Flux sign-in could read your synced copy.</span>
       </div>
       <div class="stack stack-2 mt-3">
+        <button class="btn btn-primary btn-block" data-action="sync-copy-link">Copy sync link</button>
         <button class="btn btn-outline btn-block" data-action="sync-copy-key">Copy sync key</button>
         <button class="btn btn-outline btn-block" data-action="sync-now">Sync now</button>
         <button class="btn btn-quiet btn-block" data-action="sync-stop">Turn off on this device</button>
@@ -513,6 +514,39 @@ function describeBackup(parsed) {
          `${plural(days, 'day')} of doses, ${plural(sz, 'seizure')}.`;
 }
 
+/* A sync link carries the key after the "#", which browsers never send to
+   a server, so opening it on another device fills the key in for you. */
+function syncLink() {
+  return location.origin + location.pathname + '#/home?sync=' + sync.keyText().replace(/-/g, '');
+}
+
+/** Check a key against the synced copy and ask before replacing this device's record. */
+export async function askToJoin(key) {
+  let info;
+  try {
+    info = await sync.inspect(key);
+  } catch (e) {
+    toast(syncError(e), 'bad');
+    return;
+  }
+  confirmSheet({
+    title: 'Use your synced copy here?',
+    message: `Your synced copy, updated ${ago(info.updatedAt)}, has ${plural(info.meds, 'medication')} and ` +
+             `${plural(info.seizures, 'logged seizure')}${info.name ? ` for ${info.name}` : ''}. ` +
+             'It will replace what is on this device now.',
+    confirmLabel: 'Use synced copy',
+    danger: false,
+    async onConfirm() {
+      try {
+        await sync.join(info.key);
+        toast('This device is synced', 'ok');
+      } catch (e) {
+        toast(syncError(e), 'bad');
+      }
+    },
+  });
+}
+
 export const actions = {
   'profile-edit'(node, state) {
     const p = state.profile;
@@ -719,29 +753,16 @@ export const actions = {
 
   async 'sync-join-check'() {
     const { key } = sheetValues();
-    let info;
+    await askToJoin(key);
+  },
+
+  async 'sync-copy-link'() {
     try {
-      info = await sync.inspect(key);
-    } catch (e) {
-      toast(syncError(e), 'bad');
-      return;
+      await navigator.clipboard.writeText(syncLink());
+      toast('Sync link copied. Open it on your other device.', 'ok');
+    } catch {
+      toast('Couldn’t copy. Use the sync key instead.', 'bad');
     }
-    confirmSheet({
-      title: 'Use your synced copy here?',
-      message: `Your synced copy, updated ${ago(info.updatedAt)}, has ${plural(info.meds, 'medication')} and ` +
-               `${plural(info.seizures, 'logged seizure')}${info.name ? ` for ${info.name}` : ''}. ` +
-               'It will replace what is on this device now.',
-      confirmLabel: 'Use synced copy',
-      danger: false,
-      async onConfirm() {
-        try {
-          await sync.join(info.key);
-          toast('This device is synced', 'ok');
-        } catch (e) {
-          toast(syncError(e), 'bad');
-        }
-      },
-    });
   },
 
   async 'sync-copy-key'() {

@@ -99,3 +99,31 @@ test('the welcome page sends sign-up through Flux and back to Synara', async ({ 
   await page.waitForURL('**/index.html');
   expect(await page.evaluate(() => sessionStorage.getItem('flux_return_to'))).toBe('synara.html');
 });
+
+test('a sync link sets up the second device without typing the key', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const shared = { row: null as Row, writes: 0 };
+  const a = await device(browser, shared);
+  const b = await device(browser, shared);
+
+  await a.goto('/synara.html');
+  await a.getByRole('button', { name: 'Look around with example data' }).click();
+  await a.evaluate(() => {
+    const rec = JSON.parse(localStorage.getItem('synara.v2')!);
+    rec.settings.seeded = false;
+    rec.profile.name = 'Linked student';
+    localStorage.setItem('synara.v2', JSON.stringify(rec));
+  });
+  await a.reload();
+  await expect.poll(() => shared.writes).toBe(1);
+  await a.locator('.tab[data-to=you]').click();
+  await a.locator('[data-action=sync-open]').click();
+  await expect(a.locator('[data-action=sync-copy-link]')).toBeVisible();
+  const key = (await a.locator('.sync-key code').textContent())!.trim().replace(/-/g, '');
+
+  await b.goto('/synara.html#/home?sync=' + key);
+  await b.getByRole('button', { name: 'Use synced copy' }).click();
+  await expect.poll(async () => (await record(b))?.profile.name).toBe('Linked student');
+  // The key does not stay in the address bar or the history entry.
+  expect(b.url()).not.toContain(key);
+});

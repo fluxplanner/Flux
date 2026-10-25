@@ -442,6 +442,10 @@ function registerServiceWorker() {
 }
 
 async function boot() {
+  // Opened from a sync link (#/home?sync=KEY): take the key out of the
+  // address bar at once; once sync is up, offer to use the synced copy here.
+  const linked = /[?&]sync=([0-9A-Za-z-]+)/.exec(location.hash);
+  if (linked) history.replaceState(null, '', location.pathname + location.search + location.hash.replace(/[?&]sync=[^&]*/, ''));
   const first = parseHash();
   route = first.route;
 
@@ -453,7 +457,8 @@ async function boot() {
   // A first run through #/sos, or reloaded while its timer runs, starts
   // on the card (see "First run that starts on the emergency card").
   if (firstRun && (first.sos || safety.timerPending())) firstRunCard();
-  else if (firstRun) intro.show();
+  // A sync link brings the record with it, so the welcome would only be in the way.
+  else if (firstRun && !linked) intro.show();
   else if (first.sos) onHashChange();
 
   window.addEventListener('hashchange', onHashChange);
@@ -481,7 +486,7 @@ async function boot() {
     askedKey = asking;
     if (s.phase === 'conflict' && !isSheetOpen() && !isEmergencyOpen()) profile.showConflict();
   });
-  sync.start();
+  sync.start().then(() => { if (linked && !sync.enabled()) profile.askToJoin(linked[1]); });
 }
 
 /* Whatever went wrong, the emergency card still has to open: it needs
