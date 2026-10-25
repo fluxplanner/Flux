@@ -555,7 +555,7 @@
     var host = $('frlEntries');
     var entries = C.live(s.entries);
     if (!entries.length) {
-      host.innerHTML = '<p class="frl-empty">Nothing logged yet. Each time you read, add the pages or minutes above, or use "Log today" on the dashboard.</p>';
+      host.innerHTML = '<p class="frl-empty">Nothing logged yet. Each time you read, add the pages or minutes above.</p>';
       return;
     }
     var byDay = {};

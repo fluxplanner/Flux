@@ -38,6 +38,9 @@
   }
   const trim0 = (s) => String(s).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
   /** A number the way a data book prints it: sensible digits, no float noise. */
+  // One formatter: toLocaleString builds a new one on every call, which was
+  // most of the cost of drawing a trend's graph.
+  let NF = null;
   function fmt(v, sig) {
     if (v == null || !Number.isFinite(v)) return '—';
     const a = Math.abs(v);
@@ -45,7 +48,7 @@
       const [m, e] = v.toExponential((sig || 3) - 1).split('e');
       return trim0(m) + ' × 10' + C().toSup(String(+e));
     }
-    if (a >= 1000) return Math.round(v).toLocaleString('en');
+    if (a >= 1000) return (NF || (NF = new Intl.NumberFormat('en'))).format(Math.round(v));
     return trim0(v.toPrecision(sig || 4));
   }
 
@@ -354,7 +357,10 @@
     this.tq = this.host.querySelector('.fpt-tq');
     // Redraw the graph when it crosses between the phone and desktop sizes.
     if (window.ResizeObserver) {
-      new ResizeObserver(() => {
+      new ResizeObserver((en) => {
+        // A hidden graph measures 0; keep the width it had when last shown.
+        const w = en[0] ? en[0].contentRect.width : 0;
+        if (w > 0) this.chartW = w;
         if (!this.chart.hidden && this.chartNarrow !== this.isNarrowChart()) this.renderChart();
       }).observe(this.chart);
     }
@@ -839,7 +845,9 @@
   };
 
   App.prototype.isNarrowChart = function () {
-    const w = this.chart ? this.chart.clientWidth : 0;
+    // The width the ResizeObserver last saw: reading clientWidth here, right
+    // after the tab's DOM writes, forced a full layout on every switch.
+    const w = this.chartW || (this.chart ? this.chart.clientWidth : 0);
     return w > 0 && w < 660;
   };
 
@@ -1014,7 +1022,12 @@
     this.st.catFilter = null;
     this.save();
     if (this.o.hash) this.writeHash();
+    // The tab already slides in; fading all 118 fills too restyled the whole
+    // table every frame of the switch. Cells snap to their new colour.
+    this.root.classList.add('is-switching');
     this.refresh();
+    clearTimeout(this.switchT);
+    this.switchT = setTimeout(() => this.root.classList.remove('is-switching'), 400);
     this.slideIn(VIEW_IDS.indexOf(v) > VIEW_IDS.indexOf(was) ? 1 : -1);
   };
   /** The highlight behind the tabs slides to the one chosen. animate: false places it outright. */
@@ -1099,7 +1112,9 @@
     this.root.querySelector('.fpt-unit').hidden = !(v === 'temp' || (v === 'trends' && PROP[this.st.trend].unit === 'temp') || v === 'table');
     this.root.dataset.view = v;
     this.root.classList.toggle('is-explore', isExplore(v));
-    this.placeGlide(true);
+    // Next frame: measuring the tab now would force a layout mid-update.
+    cancelAnimationFrame(this.glideRaf);
+    this.glideRaf = requestAnimationFrame(() => this.placeGlide(true));
   };
   App.prototype.refresh = function () {
     this.sel.value = this.st.trend;
@@ -1378,7 +1393,7 @@
       const h = Math.max(2, (Math.log10(v) - lmin) / span * (H - 12) + 4);
       const x = pad + k * bw + 1;
       s += '<rect x="' + x.toFixed(1) + '" y="' + (H - h).toFixed(1) + '" width="' + Math.max(1, bw - 2).toFixed(1) + '" height="' + h.toFixed(1) + '" class="fpt-iebar' + (jumps.indexOf(k) >= 0 ? ' is-jump' : '') + '"><title>'
-        + ordinal(k + 1) + ': ' + Math.round(v).toLocaleString('en') + ' kJ/mol</title></rect>';
+        + ordinal(k + 1) + ': ' + (NF || (NF = new Intl.NumberFormat('en'))).format(Math.round(v)) + ' kJ/mol</title></rect>';
       if (n <= 20 || (k + 1) % 5 === 0 || k === 0) s += '<text x="' + (x + bw / 2 - 1).toFixed(1) + '" y="' + (H + 11) + '" class="fpt-ax fpt-ax--x">' + (k + 1) + '</text>';
     });
     s += '<text x="' + ((W + pad) / 2) + '" y="' + (H + 22) + '" class="fpt-ax fpt-ax--x">electron removed · kJ/mol, log scale</text></svg>';
