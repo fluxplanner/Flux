@@ -4,15 +4,17 @@
    Only inside Flux (synara.html), only for a student signed in to
    Flux, and only once they turn it on in You → Flux.
 
-   END-TO-END ENCRYPTED. The whole record is encrypted on the
-   device (AES-GCM, 128-bit key) before it goes anywhere. The key is
-   made on the first device and is never uploaded: the student
-   carries it to their other devices as a sync key, 26 characters
-   shown as XXXX-XXXX-…. Flux stores only ciphertext (its
-   synara_vaults table), so nobody with access to Flux's database
-   can read a student's medication, seizures or contacts. Lose every
-   device and the key, and the synced copy can't be opened — on
-   purpose. The device's own copy is unaffected either way.
+   ENCRYPTED, WITH THE KEY IN THE ACCOUNT. The whole record is
+   encrypted on the device (AES-GCM, 128-bit key) before it goes
+   anywhere. Since 2026-10-25 the key is kept in the student's own
+   synara_vaults row too (column sync_key), so a device signed in to
+   the same Flux account syncs by itself, with no key to carry. That
+   was a deliberate choice: row-level security still keeps each row to
+   its owner, but anyone with database access can now read the record.
+   A row made before then has no key stored; a device that holds the
+   key puts it there on its next sync. The key is still shown as
+   XXXX-XXXX-… and the sync link still works, for a copy whose key
+   isn't stored.
 
    THE RULE. A record is tens of kilobytes, so it moves whole:
      only this device changed      → upload
@@ -273,7 +275,7 @@ async function sameContent(remote, raw) {
 async function push(meta, raw) {
   const plain = localRecord();
   const sealed = await encrypt(plain, raw);
-  const row = await need(vault()).put(sealed);
+  const row = await need(vault()).put({ ...sealed, key: meta.key });
   writeMeta({ ...meta, hash: await hash(plain), remoteAt: row.updated_at, at: new Date().toISOString() });
 }
 
@@ -313,6 +315,8 @@ export function syncNow() {
         writeMeta({ ...meta, hash: await hash(localRecord()), remoteAt: remote.updated_at, at: new Date().toISOString() });
         what = 'none';
       }
+      // A copy from before the key was kept in the account: store it now.
+      if (what === 'none' && remote && !remote.key) what = 'push';
       if (what === 'push') await push(meta, raw);
       else if (what === 'pull') await pull(meta, raw, remote);
       else if (what === 'gone') {
@@ -421,9 +425,18 @@ export async function connect() {
   if (!who) return 'off';
   try {
     const v = need(await vaultReady());
-    if (await v.get()) { setStatus({ phase: 'needs-key', error: '' }); return 'needs-key'; }
+    const remote = await v.get();
     const s = store.get();
     const real = !s.settings.seeded && (s.meds.length || s.seizures.length || s.contacts.length);
+    if (remote && remote.key && decodeKey(remote.key)) {
+      // The account holds the key: nothing to type. An empty device takes
+      // the synced copy; one with its own record syncs as normal, so a
+      // real difference is asked about (conflict), never overwritten.
+      if (!real) { await join(remote.key); return 'joined'; }
+      writeMeta({ key: remote.key, user: who.id });
+      return syncNow();
+    }
+    if (remote) { setStatus({ phase: 'needs-key', error: '' }); return 'needs-key'; }
     if (!real) return 'off';
     await startNew();
     return 'started';

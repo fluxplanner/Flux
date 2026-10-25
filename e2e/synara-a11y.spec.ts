@@ -287,7 +287,7 @@ test.describe('Synara: what it says about itself', () => {
   test('no notes meant for developers, and privacy copy that matches what it does', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/synara.html');
-    await expect(page.locator('#welcome .welcome-note')).toContainText('encrypted so Flux can’t read it');
+    await expect(page.locator('#welcome .welcome-note')).toContainText('it syncs your devices through your Flux account');
     await page.getByRole('button', { name: 'Look around with example data' }).click();
     await expect(page.locator('#welcome')).toBeHidden();
 
@@ -302,7 +302,7 @@ test.describe('Synara: what it says about itself', () => {
     // Sync is off here, and the data card says what that means, Google Fonts included.
     await expect(page.locator('.list-row-static .row-t', { hasText: /^Stored on this device$/ })).toBeVisible();
     const data = page.locator('section[aria-labelledby="data-h"] .disclaimer');
-    await expect(data).toContainText('an encrypted copy is kept in your Flux account');
+    await expect(data).toContainText('an encrypted copy and its key are kept in your Flux account');
     await expect(data).toContainText('Google Fonts');
     await expect(page.locator('section[aria-labelledby="rem-h"] .disclaimer')).toContainText('only remind you while it');
 

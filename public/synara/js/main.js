@@ -485,8 +485,13 @@ async function boot() {
     if (route === 'you' || (route === 'home' && asking !== askedKey)) render();
     askedKey = asking;
     if (s.phase === 'conflict' && !isSheetOpen() && !isEmergencyOpen()) profile.showConflict();
+    // A new device signed in to Flux took the synced copy by itself (the
+    // key is kept in the account): the welcome has nothing left to set up.
+    if (firstRun && s.phase === 'idle' && sync.enabled() && isWelcomeOpen()) closeWelcome();
   });
-  sync.start().then(() => { if (linked && !sync.enabled()) profile.askToJoin(linked[1]); });
+  sync.start().then(() => {
+    if (linked && !sync.enabled()) profile.askToJoin(linked[1]);
+  });
 }
 
 /* Whatever went wrong, the emergency card still has to open: it needs

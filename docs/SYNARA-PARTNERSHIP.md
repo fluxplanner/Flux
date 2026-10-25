@@ -54,16 +54,19 @@ a safety-card shortcut on School info. These items are **never** written to
 never contain them. Keep it that way: if a feature ever wants Synara data in a
 synced store or an AI prompt, it needs the student's explicit, separate consent.
 
-## Sync (opt-in, end-to-end encrypted)
+## Sync (opt-in, encrypted, key kept in the account)
 
 ### What it does
 
 A student signed in to Flux can sync Synara between devices (You → Flux → Sync).
 The whole record is encrypted **on the device** with AES-GCM (128-bit key)
-before upload. The key is generated on the first device and never sent; the
-student carries it to other devices as a 26-character **sync key**. Flux stores
-only ciphertext, in `synara_vaults` (one row per account, RLS: own row only, 2 MB
-cap, server-set `updated_at`).
+before upload, in `synara_vaults` (one row per account, RLS: own row only, 2 MB
+cap, server-set `updated_at`). Since 2026-10-25 the key is stored in the same row
+(`sync_key`), so any device signed in to the account syncs by itself. This was a
+deliberate trade-off: it is no longer end-to-end encrypted, and anyone with
+database access can decrypt a record. Rows made before then get their key on the
+next sync from a device that has it; until then the 26-character **sync key** or
+sync link connects another device.
 
 Sync rule (Synara `js/sync.js`): only this device changed → upload; only the
 synced copy changed → download (validated by Synara's `migrate()`); both changed

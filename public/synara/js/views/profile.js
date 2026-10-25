@@ -139,7 +139,7 @@ function careCard(state) {
    Two separate choices, both off until the student turns them on:
    showing dose times in their Flux Planner (fluxlink.js, this device
    only), and syncing across devices through their Flux account
-   (sync.js, end-to-end encrypted).
+   (sync.js; encrypted, key kept in the account).
    ============================================================ */
 
 function ago(iso) {
@@ -169,7 +169,7 @@ function syncNote() {
     if (st.error === 'gone') return SYNC_ERRORS.gone;
     if (st.phase === 'needs-key') return 'Synced on another device. Enter its sync key to connect this one.';
     return st.account
-      ? 'Off. Encrypted on this device before it leaves, so Flux can’t read it.'
+      ? 'Off. Turn it on to keep Synara the same on every device you sign in to.'
       : 'Sign in to Flux to keep Synara the same on your phone and computer.';
   }
   if (st.phase === 'syncing') return 'Syncing…';
@@ -268,8 +268,7 @@ async function openSyncSheet() {
       <div class="sync-key">
         <span class="label">Your sync key</span>
         <code class="mono">${sync.keyText()}</code>
-        <span class="t-sm ink-3">Open the sync link on your other devices, or enter the key in You → Flux → Sync. Keep it private:
-          anyone with it and your Flux sign-in could read your synced copy.</span>
+        <span class="t-sm ink-3">Your other devices sync on their own once you sign in to Flux there. The key and sync link are only needed for a copy made before that, and both should stay private.</span>
       </div>
       <div class="stack stack-2 mt-3">
         <button class="btn btn-primary btn-block" data-action="sync-copy-link">Copy sync link</button>
@@ -458,7 +457,7 @@ function dataCard(state) {
         ${raw(icon('info', 16))}
         <span>
           <strong>Your record stays on this device.</strong> No account needed, and
-          no analytics.${sync.available() ? ' Signed in to Flux, an encrypted copy is kept in your Flux account unless you turn Sync off: Flux can’t read it, but it can see that you use Synara and when it last synced.' : ''}
+          no analytics.${sync.available() ? ' Signed in to Flux, an encrypted copy and its key are kept in your Flux account unless you turn Sync off, so any device you sign in to can open it. Only you can reach it through Flux, but Flux’s own staff and systems could read it.' : ''}
           Clearing your browser's data deletes what's here, and it won't move to a new
           phone on its own, so download a backup now and then. The font comes from
           Google Fonts, so Google can see the page was opened, but never what's in it.

@@ -7,7 +7,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test';
  * only ever ciphertext — the test checks that too.
  */
 
-type Row = { ciphertext: string; iv: string; version: number; updated_at: string } | null;
+type Row = { ciphertext: string; iv: string; version: number; updated_at: string; key?: string } | null;
 
 async function device(browser: Browser, shared: { row: Row; writes: number }): Promise<Page> {
   const context = await browser.newContext();
@@ -30,6 +30,9 @@ async function device(browser: Browser, shared: { row: Row; writes: number }): P
   });
   return page;
 }
+
+/** A row from before the key was kept in the account. */
+const legacy = (shared: { row: Row }) => { if (shared.row) delete (shared.row as Record<string, unknown>).key; };
 
 const record = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('synara.v2')!));
 
@@ -58,14 +61,14 @@ test('two devices on one Flux account stay in sync', async ({ browser }) => {
   const key = (await a.locator('.sync-key code').textContent())!.trim();
   await a.locator('[data-action=close-sheet]').first().click();
 
-  // Device B: same account, nothing synced here → Home asks for the key.
+  // The key is kept in the account with the copy (option 2, 2026-10-25).
+  expect(shared.row!.key).toBe(key.replace(/-/g, ''));
+
+  // Device B: same account, nothing real here → it takes the synced copy
+  // by itself, with no key to type and no welcome left in the way.
   await b.goto('/synara.html');
-  await b.getByRole('button', { name: 'Look around with example data' }).click();
-  await b.getByRole('button', { name: 'Enter sync key' }).click();
-  await b.locator('#sync-key').fill(key);
-  await b.getByRole('button', { name: 'Connect this device' }).click();
-  await b.getByRole('button', { name: 'Use synced copy' }).click();
-  await expect.poll(async () => (await record(b)).profile.name).toBe('Device A student');
+  await expect.poll(async () => (await record(b))?.profile.name).toBe('Device A student');
+  await expect(b.locator('#welcome')).toBeHidden();
   await b.locator('.tab[data-to=home]').click();
   await expect(b.getByRole('button', { name: 'Enter sync key' })).toHaveCount(0);
 
@@ -119,6 +122,7 @@ test('a sync link sets up the second device without typing the key', async ({ br
   await a.locator('.tab[data-to=you]').click();
   await a.locator('[data-action=sync-open]').click();
   await expect(a.locator('[data-action=sync-copy-link]')).toBeVisible();
+  legacy(shared);   // a copy whose key isn't stored: the link is how B gets it
   const key = (await a.locator('.sync-key code').textContent())!.trim().replace(/-/g, '');
 
   await b.goto('/synara.html#/home?sync=' + key);
@@ -126,4 +130,29 @@ test('a sync link sets up the second device without typing the key', async ({ br
   await expect.poll(async () => (await record(b))?.profile.name).toBe('Linked student');
   // The key does not stay in the address bar or the history entry.
   expect(b.url()).not.toContain(key);
+});
+
+test('a copy from before the key was kept still asks for it, and gets its key stored', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const shared = { row: null as Row, writes: 0 };
+  const a = await device(browser, shared);
+  const b = await device(browser, shared);
+  await a.goto('/synara.html');
+  await a.getByRole('button', { name: 'Look around with example data' }).click();
+  await a.evaluate(() => {
+    const rec = JSON.parse(localStorage.getItem('synara.v2')!);
+    rec.settings.seeded = false;
+    localStorage.setItem('synara.v2', JSON.stringify(rec));
+  });
+  await a.reload();
+  await expect.poll(() => shared.writes).toBe(1);
+  legacy(shared);
+
+  await b.goto('/synara.html');
+  await b.getByRole('button', { name: 'Look around with example data' }).click();
+  await expect(b.getByRole('button', { name: 'Enter sync key' })).toBeVisible();
+
+  // A, which has the key, stores it on its next round.
+  await a.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await expect.poll(() => shared.row!.key, { timeout: 15_000 }).toBeTruthy();
 });
