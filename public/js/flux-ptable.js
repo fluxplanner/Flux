@@ -454,6 +454,12 @@
     });
     this.sel.addEventListener('change', () => { this.st.trend = this.sel.value; this.save(); if (this.o.hash) this.writeHash(); this.refresh(); });
     this.q.addEventListener('input', () => this.search(this.q.value));
+    // Escape anywhere in the open panel closes it (the search box first clears itself).
+    this.picker.addEventListener('keydown', (ev) => {
+      if (ev.key !== 'Escape' || ev.target === this.tq || !this.picker.classList.contains('is-open')) return;
+      this.openPicker(false);
+      this.picker.querySelector('.fpt-tcur').focus();
+    });
     // A click or tap outside the open panel closes it.
     document.addEventListener('pointerdown', (ev) => {
       if (this.picker && this.picker.classList.contains('is-open') && !this.picker.contains(ev.target)) this.openPicker(false);
