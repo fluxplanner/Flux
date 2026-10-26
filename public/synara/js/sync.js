@@ -85,9 +85,11 @@ export function formatKey(code) {
 /* Settings that belong to a device, not to the student. Reminders need
    that device's own notification permission: synced "on" to a phone that
    never granted it, the switch would say on while no reminder ever came.
-   The planner link writes to that device's own storage. So these are left
-   out of what syncs, and each device keeps its own when a copy arrives. */
-export const DEVICE_ONLY = ['remindersOn', 'fluxLink'];
+   So it is left out of what syncs, and each device keeps its own when a
+   copy arrives. The planner link (fluxLink) does sync since 2026-10-26: the
+   planner on any device reads the synced copy, so the choice is the
+   student's, not the device's. */
+export const DEVICE_ONLY = ['remindersOn'];
 
 /** The record as it syncs: without this device's own settings. */
 export function shareable(plain) {

@@ -166,6 +166,32 @@ test.describe('Synara in the Flux Planner', () => {
     await expect(page.locator('#fxSynaraSchool')).toHaveCount(0);
   });
 
+  test('a dose time brings a reminder in the planner, once', async ({ page }) => {
+    await page.clock.install({ time: new Date('2027-01-05T08:03:00') });
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate(() => localStorage.setItem('synara.flux', JSON.stringify({ v: 1, meds: [
+      { name: 'Levetiracetam', dose: '500 mg', added: '2027-01-01', ended: null, schedule: [{ from: '2027-01-01', times: ['08:00', '20:00'] }] },
+    ] })));
+    const fire = () => page.evaluate(() => { (window as any).FluxSynara.remind(); return document.getElementById('toastLive')?.textContent || ''; });
+    expect(await fire()).toContain('Time for Levetiracetam 500 mg (08:00)');
+    await page.evaluate(() => { const l = document.getElementById('toastLive'); if (l) l.textContent = ''; });
+    expect(await fire(), 'not repeated').toBe('');
+    expect(await page.evaluate(() => localStorage.getItem('synara.flux.reminded'))).toContain('2027-01-05|');
+  });
+
+  test('on another device the planner uses the synced copy, only when the student turned the link on', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    const out = await page.evaluate(() => {
+      const S = (window as any).FluxSynara;
+      const rec = (on: boolean) => ({ settings: { fluxLink: on }, profile: { name: 'Maya' }, seizures: [{ notes: 'x' }],
+        meds: [{ name: 'Lamotrigine', dose: '50 mg', color: 'blue', added: '2027-01-01', ended: null, schedule: [{ from: '2027-01-01', times: ['07:30'] }] }] });
+      return [S.summaryOf(rec(false)), JSON.stringify(S.summaryOf(rec(true)))];
+    });
+    expect(out[0]).toBeNull();
+    expect(out[1]).toContain('Lamotrigine');
+    expect(out[1]).not.toContain('Maya');
+  });
+
   test('a malformed summary is ignored, not drawn', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
     const out = await page.evaluate(() => {
