@@ -1,6 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { gotoScenario } from './helpers';
 
+/** Pick a trend the way a student does: Change, then the trend in the panel. */
+async function pickTrend(page: import('@playwright/test').Page, id: string) {
+  await page.locator('.fpt-tcur').click();
+  await page.locator(`.fpt-tpanel .fpt-trow[data-c="${id}"]`).click();
+}
+
+
 /**
  * The Flux Periodic Table on its own page (periodic.html). The chemistry is
  * covered in test/unit/ptable-chem.test.mjs; these check the page a student
@@ -55,7 +62,7 @@ test.describe('Periodic table page', () => {
   test('colouring by a property writes the values and the trend', async ({ page }) => {
     await page.goto('/periodic.html');
     await page.locator('.fpt-view[data-view="trends"]').click();
-    await page.locator('.fpt-sel').selectOption('ie');
+    await pickTrend(page, 'ie');
     await expect(page.locator('.fpt-el[data-n="2"] .fpt-v')).toHaveText('2372');    // helium, highest
     await expect(page.locator('.fpt-legend')).toContainText(/Across a period/);
     await page.locator('.fpt-view[data-view="temp"]').click();
@@ -73,7 +80,7 @@ test.describe('Periodic table page', () => {
     }
     // Categories, blocks and states have tabs of their own, not a place in the list.
     for (const id of ['cat', 'block', 'state']) expect(ids).not.toContain(id);
-    await page.locator('.fpt-sel').selectOption('shield');
+    await pickTrend(page, 'shield');
     await expect(page.locator('.fpt-el[data-n="11"] .fpt-v')).toHaveText('8.80');      // sodium: σ = 11 − 2.20
     await expect(page.locator('.fpt-legend')).toContainText(/Down a group/);
     const chart = page.locator('.fpt-chart');
@@ -85,7 +92,7 @@ test.describe('Periodic table page', () => {
     await expect(page).toHaveURL(/#trend\/shield\/Fe$/);
 
     // Metallic character runs the scale the other way: caesium is brightest.
-    await page.locator('.fpt-sel').selectOption('metal');
+    await pickTrend(page, 'metal');
     await expect(page.locator('.fpt-legend')).toContainText('most metallic');
     // The Table tab has no graph.
     await page.locator('.fpt-view[data-view="table"]').click();
@@ -546,18 +553,28 @@ test.describe('Periodic table, round 3', () => {
     expect(all, 'elements with no who, when, where or how').toEqual([]);
   });
 
-  test('Trends: categories, search and pinned favourites', async ({ page }) => {
+  test('Trends: one bar, a panel to change it, search and pinned favourites', async ({ page }) => {
     await page.goto('/periodic.html#trend/ie');
     const pick = page.locator('.fpt-tpick');
     await expect(pick).toBeVisible();
-    await pick.locator('.fpt-tcat[data-k="Size"]').click();
-    await expect(pick.locator('.fpt-tchip:visible')).toHaveCount(4);
+    await expect(pick.locator('.fpt-tcur-n')).toHaveText('First ionization energy');
+    await expect(pick.locator('.fpt-tpanel')).toBeHidden();
+    await expect(page.locator('.fpt-sel')).toBeHidden();   // the bar does that job here
+    await pick.locator('.fpt-tcur').click();
+    await expect(pick.locator('.fpt-tpanel')).toBeVisible();
+    await expect(pick.locator('.fpt-tq')).toBeFocused();
+    await expect(pick.locator('.fpt-tgrp[data-g="Size"] .fpt-tchip')).toHaveCount(4);
+    await expect(pick.locator('.fpt-tchip[data-id="rc"] .fpt-trow-d')).toHaveText('Across ↓ · Down ↑');
     await pick.locator('.fpt-tq').fill('melting');
-    await expect(pick.locator('.fpt-tchip:visible .fpt-tbtn')).toHaveText(['Melting point']);
+    await expect(pick.locator('.fpt-tchip:visible .fpt-trow-n')).toHaveText(['Melting point']);
     await pick.locator('.fpt-tq').press('Enter');
+    await expect(pick.locator('.fpt-tpanel')).toBeHidden();
     await expect(page.locator('.fpt-sel')).toHaveValue('mp');
     await expect(page.locator('.fpt-keyh')).toContainText('Melting point');
+    await pick.locator('.fpt-tcur').click();
     await pick.locator('.fpt-tpin[data-c="mp"]').click();
+    await page.keyboard.press('Escape');
+    await expect(pick.locator('.fpt-tpanel')).toBeHidden();
     await expect(pick.locator('.fpt-tpins .fpt-tbtn')).toContainText(['Melting point']);
     await page.reload();
     await expect(page.locator('.fpt-tpins .fpt-tbtn')).toContainText(['Melting point']);

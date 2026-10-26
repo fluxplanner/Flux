@@ -454,9 +454,16 @@
     });
     this.sel.addEventListener('change', () => { this.st.trend = this.sel.value; this.save(); if (this.o.hash) this.writeHash(); this.refresh(); });
     this.q.addEventListener('input', () => this.search(this.q.value));
+    // A click or tap outside the open panel closes it.
+    document.addEventListener('pointerdown', (ev) => {
+      if (this.picker && this.picker.classList.contains('is-open') && !this.picker.contains(ev.target)) this.openPicker(false);
+    });
     this.tq.addEventListener('input', () => { this.st.tq = this.tq.value; this.filterPicker(); });
     this.tq.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Escape') { this.tq.value = ''; this.st.tq = ''; this.filterPicker(); }
+      if (ev.key === 'Escape') {
+        if (this.tq.value) { this.tq.value = ''; this.st.tq = ''; this.filterPicker(); }
+        else { this.openPicker(false); this.picker.querySelector('.fpt-tcur').focus(); }
+      }
       else if (ev.key === 'Enter') {
         // Enter picks the first trend still showing.
         ev.preventDefault();
@@ -669,17 +676,47 @@
      ("radius", "melting", "kJ"), and keeps favourites pinned at the front.
      It is built once; choosing, pinning and filtering only flip classes and
      hidden flags, so typing in its search never redraws the table. */
+  /* One bar: the trend showing, a button to change it, and the pinned ones
+     as quick picks. "Change trend" opens a panel: a search box over every
+     trend in its group's column, each with a line saying which way it goes.
+     (The always-open wall of 30 chips with a star each, category tabs, a
+     pinned row and a "Colour by" list all did the same job; 2026-10-26.) */
+  const dir = (s) => {
+    s = String(s || '').toLowerCase();
+    if (/then (falls|rises)|to the middle/.test(s)) return 'mixed';
+    if (/increas|rise|larger|up to/.test(s)) return 'up';
+    if (/decreas|fall|smaller/.test(s)) return 'down';
+    if (/same/.test(s)) return 'flat';
+    return '';
+  };
+  const DIR_WORD = { up: '↑', down: '↓', mixed: '↑↓', flat: '–' };
+  const trendLine = (p) => {
+    const a = dir(text(p.across)), d = dir(text(p.down));
+    if (a || d) return 'Across ' + (DIR_WORD[a] || '–') + ' · Down ' + (DIR_WORD[d] || '–');
+    return p.unit && p.unit !== 'temp' ? p.unit.trim() : '';
+  };
   App.prototype.pickerHTML = function () {
-    const cats = [['all', 'All'], ['pinned', '★ Pinned']].concat(TREND_GROUPS.map((g) => [g[0], g[0]]));
-    const chip = (p) => '<span class="fpt-tchip" data-id="' + p.id + '" data-g="' + esc(p.g) + '">'
-      + '<button type="button" class="fpt-chip fpt-tbtn" data-act="trend" data-c="' + p.id + '" aria-pressed="false">' + esc(p.label) + '</button>'
-      + '<button type="button" class="fpt-tpin" data-act="tpin" data-c="' + p.id + '" aria-pressed="false" aria-label="Pin ' + esc(p.label) + '" title="Pin to the front">☆</button></span>';
-    return '<div class="fpt-tpick" hidden><div class="fpt-tpick-top">'
+    const row = (p) => '<li class="fpt-tchip" data-id="' + p.id + '" data-g="' + esc(p.g) + '">'
+      + '<button type="button" class="fpt-tbtn fpt-trow" data-act="trend" data-c="' + p.id + '" aria-pressed="false">'
+      + '<span class="fpt-trow-n">' + esc(p.label) + '</span><span class="fpt-trow-d">' + esc(trendLine(p)) + '</span></button>'
+      + '<button type="button" class="fpt-tpin" data-act="tpin" data-c="' + p.id + '" aria-pressed="false" aria-label="Pin ' + esc(p.label) + '" title="Pin to the bar">☆</button></li>';
+    return '<div class="fpt-tpick" hidden>'
+      + '<div class="fpt-tbar"><button type="button" class="fpt-tcur" data-act="topen" aria-expanded="false" aria-controls="fptTpanel">'
+      + '<span class="fpt-tcur-k">Trend</span><b class="fpt-tcur-n"></b><span class="fpt-tcur-g"></span><span class="fpt-tcur-x">Change ▾</span></button>'
+      + '<div class="fpt-tpins" aria-label="Pinned trends"></div></div>'
+      + '<div class="fpt-tpanel" id="fptTpanel" hidden>'
       + '<input class="fpt-in fpt-tq" type="search" autocomplete="off" spellcheck="false" placeholder="Search trends — radius, melting, kJ…" aria-label="Search the trends">'
-      + '<div class="fpt-seg fpt-tcats" role="group" aria-label="Trend categories">' + cats.map((c) => '<button type="button" class="fpt-chip fpt-tcat" data-act="tcat" data-k="' + esc(c[0]) + '" aria-pressed="false">' + esc(c[1]) + '</button>').join('') + '</div></div>'
-      + '<div class="fpt-tpins" aria-label="Pinned trends"></div>'
-      + '<div class="fpt-tlist">' + TREND_GROUPS.map((g) => '<div class="fpt-tgrp" data-g="' + esc(g[0]) + '"><span class="fpt-tgrp-h">' + esc(g[0]) + '</span><div class="fpt-tchips">' + g[1].map(chip).join('') + '</div></div>').join('')
-      + '<p class="fpt-tnone fpt-note" hidden>No trend matches. Try a shorter word.</p></div></div>';
+      + '<div class="fpt-tlist">' + TREND_GROUPS.map((g) => '<section class="fpt-tgrp" data-g="' + esc(g[0]) + '"><h3 class="fpt-tgrp-h">' + esc(g[0]) + '</h3><ul class="fpt-tchips">' + g[1].map(row).join('') + '</ul></section>').join('')
+      + '</div><p class="fpt-tnone fpt-note" hidden>No trend matches. Try a shorter word.</p></div></div>';
+  };
+  /** Open or close the panel. Opening puts the cursor in its search box. */
+  App.prototype.openPicker = function (open) {
+    const panel = this.picker.querySelector('.fpt-tpanel'), btn = this.picker.querySelector('.fpt-tcur');
+    if (panel.hidden === !open) return;
+    panel.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+    this.picker.classList.toggle('is-open', open);
+    if (open) { this.tq.value = ''; this.st.tq = ''; this.filterPicker(); this.tq.focus({ preventScroll: true }); }
   };
   /** Words a trend can be found by: its name, its category, its unit and what its note says. */
   const nameWords = (p) => (p.label + ' ' + p.g + ' ' + (p.unit && p.unit !== 'temp' ? p.unit : p.unit ? 'temperature kelvin celsius' : '')).toLowerCase();
@@ -691,20 +728,12 @@
        searched when no name matches. */
     const byName = words.length && TREND_GROUPS.some((g) => g[1].some((p) => has(nameWords(p))));
     const trendWords = (p) => (byName ? nameWords(p) : nameWords(p) + ' ' + text(p.note || '').toLowerCase());
-    // A search looks through every category.
-    const cat = words.length ? 'all' : st.tcat;
     let any = false;
-    this.picker.querySelectorAll('.fpt-tcat').forEach((b) => {
-      const on = b.dataset.k === cat;
-      b.classList.toggle('is-on', on);
-      b.setAttribute('aria-pressed', String(on));
-    });
     this.picker.querySelectorAll('.fpt-tgrp').forEach((g) => {
       let shown = 0;
       g.querySelectorAll('.fpt-tchip').forEach((c) => {
         const p = PROP[c.dataset.id];
-        const ok = (cat === 'all' || (cat === 'pinned' ? st.pins.indexOf(p.id) >= 0 : p.g === cat))
-          && has(trendWords(p));
+        const ok = has(trendWords(p));
         if (c.hidden !== !ok) c.hidden = !ok;
         if (ok) shown++;
       });
@@ -712,10 +741,6 @@
       if (shown) any = true;
     });
     this.picker.querySelector('.fpt-tnone').hidden = any;
-    if (!any && cat === 'pinned') this.picker.querySelector('.fpt-tnone').textContent = 'Nothing pinned yet. Tap ☆ beside a trend to keep it here.';
-    else this.picker.querySelector('.fpt-tnone').textContent = 'No trend matches. Try a shorter word.';
-    // The pinned row sits above the list, except where it would only repeat it.
-    this.picker.querySelector('.fpt-tpins').hidden = cat === 'pinned' || !st.pins.length;
   };
   /** Which trend is on and which are pinned, written in place. */
   App.prototype.syncPicker = function () {
@@ -732,7 +757,11 @@
       s.setAttribute('aria-label', (pin ? 'Unpin ' : 'Pin ') + PROP[id].label);
     });
     const pins = this.picker.querySelector('.fpt-tpins');
-    const html = st.pins.length ? '<span class="fpt-tgrp-h">★ Pinned</span>' + st.pins.map((id) => '<button type="button" class="fpt-chip fpt-tbtn' + (id === st.trend ? ' is-on' : '') + '" data-act="trend" data-c="' + id + '" aria-pressed="' + (id === st.trend) + '">' + esc(PROP[id].label) + '</button>').join('') : '';
+    const cur = PROP[st.trend];
+    this.picker.querySelector('.fpt-tcur-n').textContent = cur.label;
+    this.picker.querySelector('.fpt-tcur-g').textContent = cur.g;
+    pins.hidden = !st.pins.length;
+    const html = st.pins.length ? '<span class="fpt-tpins-h">★</span>' + st.pins.map((id) => '<button type="button" class="fpt-chip fpt-tbtn' + (id === st.trend ? ' is-on' : '') + '" data-act="trend" data-c="' + id + '" aria-pressed="' + (id === st.trend) + '">' + esc(PROP[id].label) + '</button>').join('') : '';
     if (pins._fptHtml !== html) { pins.innerHTML = html; pins._fptHtml = html; }
     this.filterPicker();
   };
@@ -1083,7 +1112,7 @@
       case 'spectrum': st.spectrum = el.dataset.mode; this.keepPlace('[data-act="spectrum"]', () => { if (isExplore(st.view)) this.renderExplore(); else this.renderSide(); }); return;
       case 'goto': this.select(+el.dataset.n); return;
       case 'view': this.setView(el.dataset.view); return;
-      case 'tcat': st.tcat = el.dataset.k; this.filterPicker(); return;
+      case 'topen': this.openPicker(this.picker.querySelector('.fpt-tpanel').hidden); return;
       case 'tpin': {
         const id = el.dataset.c;
         st.pins = st.pins.indexOf(id) >= 0 ? st.pins.filter((x) => x !== id) : st.pins.concat(id);
@@ -1091,7 +1120,7 @@
         this.syncPicker();
         return;
       }
-      case 'trend': st.trend = el.dataset.c; this.save(); if (this.st.view !== 'trends') this.setView('trends'); else { if (this.o.hash) this.writeHash(); this.refresh(); } return;
+      case 'trend': st.trend = el.dataset.c; if (this.picker && el.closest('.fpt-tpanel')) this.openPicker(false); this.save(); if (this.st.view !== 'trends') this.setView('trends'); else { if (this.o.hash) this.writeHash(); this.refresh(); } return;
       default:
         if (window.FluxPTableExplore) window.FluxPTableExplore.action(this, act, el);
     }
@@ -1107,7 +1136,9 @@
     });
     this.root.querySelectorAll('.fpt-unit button').forEach((b) => b.classList.toggle('is-on', b.dataset.unit === this.st.unit));
     // Only the Trends tab has a trend to pick; only temperatures need a unit.
-    this.root.querySelector('.fpt-colour').hidden = v !== 'trends';
+    // The picker does this job on the full page; the simple one keeps the list.
+    this.root.querySelector('.fpt-colour').hidden = v !== 'trends' || !this.o.simple;
+    if (v !== 'trends' && this.picker) this.openPicker(false);
     this.picker.hidden = v !== 'trends' || !!this.o.simple;
     this.root.querySelector('.fpt-unit').hidden = !(v === 'temp' || (v === 'trends' && PROP[this.st.trend].unit === 'temp') || v === 'table');
     this.root.dataset.view = v;
@@ -1225,7 +1256,7 @@
     const card = (act, data, icon, title, sub) => '<button type="button" class="fpt-card" data-act="' + act + '" ' + data + '><span class="fpt-card-i" aria-hidden="true">' + icon + '</span><span><b>' + title + '</b><small>' + sub + '</small></span></button>';
     const v = this.st.view;
     if (v === 'trends') {
-      return '<div class="fpt-intro"><h2>Trends</h2><p>' + PROPS.filter((p) => !p.kind).length + ' properties under “Colour by”. Each one colours the table, says which way it goes across a period and down a group, and is graphed against atomic number underneath. Click an element for its values.</p>'
+      return '<div class="fpt-intro"><h2>Trends</h2><p>' + PROPS.filter((p) => !p.kind).length + ' properties: pick one with Change, above the table. Each one colours the table, says which way it goes across a period and down a group, and is graphed against atomic number underneath. Click an element for its values.</p>'
         + '<div class="fpt-cards">'
         + card('trend', 'data-c="rc"', '◎', 'Atomic radius', 'Smaller across, bigger down')
         + card('trend', 'data-c="ie"', '⚡', 'Ionization energy', 'The dips at groups 13 and 16')
