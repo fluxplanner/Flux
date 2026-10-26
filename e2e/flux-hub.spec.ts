@@ -80,3 +80,21 @@ test.describe('Flux Suite link', () => {
     await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(13, 8, 4)');
   });
 });
+
+test('the planner\'s light theme carries to the other apps, with light controls', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('sb-lfigdijuqmbensebnevo-auth-token', '{"access_token":"x"}');
+    localStorage.setItem('flux_theme', 'light');
+  });
+  for (const f of ['grapher', 'composer', 'calculator', 'pixel']) {
+    await page.goto('/' + f + '.html');
+    const s = await page.evaluate(() => ({
+      theme: document.documentElement.getAttribute('data-theme'),
+      scheme: getComputedStyle(document.documentElement).colorScheme,
+      bg: getComputedStyle(document.body).backgroundColor,
+    }));
+    expect(s.theme, f).toBe('light');
+    expect(s.scheme, f).toBe('light');
+    expect(s.bg, f).toBe('rgb(246, 248, 250)');
+  }
+});
