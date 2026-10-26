@@ -181,7 +181,7 @@ test.describe('Synara in the Flux Planner', () => {
 });
 
 test.describe('Synara sync through a Flux account', () => {
-  type Row = { ciphertext: string; iv: string; version: number; updated_at: string } | null;
+  type Row = { ciphertext: string; iv: string; version: number; updated_at: string; key?: string } | null;
 
   /** Through the intro with no answers, to an empty record. */
   async function startEmpty(page: Page) {
@@ -196,11 +196,11 @@ test.describe('Synara sync through a Flux account', () => {
   async function device(browser: Browser, shared: { row: Row; writes: number }) {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
-    await page.exposeFunction('__vault', (op: string, arg: { ciphertext: string; iv: string }) => {
+    await page.exposeFunction('__vault', (op: string, arg: { ciphertext: string; iv: string; key?: string }) => {
       if (op === 'get') return shared.row;
       if (op === 'put') {
         shared.writes += 1;
-        shared.row = { ciphertext: arg.ciphertext, iv: arg.iv, version: 1, updated_at: new Date(Date.UTC(2027, 0, 1, 0, 0, shared.writes)).toISOString() };
+        shared.row = { ciphertext: arg.ciphertext, iv: arg.iv, key: arg.key, version: 1, updated_at: new Date(Date.UTC(2027, 0, 1, 0, 0, shared.writes)).toISOString() };
         return { updated_at: shared.row.updated_at };
       }
       if (op === 'remove') { shared.row = null; return true; }
@@ -240,13 +240,10 @@ test.describe('Synara sync through a Flux account', () => {
     }
 
     const B = await device(browser, shared);
+    // B: signed in to the same account, it takes the synced copy by itself
+    // (the key is kept in the account), with no intro and nothing to type.
     await B.page.goto('/synara.html');
-    await startEmpty(B.page);
-    await B.page.locator('.tab[data-to="you"]').click();
-    await B.page.getByRole('button', { name: /Sync across your devices/ }).click();
-    await B.page.locator('#sync-key').fill('  ' + key.toLowerCase() + ' ');
-    await B.page.getByRole('button', { name: 'Connect this device' }).click();
-    await B.page.getByRole('button', { name: 'Use synced copy' }).click();
+    await expect(B.page.locator('#welcome')).toBeHidden();
     await B.page.locator('.tab[data-to="home"]').click();
     await expect(B.page.locator('.appbar-t')).toContainText('Maya');
 
@@ -263,7 +260,9 @@ test.describe('Synara sync through a Flux account', () => {
     await A.page.locator('.tab[data-to="home"]').click();
     await expect(A.page.locator('.appbar-t')).toContainText('Riley');
 
-    // A wrong key is refused without touching anything.
+    // A wrong key is refused without touching anything. (A copy whose key
+    // isn't kept in the account, or C would simply join.)
+    delete (shared.row as Record<string, unknown>).key;
     const C = await device(browser, shared);
     await C.page.goto('/synara.html');
     await startEmpty(C.page);
@@ -332,7 +331,8 @@ test.describe('Synara sync through a Flux account', () => {
     await A.page.waitForTimeout(4000); // longer than the upload delay
     expect(shared.writes).toBe(writes);
     expect(shared.row).toBe(row);
-    expect(await A.page.evaluate(() => localStorage.getItem('synara.sync'))).toBe('{}');
+    // Off on this device, so the synced copy (key kept in the account) isn't pulled straight back.
+    expect(await A.page.evaluate(() => localStorage.getItem('synara.sync'))).toBe('{"off":true}');
     await A.ctx.close();
   });
 });

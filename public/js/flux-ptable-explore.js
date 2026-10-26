@@ -239,7 +239,8 @@
 
   /* ── Spectra ────────────────────────────────────────────────────────── */
 
-  function fix(nm) { return nm >= 1000 ? Math.round(nm).toLocaleString('en') : nm.toFixed(1); }
+  const NF = new Intl.NumberFormat('en');
+  function fix(nm) { return nm >= 1000 ? NF.format(Math.round(nm)) : nm.toFixed(1); }
   function sci(v) { const x = Math.floor(Math.log10(v)); return (v / Math.pow(10, x)).toFixed(2) + ' × 10' + C().toSup(String(x)); }
   function lineColour(nm) {
     const r = region(nm);

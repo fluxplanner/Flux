@@ -172,7 +172,7 @@ test('an update’s migration is not an edit: nothing to upload and nothing to c
   const rec = oldRecord();
   const probe = await load();
   const meta = await syncedMeta(probe.sync, rec);
-  const remote = { ciphertext: 'unchanged', iv: 'x', updated_at: '2026-10-09T09:00:00Z' };
+  const remote = { ciphertext: 'unchanged', iv: 'x', key: KEY, updated_at: '2026-10-09T09:00:00Z' };
 
   const dev = await load({ 'synara.v2': JSON.stringify(rec), 'synara.sync': meta }, { remote });
   const { firstRun } = await dev.store.init();
@@ -190,7 +190,7 @@ test('a real unsynced change still counts after the update, and still goes up', 
   const rec = oldRecord();
   const probe = await load();
   const meta = await syncedMeta(probe.sync, rec);
-  const remote = { ciphertext: 'unchanged', iv: 'x', updated_at: '2026-10-09T09:00:00Z' };
+  const remote = { ciphertext: 'unchanged', iv: 'x', key: KEY, updated_at: '2026-10-09T09:00:00Z' };
   const edited = oldRecord();
   edited.seizures.unshift({ ...edited.seizures[0], id: 'sz2', at: '2026-10-08T10:00' });
 
@@ -208,7 +208,7 @@ test('when the other device already uploaded the same record, migrated, there is
   const migrated = a.sync.shareable(JSON.stringify(a.store.migrate(rec)));
   const raw = a.sync.decodeKey(KEY);
   const sealed = await a.sync.encrypt(migrated, raw);
-  const remote = { ...sealed, updated_at: '2026-10-10T08:00:00Z' };
+  const remote = { ...sealed, key: KEY, updated_at: '2026-10-10T08:00:00Z' };
 
   // Device B: same record, but its saved hash is from before the update
   // and was never adopted (say the tab closed mid-boot last time).
@@ -258,7 +258,7 @@ test('a synced change that can’t be saved here (storage full) is pulled again,
   const theirs = a.store.migrate(rec);
   theirs.seizures.unshift({ ...theirs.seizures[0], id: 'sz2', at: '2026-10-08T10:00' });
   const raw = a.sync.decodeKey(KEY);
-  const remote = { ...(await a.sync.encrypt(a.sync.shareable(JSON.stringify(theirs)), raw)), updated_at: '2026-10-10T08:00:00Z' };
+  const remote = { ...(await a.sync.encrypt(a.sync.shareable(JSON.stringify(theirs)), raw)), key: KEY, updated_at: '2026-10-10T08:00:00Z' };
   const meta = JSON.stringify({
     key: KEY, user: 'u1', remoteAt: '2026-10-09T09:00:00Z',
     hash: await a.sync.hash(a.sync.shareable(JSON.stringify(mine))),

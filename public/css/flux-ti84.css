@@ -15,6 +15,8 @@
    page controls and should stay a comfortable tap size at any width.
    :is(.t84-bar) lifts them past the planner's forced button styles. */
 .t84-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin: 0 0 10px; font: 600 13px/1 'Inter', system-ui, sans-serif; }
+.t84-segw { display: inline-flex; align-items: center; gap: 8px; }
+.t84-cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #8a91a3; }
 .t84-seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; background: #15171c; border: 1px solid rgba(255, 255, 255, .1); }
 :is(.t84-bar) .t84-seg-b {
   min-height: 34px; min-width: 0; margin: 0; padding: 0 14px !important; border: 0 !important; border-radius: 999px !important;

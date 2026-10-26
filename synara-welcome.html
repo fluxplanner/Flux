@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Synara — epilepsy care for students, powered by Flux</title>
-<meta name="description" content="Synara keeps a student's medication, seizure log and school safety card in one place. Free, private, end-to-end encrypted sync with a Flux account. Part of Flux Suite.">
+<meta name="description" content="Synara keeps a student's medication, seizure log and school safety card in one place. Free, with encrypted sync through a Flux account. Part of Flux Suite.">
 <meta name="theme-color" content="#f6f5fa" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#121019" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="public/synara/icons/icon.svg" type="image/svg+xml">
@@ -129,8 +129,24 @@ footer{padding:48px 0 40px;margin-top:56px;border-top:1px solid var(--line);colo
 /* reveal: slow, once, never looping (see note at top) */
 .rv{opacity:0;transform:translateY(14px);transition:opacity .7s var(--ease),transform .7s var(--ease)}
 .rv.in{opacity:1;transform:none}
+/* One-time entrances inside a revealed block: each piece arrives a beat
+   after the last. Slow, opacity and movement only, never repeating. */
+.hero .rv.in > *, .rv.in .ph-head, .rv.in .ph-card, .rv.in .ph-row, .rv.in .ph-sos{animation:sy-in .8s var(--ease) both}
+.hero .rv.in > :nth-child(2){animation-delay:.08s}
+.hero .rv.in > :nth-child(3){animation-delay:.16s}
+.hero .rv.in > :nth-child(4){animation-delay:.24s}
+.hero .rv.in > :nth-child(5){animation-delay:.32s}
+.rv.in .ph-card{animation-delay:.25s}
+.rv.in .ph-row:nth-child(1){animation-delay:.45s}
+.rv.in .ph-row:nth-child(2){animation-delay:.6s}
+.rv.in .ph-row:nth-child(3){animation-delay:.75s}
+.rv.in .ph-sos{animation-delay:.9s}
+.cards .card.rv:nth-child(2){transition-delay:.12s}
+.cards .card.rv:nth-child(3){transition-delay:.24s}
+@keyframes sy-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){
   .rv{opacity:1;transform:none;transition:none}
+  .hero .rv.in > *, .rv.in .ph-head, .rv.in .ph-card, .rv.in .ph-row, .rv.in .ph-sos{animation:none}
   .btn,.card{transition:none}
   .btn-pri:hover,.card:hover{transform:none}
 }
@@ -214,10 +230,10 @@ footer{padding:48px 0 40px;margin-top:56px;border-top:1px solid var(--line);colo
         <div class="eyebrow">Private by design</div>
         <h2 id="p-h">Your health record is yours</h2>
         <p class="lede">Synara works entirely on your device. Sign in with Flux and it syncs between your
-          devices — encrypted before it leaves, so not even Flux can read it.</p>
+          devices automatically, encrypted and tied to your Flux account.</p>
       </div>
       <ul class="list rv">
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span>End-to-end encrypted sync. You keep a private sync key and enter it once on each new device.</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span>Encrypted sync: sign in to Flux on a new device and your record is there. No codes to copy.</span></li>
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span>No ads, no analytics, no selling data. Ever.</span></li>
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span>Calm by design: nothing flashes or flickers, for students who are photosensitive.</span></li>
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span>Optional: show dose times in your Flux Planner calendar.</span></li>

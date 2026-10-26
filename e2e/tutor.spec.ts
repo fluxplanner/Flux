@@ -837,6 +837,26 @@ test.describe('Flux Tutor', () => {
     await expect(page.locator('.ft-weak li')).not.toHaveCount(0);
   });
 
+  test('Listen reads the study guide aloud in the browser, and stops when asked or on leaving', async ({ page }) => {
+    await page.addInitScript(() => {
+      const w = window as any; w.__spoken = []; w.__cancels = 0;
+      w.SpeechSynthesisUtterance = function (this: any, text: string) { this.text = text; };
+      Object.defineProperty(window, 'speechSynthesis', { value: { speak: (u: any) => w.__spoken.push(u.text), cancel: () => { w.__cancels++; } } });
+    });
+    await openSample(page);
+    await page.getByRole('button', { name: 'Listen' }).click();
+    await expect(page.getByRole('button', { name: 'Stop' })).toHaveAttribute('aria-pressed', 'true');
+    const spoken: string[] = await page.evaluate(() => (window as any).__spoken);
+    expect(spoken[0]).toMatch(/^Audio overview of /);
+    expect(spoken).toContain('Key terms.');
+    await page.getByRole('button', { name: 'Stop' }).click();
+    await expect(page.getByRole('button', { name: 'Listen' })).toBeVisible();
+    await page.getByRole('button', { name: 'Listen' }).click();
+    const before = await page.evaluate(() => (window as any).__cancels);
+    await tab(page, 'Flashcards').click();
+    await expect.poll(() => page.evaluate(() => (window as any).__cancels)).toBeGreaterThan(before);
+  });
+
   test('flashcard reveal animates, and not at all with reduced motion', async ({ page }) => {
     await openSample(page);
     await tab(page, 'Flashcards').click();

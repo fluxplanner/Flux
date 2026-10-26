@@ -179,7 +179,7 @@ function welcomeStep() {
       <p class="welcome-note">
         ${raw(icon('lock', 14))}
         <span>Everything stays on this device. No account needed. Signed in to Flux,
-        it syncs your devices, encrypted so Flux can’t read it. Synara is not a medical device.</span>
+        it syncs your devices through your Flux account. Synara is not a medical device.</span>
       </p>
       ${raw(document.documentElement.dataset.host === 'flux' ? `
         <p class="welcome-links">

@@ -948,3 +948,9 @@ body.fsh-desmos-locked { overflow: hidden; }
 .fsh-lab-calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
 .fsh-lab-steps { margin: 10px 0 0; padding-left: 20px; font-size: 13px; line-height: 1.6; color: var(--fsh-ink-2); }
 .fsh-lab-ta { min-height: 72px; resize: vertical; font: inherit; }
+
+/* "Need more help?" links under each subject (refStrip in flux-study-hub.js) */
+.fsh-help { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:14px 0 4px; padding:12px 14px; border:1px solid var(--border, rgba(255,255,255,.1)); border-radius:14px; }
+.fsh-help-h { font-size:.78rem; font-weight:700; color:var(--muted2, #9aa); margin-right:4px; }
+.fsh-help-a { font-size:.8rem; padding:5px 10px; border-radius:999px; background:rgba(var(--fsh-accent-rgb, 91,141,239), .12); color:var(--text, inherit); text-decoration:none; }
+.fsh-help-a:hover, .fsh-help-a:focus-visible { background:rgba(var(--fsh-accent-rgb, 91,141,239), .24); }

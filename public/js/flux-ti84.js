@@ -194,13 +194,15 @@
       + esc(k.main) + '</button></div>';
     // The wrapper is the size container, so the body's own padding and corners scale with it too.
     const view = loadView();
-    const seg = (name, label, cur, opts) => '<div class="t84-seg" role="radiogroup" aria-label="' + label + '" data-seg="' + name + '">'
-      + opts.map((o) => '<button type="button" class="t84-seg-b" role="radio" data-v="' + o[0] + '" aria-checked="' + (o[0] === cur) + '">' + o[1] + '</button>').join('') + '</div>';
+    // A short visible caption says what each switch changes; the group keeps its full name for screen readers.
+    const seg = (name, label, cur, opts, cap) => '<div class="t84-segw"><span class="t84-cap" aria-hidden="true">' + cap + '</span>'
+      + '<div class="t84-seg" role="radiogroup" aria-label="' + label + '" data-seg="' + name + '">'
+      + opts.map((o) => '<button type="button" class="t84-seg-b" role="radio" data-v="' + o[0] + '" aria-checked="' + (o[0] === cur) + '">' + o[1] + '</button>').join('') + '</div></div>';
     // The switches sit above the body, not on it: the faceplate stays a
     // faithful calculator, and they read as page controls, not keys.
     this.host.innerHTML = '<div class="t84-wrap' + (view === 'wide' ? ' is-wide' : '') + '">'
-      + '<div class="t84-bar">' + seg('model', 'Calculator model', evo ? 'evo' : 'ce', [['ce', 'Plus CE'], ['evo', 'Evo']])
-      + seg('view', 'Calculator view', view, [['regular', 'Regular'], ['wide', 'Wide']]) + '</div>'
+      + '<div class="t84-bar">' + seg('model', 'Calculator model', evo ? 'evo' : 'ce', [['ce', 'Plus CE'], ['evo', 'Evo']], 'Model')
+      + seg('view', 'Calculator view', view, [['regular', 'Regular'], ['wide', 'Wide']], 'Layout') + '</div>'
       + '<div class="t84' + (evo ? ' is-evo' : '') + '" tabindex="0" aria-label="Graphing calculator. Click it, then type or use the keys.">'
       + '<div class="t84-brand"><span class="t84-brand-name">Flux<b>·84</b></span>'
       + '<span class="t84-brand-model">' + (evo ? 'EVO' : 'PLUS CE') + '</span></div>'

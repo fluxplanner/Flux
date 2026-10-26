@@ -61,15 +61,12 @@ test('every kind of edit on one device reaches the other', async ({ browser }) =
   await expect.poll(() => shared.writes).toBeGreaterThan(0);
   await tab(a, 'you');
   await a.locator('[data-action=sync-open]').click();
-  const key = (await a.locator('.sync-key code').textContent())!.trim();
   await a.locator('[data-action=close-sheet]').first().click();
 
+  // B: signed in to the same account, it takes the synced copy by itself
+  // (the key is kept in the account).
   await b.goto('/synara.html');
-  await b.getByRole('button', { name: 'Look around with example data' }).click();
-  await b.getByRole('button', { name: 'Enter sync key' }).click();
-  await b.locator('#sync-key').fill(key);
-  await b.getByRole('button', { name: 'Connect this device' }).click();
-  await b.getByRole('button', { name: 'Use synced copy' }).click();
+  await expect(b.locator('#welcome')).toBeHidden();
   await expect(b.getByRole('button', { name: 'Enter sync key' })).toHaveCount(0);
 
   // A: a new medication.
