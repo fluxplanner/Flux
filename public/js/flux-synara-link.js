@@ -12,6 +12,17 @@
    saves, syncs or sends it anywhere: these items are drawn at render time and
    are not in flux_events, so neither cloud sync nor the AI context sees them.
    Turning the setting off in Synara removes the key, and they disappear.
+
+   ON ANOTHER DEVICE (2026-10-26). The same switch now syncs with the rest of
+   the student's Synara record, and the key to that record is kept in their
+   Flux account (synara_vaults.sync_key). So when this device has no summary
+   of its own, the planner reads the synced copy for the signed-in student,
+   opens it in memory, and uses the same medication summary when the switch
+   is on. Nothing from it is saved here or sent anywhere.
+
+   REMINDERS. At each dose time the planner shows a reminder (and a system
+   notification when browser notifications are on in Settings), once per dose.
+   Only "<day>|<dose id>" is remembered, so a reload doesn't repeat one.
    ========================================================================== */
 (function () {
   'use strict';
@@ -25,10 +36,13 @@
   /** The summary, validated; null when Synara has not shared anything. */
   function feed() {
     var raw = null;
-    try { raw = localStorage.getItem(KEY); } catch (e) { return null; }
-    if (!raw) return null;
+    try { raw = localStorage.getItem(KEY); } catch (e) { return cloud; }
+    if (!raw) return cloud;
     var d;
-    try { d = JSON.parse(raw); } catch (e) { return null; }
+    try { d = JSON.parse(raw); } catch (e) { return cloud; }
+    return parse(d) || cloud;
+  }
+  function parse(d) {
     if (!d || d.v !== 1 || !Array.isArray(d.meds)) return null;
     var meds = d.meds.slice(0, 50).map(function (m) {
       if (!m || !DAY.test(m.added)) return null;
@@ -105,17 +119,95 @@
     stack.insertBefore(card, stack.firstChild);
   }
 
+  /* ── The synced copy, for a device with no summary of its own ────────── */
+  var cloud = null;
+  var ALPHA = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+  function keyBytes(text) {
+    var clean = String(text || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+    if (clean.length !== 26) return null;
+    var bits = 0, value = 0, out = [];
+    for (var i = 0; i < clean.length; i++) {
+      var v = ALPHA.indexOf(clean[i]);
+      if (v < 0) return null;
+      value = ((value << 5) | v) & 0xffff; bits += 5;
+      if (bits >= 8) { out.push((value >>> (bits - 8)) & 0xff); bits -= 8; }
+    }
+    return out.length === 16 ? new Uint8Array(out) : null;
+  }
+  function unb64(t) { return Uint8Array.from(atob(t), function (c) { return c.charCodeAt(0); }); }
+  /** The summary Synara would publish, from its whole (decrypted) record. */
+  function summaryOf(rec) {
+    if (!rec || !rec.settings || rec.settings.fluxLink !== true || !Array.isArray(rec.meds)) return null;
+    return parse({ v: 1, meds: rec.meds.map(function (m) {
+      return { name: m.name, dose: m.dose, color: m.color, added: m.added, ended: m.ended, schedule: m.schedule };
+    }) });
+  }
+  var loading = false;
+  async function loadCloud() {
+    if (loading) return;
+    var sb = typeof getSB === 'function' ? getSB() : null;
+    var who = window.currentUser;
+    if (!sb || !who || !window.crypto || !crypto.subtle) return;
+    loading = true;
+    try {
+      var r = await sb.from('synara_vaults').select('ciphertext, iv, sync_key').maybeSingle();
+      var row = r && r.data, raw = row && keyBytes(row.sync_key);
+      var next = null;
+      if (raw) {
+        var k = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
+        var plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(row.iv) }, k, unb64(row.ciphertext));
+        next = summaryOf(JSON.parse(new TextDecoder().decode(plain)));
+      }
+      var changed = JSON.stringify(next) !== JSON.stringify(cloud);
+      cloud = next;
+      if (changed) { lastFeed = undefined; refreshLink(); }
+    } catch (e) {
+      /* Offline, signed out or no table: keep what we had. */
+    } finally { loading = false; }
+  }
+
+  /* ── Dose reminders ────────────────────────────────────────────────── */
+  var SEEN = 'synara.flux.reminded';
+  var GRACE = 15 * 60000;   // a dose up to 15 minutes ago still gets its reminder
+  function ymd(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function seen() { try { return JSON.parse(localStorage.getItem(SEEN) || '[]'); } catch (e) { return []; } }
+  function remind() {
+    var now = new Date(), day = ymd(now), done = seen(), fresh = [];
+    dosesForDate(day).forEach(function (d) {
+      var at = new Date(day + 'T' + d.time + ':00').getTime(), tag = day + '|' + d.id;
+      if (now.getTime() < at || now.getTime() - at > GRACE || done.indexOf(tag) >= 0) return;
+      fresh.push(tag);
+      var msg = 'Time for ' + d.title + ' (' + d.time + ')';
+      if (typeof showToast === 'function') showToast(msg, 'info', 12000);
+      try {
+        var on = typeof settings !== 'undefined' && settings && settings.notifyBrowser;
+        if (on && 'Notification' in window && Notification.permission === 'granted') {
+          new Notification('Medication reminder', { body: msg, tag: 'synara-' + tag, icon: 'public/flux-planner-logo.png' });
+        }
+      } catch (e) { /* no notifications here */ }
+    });
+    if (!fresh.length) return;
+    // Today's only: older entries can't match again.
+    var keep = done.filter(function (t) { return t.indexOf(day + '|') === 0; }).concat(fresh);
+    try { localStorage.setItem(SEEN, JSON.stringify(keep)); } catch (e) { /* full */ }
+  }
+
   var lastFeed;
   function refreshLink() {
-    var next; try { next=localStorage.getItem(KEY); } catch (_) { return; }
+    var next; try { next=localStorage.getItem(KEY)||(cloud?JSON.stringify(cloud):null); } catch (_) { return; }
     if(next===lastFeed)return;
     lastFeed=next;
     if(typeof window.renderCalendar==='function')window.renderCalendar();
     decorateSchool();
   }
   window.addEventListener('storage',function(e){if(e.key===KEY||e.key===null)refreshLink();});
-  window.addEventListener('focus',refreshLink);
-  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')refreshLink();});
+  window.addEventListener('focus',function(){refreshLink();loadCloud();});
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){refreshLink();loadCloud();}});
+  // Signed in a moment after load; the synced copy can change on another device.
+  setTimeout(loadCloud, 4000);
+  setInterval(function(){ if(document.visibilityState==='visible')loadCloud(); }, 5 * 60000);
+  setTimeout(remind, 5000);
+  setInterval(remind, 30000);
 
-  window.FluxSynara = { feed: feed, dosesForDate: dosesForDate, decorateSchool: decorateSchool };
+  window.FluxSynara = { feed: feed, dosesForDate: dosesForDate, decorateSchool: decorateSchool, loadCloud: loadCloud, remind: remind, summaryOf: summaryOf };
 })();

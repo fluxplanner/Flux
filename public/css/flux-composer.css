@@ -18,6 +18,19 @@
   color: var(--fc-ink);
 }
 
+/* The planner's light theme (flux-theme-carry.js sets data-theme="light"). */
+[data-theme='light'] .fc-root {
+  --fc-ink: #1f2328;
+  --fc-mut: #57606a;
+  --fc-line: rgba(15, 23, 42, .1);
+  --fc-line2: rgba(15, 23, 42, .18);
+  --fc-card: #ffffff;
+  --fc-card2: #f6f8fa;
+  --fc-acc: #7c5cf0;
+  --fc-acc2: #0090c8;
+}
+[data-theme='light'] .fc-tabs { background: rgba(255, 255, 255, .7); }
+
 /* Tabs: one scrolling row on a phone. */
 .fc-tabs {
   display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none;

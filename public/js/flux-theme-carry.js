@@ -6,8 +6,10 @@
  * paints the page with their theme and accent before first paint; signed
  * out, every page keeps its own look.
  *
- * The surfaces mirror THEMES in app.js. The light theme carries only its
- * accent: these pages are drawn for a dark background.
+ * The surfaces mirror THEMES in app.js. The light theme (Cloud) carries
+ * too since 2026-10-26: it also sets data-theme="light", the switch the
+ * planner's own light styles key on (the grapher and periodic table are the
+ * same code inside the planner), plus light browser controls.
  */
 (function () {
   'use strict';
@@ -42,7 +44,8 @@
     forest: ['#060d08', '#080f0a', '#0a140c', '#0d1a0f', 'rgba(80,200,100,.09)', 'rgba(80,200,100,.14)', '#e8f5ea', '#6a9a72'],
     rose:   ['#0d0608', '#120809', '#1c0a0e', '#220c12', 'rgba(255,100,130,.09)', 'rgba(255,100,130,.14)', '#fff0f3', '#b07080'],
     ocean:  ['#020810', '#030a14', '#04101e', '#061424', 'rgba(30,100,200,.11)', 'rgba(30,100,200,.17)', '#dceeff', '#5a80a0'],
-    candy:  ['#0e0814', '#120a18', '#14101e', '#1a1428', 'rgba(200,100,255,.09)', 'rgba(200,100,255,.14)', '#f5e8ff', '#a070c0']
+    candy:  ['#0e0814', '#120a18', '#14101e', '#1a1428', 'rgba(200,100,255,.09)', 'rgba(200,100,255,.14)', '#f5e8ff', '#a070c0'],
+    light:  ['#f6f8fa', '#eef1f5', '#ffffff', '#f6f8fa', '#d8dee4', '#d0d7de', '#1f2328', '#57606a']
   };
 
   var theme = str('flux_theme') || 'dark';
@@ -69,7 +72,9 @@
       + 'html body { background: ' + s[0] + '; color: ' + s[6] + '; isolation: isolate; }'
       + 'html body::after { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(120% 80% at 50% -10%, ' + glow + ', transparent 55%); }'
       + 'html header.top { background: ' + s[1] + '; }'
+      + (theme === 'light' ? ':root { color-scheme: light; --muted: #6e7781; } select option, select optgroup { background-color: #fff; color: #1f2328; }' : '')
       + '}';
+    if (theme === 'light') root.setAttribute('data-theme', 'light');
     var meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', s[1]);
   }

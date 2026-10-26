@@ -189,8 +189,8 @@ function fluxCard(state) {
           <span class="med-dot" data-color="violet" aria-hidden="true">${raw(icon('calendar', 20))}</span>
           <span class="row-body">
             <span class="row-t" id="fluxlink-label">Show in my Flux Planner</span>
-            <span class="row-s">Dose times on your Flux calendar and a safety-card button in
-              School info, on this device. Seizures, contacts and notes stay in Synara.</span>
+            <span class="row-s">Dose times and reminders in Flux and a safety-card button in
+              School info, on every device you sign in to. Seizures, contacts and notes stay in Synara.</span>
           </span>
           <button class="switch" data-action="flux-link-toggle" role="switch"
                   aria-checked="${!!state.settings.fluxLink}" aria-labelledby="fluxlink-label"></button>
