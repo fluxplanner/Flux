@@ -2338,64 +2338,6 @@ body.high-contrast .nav-item{
   cursor:pointer;margin-left:auto;
 }
 
-/* Ghost draft section on task card */
-.ghost-draft{
-  margin-top:8px;
-  padding:8px 10px;
-  background:rgba(var(--accent-rgb),.06);
-  border:1px solid rgba(var(--accent-rgb),.15);
-  border-radius:8px;
-  font-size:.72rem;
-  color:var(--muted2);
-  line-height:1.7;
-}
-.ghost-draft--collapsible{
-  padding:0;
-}
-.ghost-draft-summary{
-  list-style:none;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-  padding:8px 10px;
-  cursor:pointer;
-  user-select:none;
-}
-.ghost-draft-summary::-webkit-details-marker{display:none}
-.ghost-draft-summary::marker{content:''}
-.ghost-draft-summary .ghost-draft-title{margin-bottom:0}
-.ghost-draft-summary-main{
-  flex:1;
-  min-width:0;
-}
-.ghost-draft-chevron{
-  flex-shrink:0;
-  font-size:.62rem;
-  color:var(--accent);
-  opacity:.75;
-  line-height:1;
-  transition:transform .2s ease;
-}
-.ghost-draft-chevron::before{content:'▾'}
-.ghost-draft--collapsible[open] .ghost-draft-chevron{transform:rotate(180deg)}
-.ghost-draft--collapsible .ghost-draft-body,
-.ghost-draft--collapsible .flux-ghost-draft-body{
-  padding:0 10px 8px;
-}
-.ghost-draft--collapsible[open] .ghost-draft-summary{
-  border-bottom:1px solid rgba(var(--accent-rgb),.1);
-}
-.ghost-draft-title{
-  font-size:.62rem;
-  text-transform:uppercase;
-  letter-spacing:1.5px;
-  color:var(--accent);
-  font-family:'JetBrains Mono',monospace;
-  margin-bottom:4px;
-  font-weight:600;
-}
-
 /* Distraction count */
 #distractionCount{
   font-size:.62rem;
