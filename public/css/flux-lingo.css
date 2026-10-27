@@ -1,0 +1,168 @@
+/* ============================================================================
+   FLUX LINGO · flux-lingo.css  (translate.html, public/js/flux-lingo.js)
+   Colours come from flux-standalone-dark.css and, when the planner's theme is
+   carried over, from flux-theme-carry.js: --text, --muted2, --border, --card,
+   --accent. Irregular forms use --lg-irr.
+   ========================================================================== */
+:root { --lg-irr: #fb7185; --lg-ok: #34d399; --lg-bad: #fb7185; --lg-soft: rgba(255, 255, 255, .05); --lg-pop: #15121f; }
+[data-theme='light'] { --lg-irr: #d1244f; --lg-ok: #0e8a5f; --lg-bad: #c81e44; --lg-soft: rgba(15, 23, 42, .05); --lg-pop: #fff; }
+
+.lg-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.lg-tabs { display: inline-flex; gap: 4px; padding: 4px; margin: 0 0 18px; border-radius: 14px; border: 1px solid var(--border); background: var(--lg-soft); }
+.lg-tab, .lg-lang, .lg-seg button {
+  appearance: none; min-height: 38px; padding: 0 16px; border: 0; border-radius: 10px; cursor: pointer;
+  background: transparent; color: var(--muted2); font: inherit; font-weight: 700; font-size: .92rem;
+}
+.lg-tab.is-on, .lg-lang.is-on, .lg-seg button.is-on { background: var(--accent); color: #06201d; }
+.lg-tab:focus-visible, .lg-lang:focus-visible, .lg-seg button:focus-visible, .lg-chip:focus-visible, .lg-act:focus-visible, .lg-form:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── Search ── */
+.lg-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; }
+.lg-langs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 14px; border: 1px solid var(--border); background: var(--lg-soft); }
+.lg-lang span { font-weight: 800; margin-right: 2px; }
+.lg-search { position: relative; flex: 1 1 320px; min-width: 0; }
+.lg-q {
+  width: 100%; min-height: 50px; padding: 0 16px; border-radius: 14px; border: 1px solid var(--border);
+  background: var(--lg-soft); color: var(--text); font: inherit; font-size: 1.05rem;
+}
+.lg-q:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+.lg-sugg {
+  position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; right: 0; margin: 0; padding: 6px; list-style: none;
+  border-radius: 14px; border: 1px solid var(--border); background: var(--lg-pop); box-shadow: 0 18px 40px -16px rgba(0, 0, 0, .55);
+  max-height: 60vh; overflow-y: auto;
+}
+.lg-sugg[hidden] { display: none; }
+.lg-opt { display: grid; grid-template-columns: auto 1fr; gap: 0 10px; padding: 9px 12px; border-radius: 10px; cursor: pointer; }
+.lg-opt b { font-size: 1rem; }
+.lg-opt-g { color: var(--muted2); font-size: .88rem; align-self: center; }
+.lg-opt-w { grid-column: 1 / -1; font-size: .78rem; color: var(--accent); }
+.lg-opt.is-on, .lg-opt:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.lg-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 16px; }
+.lg-chips-h { font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted2); margin: 0 4px 0 6px; }
+.lg-chip {
+  appearance: none; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--lg-soft);
+  color: var(--text); font: inherit; font-size: .85rem; font-weight: 600; cursor: pointer;
+}
+.lg-chip:hover { border-color: var(--accent); }
+.lg-chip.is-saved { border-color: color-mix(in srgb, #f2b53a 60%, transparent); }
+
+/* ── Empty state ── */
+.lg-empty { padding: 28px; border-radius: 18px; border: 1px dashed var(--border); text-align: center; color: var(--muted2); }
+.lg-empty-h { font-size: 1.15rem; font-weight: 800; color: var(--text); margin: 0 0 6px; }
+.lg-starters { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 14px; }
+
+/* ── The verb ── */
+.lg-vh { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.lg-inf { margin: 0; font-size: clamp(2rem, 6vw, 2.8rem); font-weight: 800; letter-spacing: -.02em; line-height: 1.05; cursor: pointer; }
+.lg-gloss { margin: 4px 0 0; font-size: 1.05rem; color: var(--muted2); }
+.lg-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.lg-badge { padding: 3px 10px; border-radius: 999px; font-size: .75rem; font-weight: 700; border: 1px solid var(--border); color: var(--muted2); }
+.lg-badge.is-irr { color: var(--lg-irr); border-color: color-mix(in srgb, var(--lg-irr) 50%, transparent); }
+.lg-badge.is-reg { color: var(--lg-ok); border-color: color-mix(in srgb, var(--lg-ok) 50%, transparent); }
+.lg-badge.is-warn { color: #f2b53a; border-color: color-mix(in srgb, #f2b53a 50%, transparent); }
+.lg-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.lg-act {
+  appearance: none; display: inline-flex; align-items: center; gap: 6px; min-width: 40px; min-height: 40px; padding: 0 10px; justify-content: center;
+  border-radius: 12px; border: 1px solid var(--border); background: var(--lg-soft); color: var(--text); font: inherit; font-weight: 700; font-size: .88rem; cursor: pointer;
+}
+.lg-act:hover { border-color: var(--accent); }
+.lg-act.is-on { color: #f2b53a; border-color: color-mix(in srgb, #f2b53a 60%, transparent); }
+.lg-act--wide { padding: 0 14px; }
+.lg-nf { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }
+.lg-nf-i { display: flex; flex-direction: column; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--lg-soft); }
+.lg-nf-k { font-size: .7rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--muted2); }
+.lg-nf-v { font-weight: 700; cursor: pointer; }
+.lg-nf-v.is-irr { color: var(--lg-irr); }
+.lg-notes { margin: 0 0 12px; padding-left: 18px; color: var(--muted2); font-size: .9rem; line-height: 1.55; }
+.lg-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 6px 0 16px; padding: 8px 0; position: sticky; top: calc(52px + env(safe-area-inset-top, 0px)); z-index: 5; background: var(--bg, #0c0a14); }
+.lg-seg { display: inline-flex; gap: 3px; padding: 3px; border-radius: 12px; border: 1px solid var(--border); background: var(--lg-soft); }
+.lg-seg button { min-height: 32px; padding: 0 12px; font-size: .85rem; }
+.lg-toggle { appearance: none; display: inline-flex; align-items: center; gap: 8px; border: 0; background: none; color: var(--muted2); font: inherit; font-size: .88rem; font-weight: 600; cursor: pointer; }
+.lg-sw { width: 34px; height: 20px; border-radius: 999px; background: var(--border); position: relative; transition: background .15s; }
+.lg-sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.lg-toggle.is-on .lg-sw { background: var(--accent); }
+.lg-toggle.is-on .lg-sw::after { transform: translateX(14px); }
+
+.lg-group { margin-bottom: 22px; }
+.lg-gh { margin: 0 0 10px; font-size: .8rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted2); }
+.lg-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.lg-card { padding: 14px 14px 10px; border-radius: 16px; border: 1px solid var(--border); background: var(--card, rgba(18, 25, 42, .78)); }
+.lg-th { margin: 0; font-size: 1rem; font-weight: 800; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.lg-te { font-size: .75rem; font-weight: 600; color: var(--muted2); }
+.lg-tu { margin: 2px 0 8px; font-size: .76rem; color: var(--muted2); line-height: 1.4; }
+.lg-rows { list-style: none; margin: 0; padding: 0; }
+.lg-row { display: grid; grid-template-columns: minmax(64px, auto) 1fr; align-items: baseline; gap: 0 8px; padding: 4px 0; border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.lg-row:first-child { border-top: 0; }
+.lg-pron { font-size: .78rem; color: var(--muted2); white-space: nowrap; }
+.lg-form { justify-self: start; font-weight: 650; font-size: 1rem; cursor: pointer; border-radius: 6px; padding: 0 3px; }
+.lg-form:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.lg-groups.hl .lg-form.is-irr { color: var(--lg-irr); font-weight: 800; }
+.lg-alt { grid-column: 2; font-size: .74rem; color: var(--muted2); }
+.lg-row.is-flash { animation: lg-flash 2.2s ease; border-radius: 8px; }
+@keyframes lg-flash { 0%, 40% { background: color-mix(in srgb, var(--accent) 30%, transparent); } 100% { background: transparent; } }
+.lg-foot { font-size: .8rem; color: var(--muted2); }
+
+/* ── Practice ── */
+.lg-ph { margin: 0 0 4px; font-size: 1.5rem; }
+.lg-plead { margin: 0 0 16px; color: var(--muted2); }
+.lg-pgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.lg-fs { margin: 0; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--border); background: var(--lg-soft); min-width: 0; }
+.lg-fs--wide { grid-column: 1 / -1; }
+.lg-fs legend { padding: 0 6px; font-size: .75rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted2); }
+.lg-sets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.lg-pverbs { width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: transparent; color: var(--text); font: inherit; resize: vertical; }
+.lg-ptenses { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.lg-ptg { display: flex; flex-direction: column; gap: 4px; }
+.lg-ptg-h { font-size: .74rem; font-weight: 800; color: var(--muted2); }
+.lg-check { display: flex; align-items: center; gap: 8px; font-size: .9rem; margin: 6px 0; cursor: pointer; }
+.lg-check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.lg-go {
+  appearance: none; min-height: 46px; padding: 0 26px; margin-top: 14px; border: 0; border-radius: 999px; cursor: pointer;
+  background: var(--accent); color: #06201d; font: inherit; font-weight: 800; font-size: 1rem;
+}
+.lg-perr { color: var(--lg-bad); font-weight: 600; }
+.lg-round { max-width: 640px; margin: 0 auto; }
+.lg-rbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.lg-stat { font-weight: 800; font-variant-numeric: tabular-nums; }
+.lg-qcard { padding: 22px; border-radius: 20px; border: 1px solid var(--border); background: var(--card, rgba(18, 25, 42, .78)); text-align: center; }
+.lg-qverb { margin: 0; font-size: 2rem; font-weight: 800; }
+.lg-qtense { margin: 2px 0 16px; color: var(--accent); font-weight: 700; }
+.lg-qline { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.lg-qpron { font-size: 1.1rem; color: var(--muted2); font-weight: 700; }
+.lg-qin {
+  flex: 1 1 220px; max-width: 360px; min-height: 52px; padding: 0 16px; border-radius: 14px; border: 2px solid var(--border);
+  background: transparent; color: var(--text); font: inherit; font-size: 1.25rem; text-align: center;
+}
+.lg-qin:focus { outline: none; border-color: var(--accent); }
+.lg-qin.is-ok { border-color: var(--lg-ok); }
+.lg-qin.is-bad { border-color: var(--lg-bad); }
+.lg-acc { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin: 12px 0 4px; }
+.lg-accb { appearance: none; width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--border); background: var(--lg-soft); color: var(--text); font: inherit; font-size: 1rem; cursor: pointer; }
+.lg-fb { min-height: 1.6em; margin: 10px 0 0; }
+.lg-ok { color: var(--lg-ok); font-weight: 800; }
+.lg-bad { color: var(--lg-bad); font-weight: 800; }
+.lg-note { color: var(--muted2); font-size: .88rem; }
+.lg-qbtns { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
+.lg-qbtns .lg-go { margin-top: 10px; }
+.lg-done { max-width: 640px; margin: 0 auto; text-align: center; }
+.lg-big { font-size: 2.6rem; font-weight: 800; margin: 6px 0; }
+.lg-big span { font-size: 1.2rem; color: var(--muted2); }
+.lg-missed { list-style: none; padding: 0; margin: 0 0 12px; text-align: left; }
+.lg-missed li { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 6px; }
+.lg-missed span { color: var(--muted2); font-size: .85rem; margin-left: 6px; }
+
+@media (max-width: 560px) {
+  .lg-cards { grid-template-columns: 1fr; }
+  .lg-tools { position: static; }
+}
+@media (prefers-reduced-motion: reduce) { .lg-row.is-flash { animation: none; background: color-mix(in srgb, var(--accent) 20%, transparent); } .lg-sw, .lg-sw::after { transition: none; } }
+
+/* Print: just the verb, every tense, black on white. */
+@media print {
+  header.top, .lg-tabs, .lg-head, .lg-chips, .lg-actions, .lg-tools, .lg-foot, #lgPractice, #lgTranslate { display: none !important; }
+  body, main { background: #fff !important; color: #000 !important; }
+  .lg-card { border: 1px solid #999; background: #fff; break-inside: avoid; }
+  .lg-cards { grid-template-columns: repeat(3, 1fr); }
+  .lg-pron, .lg-tu, .lg-te, .lg-gh, .lg-gloss, .lg-notes { color: #444 !important; }
+  .lg-form.is-irr { color: #000 !important; text-decoration: underline; }
+}
