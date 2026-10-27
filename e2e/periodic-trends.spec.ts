@@ -1,6 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { gotoScenario } from './helpers';
 
+/** Pick a trend the way a student does: Change, then the trend in the panel. */
+async function pickTrend(page: import('@playwright/test').Page, id: string) {
+  await page.locator('.fpt-tcur').click();
+  await page.locator(`.fpt-tpanel .fpt-trow[data-c="${id}"]`).click();
+}
+
+
 /**
  * Colouring the periodic table by a property.
  *
@@ -94,7 +101,7 @@ test.describe('Periodic trends', () => {
     // Trends have a tab of their own; the Table tab is the plain table.
     await expect(page.locator('.fpt-sel')).toBeHidden();
     await page.locator('.fpt-view[data-view="trends"]').click();
-    await page.locator('.fpt-sel').selectOption('en');
+    await pickTrend(page, 'en');
     await expect(page.locator('.fpt-key')).toBeVisible();
 
     const after = await page.evaluate(() => {
