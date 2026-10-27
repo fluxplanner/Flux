@@ -538,7 +538,6 @@
         <textarea id="gHubDocsPush" class="flux-field--mono" rows="4" maxlength="480000" placeholder="Paste notes to send to your primary Google Doc…"></textarea>
         <button type="button" style="margin-top:8px" onclick="FluxGoogle.pushDocsFromHub()">Replace doc body</button>
       </div>
-      ${window.FluxDocsGhostSync?.enabled?.() && typeof FluxDocsGhostSync.hubExtraHtml === 'function' ? FluxDocsGhostSync.hubExtraHtml() : ''}
     </div>`;
   }
 

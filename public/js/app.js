@@ -3216,6 +3216,8 @@ window.onAddEventExtraPick=onAddEventExtraPick;
 
 // ══ STATE ══
 let tasks=load('tasks',[]);
+// Ghost drafts were removed (2026-10-26): drop any still saved on a task.
+if(tasks.some(t=>t&&'ghostDraft' in t)){tasks.forEach(t=>{if(t)delete t.ghostDraft;});save('tasks',tasks);}
 // Expose `tasks` on window as a LIVE view of this block-scoped binding.
 // app.js is a classic script, so top-level `let` is NOT a window property —
 // yet ~35 feature modules (Co-work, SRS, bulk-filter, progress-streak,
@@ -4503,7 +4505,7 @@ function addTask(){
   }
   task.urgencyScore=calcUrgency(task);tasks.unshift(task);
   try{if(window.FluxRecurring?.bindTask)FluxRecurring.bindTask(task);}catch(_){}
-  save('tasks',tasks);if(task.subject){if(window.FluxGhostDraftV2?.enabled?.()&&typeof FluxGhostDraftV2.scheduleInject==='function')FluxGhostDraftV2.scheduleInject(task);else setTimeout(()=>injectGhostDraft(task),1500);}
+  save('tasks',tasks);
   if(window.Flux100&&typeof Flux100.captureLastTaskFromModal==='function')try{Flux100.captureLastTaskFromModal(task);}catch(e){}
   document.getElementById('taskName').value='';document.getElementById('taskNotes').value='';{const h=document.getElementById('taskNameParsed');if(h){h.textContent='';h.hidden=true;}}{const tt=document.getElementById('taskTime');if(tt)tt.value='';}
   closeDashAddTaskModal();
@@ -5370,21 +5372,6 @@ function renderTasks(){
     const waitChip=t.waitingOn?`<span class="task-chip" title="Waiting on">${esc(t.waitingOn)}</span>`:'';
     const recChip=(window.FluxRecurring?.chipHtml?FluxRecurring.chipHtml(t):'')||(t.recurringWeekly?`<span class="task-chip task-chip-recurring" title="Repeats weekly when completed">Weekly</span>`:'');
     const snz='';
-    let ghostHtml='';
-    if(window.FluxGhostDraftV2?.enabled?.()&&typeof FluxGhostDraftV2.cardHtml==='function'){
-      ghostHtml=FluxGhostDraftV2.cardHtml(t)||'';
-    }else if(t.ghostDraft&&!t.done){
-      const ghostBody=`<div class="ghost-draft-body" style="white-space:pre-wrap">${esc(t.ghostDraft)}</div>`;
-      if(window.FluxGhostDraftV2&&typeof FluxGhostDraftV2.collapsibleHtml==='function'){
-        ghostHtml=FluxGhostDraftV2.collapsibleHtml({
-          attrs:{'data-ghost-task-id':t.id},
-          summaryHtml:'<span class="ghost-draft-title">✦ Ghost draft</span>',
-          bodyHtml:ghostBody,
-        });
-      }else{
-        ghostHtml=`<details class="ghost-draft ghost-draft--collapsible" data-ghost-task-id="${t.id}"><summary class="ghost-draft-summary"><span class="ghost-draft-title">✦ Ghost draft</span><span class="ghost-draft-chevron" aria-hidden="true"></span></summary>${ghostBody}</details>`;
-      }
-    }
     return`<div class="task-item ${priClass}${extraCls}${frictionCls}${srsCls} ${t.done?'task-done':''}${_fluxRowsShown.has(String(t.id))?' task-seen':''}" data-task-id="${t.id}" data-priority="${t.priority||'med'}"${frictionData}${srsData} draggable="${!_taskBulkMode}" style="${blockedStyle}">
 ${bulk}
 <div class="check ${t.done?'done':''}" role="checkbox" tabindex="0" aria-checked="${t.done?'true':'false'}" aria-label="${esc(t.name)}" onkeydown="fluxCheckKey(event,this)" onclick="${blocked?'showToast(\'Complete blockers first\',\'warning\');return':'toggleTask('+t.id+')'}">${t.done?'✓':blocked?'🔒':''}</div>
@@ -5400,7 +5387,7 @@ ${t.planOf!=null&&t.planParts&&!t.weekBlock?`<span class="task-chip task-chip-pl
 ${(t.fluxTags||[]).length?(t.fluxTags||[]).map(tg=>`<span class="task-chip" style="background:rgba(var(--purple-rgb),.1);border-color:rgba(var(--purple-rgb),.22);font-size:.6rem">${esc(tg)}</span>`).join(''):''}
 <span class="task-chip" style="background:rgba(255,255,255,.02);color:var(--muted);border:1px solid rgba(255,255,255,.04)">${ti.l}</span>
 </div>
-${stBar}${frictionBadge}${srsBadge}${ghostHtml}
+${stBar}${frictionBadge}${srsBadge}
 </div>
 <!-- Three buttons, hard limit. This row had grown to nine — a school/outside
      pill, repeat options, copy link, Google Calendar, co-work and these four —
@@ -10488,7 +10475,7 @@ function buildFullPlannerContextForAI(opts){
     const sub=subjs[t.subject]?.short||t.subject||'—';
     const due=t.date||'—';
     const subN=(t.subtasks&&t.subtasks.length)?` +${t.subtasks.length}sub`:'';
-    return `- [${st}|${t.priority||'med'}|${sub}|${t.type||'hw'}|${due}] ${t.name}${t.estTime?` ~${t.estTime}m`:''}${subN}${t.notes?` note:${plain(t.notes,100)}`:''}${t.ghostDraft?` draft:${plain(t.ghostDraft,160)}`:''}`;
+    return `- [${st}|${t.priority||'med'}|${sub}|${t.type||'hw'}|${due}] ${t.name}${t.estTime?` ~${t.estTime}m`:''}${subN}${t.notes?` note:${plain(t.notes,100)}`:''}`;
   };
   add('Tasks — all open',clip(tasks.filter(t=>!t.done).map(fmtT).join('\n')||'(none)',6500));
   add('Tasks — last 40 completed',clip(tasks.filter(t=>t.done).slice(-40).map(fmtT).join('\n')||'(none)',3200));
@@ -14845,9 +14832,7 @@ async function handleSignedIn(user,session){
   try{if(window.FluxCalcHistory?.install)FluxCalcHistory.install();}catch(_){}
   try{if(window.FluxClassroomSync?.install)FluxClassroomSync.install();}catch(_){}
   try{if(window.FluxDriveImport?.install)FluxDriveImport.install();}catch(_){}
-  try{if(window.FluxDocsGhostSync?.install)FluxDocsGhostSync.install();}catch(_){}
   try{if(window.FluxGmailEducator?.install)FluxGmailEducator.install();}catch(_){}
-    try{if(window.FluxGhostDraftV2?.install)FluxGhostDraftV2.install();}catch(_){}
     try{if(window.FluxNeuroDashboard?.install)FluxNeuroDashboard.install();}catch(_){}
     try{if(window.FluxSrsV2?.install)FluxSrsV2.install();}catch(_){}
     try{if(window.FluxPredictV2?.install)FluxPredictV2.install();}catch(_){}
@@ -15146,9 +15131,7 @@ async function handleSignedIn(user,session){
   try{if(window.FluxCalcHistory?.install)FluxCalcHistory.install();}catch(_){}
   try{if(window.FluxClassroomSync?.install)FluxClassroomSync.install();}catch(_){}
   try{if(window.FluxDriveImport?.install)FluxDriveImport.install();}catch(_){}
-  try{if(window.FluxDocsGhostSync?.install)FluxDocsGhostSync.install();}catch(_){}
   try{if(window.FluxGmailEducator?.install)FluxGmailEducator.install();}catch(_){}
-  try{if(window.FluxGhostDraftV2?.install)FluxGhostDraftV2.install();}catch(_){}
   try{if(window.FluxNeuroDashboard?.install)FluxNeuroDashboard.install();}catch(_){}
   try{if(window.FluxSrsV2?.install)FluxSrsV2.install();}catch(_){}
   try{if(window.FluxPredictV2?.install)FluxPredictV2.install();}catch(_){}
@@ -15912,33 +15895,6 @@ function generateSRSReviews(originalTask){
   save('tasks',tasks);
   showToast('3 spaced reviews scheduled (1d, 7d, 30d)','success');
   syncKey('tasks',tasks);
-}
-
-
-// ══ GHOST DRAFT INJECTOR ══════════════════════════════════════
-async function injectGhostDraft(task){
-  try{
-    if(window.FluxGhostDraftV2?.enabled?.()&&typeof FluxGhostDraftV2.inject==='function'){
-      return FluxGhostDraftV2.inject(task);
-    }
-  }catch(_){}
-  if(!currentUser||!task.subject)return;
-  const subj=getSubjects()[task.subject];
-  if(!subj)return;
-  const isPhysics=/physics|kinematics|mechanics|motion|force|energy/i.test(subj.name);
-  const prompt=isPhysics
-    ?`For a student task "${task.name}" in ${subj.name}: give 3-5 starting points. Use g = ${G.toFixed(4)} m/s² for all physics. Show all calculations to 4 decimal places. Be concise bullet points.`
-    :`For a student task "${task.name}" in ${subj.name}: give 3-5 helpful starting points, key concepts, or formulas to begin. Concise bullet points only.`;
-  try{
-    const res=await fetch(API.ai,{method:'POST',headers:await fluxAuthHeaders(),
-      body:JSON.stringify({system:'You are a helpful study assistant. Be brief and practical.',
-        messages:[{role:'user',content:prompt}]})});
-    const data=await res.json();
-    const txt=(data.content?.[0]?.text||'').replace(/```actions[\s\S]*?```/g,'').trim();
-    if(!txt)return;
-    const t=tasks.find(x=>x.id===task.id);
-    if(t){t.ghostDraft=txt;save('tasks',tasks);renderTasks();}
-  }catch(e){console.warn('Ghost draft failed:',e);}
 }
 
 
@@ -17568,7 +17524,6 @@ async function addCanvasAssignmentToPlanner(courseId,assignmentId,opts){
   };
   t.urgencyScore=calcUrgency(t);
   tasks.unshift(t);save('tasks',tasks);
-  if(subKey)setTimeout(()=>injectGhostDraft(t),1500);
   if(!skipRender){syncKey('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();}
   if(!silent)showToast(`Added '${name.slice(0,48)}' to your planner ✓`,'success');
   if(!silent){
