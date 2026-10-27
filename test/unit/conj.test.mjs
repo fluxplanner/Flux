@@ -28,6 +28,10 @@ const T = (lang, verb, tense) => {
 
 const EXPECT = {
   es: {
+    erguir: { present: 'yergo,yergues,yergue,erguimos,erguís,yerguen', preterite: 'erguí,erguiste,irguió,erguimos,erguisteis,irguieron', subjPresent: 'yerga,yergas,yerga,irgamos,irgáis,yergan' },
+    argüir: { present: 'arguyo,arguyes,arguye,argüimos,argüís,arguyen', preterite: 'argüí,argüiste,arguyó,argüimos,argüisteis,arguyeron' },
+    raer: { present: 'raigo,raes,rae,raemos,raéis,raen', subjPresent: 'raiga,raigas,raiga,raigamos,raigáis,raigan' },
+    podrir: { present: 'pudro,pudres,pudre,pudrimos,pudrís,pudren' },
     tener: {
       present: 'tengo,tienes,tiene,tenemos,tenéis,tienen',
       preterite: 'tuve,tuviste,tuvo,tuvimos,tuvisteis,tuvieron',
@@ -121,14 +125,26 @@ test('textbook forms in every tense', () => {
   }
 });
 
+test('spelling-rule forms are marked irregular too (leyó, huyo, busqué)', () => {
+  const irr = (lang, v, k, i) => C.conjugate(lang, v).irregular[k][i];
+  assert.ok(irr('es', 'leer', 'preterite', 2));
+  assert.ok(irr('es', 'huir', 'present', 0));
+  assert.ok(irr('es', 'buscar', 'preterite', 0));
+  assert.ok(irr('es', 'coger', 'present', 0));
+  assert.ok(!irr('es', 'hablar', 'preterite', 0));
+  assert.equal(C.conjugate('fr', 'paître').tenses.passeSimple[0], null);
+  assert.equal(C.conjugate('fr', 'renaître').participle, null);
+});
+
 test('agrees with the verb drill on every verb the drill knows', () => {
   const MAP = {
     es: { present: 'present', preterite: 'preterite', imperfect: 'imperfect', future: 'future', conditional: 'conditional', subjunctive: 'subjPresent', perfect: 'perfect' },
     fr: { present: 'present', passeCompose: 'passeCompose', imperfect: 'imperfect', future: 'future', conditional: 'conditional' },
   };
   /* The drill's engine is wrong here and this one is right: it treats
-     satisfacer as a regular -er verb (satisfaco, satisfací). */
-  const DRILL_WRONG = new Set(['satisfacer']);
+     satisfacer as a regular -er verb (satisfaco, satisfací), and gives
+     renaître a participle (rené) the Bescherelle says it does not have. */
+  const DRILL_WRONG = new Set(['satisfacer', 'renaître']);
   const bad = [];
   for (const lang of ['es', 'fr']) {
     for (const v of Object.keys(C.lexicon(lang))) {
@@ -164,6 +180,10 @@ test('every dictionary verb conjugates, all six persons in every finite tense', 
           const need = /^imp/.test(id) && id !== 'imperfect' ? [1, 3, 4] : [0, 1, 2, 3, 4, 5];
           if (lang === 'fr' && /traire$|clore$/.test(v) && /passeSimple|subjImperfect|pastAnterior|subjPluperfect/.test(id)) continue;
           if (lang === 'fr' && v === 'pouvoir' && /^imperative/.test(id)) continue;
+          // No participle, so no compound tenses; paître has no passé simple either.
+          const compound = /passeCompose|pluperfect|pastAnterior|futurePerfect|conditionalPerfect|subjPast|subjPluperfect|imperativePast/;
+          if (lang === 'fr' && v === 'renaître' && compound.test(id)) continue;
+          if (lang === 'fr' && v === 'paître' && (compound.test(id) || /passeSimple|subjImperfect/.test(id))) continue;
           for (const i of need) {
             if (!forms || !forms[i] || /undefined|null/.test(forms[i])) missing.push(`${lang} ${v} ${id}[${i}]`);
           }
