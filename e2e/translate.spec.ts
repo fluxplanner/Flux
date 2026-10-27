@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 /*
- * Flux Translate (translate.html). Stands alone — no bundles, no sign-in.
+ * Flux Lingo, Translate tab (translate.html#translate). Stands alone — no bundles, no sign-in.
  * The browser's on-device Translator is removed so every run takes the
  * MyMemory path, which is stubbed: tests never reach translated.net.
  */
@@ -18,11 +18,11 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test.describe('Flux Translate', () => {
+test.describe('Flux Lingo: Translate', () => {
   test('translates, says where the text went, and remembers it', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
-    await page.goto('/translate.html');
+    await page.goto('/translate.html#translate');
     await expect(page.locator('#ftFrom')).toHaveValue('en');
     await expect(page.locator('#ftTo')).toHaveValue('es');
     await page.locator('#ftIn').fill('Good morning.');
@@ -40,7 +40,7 @@ test.describe('Flux Translate', () => {
   });
 
   test('swap flips the languages and moves the result into the box', async ({ page }) => {
-    await page.goto('/translate.html');
+    await page.goto('/translate.html#translate');
     await page.locator('#ftIn').fill('Hello');
     await page.keyboard.press('Control+Enter');
     await expect(page.locator('#ftOut')).toHaveText('[es] Hello');
@@ -51,7 +51,7 @@ test.describe('Flux Translate', () => {
   });
 
   test('long text is sent in pieces under the 500-byte limit', async ({ page }) => {
-    await page.goto('/translate.html');
+    await page.goto('/translate.html#translate');
     const sizes = await page.evaluate(() => {
       const text = 'This is one sentence that goes on for a while. '.repeat(40);
       const parts = (window as any).FluxTranslator.chunks(text);

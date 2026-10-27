@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Flux Translate</title>
-<meta name="description" content="Free translation between 35 languages, with read-aloud and recent translations. In Chrome it translates on your device, so your text stays on your computer.">
+<title>Flux Lingo — every Spanish and French verb, conjugated</title>
+<meta name="description" content="Flux Lingo: every tense of every Spanish and French verb, irregulars highlighted, look up any form, practise against the clock, and translate between 35 languages. Free, no account.">
 <meta name="theme-color" content="#0c0a14">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" type="image/png" href="public/flux-planner-logo.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<meta name="apple-mobile-web-app-title" content="Flux Translate">
+<meta name="apple-mobile-web-app-title" content="Flux Lingo">
 
 <!--
   Flux Translate: made the way flashcards.html is — no app bundles and no
@@ -19,6 +19,7 @@
 -->
 <link rel="stylesheet" href="public/css/flux-hub.css?v=6a462093">
 <link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
+<link rel="stylesheet" href="public/css/flux-lingo.css?v=5f611817">
 <style>
   :root { --bg: #0c0a14; --accent: #2dd4bf; } /* the rest: public/css/flux-standalone-dark.css */
   * { box-sizing: border-box; }
@@ -115,26 +116,29 @@
 </head>
 <body>
   <header class="top">
-    <a class="brand" href="translate.html" aria-label="Flux Translate">
+    <a class="brand" href="translate.html" aria-label="Flux Lingo">
       <img class="brand-mark" src="public/flux-planner-logo.png" alt="" width="30" height="30">
-      <span class="title">Flux Translate<small>35 languages, free</small></span>
+      <span class="title">Flux Lingo<small>Conjugate, practise, translate</small></span>
     </a>
     <span class="grow"></span>
     <div data-flux-hub="translate"></div>
   </header>
-  <main id="ftHost" aria-label="Flux Translate"></main>
+  <main id="ftHost" aria-label="Flux Lingo"></main>
 
   <!-- Plain script tags, not the app bundles: this page has to stand alone. -->
-  <script src="public/js/flux-hub.js?v=fcee7925"></script>
+  <script src="public/js/flux-hub.js?v=041f8224"></script>
   <script src="public/js/flux-translator.js?v=da90d5ac"></script>
+  <script src="public/js/flux-conj.js?v=cbef1814"></script>
+  <script src="public/js/flux-conj-lexicon.js?v=c058b30d"></script>
+  <script src="public/js/flux-lingo.js?v=55ff7912"></script>
   <script>
     (function () {
       var host = document.getElementById('ftHost');
-      if (!window.FluxTranslator) {
-        host.innerHTML = '<p style="padding:24px;color:#fbbf24">Flux Translate could not load. Try refreshing.</p>';
+      if (!window.FluxLingo || !window.FluxConj) {
+        host.innerHTML = '<p style="padding:24px;color:#fbbf24">Flux Lingo could not load. Try refreshing.</p>';
         return;
       }
-      window.fluxTranslatePage = window.FluxTranslator.mount(host);
+      window.fluxLingoPage = window.FluxLingo.mount(host);
     })();
   </script>
 </body>
