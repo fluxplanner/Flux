@@ -5432,7 +5432,7 @@ ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick
   fluxTaskListRestore(el,keep);
 }
 function renderSmartSug(){}
-function openDashAddTaskModal(){
+function openDashAddTaskModal(instant){
   const m=document.getElementById('dashAddTaskModal');
   if(!m)return;
   fluxSyncSubjectUiForRole();
@@ -5441,7 +5441,8 @@ function openDashAddTaskModal(){
   ntResetForm();
   m.style.display='flex';
   const card=m.querySelector('.modal-card');
-  try{if(window.FluxAnim?.modalOpen)FluxAnim.modalOpen(m,card||m);}catch(e){}
+  m.classList.toggle('flux-modal-swap',!!instant);
+  try{if(!instant&&window.FluxAnim?.modalOpen)FluxAnim.modalOpen(m,card||m);}catch(e){}
   try{window.FluxA11y?.trapFocus?.(m);}catch(e){}
   setTimeout(()=>document.getElementById('taskName')?.focus(),80);
 }
@@ -5516,7 +5517,7 @@ function ntReadTitle(){
   if(h){h.textContent=bits.length?'Read from the title: '+bits.filter(Boolean).join(' · '):'';h.hidden=!bits.length;}
   return p;
 }
-function closeDashAddTaskModal(){
+function closeDashAddTaskModal(instant){
   const m=document.getElementById('dashAddTaskModal');
   if(!m)return;
   try{window.FluxA11y?.releaseFocus?.(m);}catch(e){}
@@ -5524,7 +5525,7 @@ function closeDashAddTaskModal(){
   const hide=()=>{m.style.display='none';};
   const calRow=document.getElementById('taskCalTypeRow');if(calRow)calRow.style.display='none';
   try{
-    if(window.FluxAnim?.modalClose)FluxAnim.modalClose(m,card||m,hide);
+    if(!instant&&window.FluxAnim?.modalClose)FluxAnim.modalClose(m,card||m,hide);
     else hide();
   }catch(e){hide();}
   const w=document.getElementById('taskWaitingOn');if(w)w.value='';
@@ -6236,17 +6237,24 @@ function setAddEventScope(scope){
   if(ob)ob.classList.toggle('event-scope-btn-on',!onSchool);
 }
 /* A task added from the calendar uses the same New task form as everywhere
-   else (estimates, plan it out, repeats…), dated to the selected day. */
+   else (plan it out, repeats…), dated to the selected day. Switching between
+   it and the Event / Activity dialog swaps them in place, with no open/close
+   animation (instant / .flux-modal-swap), so it feels like changing tabs. */
 function openCalendarNewTask(){
   const ymd=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
   closeAddEventModal();
-  openDashAddTaskModal();
+  openDashAddTaskModal(true);
   const d=document.getElementById('taskDate');if(d)d.value=ymd;
   const row=document.getElementById('taskCalTypeRow');if(row)row.style.display='flex';
 }
-function openAddEventModal(preferredType){
+function openAddEventModal(preferredType,instant){
   if(preferredType==='task'){openCalendarNewTask();return;}
   const modal=document.getElementById('addEventModal');if(!modal)return;
+  /* It sits inside #flux-main, which centres it over the content area while
+     the New task dialog centres on the whole screen; switching between them
+     made the box jump sideways. Centre both the same way. */
+  if(modal.parentElement!==document.body)document.body.appendChild(modal);
+  modal.classList.toggle('flux-modal-swap',!!instant);
   fluxSyncSubjectUiForRole();
   editCalendarEventId=null;
   document.getElementById('addEventDate').value=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
