@@ -3479,6 +3479,8 @@ html[data-flux-perf="on"] .focus-card{
 
 /* ── MODALS: SPRING ENTRANCE ── */
 .modal-card{animation:modalSpring .3s var(--ease-spring) both!important}
+/* Calendar Add: Task ⇄ Event/Activity swap dialogs in place, like tabs. */
+.modal-overlay.flux-modal-swap,.modal-overlay.flux-modal-swap .modal-card{animation:none!important}
 @keyframes modalSpring{
   from{opacity:0;transform:translateY(40px) scale(.95)}
   to{opacity:1;transform:none}

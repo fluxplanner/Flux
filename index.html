@@ -117,7 +117,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.ca46a625.css">
+<link rel="stylesheet" href="public/bundles/flux.9dd8940b.css">
 </head>
 <body>
 <noscript>
@@ -2903,8 +2903,8 @@
          other two types stay one tap away instead of vanishing with it. -->
     <div id="taskCalTypeRow" style="display:none;gap:8px;margin-bottom:16px">
       <button type="button" id="taskCalTypeTask" style="flex:1;background:var(--accent)" aria-pressed="true">Task</button>
-      <button type="button" id="taskCalTypeEvent" onclick="closeDashAddTaskModal();openAddEventModal('event')" style="flex:1" class="btn-sec" aria-pressed="false">Event</button>
-      <button type="button" id="taskCalTypeEc" onclick="closeDashAddTaskModal();openAddEventModal('ec')" style="flex:1" class="btn-sec" aria-pressed="false">Activity</button>
+      <button type="button" id="taskCalTypeEvent" onclick="closeDashAddTaskModal(true);openAddEventModal('event',true)" style="flex:1" class="btn-sec" aria-pressed="false">Event</button>
+      <button type="button" id="taskCalTypeEc" onclick="closeDashAddTaskModal(true);openAddEventModal('ec',true)" style="flex:1" class="btn-sec" aria-pressed="false">Activity</button>
     </div>
     <div class="modal-field-group" style="margin-bottom:10px">
       <label class="modal-micro-label" for="taskName">Title</label>
@@ -3022,7 +3022,7 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c391de9f.js"></script>
-<script defer src="public/bundles/flux-core.938fa113.js"></script>
+<script defer src="public/bundles/flux-core.43e64363.js"></script>
 <script defer src="public/bundles/flux-features.fd883eff.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
