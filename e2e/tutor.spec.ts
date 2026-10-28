@@ -76,9 +76,28 @@ function tab(page: Page, name: string) {
 
 /* Mirrors DP_EXAMS in flux-teacher-app.js: IB practice, mock exams and
    predicted grades are paused. Set both to true to test them again. */
-const DP_EXAMS = false;
+const DP_EXAMS = true;
 
 test.describe('Flux Tutor', () => {
+  test('IB syllabus: every unit listed, a set started from a unit is filed under it', async ({ page }) => {
+    const D = '/private/tmp/claude-503/-Users-AzferMohammed-dev-Flux-Planner/90d122e6-8ef4-4284-a24d-18026299ae02/scratchpad/shots/';
+    await page.goto('/teacher.html');
+    const syl = page.locator('.ft-syllabus');
+    await expect(syl).toBeVisible();
+    await page.locator('#ftSylSubject').selectOption('biology');
+    await expect(syl.locator('.ft-syl-unit')).toHaveCount(40);
+    await page.locator('#ftSylSubject').selectOption('physics');
+    await expect(syl.locator('.ft-syl-unit')).toHaveCount(24);
+    if (process.env.FT_SHOTS) await page.screenshot({ path: D + 'syl.png', fullPage: true });
+    await syl.getByRole('button', { name: 'New study set for Kinematics' }).click();
+    await expect(page.locator('#ftTitle')).toHaveValue('Physics: A.1 Kinematics');
+    await expect(page.locator('#ftSubject')).toHaveValue('Physics');
+    await expect(page.locator('#ftUnit')).toHaveValue('physics:A.1');
+    // Changing the subject offers that subject's units.
+    await page.locator('#ftSubject').fill('Economics');
+    await expect(page.locator('#ftUnit option[value="economics:2.5"]')).toHaveText('2.5 Elasticity of demand');
+  });
+
   test('IB practice and mock exams stay hidden while paused', async ({ page }) => {
     test.skip(DP_EXAMS, 'DP exam features are on');
     await openSample(page);

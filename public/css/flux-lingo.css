@@ -166,3 +166,63 @@
   .lg-pron, .lg-tu, .lg-te, .lg-gh, .lg-gloss, .lg-notes { color: #444 !important; }
   .lg-form.is-irr { color: #000 !important; text-decoration: underline; }
 }
+
+/* ── Practice setup, v2: header, what-to-practise cards, one bottom bar ── */
+.lg-pset { max-width: 980px; }
+.lg-phead { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; }
+.lg-phead .lg-plead { margin: 0; max-width: 60ch; }
+.lg-kinds { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.lg-kind {
+  appearance: none; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left;
+  padding: 14px 16px; border-radius: 16px; border: 1.5px solid var(--border); background: var(--lg-soft);
+  color: var(--text); font: inherit; cursor: pointer; transition: border-color .15s, background .15s;
+}
+.lg-kind b { font-size: 1.02rem; }
+.lg-kind span { font-size: .82rem; color: var(--muted2); }
+.lg-kind:hover { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+.lg-kind.is-on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.lg-kind:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lg-pgrid { align-items: start; gap: 14px; }
+.lg-fs { padding: 14px 16px 12px; }
+.lg-fs legend { margin-bottom: 2px; }
+.lg-ptenses { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px 18px; }
+.lg-ptg { gap: 0; }
+.lg-ptg-h { margin: 2px 0 2px; }
+.lg-check { margin: 0; min-height: 32px; }
+.lg-decks { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.lg-deck { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--border); cursor: pointer; font-size: .92rem; font-weight: 600; }
+.lg-deck input { width: 18px; height: 18px; accent-color: var(--accent); flex: none; }
+.lg-deck em { font-style: normal; font-weight: 600; color: var(--muted2); font-size: .8rem; margin-left: 4px; }
+.lg-deck:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.lg-pbar {
+  display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-top: 14px; padding: 12px 14px;
+  border-radius: 16px; border: 1px solid var(--border); background: color-mix(in srgb, var(--lg-pop) 92%, transparent);
+  box-shadow: 0 12px 30px -18px rgba(0, 0, 0, .6); position: sticky; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); z-index: 4; backdrop-filter: blur(10px);
+}
+.lg-pbar .lg-go { margin: 0 0 0 auto; }
+.lg-perr { margin: 10px 2px 0; }
+
+/* ── Round, v2 ── */
+.lg-rbar { gap: 8px; margin-bottom: 10px; justify-content: flex-start; }
+.lg-rbar .lg-act { margin-left: auto; }
+.lg-pill { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--lg-soft); font-weight: 800; font-size: .88rem; font-variant-numeric: tabular-nums; }
+.lg-pill:empty { display: none; }
+.lg-pill--ok { color: var(--lg-ok); }
+.lg-pill--bad { color: var(--lg-bad); }
+.lg-prog { height: 6px; border-radius: 999px; background: var(--lg-soft); overflow: hidden; margin-bottom: 14px; }
+.lg-prog i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: inherit; transition: width .3s ease; }
+.lg-qcard { padding: 28px 22px 22px; }
+.lg-qtense { margin: 0 0 6px; font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; }
+.lg-qverb { margin: 0 0 18px; font-size: clamp(1.7rem, 6vw, 2.3rem); line-height: 1.15; overflow-wrap: anywhere; }
+.lg-acc[hidden] { display: none; }
+.lg-qbtns { margin-top: 8px; }
+
+@media (max-width: 560px) {
+  .lg-phead { align-items: flex-start; }
+  .lg-kinds { grid-template-columns: 1fr; gap: 8px; }
+  .lg-kind { padding: 12px 14px; }
+  .lg-pbar .lg-go { width: 100%; margin: 0; }
+  .lg-pbar .lg-seg { width: 100%; }
+  .lg-pbar .lg-seg button { flex: 1; padding: 0 6px; }
+}
+@media (prefers-reduced-motion: reduce) { .lg-prog i, .lg-kind { transition: none; } }

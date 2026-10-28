@@ -202,7 +202,10 @@
         canvasToken: String(tok),
         canvasHost: String(host),
         canvasUrl: typeof load === 'function' ? load('flux_canvas_url', '') : '',
-        updatedAt: Date.now(),
+        // No clock stamp here. This is read on every push, and a Date.now()
+        // made the payload differ every 2.5s: a device with Canvas connected
+        // rewrote the row nonstop, so every other device's write found the
+        // row moved and lost the race — ticks made there never stuck.
       };
     } catch (_) {
       return null;
