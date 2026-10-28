@@ -823,7 +823,7 @@
           + learnLink(u)
           + (mine.length
             ? '<a class="ft-mini" href="' + esc(setHash(mine[0].id, '')) + '">' + (mine.length > 1 ? plural(mine.length, 'set') : 'Open set') + '</a>'
-            : '<button type="button" class="ft-mini" data-act="syl-new" data-unit="' + esc(u.id) + '" aria-label="New study set for ' + esc(u.title) + '">New set</button>')
+            : '<button type="button" class="ft-mini" data-act="syl-new" data-unit="' + esc(u.id) + '" aria-label="' + (window.FluxIbNotes && window.FluxIbNotes.has(u.id) ? 'Start a study set from Flux notes for ' : 'New study set for ') + esc(u.title) + '">' + (window.FluxIbNotes && window.FluxIbNotes.has(u.id) ? 'Start with notes' : 'New set') + '</button>')
           + '</li>';
       }).join('') + '</ul>').join('')
       + '</section>';
@@ -964,6 +964,26 @@
     await refreshLibrary(n ? '[data-open="' + cssId(res.sets[0].id) + '"]' : '#ftLibTitle');
     toast('Imported ' + plural(n, 'study set') + '.' + (res.skipped ? ' ' + plural(res.skipped, 'set') + ' in the file could not be read.' : ''));
   }
+  /**
+   * A new set filed under a syllabus unit. With Flux starter notes for the
+   * unit it is built straight away (guide, cards, questions) and opens on the
+   * guide; without them it opens the notes screen, titled and filed, as before.
+   */
+  async function startUnitSet(unitId) {
+    const N = window.FluxIbNotes;
+    const text = N && N.has(unitId) ? await N.load(unitId) : '';
+    if (!text) { app.pendingUnit = unitId; location.hash = '#new'; return; }
+    const subj = IB.subjects().find((s) => s.id === unitId.split(':')[0]);
+    const set = T.newSet({ title: subj.name + ': ' + unitLabel(unitId), subject: subj.name, unit: unitId });
+    set.sources = [T.newSource(N.SOURCE_NAME, 'Notes', text)];
+    const corpus = T.buildCorpus(set.sources);
+    set.guide = T.buildGuide(set.sources, { corpus });
+    const res = await app.store.save(set);
+    if (!res.ok) { libAlert(res.error.message); return; }
+    app.notice = '';
+    go(setHash(res.set.id, 'guide'));
+  }
+
   async function createSample() {
     const set = T.sampleSet();
     const corpus = T.buildCorpus(set.sources);
@@ -2862,7 +2882,7 @@
     const id = btn.dataset.id;
     switch (act) {
       case 'sample': guarded(createSample); break;
-      case 'syl-new': app.pendingUnit = btn.dataset.unit || ''; location.hash = '#new'; break;
+      case 'syl-new': guarded(() => startUnitSet(btn.dataset.unit || '')); break;
       case 'import': { const f = document.getElementById('ftImportFile'); if (f) f.click(); break; }
       case 'export-all': guarded(libExportAll); break;
       case 'rename': guarded(() => libRename(id)); break;

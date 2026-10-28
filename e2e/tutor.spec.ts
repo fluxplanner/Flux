@@ -89,13 +89,34 @@ test.describe('Flux Tutor', () => {
     await page.locator('#ftSylSubject').selectOption('physics');
     await expect(syl.locator('.ft-syl-unit')).toHaveCount(24);
     if (process.env.FT_SHOTS) await page.screenshot({ path: D + 'syl.png', fullPage: true });
-    await syl.getByRole('button', { name: 'New study set for Kinematics' }).click();
+    // Without the starter notes (here: they fail to load) the unit opens a new, empty set filed under it.
+    await page.route('**/public/data/ib-notes/**', (r) => r.abort());
+    await syl.getByRole('button', { name: 'Start a study set from Flux notes for Kinematics' }).click();
     await expect(page.locator('#ftTitle')).toHaveValue('Physics: A.1 Kinematics');
     await expect(page.locator('#ftSubject')).toHaveValue('Physics');
     await expect(page.locator('#ftUnit')).toHaveValue('physics:A.1');
     // Changing the subject offers that subject's units.
     await page.locator('#ftSubject').fill('Economics');
     await expect(page.locator('#ftUnit option[value="economics:2.5"]')).toHaveText('2.5 Elasticity of demand');
+  });
+
+  test('IB syllabus: "Start with notes" makes a set from Flux starter notes and opens its guide', async ({ page }) => {
+    await page.goto('/teacher.html');
+    const syl = page.locator('.ft-syllabus');
+    await page.locator('#ftSylSubject').selectOption('physics');
+    const start = syl.getByRole('button', { name: 'Start a study set from Flux notes for Kinematics' });
+    await expect(start).toHaveText('Start with notes');
+    await start.click();
+    await expect(page).toHaveURL(/#set\/[^/]+\/guide$/);
+    await expect(page.getByRole('heading', { name: 'Study guide' })).toBeVisible();
+    await expect(page.getByText('Displacement', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('Projectile', { exact: true }).first()).toBeVisible();
+    // The set says where its notes came from, and is filed under the unit.
+    await tab(page, 'Notes').click();
+    await expect(page.getByText('Flux starter notes (check them against your class notes)').first()).toBeVisible();
+    await page.goto('/teacher.html');
+    await page.locator('#ftSylSubject').selectOption('physics');
+    await expect(syl.locator('.ft-syl-unit', { hasText: 'Kinematics' }).getByRole('link', { name: 'Open set' })).toBeVisible();
   });
 
   test('IB practice and mock exams stay hidden while paused', async ({ page }) => {
