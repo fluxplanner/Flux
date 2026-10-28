@@ -210,7 +210,41 @@
       sec('Optional themes', [['OT', 'Knowledge and technology'], ['OT', 'Knowledge and language'], ['OT', 'Knowledge and politics'], ['OT', 'Knowledge and religion'], ['OT', 'Knowledge and Indigenous societies']]),
       sec('Areas of knowledge', [['AOK', 'History'], ['AOK', 'The human sciences'], ['AOK', 'The natural sciences'], ['AOK', 'Mathematics'], ['AOK', 'The arts']]),
       sec('Assessment', [['EX', 'TOK exhibition'], ['ES', 'TOK essay on a prescribed title']])) },
+
+    /* ── MYP ──────────────────────────────────────────────────────────────
+       The MYP prescribes no content units: schools write their own. What it
+       does prescribe is the same for every school — the four assessment
+       criteria of each subject group, the key concepts named for it, and the
+       six global contexts — so that is what is listed, with the usual content
+       strands where a subject guide names them. */
+    myp('myp-langlit', 'MYP Language and Literature', ['language and literature', 'myp english'], ['Analysing', 'Organizing', 'Producing text', 'Using language'], ['Communication', 'Connections', 'Creativity', 'Perspective'], [
+      ['C', 'Reading and analysing fiction'], ['C', 'Poetry'], ['C', 'Drama'], ['C', 'Non-fiction and media texts'], ['C', 'Writing for purpose and audience']]),
+    myp('myp-langacq', 'MYP Language Acquisition', ['language acquisition', 'myp french', 'myp spanish'], ['Listening', 'Reading', 'Speaking', 'Writing'], ['Communication', 'Connections', 'Creativity', 'Culture'], [
+      ['C', 'Personal identity and daily routine'], ['C', 'School and education'], ['C', 'Family and relationships'], ['C', 'Food, health and well-being'], ['C', 'Travel and places'], ['C', 'Environment and global issues']]),
+    myp('myp-ins', 'MYP Individuals and Societies', ['individuals and societies', 'myp humanities', 'i&s'], ['Knowing and understanding', 'Investigating', 'Communicating', 'Thinking critically'], ['Change', 'Global interactions', 'Systems', 'Time, place and space'], [
+      ['C', 'Historical sources and evidence'], ['C', 'Maps, places and environments'], ['C', 'Economic systems and choices'], ['C', 'Government and citizenship'], ['C', 'Migration and population'], ['C', 'Conflict and cooperation']]),
+    myp('myp-sciences', 'MYP Sciences', ['myp science', 'integrated sciences'], ['Knowing and understanding', 'Inquiring and designing', 'Processing and evaluating', 'Reflecting on the impacts of science'], ['Change', 'Relationships', 'Systems'], [
+      ['C', 'Cells and living things'], ['C', 'Genetics and inheritance'], ['C', 'Ecosystems'], ['C', 'Particles and the periodic table'], ['C', 'Chemical reactions'], ['C', 'Acids and bases'], ['C', 'Forces and motion'], ['C', 'Energy'], ['C', 'Electricity'], ['C', 'Waves, light and sound']]),
+    myp('myp-maths', 'MYP Mathematics', ['myp math', 'myp maths'], ['Knowing and understanding', 'Investigating patterns', 'Communicating', 'Applying mathematics in real-life contexts'], ['Form', 'Logic', 'Relationships'], [
+      ['C', 'Number'], ['C', 'Algebra'], ['C', 'Geometry and trigonometry'], ['C', 'Statistics and probability']]),
+    myp('myp-arts', 'MYP Arts', ['myp art', 'myp music', 'myp drama'], ['Investigating', 'Developing', 'Creating or performing', 'Evaluating'], ['Aesthetics', 'Change', 'Communication', 'Identity'], []),
+    myp('myp-phe', 'MYP Physical and Health Education', ['phe', 'pe'], ['Knowing and understanding', 'Planning for performance', 'Applying and performing', 'Reflecting and improving performance'], ['Change', 'Communication', 'Relationships'], [
+      ['C', 'Fitness and training principles'], ['C', 'Health and nutrition'], ['C', 'Skills and tactics']]),
+    myp('myp-design', 'MYP Design', ['design', 'myp design'], ['Inquiring and analysing', 'Developing ideas', 'Creating the solution', 'Evaluating'], ['Communication', 'Communities', 'Development', 'Systems'], [
+      ['C', 'The design cycle']]),
+    { id: 'myp-pp', name: 'MYP Personal Project', group: 'MYP', programme: 'MYP', aliases: ['personal project', 'pp'], units: units(
+      sec('Assessment criteria', [['A', 'Criterion A: Planning'], ['B', 'Criterion B: Applying skills'], ['C', 'Criterion C: Reflecting']]),
+      sec('Process', [['P', 'Choosing a learning goal and product'], ['P', 'The process journal'], ['P', 'The final report']])) },
   ];
+
+  function myp(id, name, aliases, criteria, concepts, content) {
+    var gc = ['Identities and relationships', 'Orientation in space and time', 'Personal and cultural expression', 'Scientific and technical innovation', 'Globalization and sustainability', 'Fairness and development'];
+    return { id: id, name: name, group: 'MYP', programme: 'MYP', aliases: aliases, units: units(
+      sec('Assessment criteria', criteria.map(function (c, i) { return ['ABCD'[i], 'Criterion ' + 'ABCD'[i] + ': ' + c]; })),
+      sec('Key concepts', concepts.map(function (c) { return ['KC', c]; })),
+      sec('Global contexts', gc.map(function (c) { return ['GC', c]; })),
+      content.length ? sec('Content', content) : []) };
+  }
 
   function langB() {
     return units(
