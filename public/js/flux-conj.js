@@ -76,7 +76,7 @@
      present subjunctive is built from it (tengo → tenga, tengamos). */
   var ES_YO = {
     tener: 'tengo', venir: 'vengo', poner: 'pongo', salir: 'salgo', hacer: 'hago', decir: 'digo', traer: 'traigo',
-    caer: 'caigo', valer: 'valgo', caber: 'quepo', saber: 'sé', asir: 'asgo', yacer: 'yazgo',
+    caer: 'caigo', raer: 'raigo', valer: 'valgo', caber: 'quepo', saber: 'sé', asir: 'asgo', yacer: 'yazgo',
   };
 
   /* -iar and -uar verbs whose i or u is stressed in the boot (envío,
@@ -171,11 +171,20 @@
     inquirir: { present: 'inquiero inquieres inquiere inquirimos inquirís inquieren',
       subjPresent: 'inquiera inquieras inquiera inquiramos inquiráis inquieran', tu: 'inquiere' },
     jugar: { present: 'juego juegas juega jugamos jugáis juegan', subjPresent: 'juegue juegues juegue juguemos juguéis jueguen', tu: 'juega' },
+    erguir: { present: 'yergo yergues yergue erguimos erguís yerguen', preterite: 'erguí erguiste irguió erguimos erguisteis irguieron',
+      subjPresent: 'yerga yergas yerga irgamos irgáis yergan', ger: 'irguiendo', tu: 'yergue' },
+    argüir: { present: 'arguyo arguyes arguye argüimos argüís arguyen', preterite: 'argüí argüiste arguyó argüimos argüisteis arguyeron',
+      subjPresent: 'arguya arguyas arguya arguyamos arguyáis arguyan', ger: 'arguyendo', tu: 'arguye' },
+    podrir: { present: 'pudro pudres pudre pudrimos pudrís pudren', preterite: 'pudrí pudriste pudrió pudrimos pudristeis pudrieron',
+      imperfect: 'pudría pudrías pudría pudríamos pudríais pudrían', subjPresent: 'pudra pudras pudra pudramos pudráis pudran',
+      ger: 'pudriendo', tu: 'pudre', pp: 'podrido' },
     rehacer: { preterite: 'rehíce rehiciste rehízo rehicimos rehicisteis rehicieron' },
   };
   var ES_ALTS = {
     reír: { preterite: [[], [], ['rio'], [], [], []], subjPresent: [[], [], [], [], ['riais'], []] },
     freír: { preterite: [[], [], ['frio'], [], [], []], subjPresent: [[], [], [], [], ['friais'], []] },
+    erguir: { present: [['irgo'], ['irgues'], ['irgue'], [], [], ['irguen']], subjPresent: [['irga'], ['irgas'], ['irga'], [], [], ['irgan']] },
+    raer: { present: [['rayo'], [], [], [], [], []] },
   };
 
   /* ── Spanish helpers ───────────────────────────────────────────────── */
@@ -319,8 +328,13 @@
     var stem = v.slice(0, -2);
     var full = !plain && ES_FULL[v] || {};
     var kind = plain ? null : esStemKind(v);
-    var orth = esOrth(v);
-    var uir = esIsUir(v);
+    // The plain pattern skips spelling rules too, so busqué, cojo, leyó and huyo
+    // are marked like any other form that breaks the pattern.
+    var orth = plain ? null : esOrth(v);
+    var uir = !plain && esIsUir(v);
+    var vowel = !plain && esIsVowel(v);
+    var swallow = !plain && esSwallow(v);
+    var front = plain ? function (x) { return x; } : esFront;
     var t = {};
 
     // Present.
@@ -347,12 +361,12 @@
       var third = plain ? stem : esWeak(v, stem);
       t.preterite = ES_PRET_END[end].map(function (e, i) {
         var s = (i === 2 || i === 5) ? third : stem;
-        if (i === 0 && end === 'ar') return esFront(s, v) + e;
+        if (i === 0 && end === 'ar') return front(s, v) + e;
         if ((i === 2 || i === 5) && end !== 'ar') {
-          if (uir || esIsVowel(v)) return s + (i === 2 ? 'yó' : 'yeron');
-          if (esSwallow(v)) return s + (i === 2 ? 'ó' : 'eron');
+          if (uir || vowel) return s + (i === 2 ? 'yó' : 'yeron');
+          if (swallow) return s + (i === 2 ? 'ó' : 'eron');
         }
-        if (esIsVowel(v) && end !== 'ar') return s + e.replace(/^i/, 'í');
+        if (vowel && end !== 'ar') return s + e.replace(/^i/, 'í');
         return s + e;
       });
     }
@@ -378,7 +392,7 @@
       else {
         s = inBoot ? boot : (plain ? stem : esWeak(v, stem));
         if (uir) s += 'y';
-        s = end === 'ar' ? esFront(s, v) : esBack(s, orth);
+        s = end === 'ar' ? front(s, v) : esBack(s, orth);
       }
       return s + e;
     });
@@ -395,8 +409,8 @@
     if (!plain && (v === 'poder')) gstem = 'pud';
     var ger;
     if (end === 'ar') ger = stem + 'ando';
-    else if (uir || esIsVowel(v)) ger = gstem + 'yendo';
-    else if (esSwallow(v)) ger = gstem + 'endo';
+    else if (uir || vowel) ger = gstem + 'yendo';
+    else if (swallow) ger = gstem + 'endo';
     else ger = gstem + 'iendo';
     var pp = !plain && ES_PP[v] || (end === 'ar' ? stem + 'ado' : stem + (/[aeo]$/.test(stem) ? 'ído' : 'ido'));
 
@@ -755,7 +769,9 @@
     if (/dre$/.test(v)) { var dr = v.slice(0, -2); return M([dr + 's', dr + 's', dr, dr + 'ons', dr + 'ez', dr + 'ent'], { ps: ['i', dr], fut: dr + 'r', pp: dr + 'u' }); }
     if (/vivre$/.test(v)) { var vi = v.slice(0, -5); return M([vi + 'vis', vi + 'vis', vi + 'vit', vi + 'vivons', vi + 'vivez', vi + 'vivent'], { ps: ['u', vi + 'véc'], fut: vi + 'vivr', pp: vi + 'vécu' }); }
     if (/suivre$/.test(v)) { var sv = v.slice(0, -6); return M([sv + 'suis', sv + 'suis', sv + 'suit', sv + 'suivons', sv + 'suivez', sv + 'suivent'], { ps: ['i', sv + 'suiv'], fut: sv + 'suivr', pp: sv + 'suivi' }); }
-    if (/^(re|)naître$/.test(v)) { var na = v.slice(0, -6); return M([na + 'nais', na + 'nais', na + 'naît', na + 'naissons', na + 'naissez', na + 'naissent'], { ps: ['i', na + 'naqu'], fut: na + 'naîtr', pp: na + 'né', alts: { present: [[], [], [na + 'nait'], [], [], []] } }); }
+    if (/^(re|)naître$/.test(v)) { var na = v.slice(0, -6); return M([na + 'nais', na + 'nais', na + 'naît', na + 'naissons', na + 'naissez', na + 'naissent'], { ps: ['i', na + 'naqu'], fut: na + 'naîtr', pp: na ? null : 'né', alts: { present: [[], [], [na + 'nait'], [], [], []] } }); }
+    // paître: no passé simple and no participle, so no compound tenses.
+    if (v === 'paître') return M(['pais', 'pais', 'paît', 'paissons', 'paissez', 'paissent'], { ps: null, fut: 'paîtr', pp: null, alts: { present: [[], [], ['pait'], [], [], []] } });
     if ((m = v.match(/^(.*)aître$/))) { var ai = m[1] + 'a'; return M([ai + 'is', ai + 'is', ai + 'ît', ai + 'issons', ai + 'issez', ai + 'issent'], { ps: ['u', m[1]], fut: ai + 'îtr', pp: m[1] + 'u', alts: { present: [[], [], [ai + 'it'], [], [], []] } }); }
     if ((m = v.match(/^(.*)croître$/))) { var cx = m[1]; var bare = !cx; return M([cx + (bare ? 'croîs' : 'crois'), cx + (bare ? 'croîs' : 'crois'), cx + 'croît', cx + 'croissons', cx + 'croissez', cx + 'croissent'], { ps: ['u', cx + (bare ? 'cr' : 'cr')], fut: cx + 'croîtr', pp: bare ? 'crû' : cx + 'cru', psCirc: bare }); }
     if ((m = v.match(/^(.*)clure$/))) { var cl = m[1] + 'clu'; return M([cl + 's', cl + 's', cl + 't', cl + 'ons', cl + 'ez', cl + 'ent'], { ps: ['u', m[1] + 'cl'], fut: cl + 'r', pp: /inclure|occlure/.test(v) ? cl + 's' : cl }); }
@@ -905,6 +921,10 @@
     if (mdl.impersonal) ['passeCompose', 'pluperfect', 'pastAnterior', 'futurePerfect', 'conditionalPerfect', 'subjPast', 'subjPluperfect'].forEach(function (k) {
       t[k] = t[k].map(function (f, i) { return i === 2 ? aux[k === 'passeCompose' ? 'present' : k === 'pluperfect' ? 'imperfect' : k === 'pastAnterior' ? 'passeSimple' : k === 'futurePerfect' ? 'future' : k === 'conditionalPerfect' ? 'conditional' : k === 'subjPast' ? 'subjPresent' : 'subjImperfect'][2] + ' ' + pp : null; });
     });
+
+    // No participle (renaître, paître): no compound tenses either.
+    if (!pp) ['passeCompose', 'pluperfect', 'pastAnterior', 'futurePerfect', 'conditionalPerfect', 'subjPast', 'subjPluperfect', 'imperativePast']
+      .forEach(function (k) { t[k] = [null, null, null, null, null, null]; });
 
     var inf = v;
     var ppr = core.ppr;
