@@ -2935,7 +2935,7 @@
       <div class="nt-more-body">
     <div class="irow modal-labeled-row" style="margin-bottom:8px">
       <div style="flex:0 1 120px"><label class="modal-micro-label" for="taskTime">Due time</label><input type="time" id="taskTime" style="width:100%;margin:0"></div>
-      <div style="flex:0 1 140px"><label class="modal-micro-label" for="taskEstTime">Est. time (min)</label><input type="number" id="taskEstTime" placeholder="Minutes" min="5" max="480" style="width:100%;margin:0"></div>
+      <div style="display:none"><label class="modal-micro-label" for="taskEstTime">Est. time (min)</label><input type="number" id="taskEstTime" placeholder="Minutes" min="5" max="480" style="width:100%;margin:0"></div>
       <div style="flex:1;min-width:120px"><label class="modal-micro-label" for="taskDifficulty">Difficulty (1–5)</label><input type="number" id="taskDifficulty" placeholder="1–5" min="1" max="5" style="width:100%;margin:0"></div>
     </div>
     <div class="mrow"><label>Notes</label><textarea id="taskNotes" placeholder="Notes (optional)..." style="min-height:52px;margin:0"></textarea></div>
@@ -2983,7 +2983,7 @@
       <div class="nt-more-body">
     <div class="mrow"><label>Notes</label><textarea id="editNotes" style="min-height:60px"></textarea></div>
     <div class="nt-pair">
-      <div class="mrow"><label>Est. Minutes</label><input type="number" id="editEstTime" min="5" max="480"></div>
+      <div class="mrow" style="display:none"><label>Est. Minutes</label><input type="number" id="editEstTime" min="5" max="480"></div>
       <div class="mrow"><label>Difficulty (1–5)</label><input type="number" id="editDifficulty" min="1" max="5"></div>
     </div>
     <div class="mrow"><label>Waiting on</label><input type="text" id="editWaitingOn" placeholder="Optional" style="margin:0"></div>
@@ -3022,7 +3022,7 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c391de9f.js"></script>
-<script defer src="public/bundles/flux-core.3ea222b2.js"></script>
+<script defer src="public/bundles/flux-core.938fa113.js"></script>
 <script defer src="public/bundles/flux-features.fd883eff.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
