@@ -57,3 +57,29 @@ test('the set square has three edges, 45° or 30°–60°', () => {
   assert.equal(I.svg('square', { ...sq, on: false }), '', 'put away: nothing drawn');
   assert.match(I.svg('square', sq), /data-inst="square"/);
 });
+
+test('the ruler and protractor can be resized, and the ruler keeps its scale', () => {
+  const [[a, b]] = I.edges('ruler', { on: true, x: 0, y: 0, rot: 0, len: 25 });
+  close(b[0] - a[0], 25 * 40 + 28, '25 cm ruler');
+  assert.equal(I.size('ruler', { len: 99 }), 30, 'no longer than 30 cm');
+  assert.equal(I.size('ruler', { len: 7.4 }), 7, 'whole centimetres');
+  assert.equal(I.size('ruler', {}), 15, 'old drawings keep 15 cm');
+  assert.match(I.svg('ruler', { on: true, x: 0, y: 0, rot: 0, len: 25 }), />25</, 'numbered to its end');
+  const [[p, q]] = I.edges('protractor', { on: true, x: 0, y: 0, rot: 0, rcm: 8 });
+  close(q[0] - p[0], 2 * (8 * 40 + 12), '8 cm radius');
+  assert.equal(I.size('protractor', {}), 5.5, 'old drawings keep their size');
+  assert.equal(I.size('protractor', { rcm: 1 }), 3, 'no smaller than 3 cm');
+  // The degrees read the same at any size.
+  const r = I.protractorLine({ on: true, x: 0, y: 0, rot: 0, rcm: 9 }, [0, 0], [100, -100]);
+  assert.equal(r.deg, 45);
+});
+
+test('turning snaps level at 0° when close, and nowhere else', () => {
+  assert.equal(I.snapRot(3), 0);
+  assert.equal(I.snapRot(357), 0);
+  assert.equal(I.snapRot(-2), 0);
+  assert.equal(I.snapRot(360), 0);
+  assert.equal(I.snapRot(5), 5);
+  assert.equal(I.snapRot(90), 90);
+  assert.equal(I.snapRot(-30), 330);
+});
