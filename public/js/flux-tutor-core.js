@@ -38,6 +38,7 @@
   const LIMITS = {
     title: 160,
     subject: 100,
+    unit: 80,
     sourceName: 180,
     sourceText: 200000,
     sources: 20,
@@ -2567,6 +2568,8 @@
       id: uid('set-'),
       title: str(o.title, LIMITS.title),
       subject: str(o.subject, LIMITS.subject),
+      // An IB syllabus unit id (flux-ib-syllabus.js), e.g. 'biology:A1.1'; '' when not filed.
+      unit: str(o.unit, LIMITS.unit),
       examDate: isYmd(o.examDate) ? o.examDate : '',
       link: safeUrl(o.link),
       createdAt: now,
@@ -2847,6 +2850,7 @@
     out.id = safeKey(raw.id) ? raw.id : out.id;
     out.title = str(raw.title, LIMITS.title);
     out.subject = str(raw.subject, LIMITS.subject);
+    out.unit = str(raw.unit, LIMITS.unit);
     out.examDate = isYmd(raw.examDate) ? raw.examDate : '';
     out.link = safeUrl(raw.link || raw.url);
     out.createdAt = isoOr(raw.createdAt, now);
@@ -2926,6 +2930,7 @@
       id: s.id || '',
       title: s.title || '',
       subject: s.subject || '',
+      unit: s.unit || '',
       examDate: s.examDate || '',
       daysLeft: isYmd(s.examDate) ? daysBetween(day, s.examDate) : null,
       createdAt: s.createdAt || '',

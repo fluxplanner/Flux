@@ -52,9 +52,12 @@
   }
 
   const PROMISE = 'Flux Tutor works only from your notes — it doesn\'t make things up.';
-  /* IB-style practice, mock exams and predicted grades are paused until
-     Azfer switches them back on. Flip to true to bring all of it back. */
-  const DP_EXAMS = false;
+  /* IB-style practice, mock exams and predicted grades. Paused on 24 Oct,
+     switched back on with the IB syllabus. False hides all of it again. */
+  const DP_EXAMS = true;
+  /** The IB DP syllabus (flux-ib-syllabus.js); null if it failed to load. */
+  const IB = window.FluxIbSyllabus || null;
+  const unitLabel = (id) => (IB && id ? IB.label(IB.unit(id)) : '');
   const TABS = [
     { id: 'notes', label: 'Notes', icon: 'notes' },
     { id: 'guide', label: 'Study guide', icon: 'guide' },
@@ -189,6 +192,8 @@
     libError: '',
     storeError: null,
     ui: freshUi(),
+    sylSubject: '',      // the subject the library's IB syllabus shows
+    pendingUnit: '',     // a syllabus unit "New set" was pressed for
   };
   function freshUi() {
     return { editing: null, learnPick: false, learnNote: '', test: null, exam: null, cards: null, ib: null, askQuery: '', planNote: '' };
@@ -573,7 +578,10 @@
     if (r.view === 'new') {
       await leaveSet();
       if (seq !== routeSeq) return;
-      const set = T.newSet({});
+      const u = IB && app.pendingUnit ? IB.unit(app.pendingUnit) : null;
+      const subj = u ? IB.subjects().find((s) => s.id === app.pendingUnit.split(':')[0]) : null;
+      app.pendingUnit = '';
+      const set = T.newSet(u ? { title: subj.name + ': ' + unitLabel(u.id), subject: subj.name, unit: u.id } : {});
       set.sources = [T.newSource('Your notes', 'Notes', '')];
       openSet(set, true);
       app.tab = 'notes';
@@ -725,6 +733,7 @@
       + '</div></div>'
       + (app.notice ? '<p class="ft-notice" role="status">' + icon('info', 17) + '<span>' + esc(app.notice) + '</span></p>' : '')
       + progressHtml(sets)
+      + syllabusHtml(sets)
       + '<p id="ftLibAlert" class="ft-alert" role="alert"' + (app.libError ? '' : ' hidden') + '>' + esc(app.libError) + '</p>'
       + (sets.length ? '<ul class="ft-sets" aria-label="Study sets">' + sets.map(setCard).join('') + '</ul>' : emptyLibrary())
       + (app.bin.length ? binHtml() : '')
@@ -766,6 +775,47 @@
       + '</section>';
   }
 
+  /** Every unit of one IB subject, with the sets filed under each: what is covered and what is left. */
+  function syllabusHtml(sets) {
+    if (!IB) return '';
+    const subjects = IB.subjects();
+    let sid = app.sylSubject;
+    if (!subjects.some((s) => s.id === sid)) {
+      const mine = sets.map((m) => IB.find(m.subject)).find(Boolean);
+      sid = mine ? mine.id : subjects[0].id;
+    }
+    const subj = subjects.find((s) => s.id === sid);
+    const filed = new Map();
+    sets.forEach((m) => { if (m.unit) (filed.get(m.unit) || filed.set(m.unit, []).get(m.unit)).push(m); });
+    const covered = subj.units.filter((u) => filed.has(u.id)).length;
+    const groups = [];
+    subj.units.forEach((u) => {
+      let g = groups[groups.length - 1];
+      if (!g || g.name !== u.section) groups.push(g = { name: u.section, units: [] });
+      g.units.push(u);
+    });
+    const byGroup = {};
+    subjects.forEach((s) => { (byGroup[s.group] || (byGroup[s.group] = [])).push(s); });
+    return '<section class="ft-syllabus" aria-labelledby="ftSylTitle"><div class="ft-syl-head"><div>'
+      + '<h2 class="ft-h2" id="ftSylTitle">IB syllabus</h2>'
+      + '<p class="ft-help">Every unit of the current DP guide. File a study set under a unit to see what you have covered; ' + covered + ' of ' + subj.units.length + ' ' + esc(subj.name) + ' units have one.</p></div>'
+      + '<div class="ft-field"><label class="ft-label" for="ftSylSubject">Subject</label><select class="ft-select" id="ftSylSubject">'
+      + Object.keys(byGroup).map((g) => '<optgroup label="' + esc(g) + '">' + byGroup[g].map((s) => '<option value="' + esc(s.id) + '"' + (s.id === sid ? ' selected' : '') + '>' + esc(s.name) + '</option>').join('') + '</optgroup>').join('')
+      + '</select></div></div>'
+      + '<div class="ft-meter" role="progressbar" aria-label="Units with a study set" aria-valuemin="0" aria-valuemax="' + subj.units.length + '" aria-valuenow="' + covered + '"><span style="width:' + Math.round(covered / subj.units.length * 100) + '%"></span></div>'
+      + groups.map((g) => '<h3 class="ft-h3 ft-syl-sec">' + esc(g.name) + '</h3><ul class="ft-syl-units">' + g.units.map((u) => {
+        const mine = filed.get(u.id) || [];
+        return '<li class="ft-syl-unit' + (mine.length ? ' is-covered' : '') + '"><span class="ft-syl-name">'
+          + (/\d/.test(u.code) && !/^\d+$/.test(u.code) ? '<span class="ft-syl-code">' + esc(u.code) + '</span> ' : '') + esc(u.title)
+          + (u.hl ? ' <span class="ft-chip ft-chip--hl" title="Higher level only">HL</span>' : '') + '</span>'
+          + (mine.length
+            ? '<a class="ft-mini" href="' + esc(setHash(mine[0].id, '')) + '">' + (mine.length > 1 ? plural(mine.length, 'set') : 'Open set') + '</a>'
+            : '<button type="button" class="ft-mini" data-act="syl-new" data-unit="' + esc(u.id) + '" aria-label="New study set for ' + esc(u.title) + '">New set</button>')
+          + '</li>';
+      }).join('') + '</ul>').join('')
+      + '</section>';
+  }
+
   function emptyLibrary() {
     return '<div class="ft-empty"><h2 class="ft-h2">Start with your notes</h2><ol class="ft-steps">'
       + '<li><strong>Add your notes.</strong> Paste them, or add a PDF, a Word document or a photo of your notes.</li>'
@@ -779,6 +829,7 @@
     const studied = m.studiedAt ? 'Last studied ' + ago(m.studiedAt) : 'Not studied yet';
     const exam = examLine(m.daysLeft);
     const chips = (m.subject ? '<span class="ft-chip">' + esc(m.subject) + '</span>' : '')
+      + (unitLabel(m.unit) ? '<span class="ft-chip ft-chip--accent">' + esc(unitLabel(m.unit)) + '</span>' : '')
       + (m.sample ? '<span class="ft-chip ft-chip--accent">Sample</span>' : '')
       + (!m.hasGuide ? '<span class="ft-chip">' + (m.words ? 'Guide not built yet' : 'No notes yet') + '</span>' : '');
     const num = (v) => Math.max(0, Math.round(Number(v) || 0));
@@ -916,6 +967,7 @@
   function subline(set) {
     const bits = [];
     if (set.subject) bits.push(esc(set.subject));
+    if (unitLabel(set.unit)) bits.push(esc(unitLabel(set.unit)));
     if (set.examDate) bits.push(esc(examLine(T.daysBetween(T.ymd(), set.examDate))) + ' (' + esc(fmtDay(set.examDate)) + ')');
     return '<p class="ft-set-sub" id="ftSetSub"' + (bits.length ? '' : ' hidden') + '>' + bits.join(' · ') + '</p>';
   }
@@ -984,6 +1036,21 @@
 
   /* ── Notes (and creating a set) ─────────────────────────────────────── */
 
+  /** The unit choices for the set's subject; the filed unit stays listed even if the subject changed. */
+  function unitOptions(set) {
+    const subj = IB && IB.find(set.subject);
+    const units = subj ? subj.units : [];
+    const keep = set.unit && !units.some((u) => u.id === set.unit) ? IB.unit(set.unit) : null;
+    let last = '';
+    return '<option value="">' + (subj ? 'Not filed under a unit' : 'Type an IB subject first') + '</option>'
+      + (keep ? '<option value="' + esc(keep.id) + '" selected>' + esc(unitLabel(keep.id)) + '</option>' : '')
+      + units.map((u) => {
+        const head = u.section !== last ? (last ? '</optgroup>' : '') + '<optgroup label="' + esc(u.section) + '">' : '';
+        last = u.section;
+        return head + '<option value="' + esc(u.id) + '"' + (u.id === set.unit ? ' selected' : '') + '>' + esc(unitLabel(u.id)) + (u.hl ? ' (HL)' : '') + '</option>';
+      }).join('') + (last ? '</optgroup>' : '');
+  }
+
   function notesScreen() {
     const o = app.open;
     const set = o.set;
@@ -996,7 +1063,10 @@
       + '<div class="ft-field ft-field--wide"><label class="ft-label" for="ftTitle">Title</label>'
       + '<input class="ft-input" id="ftTitle" data-field="title" maxlength="' + T.LIMITS.title + '" value="' + esc(set.title) + '" placeholder="e.g. Biology unit 3: cells" autocomplete="off"></div>'
       + '<div class="ft-field"><label class="ft-label" for="ftSubject">Subject <span class="ft-optional">(optional)</span></label>'
-      + '<input class="ft-input" id="ftSubject" data-field="subject" maxlength="' + T.LIMITS.subject + '" value="' + esc(set.subject) + '" placeholder="e.g. Biology" autocomplete="off"></div>'
+      + '<input class="ft-input" id="ftSubject" data-field="subject" maxlength="' + T.LIMITS.subject + '" value="' + esc(set.subject) + '" placeholder="e.g. Biology" autocomplete="off"' + (IB ? ' list="ftIbSubjects"' : '') + '>'
+      + (IB ? '<datalist id="ftIbSubjects">' + IB.subjects().map((s) => '<option value="' + esc(s.name) + '"></option>').join('') + '</datalist>' : '') + '</div>'
+      + (IB ? '<div class="ft-field"><label class="ft-label" for="ftUnit">IB unit <span class="ft-optional">(optional)</span></label>'
+        + '<select class="ft-select" id="ftUnit" data-field="unit">' + unitOptions(set) + '</select></div>' : '')
       + '<div class="ft-field"><label class="ft-label" for="ftExam">Exam date <span class="ft-optional">(optional)</span></label>'
       + '<input class="ft-input" id="ftExam" type="date" data-field="examDate" value="' + esc(set.examDate) + '"></div>'
       + '</div>'
@@ -1061,7 +1131,15 @@
         const h = document.getElementById('ftSetName');
         if (h) h.textContent = set.title || (o.draft ? 'New study set' : 'Untitled study set');
         document.title = (set.title || 'New study set') + ' · Flux Tutor';
-      } else if (f === 'subject') set.subject = target.value.slice(0, T.LIMITS.subject);
+      } else if (f === 'subject') {
+        set.subject = target.value.slice(0, T.LIMITS.subject);
+        const sel = document.getElementById('ftUnit');
+        if (sel) sel.innerHTML = unitOptions(set);
+      } else if (f === 'unit') {
+        set.unit = target.value.slice(0, T.LIMITS.unit);
+        const sub = document.getElementById('ftSetSub');
+        if (sub) sub.outerHTML = subline(set);
+      }
       else if (f === 'examDate') {
         set.examDate = T.isYmd(target.value) ? target.value : '';
         const sub = document.getElementById('ftSetSub');
@@ -2763,6 +2841,7 @@
     const id = btn.dataset.id;
     switch (act) {
       case 'sample': guarded(createSample); break;
+      case 'syl-new': app.pendingUnit = btn.dataset.unit || ''; location.hash = '#new'; break;
       case 'import': { const f = document.getElementById('ftImportFile'); if (f) f.click(); break; }
       case 'export-all': guarded(libExportAll); break;
       case 'rename': guarded(() => libRename(id)); break;
@@ -2881,6 +2960,7 @@
   });
   root.addEventListener('change', (e) => {
     const t = e.target;
+    if (t.id === 'ftSylSubject') { app.sylSubject = t.value; renderLibrary(); const s = document.getElementById('ftSylSubject'); if (s) s.focus(); return; }
     if (t.dataset && t.dataset.ibAnswer && t.type === 'radio' && app.ui.ib) { app.ui.ib.answers[t.dataset.ibAnswer] = t.value; return; }
     if (t.dataset && t.dataset.exAnswer && t.type === 'radio' && app.ui.exam) { app.ui.exam.answers[t.dataset.exAnswer] = t.value; persistExam(); return; }
     if (t.dataset && t.dataset.exTick && app.ui.exam) {
