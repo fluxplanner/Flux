@@ -528,6 +528,7 @@
     const query = new URLSearchParams(qi >= 0 ? raw.slice(qi + 1) : '');
     const parts = path.split('/');
     if (parts[0] === 'new') return { view: 'new' };
+    if (parts[0] === 'learn') return { view: 'learn', subject: parts[1] || '', skill: parts[2] || '' };
     if (parts[0] === 'set' && parts[1]) {
       let id = '';
       try { id = decodeURIComponent(parts[1]); } catch (_) { id = ''; }
@@ -573,6 +574,16 @@
       if (seq !== routeSeq) return;
       renderLibrary();
       afterRoute('#ftLibTitle');
+      return;
+    }
+    if (r.view === 'learn') {
+      await leaveSet();
+      if (seq !== routeSeq) return;
+      app.view = 'learn';
+      document.title = 'Learn · Flux Tutor';
+      if (window.FluxTeachUI) window.FluxTeachUI.render(root, r);
+      else root.innerHTML = '<p class="ft-alert" role="alert">Lessons did not load. Reload the page.</p>';
+      afterRoute('#ftScreenTitle');
       return;
     }
     if (r.view === 'new') {
@@ -726,6 +737,7 @@
       + '<p class="ft-promise">' + icon('shield', 17) + '<span>' + esc(PROMISE) + '</span></p></div>'
       + '<div class="ft-lib-actions">'
       + '<a class="ft-btn" href="#new">' + icon('plus') + 'New study set</a>'
+      + (window.FluxTeach ? '<a class="ft-btn ft-btn--quiet" href="#learn">' + icon('sparkle') + 'Learn step by step</a>' : '')
       + '<button type="button" class="ft-btn ft-btn--quiet" data-act="sample">' + icon('sparkle') + 'Try it with a sample</button>'
       + '<button type="button" class="ft-btn ft-btn--quiet" data-act="import">' + icon('upload') + 'Import</button>'
       + (sets.length ? '<button type="button" class="ft-btn ft-btn--quiet" data-act="export-all">' + icon('download') + 'Back up all</button>' : '')
@@ -808,12 +820,21 @@
         return '<li class="ft-syl-unit' + (mine.length ? ' is-covered' : '') + '"><span class="ft-syl-name">'
           + (/\d/.test(u.code) && !/^\d+$/.test(u.code) ? '<span class="ft-syl-code">' + esc(u.code) + '</span> ' : '') + esc(u.title)
           + (u.hl ? ' <span class="ft-chip ft-chip--hl" title="Higher level only">HL</span>' : '') + '</span>'
+          + learnLink(u)
           + (mine.length
             ? '<a class="ft-mini" href="' + esc(setHash(mine[0].id, '')) + '">' + (mine.length > 1 ? plural(mine.length, 'set') : 'Open set') + '</a>'
             : '<button type="button" class="ft-mini" data-act="syl-new" data-unit="' + esc(u.id) + '" aria-label="New study set for ' + esc(u.title) + '">New set</button>')
           + '</li>';
       }).join('') + '</ul>').join('')
       + '</section>';
+  }
+
+  /** A Learn link for a syllabus unit that has step-by-step lessons. */
+  function learnLink(u) {
+    const ks = window.FluxTeach ? window.FluxTeach.forUnit(u.id) : [];
+    if (!ks.length) return '';
+    const sid = u.id.split(':')[0];
+    return '<a class="ft-mini ft-mini--learn" href="#learn/' + esc(sid) + (ks.length === 1 ? '/' + esc(ks[0].id) : '') + '" aria-label="Learn ' + esc(u.title) + ' step by step">Learn' + (ks.length > 1 ? ' · ' + ks.length : '') + '</a>';
   }
 
   function emptyLibrary() {
