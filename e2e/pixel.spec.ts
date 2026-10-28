@@ -324,6 +324,35 @@ test.describe('Flux Pixel: ruler, protractor, set square and compass', () => {
     expect(await items(page)).toHaveLength(0);
   });
 
+  test('the ruler and protractor can be resized, and a turn near level snaps to 0°', async ({ page }) => {
+    await newPage(page);
+    await page.locator('[data-inst-toggle="ruler"]').click();
+    await page.locator('[data-inst-toggle="protractor"]').click();
+    await page.locator('[data-tool="select"]').click();
+    const doc = () => page.evaluate(() => JSON.parse(localStorage.getItem('flux_pixel_docs_v1')!).docs[0].inst);
+    await page.locator('[data-inst-size="ruler"]').fill('25');
+    await page.locator('[data-inst-size="protractor"]').fill('8');
+    await expect(page.locator('[data-inst-size-out="ruler"]')).toHaveText('25 cm');
+    await expect(page.locator('#pxInst [data-inst="ruler"] text', { hasText: /^25$/ })).toHaveCount(1);
+    await expect.poll(async () => (await doc())?.ruler?.len).toBe(25);
+    expect((await doc()).protractor.rcm).toBe(8);
+    // A small turn is put back level; a bigger one stays.
+    const h = (await page.locator('#pxInst [data-inst="ruler"] [data-inst-rot]').boundingBox())!;
+    const hx = h.x + h.width / 2, hy = h.y + h.height / 2;
+    const turn = async (dy: number) => {
+      await page.mouse.move(hx, hy);
+      await page.mouse.down();
+      await page.mouse.move(hx, hy + dy, { steps: 6 });
+      await page.mouse.up();
+    };
+    await turn(12);
+    await expect.poll(async () => (await doc())?.ruler?.rot).toBe(0);
+    await turn(120);
+    await expect.poll(async () => (await doc())?.ruler?.rot).toBeGreaterThan(4);
+    await page.reload();
+    await expect(page.locator('[data-inst-size="ruler"]')).toHaveValue('25');
+  });
+
   test('the compass draws a circle of a whole number of millimetres, and an arc round the same point', async ({ page }) => {
     const box = await newPage(page);
     await page.keyboard.press('k');

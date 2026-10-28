@@ -2,7 +2,8 @@
    FLUX PIXEL · INSTRUMENTS  ·  flux-pixel-instruments.js
    A ruler, a protractor and a set square that sit on the page the way the
    real ones sit on paper: drag them, turn them by their round handle, and
-   draw along them. They are tools, not drawing: they are never saved into
+   draw along them. The ruler and protractor can be made bigger or smaller,
+   and a turn snaps level at 0°. They are tools, not drawing: they are never saved into
    the picture or exported.
 
    PURE: no DOM. Pixel asks for an instrument's markup, the edges a pen or
@@ -16,6 +17,27 @@
   var CM = 40, MM = CM / 10;
   var RULER_CM = 15, RULER_H = 66;
   var PRO_R = 220;
+  // How big each one can be made. The ruler grows by whole centimetres so
+  // its scale stays true; the protractor's radius changes, its degrees do not.
+  var SIZE = {
+    ruler: { key: 'len', min: 5, max: 30, step: 1, def: RULER_CM, label: 'Ruler length', unit: 'cm' },
+    protractor: { key: 'rcm', min: 3, max: 10, step: 0.5, def: PRO_R / CM, label: 'Protractor size', unit: 'cm' },
+  };
+  /** An instrument's size in its SIZE units (cm), within its limits. */
+  function size(name, inst) {
+    var z = SIZE[name];
+    if (!z) return null;
+    var v = Number(inst && inst[z.key]);
+    return isFinite(v) && v > 0 ? Math.max(z.min, Math.min(z.max, Math.round(v / z.step) * z.step)) : z.def;
+  }
+  function rulerCm(inst) { return size('ruler', inst); }
+  function proR(inst) { return size('protractor', inst) * CM; }
+  /** A turn snaps to 0° (level) when it comes within 4° of it, so it is easy to put straight again. */
+  var LEVEL_SNAP = 4;
+  function snapRot(deg) {
+    var d = ((deg % 360) + 360) % 360;
+    return d <= LEVEL_SNAP || d >= 360 - LEVEL_SNAP ? 0 : d;
+  }
   var SQ_LEG = 320;
   var DEG = Math.PI / 180;
   var INK = '#0f172a', BODY = 'rgba(219,234,254,.55)', EDGE = '#2563eb';
@@ -49,19 +71,19 @@
       + '<path d="M' + r1(x - r * 0.45) + ' ' + r1(y + r * 0.1) + 'a' + r1(r * 0.5) + ' ' + r1(r * 0.5) + ' 0 1 1 ' + r1(r * 0.45) + ' ' + r1(r * 0.42) + '" fill="none" stroke="' + EDGE + '" stroke-width="' + r1(2 * k) + '" stroke-linecap="round"/></g>';
   }
   function ruler(inst, k) {
-    var L = RULER_CM * CM, out = '<rect x="-14" y="0" width="' + (L + 28) + '" height="' + RULER_H + '" rx="6" fill="' + BODY + '" stroke="' + EDGE + '" stroke-width="' + r1(1.5 * k) + '"/>';
+    var n = rulerCm(inst), L = n * CM, out = '<rect x="-14" y="0" width="' + (L + 28) + '" height="' + RULER_H + '" rx="6" fill="' + BODY + '" stroke="' + EDGE + '" stroke-width="' + r1(1.5 * k) + '"/>';
     var d = '';
-    for (var i = 0; i <= RULER_CM * 10; i++) {
+    for (var i = 0; i <= n * 10; i++) {
       var x = i * MM, len = i % 10 === 0 ? 22 : i % 5 === 0 ? 15 : 9;
       d += 'M' + r1(x) + ' 0V' + len;
     }
     out += '<path d="' + d + '" stroke="' + INK + '" stroke-width="1.1"/>';
-    for (var c = 0; c <= RULER_CM; c++) out += text(c * CM, 38, String(c), 13);
+    for (var c = 0; c <= n; c++) out += text(c * CM, 38, String(c), 13);
     out += text(L - 4, 58, 'cm', 11, 'end');
     return out + handle(L + 40, RULER_H / 2, k);
   }
   function protractor(inst, k) {
-    var R = PRO_R, out = '<path d="M' + (-R - 12) + ' 0A' + (R + 12) + ' ' + (R + 12) + ' 0 0 1 ' + (R + 12) + ' 0Z" fill="' + BODY + '" stroke="' + EDGE + '" stroke-width="' + r1(1.5 * k) + '"/>';
+    var R = proR(inst), out = '<path d="M' + (-R - 12) + ' 0A' + (R + 12) + ' ' + (R + 12) + ' 0 0 1 ' + (R + 12) + ' 0Z" fill="' + BODY + '" stroke="' + EDGE + '" stroke-width="' + r1(1.5 * k) + '"/>';
     var d = '';
     for (var a = 0; a <= 180; a++) {
       var len = a % 10 === 0 ? 20 : a % 5 === 0 ? 13 : 7, c = Math.cos(a * DEG), s = -Math.sin(a * DEG);
@@ -101,8 +123,8 @@
   function edges(name, inst) {
     if (!inst || !inst.on) return [];
     var P = function (p) { return toPage(inst, p); };
-    if (name === 'ruler') return [[P([-14, 0]), P([RULER_CM * CM + 14, 0])]];
-    if (name === 'protractor') return [[P([-PRO_R - 12, 0]), P([PRO_R + 12, 0])]];
+    if (name === 'ruler') return [[P([-14, 0]), P([rulerCm(inst) * CM + 14, 0])]];
+    if (name === 'protractor') { var R = proR(inst); return [[P([-R - 12, 0]), P([R + 12, 0])]]; }
     if (name === 'square') { var g = squareLegs(inst); return [[P([0, 0]), P([g[0], 0])], [P([0, 0]), P([0, -g[1]])], [P([g[0], 0]), P([0, -g[1]])]]; }
     return [];
   }
@@ -144,6 +166,7 @@
   root.FluxPixelInstruments = {
     CM: CM, defaults: defaults, svg: svg, edges: edges, snapEdge: snapEdge, onLine: onLine,
     protractorLine: protractorLine, toPage: toPage, toLocal: toLocal, cm: cm, squareLegs: squareLegs,
+    SIZE: SIZE, size: size, snapRot: snapRot,
     NAMES: [['ruler', 'Ruler'], ['protractor', 'Protractor'], ['square', 'Set square']],
   };
 })();

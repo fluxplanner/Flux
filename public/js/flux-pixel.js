@@ -685,7 +685,7 @@
     function gallery() {
       var list = docs();
       host.innerHTML = '<section class="px-hero"><div><h1>Draw it, label it, export it</h1>'
-        + '<p>Diagrams for science, maps for geography, sketches for anything. Stamps for lab equipment and circuits, labels with leader lines, Flux Figures, its maths figures mode, for tests and worksheets drawn to scale (type “right triangle 3 4 5” or “y > 2x − 1” and it draws it), a ruler, protractor and compass, vectors you can add tip to tail, and a crisp PNG for your notes or lab report. Free, no account, no ads.</p></div>'
+        + '<p>Diagrams, labels and maths figures for school, exported as a PNG. Free, no account.</p></div>'
         + '<div class="px-new"><span class="px-new-h">Start a new page</span><div class="px-new-row">'
         + BGS.map(function (b) {
           return '<button type="button" class="px-new-btn" data-new="' + b[0] + '"><span class="px-paper px-paper--' + b[0] + '"></span>' + esc(b[1]) + '</button>';
@@ -1219,7 +1219,13 @@
             + chip('data-sqkind', '45', st.inst.square.kind !== '30', '45° 45°') + chip('data-sqkind', '30', st.inst.square.kind === '30', '30° 60°') + '</div></div>';
         }
         if (IN && IN.NAMES.some(function (n) { return st.inst[n[0]].on; })) {
-          html += '<div class="px-sec"><span class="px-sec-h">Instruments</span><p class="px-hint">Drag one by its body, turn it by its round handle (hold Shift for 15° steps). Start a line or a pen stroke on an edge to draw along it; start a line at the protractor’s centre for whole degrees. They never print.</p></div>';
+          html += '<div class="px-sec"><span class="px-sec-h">Instruments</span>'
+            + ['ruler', 'protractor'].filter(function (n) { return st.inst[n].on; }).map(function (n) {
+              var z = IN.SIZE[n], v = IN.size(n, st.inst[n]);
+              return '<label class="px-sec-h" for="pxInstSize-' + n + '">' + z.label + ' <output data-inst-size-out="' + n + '">' + v + ' ' + z.unit + '</output></label>'
+                + '<input type="range" id="pxInstSize-' + n + '" min="' + z.min + '" max="' + z.max + '" step="' + z.step + '" value="' + v + '" data-inst-size="' + n + '">';
+            }).join('')
+            + '<p class="px-hint">Drag one by its body, turn it by its round handle (hold Shift for 15° steps; it snaps level at 0°). Start a line or a pen stroke on an edge to draw along it; start a line at the protractor’s centre for whole degrees. They never print.</p></div>';
         }
         if (it && it.type === 'figure') html += figSelHTML(it);
         if (FV && it && it.type === 'vector') html += vecSelHTML(it);
@@ -1741,7 +1747,7 @@
         if (st.drag.mode === 'instrot') {
           var J = st.inst[st.drag.name], ang = Math.atan2(p[1] - J.y, p[0] - J.x);
           var deg = st.drag.rot0 + (ang - st.drag.a0) * 180 / Math.PI;
-          J.rot = ((Math.round(e.shiftKey ? deg / 15 : deg) * (e.shiftKey ? 15 : 1)) % 360 + 360) % 360;
+          J.rot = IN.snapRot(Math.round(e.shiftKey ? deg / 15 : deg) * (e.shiftKey ? 15 : 1));
           drawInst();
           draftG.innerHTML = readout(p, Math.round(J.rot) + '°');
           return;
@@ -2067,6 +2073,12 @@
         var it = selected();
         if (e.target.matches('.px-title')) { doc.title = e.target.value.trim() || 'Untitled drawing'; save(); return; }
         if (e.target.matches('[data-erase-size]')) { st.eraseR = +e.target.value; saveErasePref(); return; }
+        if (e.target.matches('[data-inst-size]')) {
+          var inm2 = e.target.getAttribute('data-inst-size'), z = IN.SIZE[inm2];
+          st.inst[inm2][z.key] = +e.target.value; drawInst(); saveInst();
+          var out = props.querySelector('[data-inst-size-out="' + inm2 + '"]'); if (out) out.textContent = IN.size(inm2, st.inst[inm2]) + ' ' + z.unit;
+          return;
+        }
         if (e.target.matches('[data-width]')) { var v = +e.target.value; if (it) { it.width = v; drawItems(); } else st.width = v; return; }
         if (e.target.matches('[data-size]')) { if (it) { it.size = +e.target.value; drawItems(); } return; }
         if (e.target.matches('[data-pick]')) { var c = e.target.value; if (it) { it.color = c; drawItems(); } else st.color = c; }
