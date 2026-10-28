@@ -462,3 +462,13 @@ test('a vector item: its value, its words, and its drawing', () => {
   assert.ok(d.box.x <= 100 && d.box.x + d.box.w >= 260 && d.box.y <= 380 && d.box.y + d.box.h >= 500, 'the box holds the arrow');
   assert.equal(d.ink.length, 2, 'shaft and head, for the eraser');
 });
+
+test('text naming no figure describes the figure being edited', () => {
+  const k = (text, cur) => { const r = F.fromText(text, cur); assert.ok(!r.error, text + ': ' + r.error); return r.spec; };
+  assert.equal(k('34', { kind: 'angle', mode: 'single' }).a1, 34);
+  assert.equal(k('30 50', { kind: 'angle', mode: 'line' }).mode, 'line');
+  assert.equal(k('5 6 7', { kind: 'triangle' }).kind, 'triangle');
+  assert.equal(k('r 4', { kind: 'circle' }).r, 4);
+  assert.equal(k('circle 5', { kind: 'angle', mode: 'single' }).kind, 'circle', 'a named figure still wins');
+  assert.match(F.fromText('34').error, /could not tell which figure/, 'with nothing open, still asks');
+});

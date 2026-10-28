@@ -657,7 +657,7 @@
     });
     box.addEventListener('submit', function (e) {
       e.preventDefault();
-      var r = F.fromText(box.querySelector('#pxiAsk').value);
+      var r = F.fromText(box.querySelector('#pxiAsk').value, cur);
       if (r.error && !r.spec) { say(r.error, true); return; }
       replace(r.spec, r.error ? 'Nearly: ' + r.error : 'Made: ' + r.said + '.');
     });

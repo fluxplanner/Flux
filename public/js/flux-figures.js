@@ -1874,8 +1874,10 @@
    * Turn what a student types — “right triangle 3 4 5”, “rectangle 8 by 5”,
    * “hexagon side 4”, “cylinder r 3 h 8”, “y = x^2 − 4”, “number line
    * −5 to 5, x > 2” — into a figure's settings: { spec, said } or { error }.
+   * `current`, the figure being edited, is what text naming no figure means:
+   * with Angles open, “34” is a 34° angle rather than an error.
    */
-  function fromText(text) {
+  function fromText(text, current) {
     var raw = String(text == null ? '' : text).trim();
     if (!raw) return { error: 'Type what you need. ' + EXAMPLES };
     var t = ' ' + raw.toLowerCase().replace(/[−–—]/g, '-').replace(/,(?=\S)/g, ', ') + ' ';
@@ -2036,7 +2038,18 @@
 
     // A bare equation, like “x^2 − 4”, or nothing recognised.
     if (/x/.test(t) && root.FluxExpr && !parseEquations(raw).error) return done(spec('grid', { eqs: raw }));
+    var word = current && kindWord(current);
+    if (word) return fromText(word + ' ' + raw);
     return { error: 'I could not tell which figure that is. ' + EXAMPLES };
+  }
+  /** The words fromText reads as `cur`'s kind (and its sub-type), or '' for none. */
+  function kindWord(cur) {
+    var k = cur.kind;
+    if (k === 'angle') return { line: 'angles on a straight line', point: 'angles around a point', vertical: 'vertically opposite angles', right: 'angles in a right angle' }[cur.mode] || 'angle';
+    if (k === 'solid') { var sw = SOLID_WORDS.filter(function (w) { return w[1] === cur.shape; })[0]; return sw ? sw[0] : ''; }
+    if (k === 'reg') return (cur.n || 6) + ' sided regular polygon';
+    if (k === 'trap') return (cur.type === 'right' ? 'right ' : cur.type === 'iso' ? 'isosceles ' : '') + 'trapezoid';
+    return { numline: 'number line', triangle: 'triangle', rect: 'rectangle', para: 'parallelogram', kite: 'kite', circle: 'circle', parallel: 'parallel lines' }[k] || '';
   }
 
   root.FluxFigures = {
