@@ -4600,7 +4600,7 @@ function toggleTask(id){
     if(window.FluxIntel&&FluxIntel.recordCompletionStreak)FluxIntel.recordCompletionStreak();
     // V4 Effort Accuracy: ask for actual time when an estimate exists. A Plan my
     // week block's minutes are a time slot, not a guess, so it isn't asked.
-    if((t.estTime||0)>0&&t.actualMins==null&&!t.weekBlock&&typeof showEffortPrompt==='function'){
+    if(false&&(t.estTime||0)>0&&t.actualMins==null&&!t.weekBlock&&typeof showEffortPrompt==='function'){
       setTimeout(()=>{try{showEffortPrompt(t);}catch(_){}}, 1100);
     }
     if(t.srsEnabled)setTimeout(()=>{
@@ -4980,7 +4980,6 @@ function fluxRenderDashMob(){
           else label=`Due in ${diffDays}d`;
           chips.push(`<span class="mob-meta-chip">${label}</span>`);
         }
-        if(t.estTime)chips.push(`<span class="mob-meta-chip">${esc(String(t.estTime))}m</span>`);
         meta.innerHTML=chips.join('');
       }
       const cta=document.getElementById('dashMobDoNowCta');
@@ -5034,8 +5033,6 @@ function fluxRenderDashMob(){
           const due=new Date(t.date+'T00:00:00');
           const days=Math.round((due-today)/86400000);
           time=days===1?'Tomorrow':`in ${days}d`;
-        } else if(t.estTime){
-          time=`${t.estTime}m`;
         } else {
           time='Today';
         }
@@ -5366,8 +5363,6 @@ function renderTasks(){
     const blockedStyle=blocked?'opacity:.45;pointer-events:auto':'';
     const priChip=t.priority?`<span class="task-chip task-chip-priority ${t.priority}">${t.priority}</span>`:'';
     const extraCls=(isOver?' task-overdue':'')+(isToday?' due-today':'');
-    const histEst=!t.done&&t.subject?avgEstMinutesForSubject(t.subject):null;
-    const estHist=histEst?`<span class="task-chip task-chip-hint" title="Typical time for completed work in this subject">~${histEst}m avg</span>`:'';
     const bulk=_taskBulkMode&&!t.done?`<input type="checkbox" class="task-bulk-cb" aria-label="Select" ${_bulkIds.has(t.id)?'checked':''} onclick="event.stopPropagation();toggleBulkOne(${t.id},this.checked)"/>`:'';
     const waitChip=t.waitingOn?`<span class="task-chip" title="Waiting on">${esc(t.waitingOn)}</span>`:'';
     const recChip=(window.FluxRecurring?.chipHtml?FluxRecurring.chipHtml(t):'')||(t.recurringWeekly?`<span class="task-chip task-chip-recurring" title="Repeats weekly when completed">Weekly</span>`:'');
@@ -5381,7 +5376,6 @@ ${bulk}
 ${sub?`<span class="task-chip task-chip-subject">${sub.icon?sub.icon+' ':''}${sub.short}</span>`:''}
 ${priChip}
 ${ds?`<span class="task-chip task-chip-due ${isOver?'overdue':''}${isToday?' due-today':''}" onclick="event.stopPropagation();openInlineDatePicker(${t.id},this)" title="Click to change date" style="cursor:pointer">${ds}${isNP?' '+restEmoji:''}</span>`:`<span class="task-chip task-chip-nodate" onclick="event.stopPropagation();openInlineDatePicker(${t.id},this)" title="Add due date" style="cursor:pointer;opacity:.42">+ date</span>`}
-${t.estTime?`<span class="task-chip task-chip-time">${t.estTime}m</span>`:''}${estHist}
 ${waitChip}${recChip}${snz}
 ${t.planOf!=null&&t.planParts&&!t.weekBlock?`<span class="task-chip task-chip-plan" title="Part of a plan: open it to change the days" onclick="event.stopPropagation();openPlanItOut(${fluxIdArg(t.planOf)})" style="cursor:pointer">Step ${t.planPart} of ${t.planParts}</span>`:''}${fluxWeekPlanChip(t)}${t.plan&&!t.done?(()=>{const ps=tasks.filter(x=>x.planOf!=null&&String(x.planOf)===String(t.id));return ps.length?`<span class="task-chip task-chip-plan" title="Open the plan" onclick="event.stopPropagation();openPlanItOut(${fluxIdArg(t.id)})" style="cursor:pointer">Planned · ${ps.filter(x=>x.done).length}/${ps.length}</span>`:'';})():''}
 ${(t.fluxTags||[]).length?(t.fluxTags||[]).map(tg=>`<span class="task-chip" style="background:rgba(var(--purple-rgb),.1);border-color:rgba(var(--purple-rgb),.22);font-size:.6rem">${esc(tg)}</span>`).join(''):''}
