@@ -87,17 +87,46 @@ test.describe('Flux Lingo', () => {
     await page.locator('#lgQIn').fill(right);
     await page.keyboard.press('Enter');
     await expect(page.locator('#lgFb')).toContainText('Right');
-    await expect(page.locator('#lgRScore')).toHaveText('1 ✓ · 0 ✗');
+    await expect(page.locator('#lgRRight')).toHaveText('1 ✓');
+    await expect(page.locator('#lgRWrong')).toHaveText('0 ✗');
     await page.locator('#lgQIn').press('Enter');
     await page.locator('#lgQIn').fill('zzz');
     await page.keyboard.press('Enter');
     await expect(page.locator('#lgFb')).toContainText('Answer:');
-    await expect(page.locator('#lgRScore')).toHaveText('1 ✓ · 1 ✗');
+    await expect(page.locator('#lgRWrong')).toHaveText('1 ✗');
     await page.locator('#lgREnd').click();
     await expect(page.locator('.lg-big')).toContainText('1 / 2');
     await expect(page.locator('.lg-missed li')).toHaveCount(1);
     await expect(page.locator('#lgRetry')).toBeVisible();
   });
+
+  for (const [kind, lang] of [['to', 'fr'], ['from', 'fr'], ['to', 'es'], ['from', 'es']] as const) {
+    test(`vocabulary practice, ${kind === 'to' ? 'English → ' + lang : lang + ' → English'}`, async ({ page }) => {
+      await open(page, '#practice');
+      await page.locator(`[data-plang="${lang}"]`).click();
+      await page.locator(`[data-kind="${kind}"]`).click();
+      await page.locator('#lgPMode [data-mode="endless"]').click();
+      await page.locator('#lgPStart').click();
+      const col = lang === 'fr' ? 2 : 1;
+      // The right answer, looked up from the deck the prompt came from.
+      const right = await page.evaluate(([kind, col]) => {
+        const prompt = document.getElementById('lgQVerb')!.textContent!;
+        const V = (window as any).FluxLangPractice;
+        for (const t of V.themes()) for (const w of V.words(t.id)) {
+          if (kind === 'to' && w[0] === prompt) return w[col];
+          if (kind === 'from' && w[col] === prompt) return w[0].replace(/\s*\([^)]*\)/g, '').split('/')[0].trim();
+        }
+        return null;
+      }, [kind, col] as const);
+      expect(right).toBeTruthy();
+      await page.locator('#lgQIn').fill(right!);
+      await page.keyboard.press('Enter');
+      await expect(page.locator('#lgFb')).toContainText('Right');
+      await expect(page.locator('#lgRRight')).toHaveText('1 ✓');
+      // The accent keys belong to answers typed in French or Spanish.
+      await expect(page.locator('#lgAcc')).toBeVisible({ visible: kind === 'to' });
+    });
+  }
 
   test('the Translate tab still translates', async ({ page }) => {
     await page.addInitScript(() => { delete (window as any).Translator; });

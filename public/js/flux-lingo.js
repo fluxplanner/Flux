@@ -397,38 +397,66 @@
     /* ── Practice ──────────────────────────────────────────────────────── */
 
     var P = null;   // the round in progress
+    /* What a round asks for: verb forms, or vocabulary in either direction.
+       The vocabulary is FluxLangPractice's themed decks (the planner's Practice
+       card), so a word fixed there is fixed here too. */
+    function vocab() { return window.FluxLangPractice && FluxLangPractice.themes ? FluxLangPractice : null; }
+    function kindLabel(kind, lang) {
+      return kind === 'to' ? 'English → ' + LANG_NAME[lang] : kind === 'from' ? LANG_NAME[lang] + ' → English' : 'Verb forms';
+    }
     function drawPracticeSetup(pre) {
       var lang = (pre && pre.lang) || state.lang;
       var st = state.practice || {};
+      var kind = (pre && pre.kind) || (pre && pre.verbs ? 'verbs' : st.kind) || 'verbs';
+      if (kind !== 'verbs' && !vocab()) kind = 'verbs';
       var tenses = st.tenses && st.tenses[lang] || (lang === 'es' ? ['present', 'preterite'] : ['present', 'passeCompose']);
       var verbs = (pre && pre.verbs) || (st.verbs && st.verbs[lang]) || SETS[lang][0][2].split(' ').slice(0, 10);
-      pracEl.innerHTML = '<div class="lg-pset">'
-        + '<h2 class="lg-ph">Practice</h2><p class="lg-plead">Type the form. Instant marking, accents explained, and the ones you miss come back at the end.</p>'
-        + '<div class="lg-pgrid">'
-        + '<fieldset class="lg-fs"><legend>Language</legend><div class="lg-langs" role="radiogroup">'
-        + ['es', 'fr'].map(function (l) { return '<button type="button" role="radio" class="lg-lang' + (l === lang ? ' is-on' : '') + '" aria-checked="' + (l === lang) + '" data-plang="' + l + '">' + LANG_NAME[l] + '</button>'; }).join('') + '</div></fieldset>'
-        + '<fieldset class="lg-fs"><legend>Verbs</legend><div class="lg-sets">' + SETS[lang].map(function (s) { return '<button type="button" class="lg-chip" data-set="' + s[0] + '">' + esc(s[1]) + '</button>'; }).join('') + '</div>'
-        + '<label class="lg-sr" for="lgPVerbs">Verbs, separated by commas</label><textarea id="lgPVerbs" class="lg-pverbs" rows="3">' + esc(verbs.join(', ')) + '</textarea></fieldset>'
+      var decks = st.decks && st.decks.length ? st.decks : ['school'];
+      var V = vocab();
+      var verbPanels = '<fieldset class="lg-fs lg-fs--wide"><legend>Verbs</legend><div class="lg-sets">' + SETS[lang].map(function (s) { return '<button type="button" class="lg-chip" data-set="' + s[0] + '">' + esc(s[1]) + '</button>'; }).join('') + '</div>'
+        + '<label class="lg-sr" for="lgPVerbs">Verbs, separated by commas</label><textarea id="lgPVerbs" class="lg-pverbs" rows="2">' + esc(verbs.join(', ')) + '</textarea></fieldset>'
         + '<fieldset class="lg-fs lg-fs--wide"><legend>Tenses</legend><div class="lg-ptenses">'
         + C.groups(lang).map(function (g) {
           return '<div class="lg-ptg"><span class="lg-ptg-h">' + esc(g.name) + '</span>' + g.tenses.map(function (t) {
             return '<label class="lg-check"><input type="checkbox" value="' + t[0] + '"' + (tenses.indexOf(t[0]) !== -1 ? ' checked' : '') + '> ' + esc(t[1]) + '</label>';
           }).join('') + '</div>';
-        }).join('') + '</div></fieldset>'
-        + '<fieldset class="lg-fs"><legend>Round</legend>'
-        + '<div class="lg-seg" role="radiogroup" id="lgPMode">' + [['timed', '2 minutes'], ['count', '20 questions'], ['endless', 'No limit']].map(function (m) {
+        }).join('') + '</div></fieldset>';
+      var deckPanel = V ? '<fieldset class="lg-fs lg-fs--wide"><legend>Topics</legend><div class="lg-decks">'
+        + V.themes().map(function (t) {
+          return '<label class="lg-deck"><input type="checkbox" value="' + esc(t.id) + '"' + (decks.indexOf(t.id) !== -1 ? ' checked' : '') + '><span>' + esc(t.name) + ' <em>' + t.count + '</em></span></label>';
+        }).join('') + '</div></fieldset>' : '';
+      pracEl.innerHTML = '<div class="lg-pset">'
+        + '<header class="lg-phead"><div><h2 class="lg-ph">Practice</h2><p class="lg-plead">' + (kind === 'verbs'
+          ? 'Type the form. Instant marking, accents explained, and the ones you miss come back at the end.'
+          : 'Translate the word. Articles and accents are pointed out, and the ones you miss come back at the end.') + '</p></div>'
+        + '<div class="lg-langs" role="radiogroup" aria-label="Language">'
+        + ['es', 'fr'].map(function (l) { return '<button type="button" role="radio" class="lg-lang' + (l === lang ? ' is-on' : '') + '" aria-checked="' + (l === lang) + '" data-plang="' + l + '">' + LANG_NAME[l] + '</button>'; }).join('') + '</div></header>'
+        + '<div class="lg-kinds" role="radiogroup" aria-label="What to practise">'
+        + ['verbs', 'to', 'from'].filter(function (k) { return k === 'verbs' || V; }).map(function (k) {
+          var on = k === kind;
+          return '<button type="button" role="radio" class="lg-kind' + (on ? ' is-on' : '') + '" aria-checked="' + on + '" data-kind="' + k + '"><b>' + esc(kindLabel(k, lang)) + '</b><span>'
+            + (k === 'verbs' ? 'Conjugate in any tense' : k === 'to' ? 'See English, write ' + LANG_NAME[lang] : 'See ' + LANG_NAME[lang] + ', write English') + '</span></button>';
+        }).join('') + '</div>'
+        + '<div class="lg-pgrid">' + (kind === 'verbs' ? verbPanels : deckPanel) + '</div>'
+        + '<div class="lg-pbar">'
+        + '<div class="lg-seg" role="radiogroup" id="lgPMode" aria-label="Round length">' + [['timed', '2 minutes'], ['count', '20 questions'], ['endless', 'No limit']].map(function (m) {
           var on = (st.mode || 'timed') === m[0];
           return '<button type="button" role="radio" data-mode="' + m[0] + '" aria-checked="' + on + '" class="' + (on ? 'is-on' : '') + '">' + m[1] + '</button>';
         }).join('') + '</div>'
         + '<label class="lg-check"><input type="checkbox" id="lgPAcc"' + (st.strict ? ' checked' : '') + '> Accents must be right</label>'
-        + (lang === 'es' ? '<label class="lg-check"><input type="checkbox" id="lgPVos"' + (st.vos === false ? '' : ' checked') + '> Include vosotros</label>' : '')
-        + '</fieldset></div>'
-        + '<p class="lg-perr" id="lgPErr" role="alert" hidden></p>'
-        + '<button type="button" class="lg-go" id="lgPStart">Start</button></div>';
+        + (lang === 'es' && kind === 'verbs' ? '<label class="lg-check"><input type="checkbox" id="lgPVos"' + (st.vos === false ? '' : ' checked') + '> Include vosotros</label>' : '')
+        + '<button type="button" class="lg-go" id="lgPStart">Start</button></div>'
+        + '<p class="lg-perr" id="lgPErr" role="alert" hidden></p></div>';
       pracEl.querySelector('.lg-langs').addEventListener('click', function (e) {
-        var b = e.target.closest('[data-plang]'); if (b) drawPracticeSetup({ lang: b.dataset.plang });
+        var b = e.target.closest('[data-plang]'); if (b) drawPracticeSetup({ lang: b.dataset.plang, kind: kind });
       });
-      pracEl.querySelector('.lg-sets').addEventListener('click', function (e) {
+      pracEl.querySelector('.lg-kinds').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-kind]'); if (!b) return;
+        state.practice = state.practice || {}; state.practice.kind = b.dataset.kind; save(state);
+        drawPracticeSetup({ lang: lang, kind: b.dataset.kind });
+      });
+      var sets = pracEl.querySelector('.lg-sets');
+      if (sets) sets.addEventListener('click', function (e) {
         var b = e.target.closest('[data-set]'); if (!b) return;
         var s = SETS[lang].filter(function (x) { return x[0] === b.dataset.set; })[0];
         var list = s[2].match(/(se |s')?\S+/g);
@@ -439,24 +467,33 @@
         pracEl.querySelectorAll('#lgPMode [data-mode]').forEach(function (x) { var on = x === b; x.classList.toggle('is-on', on); x.setAttribute('aria-checked', String(on)); });
       });
       pracEl.querySelector('#lgPStart').addEventListener('click', function () {
-        var vs = pracEl.querySelector('#lgPVerbs').value.split(/[,\n]/).map(function (x) { return x.trim(); }).filter(Boolean);
-        var ts = [].slice.call(pracEl.querySelectorAll('.lg-ptenses input:checked')).map(function (x) { return x.value; });
         var mode = (pracEl.querySelector('#lgPMode .is-on') || {}).dataset;
         mode = mode ? mode.mode : 'timed';
         var strict = pracEl.querySelector('#lgPAcc').checked;
+        var err = pracEl.querySelector('#lgPErr');
+        state.practice = state.practice || {};
+        state.practice.mode = mode; state.practice.strict = strict; state.practice.kind = kind;
+        if (kind !== 'verbs') {
+          var ds = [].slice.call(pracEl.querySelectorAll('.lg-decks input:checked')).map(function (x) { return x.value; });
+          if (!ds.length) { err.hidden = false; err.textContent = 'Pick at least one topic.'; return; }
+          state.practice.decks = ds;
+          save(state);
+          startRound(lang, [], [], mode, strict, true, null, { kind: kind, decks: ds });
+          return;
+        }
+        var vs = pracEl.querySelector('#lgPVerbs').value.split(/[,\n]/).map(function (x) { return x.trim(); }).filter(Boolean);
+        var ts = [].slice.call(pracEl.querySelectorAll('.lg-ptenses input:checked')).map(function (x) { return x.value; });
         var vosEl = pracEl.querySelector('#lgPVos');
         var vos = vosEl ? vosEl.checked : true;
         var bad = vs.filter(function (v) { try { return !C.conjugate(lang, v); } catch (e) { return true; } });
-        var err = pracEl.querySelector('#lgPErr');
         if (!vs.length || !ts.length || bad.length) {
           err.hidden = false;
           err.textContent = !vs.length ? 'Add at least one verb.' : !ts.length ? 'Pick at least one tense.' : 'Not a ' + LANG_NAME[lang] + ' infinitive: ' + bad.join(', ') + '.';
           return;
         }
-        state.practice = state.practice || {};
         state.practice.tenses = state.practice.tenses || {}; state.practice.tenses[lang] = ts;
         state.practice.verbs = state.practice.verbs || {}; state.practice.verbs[lang] = vs;
-        state.practice.mode = mode; state.practice.strict = strict; state.practice.vos = vos;
+        state.practice.vos = vos;
         save(state);
         startRound(lang, vs, ts, mode, strict, vos);
       });
@@ -480,19 +517,43 @@
       });
       return pool;
     }
+    /* English answers: "the teacher (m)" accepts "teacher" or "the teacher";
+       "the mark / grade" accepts either word. */
+    function englishAnswers(en) {
+      return String(en).replace(/\([^)]*\)/g, '').split('/').map(function (x) { return x.trim(); }).filter(Boolean)
+        .reduce(function (out, x) { out.push(x); var b = x.replace(/^(the|a|an|to)\s+/i, ''); if (b !== x) out.push(b); return out; }, []);
+    }
+    function buildVocabPool(lang, kind, decks) {
+      var V = vocab(), col = lang === 'fr' ? 2 : 1, pool = [];
+      if (!V) return pool;
+      var names = {}; V.themes().forEach(function (t) { names[t.id] = t.name; });
+      decks.forEach(function (id) {
+        V.words(id).forEach(function (w) {
+          var en = w[0], tl = w[col];
+          if (!en || !tl) return;
+          pool.push(kind === 'to'
+            ? { vocab: true, kind: kind, lang: lang, prompt: en, answer: tl, alts: [], deck: names[id] || id }
+            : { vocab: true, kind: kind, lang: lang, prompt: tl, answer: String(en).replace(/\s*\([^)]*\)/g, ''), alts: englishAnswers(en), deck: names[id] || id });
+        });
+      });
+      return pool;
+    }
     function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var x = a[i]; a[i] = a[j]; a[j] = x; } return a; }
 
     /** `only`: a fixed list of questions (the missed ones), each asked once. */
-    function startRound(lang, verbs, tenses, mode, strict, vos, only) {
-      var pool = only ? shuffle(only.slice()) : shuffle(buildPool(lang, verbs, tenses, vos));
-      P = { lang: lang, pool: pool, at: 0, mode: only ? 'count' : mode, limit: only ? pool.length : mode === 'count' ? 20 : 0,
+    function startRound(lang, verbs, tenses, mode, strict, vos, only, vo) {
+      var pool = only ? shuffle(only.slice()) : shuffle(vo ? buildVocabPool(lang, vo.kind, vo.decks) : buildPool(lang, verbs, tenses, vos));
+      var typesTarget = !vo || vo.kind === 'to';
+      if (only && only[0] && only[0].vocab) typesTarget = only[0].kind === 'to';
+      P = { lang: lang, vo: vo || null, pool: pool, at: 0, mode: only ? 'count' : mode, limit: only ? pool.length : mode === 'count' ? 20 : 0,
         strict: strict, right: 0, wrong: 0, streak: 0, best: 0, missed: [], started: Date.now(), timer: null, done: false, token: 0 };
       pracEl.innerHTML = '<div class="lg-round">'
-        + '<div class="lg-rbar"><span class="lg-stat" id="lgRScore">0 ✓ · 0 ✗</span><span class="lg-stat" id="lgRStreak">streak 0</span>'
-        + '<span class="lg-stat" id="lgRClock"></span><button type="button" class="lg-act lg-act--wide" id="lgREnd"><span>End</span></button></div>'
-        + '<div class="lg-qcard"><p class="lg-qverb" id="lgQVerb"></p><p class="lg-qtense" id="lgQTense"></p>'
+        + '<div class="lg-rbar"><span class="lg-pill lg-pill--ok" id="lgRRight">0 ✓</span><span class="lg-pill lg-pill--bad" id="lgRWrong">0 ✗</span><span class="lg-pill" id="lgRStreak">🔥 0</span>'
+        + '<span class="lg-pill lg-pill--clock" id="lgRClock"></span><button type="button" class="lg-act lg-act--wide" id="lgREnd"><span>End</span></button></div>'
+        + '<div class="lg-prog" aria-hidden="true"><i id="lgRProg"></i></div>'
+        + '<div class="lg-qcard"><p class="lg-qtense" id="lgQTense"></p><p class="lg-qverb" id="lgQVerb"></p>'
         + '<div class="lg-qline"><span class="lg-qpron" id="lgQPron"></span><input id="lgQIn" class="lg-qin" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Your answer"></div>'
-        + '<div class="lg-acc" id="lgAcc">' + ACCENTS[lang].map(function (a) { return '<button type="button" class="lg-accb" data-ch="' + a + '" tabindex="-1">' + a + '</button>'; }).join('') + '</div>'
+        + '<div class="lg-acc" id="lgAcc"' + (typesTarget ? '' : ' hidden') + '>' + ACCENTS[lang].map(function (a) { return '<button type="button" class="lg-accb" data-ch="' + a + '" tabindex="-1">' + a + '</button>'; }).join('') + '</div>'
         + '<p class="lg-fb" id="lgFb" aria-live="assertive"></p>'
         + '<div class="lg-qbtns"><button type="button" class="lg-go" id="lgQCheck">Check</button><button type="button" class="lg-act lg-act--wide" id="lgQSkip"><span>Show answer</span></button></div></div></div>';
       var inp = pracEl.querySelector('#lgQIn');
@@ -511,7 +572,9 @@
         P.timer = setInterval(function () {
           var left = 120 - Math.floor((Date.now() - P.started) / 1000);
           var c = pracEl.querySelector('#lgRClock');
-          if (c) c.textContent = Math.max(0, Math.floor(left / 60)) + ':' + ('0' + Math.max(0, left % 60)).slice(-2);
+          if (c) c.textContent = '⏱ ' + Math.max(0, Math.floor(left / 60)) + ':' + ('0' + Math.max(0, left % 60)).slice(-2);
+          var bar = pracEl.querySelector('#lgRProg');
+          if (bar) bar.style.width = Math.min(100, Math.round((Date.now() - P.started) / 1200)) + '%';
           if (left <= 0) endRound();
         }, 250);
       }
@@ -523,6 +586,20 @@
       if (P.at > 0 && P.at % P.pool.length === 0) shuffle(P.pool);
       var x = curQ();
       P.waiting = false;
+      updateBar();
+      if (x.vocab) {
+        pracEl.querySelector('#lgQVerb').textContent = x.prompt;
+        pracEl.querySelector('#lgQTense').textContent = kindLabel(x.kind, x.lang) + ' · ' + x.deck;
+        pracEl.querySelector('#lgQPron').textContent = '';
+        var vin = pracEl.querySelector('#lgQIn');
+        vin.value = ''; vin.className = 'lg-qin'; vin.readOnly = false;
+        vin.placeholder = x.kind === 'to' ? 'In ' + LANG_NAME[x.lang] : 'In English';
+        vin.lang = x.kind === 'to' ? x.lang : 'en';
+        vin.focus();
+        pracEl.querySelector('#lgFb').innerHTML = '';
+        pracEl.querySelector('#lgQCheck').textContent = 'Check';
+        return;
+      }
       var persons = isImp(x.tense) ? C.imperativePersons(x.lang) : C.persons(x.lang);
       pracEl.querySelector('#lgQVerb').textContent = x.verb;
       pracEl.querySelector('#lgQTense').textContent = tenseName(x.lang, x.tense);
@@ -531,7 +608,7 @@
       if (isImp(x.tense)) pron = '(' + pron + ')';
       pracEl.querySelector('#lgQPron').textContent = pron;
       var inp = pracEl.querySelector('#lgQIn');
-      inp.value = ''; inp.className = 'lg-qin'; inp.readOnly = false; inp.focus();
+      inp.value = ''; inp.className = 'lg-qin'; inp.readOnly = false; inp.placeholder = ''; inp.lang = x.lang; inp.focus();
       pracEl.querySelector('#lgFb').innerHTML = '';
       pracEl.querySelector('#lgQCheck').textContent = 'Check';
     }
@@ -546,6 +623,14 @@
       var given = inp.value;
       if (!given.trim()) { inp.focus(); return; }
       var answers = [x.answer].concat(x.alts);
+      if (x.vocab) {
+        var V = vocab(), res = V ? V.judge(given, x.answer) : { ok: false, note: '' };
+        var vok = x.kind === 'to'
+          ? res.ok && (!P.strict || !/^Accents/.test(res.note))
+          : answers.some(function (a) { return norm(a, false) === norm(given, false).replace(/^(the|a|an|to) /, '') || norm(a, false) === norm(given, false); });
+        markVocab(x, vok, x.kind === 'to' ? res.note : '');
+        return;
+      }
       var ok = answers.some(function (a) { return norm(a, P.strict) === norm(given, P.strict); });
       var accentOnly = !ok && answers.some(function (a) { return norm(a, false) === norm(given, false); });
       // With être, the participle may agree: allée, allés, allées all count.
@@ -576,6 +661,23 @@
         updateBar();
       }
     }
+    function markVocab(x, ok, note) {
+      var inp = pracEl.querySelector('#lgQIn'), fb = pracEl.querySelector('#lgFb');
+      P.waiting = true;
+      if (ok) {
+        P.right++; P.streak++; P.best = Math.max(P.best, P.streak);
+        inp.classList.add('is-ok');
+        fb.innerHTML = '<span class="lg-ok">✓ Right</span>' + (note ? ' <span class="lg-note">— ' + esc(note) + '</span>' : '');
+        var tok = ++P.token;
+        setTimeout(function () { if (P && !P.done && P.token === tok && P.waiting) next(); }, note ? 1500 : 500);
+      } else {
+        P.wrong++; P.streak = 0; P.missed.push(x);
+        inp.classList.add('is-bad');
+        fb.innerHTML = '<span class="lg-bad">✗</span> Answer: <b>' + esc(x.answer) + '</b> <span class="lg-note">— Enter for the next one</span>';
+        pracEl.querySelector('#lgQCheck').textContent = 'Next';
+      }
+      updateBar();
+    }
     function reveal() {
       var x = curQ();
       P.wrong++; P.streak = 0; P.missed.push(x);
@@ -587,8 +689,14 @@
     }
     function next() { P.token++; P.at++; ask(); }
     function updateBar() {
-      pracEl.querySelector('#lgRScore').textContent = P.right + ' ✓ · ' + P.wrong + ' ✗';
-      pracEl.querySelector('#lgRStreak').textContent = 'streak ' + P.streak;
+      pracEl.querySelector('#lgRRight').textContent = P.right + ' ✓';
+      pracEl.querySelector('#lgRWrong').textContent = P.wrong + ' ✗';
+      pracEl.querySelector('#lgRStreak').textContent = '🔥 ' + P.streak;
+      var bar = pracEl.querySelector('#lgRProg');
+      if (bar) {
+        var f = P.limit ? (P.right + P.wrong) / P.limit : P.mode === 'timed' ? Math.min(1, (Date.now() - P.started) / 120000) : 0;
+        bar.style.width = Math.round(f * 100) + '%';
+      }
     }
     function endRound() {
       if (!P || P.done) return;
@@ -596,10 +704,11 @@
       clearInterval(P.timer);
       var total = P.right + P.wrong;
       var pct = total ? Math.round(P.right / total * 100) : 0;
-      var seen = {}, missed = P.missed.filter(function (x) { var k = x.verb + x.tense + x.person; if (seen[k]) return false; seen[k] = 1; return true; });
+      var seen = {}, missed = P.missed.filter(function (x) { var k = x.vocab ? x.prompt : x.verb + x.tense + x.person; if (seen[k]) return false; seen[k] = 1; return true; });
       pracEl.innerHTML = '<div class="lg-done"><h2 class="lg-ph">' + (pct >= 90 ? 'Excellent!' : pct >= 70 ? 'Nice work' : 'Keep going') + '</h2>'
         + '<p class="lg-big">' + P.right + ' / ' + total + ' <span>(' + pct + '%)</span></p><p class="lg-plead">Best streak: ' + P.best + '</p>'
         + (missed.length ? '<h3 class="lg-gh">To review</h3><ul class="lg-missed">' + missed.map(function (x) {
+          if (x.vocab) return '<li><b>' + esc(x.answer) + '</b> <span>' + esc(x.prompt) + ' · ' + esc(x.deck) + '</span></li>';
           var persons = isImp(x.tense) ? C.imperativePersons(x.lang) : C.persons(x.lang);
           return '<li><b>' + esc(x.answer) + '</b> <span>' + esc(x.verb) + ' · ' + esc(tenseName(x.lang, x.tense)) + ' · ' + esc(persons[x.person]) + '</span></li>';
         }).join('') + '</ul>' : '<p>Nothing missed.</p>')
@@ -607,10 +716,14 @@
         + '<button type="button" class="lg-act lg-act--wide" id="lgAgain"><span>Same again</span></button><button type="button" class="lg-act lg-act--wide" id="lgSetup"><span>Change settings</span></button></div></div>';
       var last = P;
       var again = pracEl.querySelector('#lgAgain');
-      again.addEventListener('click', function () { var st = state.practice; startRound(last.lang, st.verbs[last.lang], st.tenses[last.lang], st.mode, st.strict, st.vos); });
-      pracEl.querySelector('#lgSetup').addEventListener('click', function () { drawPracticeSetup({ lang: last.lang }); });
+      again.addEventListener('click', function () {
+        var st = state.practice;
+        if (last.vo) startRound(last.lang, [], [], st.mode, st.strict, true, null, last.vo);
+        else startRound(last.lang, st.verbs[last.lang], st.tenses[last.lang], st.mode, st.strict, st.vos);
+      });
+      pracEl.querySelector('#lgSetup').addEventListener('click', function () { drawPracticeSetup({ lang: last.lang, kind: last.vo ? last.vo.kind : 'verbs' }); });
       var retry = pracEl.querySelector('#lgRetry');
-      if (retry) retry.addEventListener('click', function () { startRound(last.lang, [], [], 'count', last.strict, true, missed); });
+      if (retry) retry.addEventListener('click', function () { startRound(last.lang, [], [], 'count', last.strict, true, missed, last.vo); });
     }
 
     /* ── Start ─────────────────────────────────────────────────────────── */
