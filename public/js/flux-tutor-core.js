@@ -2475,6 +2475,48 @@
     return out;
   }
 
+  /* ── Mind map ───────────────────────────────────────────────────────── */
+
+  /**
+   * The study guide as a tree: the outline's sections nested by heading
+   * level, each carrying the key terms its notes define. A term goes under
+   * the section of the sentence it was taken from, else the first section
+   * that mentions it, else in `loose`. Nothing new is written: every label is
+   * the guide's own. mastery (optional) adds each term's status.
+   */
+  function buildMindMap(guide, corpus, mastery) {
+    const g = guide || {};
+    const nodes = [];
+    const bySection = new Map();
+    const stack = [];
+    const branches = [];
+    (g.outline || []).forEach((o) => {
+      const node = { id: o.id, sectionId: o.sectionId, title: o.title, level: o.level, children: [], terms: [] };
+      nodes.push(node);
+      if (!bySection.has(o.sectionId)) bySection.set(o.sectionId, node);
+      while (stack.length && stack[stack.length - 1].level >= node.level) stack.pop();
+      if (stack.length) stack[stack.length - 1].children.push(node);
+      else branches.push(node);
+      stack.push(node);
+    });
+    const loose = [];
+    const c = corpus || { byId: {}, stemIndex: new Map(), sentences: [] };
+    (g.terms || []).forEach((t) => {
+      if (!t || !t.term) return;
+      const leaf = { id: t.id, term: t.term, status: statusOf(mastery && mastery[t.id]) };
+      const sent = t.sentenceId ? c.byId[t.sentenceId] : null;
+      let home = sent ? bySection.get(sent.sectionId) : null;
+      if (!home) {
+        const stems = termStems(t.term);
+        const hit = stems.length ? mentionsOf(c, { stems, aliases: t.aliases || [] }).find((x) => bySection.has(x.sectionId)) : null;
+        if (hit) home = bySection.get(hit.sectionId);
+      }
+      (home ? home.terms : loose).push(leaf);
+    });
+    const count = (list) => list.reduce((n, x) => n + 1 + x.terms.length + count(x.children), 0);
+    return { branches, loose, size: count(branches) + loose.length };
+  }
+
   /* ── Study plan ─────────────────────────────────────────────────────── */
 
   /**
@@ -3252,7 +3294,7 @@
     uid, hashText, seeded, shuffle, safeUrl, cap, ymd, isYmd, addDays, daysBetween,
     tokenize, words, stem, norm, lev, normalizeText, pdfLinesToText, pdfItemsToText, splitSentences,
     buildCorpus, formatRef, measure, mentionsOf,
-    findDefinition, extractTerms, extractFacts, buildOutline, buildGuide, mergeGuide, sourcesHash,
+    findDefinition, extractTerms, extractFacts, buildOutline, buildGuide, mergeGuide, sourcesHash, buildMindMap,
     addTerm, addFact, editItem, removeItem, restoreItem,
     conceptsFromGuide, topicsFor, explanationFor, maskTerm,
     makeCloze, makeWritten, makeChoice, makeDefChoice, makeTrueFalse, makeMatch, questionFor, typesForLevel,

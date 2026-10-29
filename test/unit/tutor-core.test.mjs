@@ -1090,3 +1090,27 @@ test('topic pages: each topic has its summary, terms and facts', () => {
   assert.ok(pages.every((p) => p.mastery.total === p.terms.length));
   assert.ok(pages.some((p) => p.summary.length));
 });
+
+const plain = (x) => JSON.parse(JSON.stringify(x));
+
+test('mind map nests sections by heading and hangs each term off its own section', () => {
+  const text = '# Cells\n\nCells are the basic unit of life.\n\n## Organelles\n\nThe mitochondria is the organelle that releases energy in respiration. The nucleus is the part of the cell that holds the DNA.\n\n# Genetics\n\nAn allele is a different version of a gene. Alleles are passed from parents.';
+  const sources = [{ id: 's1', name: 'Bio', text }];
+  const corpus = T.buildCorpus(sources);
+  const guide = T.buildGuide(sources, { corpus });
+  guide.terms.push({ id: 'mine', term: 'Ribosome', def: 'Makes proteins.', kind: 'user' });
+  const map = plain(T.buildMindMap(guide, corpus, { [guide.terms[0].id]: { seen: 3, right: 3, wrong: 0, level: 5, streak: 3 } }));
+  assert.deepEqual(map.branches.map((b) => b.title), ['Cells', 'Genetics']);
+  assert.deepEqual(map.branches[0].children.map((b) => b.title), ['Organelles']);
+  const under = (n) => n.terms.map((t) => t.term.toLowerCase()).concat(...n.children.map(under));
+  assert.ok(under(map.branches[0]).some((t) => t.includes('mitochondri')));
+  assert.ok(under(map.branches[1]).some((t) => t.includes('allele')));
+  assert.deepEqual(map.loose.map((t) => t.term), ['Ribosome']);
+  assert.ok(map.size >= 6);
+});
+
+test('mind map of an empty guide is empty', () => {
+  const map = plain(T.buildMindMap(null, null, null));
+  assert.equal(map.size, 0);
+  assert.deepEqual(map.loose, []);
+});

@@ -196,7 +196,7 @@
     pendingUnit: '',     // a syllabus unit "New set" was pressed for
   };
   function freshUi() {
-    return { editing: null, learnPick: false, learnNote: '', test: null, exam: null, cards: null, ib: null, askQuery: '', planNote: '' };
+    return { editing: null, learnPick: false, learnNote: '', test: null, exam: null, cards: null, ib: null, askQuery: '', planNote: '', guideMap: false, mapPick: null };
   }
   let busy = false;
 
@@ -1499,11 +1499,56 @@
     return '<section class="ft-panel" aria-labelledby="ftScreenTitle">'
       + '<div class="ft-panel-head"><h2 class="ft-h2" id="ftScreenTitle" tabindex="-1">Study guide</h2>'
       + '<div class="ft-row">' + (canSpeak() ? '<button type="button" class="ft-btn ft-btn--quiet ft-btn--small" data-act="guide-listen" aria-pressed="' + speaking + '">' + icon(speaking ? 'stop' : 'listen', 16) + (speaking ? 'Stop' : 'Listen') + '</button>' : '')
+      + '<button type="button" class="ft-btn ft-btn--quiet ft-btn--small" data-act="guide-map" aria-pressed="' + !!app.ui.guideMap + '">' + (app.ui.guideMap ? 'Show as list' : 'Mind map') + '</button>'
       + '<button type="button" class="ft-btn ft-btn--quiet ft-btn--small" data-act="guide-download">' + icon('download', 16) + 'Download</button></div></div>'
       + '<p class="ft-promise">' + icon('shield', 17) + '<span>' + esc(PROMISE) + ' Every line says where in your notes it came from. Fix it, delete it or add your own.</span></p>'
       + (stale ? '<p class="ft-banner" role="note">Your notes changed, but there is too little text in them now to rebuild this guide, so it still shows your earlier notes.</p>' : '')
-      + outlineHtml(g) + itemsHtml('terms') + itemsHtml('facts') + legacyHtml(set)
+      + (app.ui.guideMap ? mindMapHtml(set) : outlineHtml(g) + itemsHtml('terms') + itemsHtml('facts') + legacyHtml(set))
       + '</section>';
+  }
+  /* ── Mind map ──────────────────────────────────────────────────────────
+     The guide's sections as branches and its key terms as leaves, coloured
+     by how well each term is known. Tapping a bubble shows what the guide
+     says about it, with its citation, under the map. */
+  const MAP_STATUS = { new: 'Not studied yet', learning: 'Learning', weak: 'Needs work', mastered: 'Known' };
+  function mindMapHtml(set) {
+    const map = T.buildMindMap(set.guide, corpusNow(), set.mastery);
+    if (!map.size) return '<p class="ft-help">Your study guide has no sections or key terms to draw yet. Add headings to your notes, or add key terms, then come back.</p>';
+    const pick = app.ui.mapPick;
+    const on = (kind, id) => !!pick && pick.kind === kind && pick.id === id;
+    const leaf = (t) => '<button type="button" class="ft-map-node ft-map-term" data-act="map-pick" data-kind="term" data-id="' + esc(t.id) + '" data-status="' + t.status + '" aria-pressed="' + on('term', t.id) + '">'
+      + esc(t.term) + '<span class="ft-visually-hidden"> (' + MAP_STATUS[t.status] + ')</span></button>';
+    // The tapped bubble's details sit right under its own group, not below the whole map.
+    const detailFor = (n) => (pick && (on('sec', n.id) || (pick.kind === 'term' && n.terms.some((t) => t.id === pick.id))) ? mapDetailHtml(set) : '');
+    const leaves = (list) => (list.length ? '<li class="ft-map-leaves">' + list.map(leaf).join('') + '</li>' : '');
+    const branch = (n) => '<li><button type="button" class="ft-map-node ft-map-sec" data-act="map-pick" data-kind="sec" data-id="' + esc(n.id) + '" aria-pressed="' + on('sec', n.id) + '">' + esc(n.title) + '</button>'
+      + (on('sec', n.id) ? detailFor(n) : '')
+      + (n.children.length || n.terms.length ? '<ul>' + n.children.map(branch).join('') + leaves(n.terms) + '</ul>' : '')
+      + (pick && pick.kind === 'term' ? detailFor(n) : '') + '</li>';
+    const rootKids = map.branches.map(branch).join('')
+      + (map.loose.length ? '<li><span class="ft-map-node ft-map-sec ft-map-other">Other key terms</span><ul>' + leaves(map.loose) + '</ul>' + (pick && pick.kind === 'term' && map.loose.some((t) => t.id === pick.id) ? mapDetailHtml(set) : '') + '</li>' : '');
+    return '<section class="ft-guide-sec" aria-labelledby="ftMapTitle"><h3 class="ft-h3" id="ftMapTitle">Mind map</h3>'
+      + '<p class="ft-help">Tap a bubble to see what your notes say about it.</p>'
+      + '<p class="ft-map-key">' + Object.keys(MAP_STATUS).map((k) => '<span class="ft-map-dot" data-status="' + k + '"></span>' + MAP_STATUS[k]).join(' ') + '</p>'
+      + '<div class="ft-map-scroll"><ul class="ft-map" role="list"><li><span class="ft-map-node ft-map-root">' + esc(set.title || 'Study set') + '</span>'
+      + '<ul>' + rootKids + '</ul></li></ul></div></section>';
+  }
+  function mapDetailHtml(set) {
+    const pick = app.ui.mapPick;
+    if (!pick) return '';
+    const g = set.guide;
+    let body = '';
+    if (pick.kind === 'term') {
+      const t = g.terms.find((x) => x.id === pick.id);
+      if (!t) return '';
+      body = '<p class="ft-item-main"><dfn class="ft-term">' + esc(t.term) + '</dfn> <span class="ft-def">' + esc(t.def || '') + '</span></p>' + itemCite(t);
+    } else {
+      const o = g.outline.find((x) => x.id === pick.id);
+      if (!o) return '';
+      body = '<p class="ft-outline-title">' + esc(o.title) + '</p>'
+        + (o.summary.length ? '<ul class="ft-summary">' + o.summary.map((p) => '<li><span>' + esc(p.text) + '</span> ' + cite(p.ref, p.text) + '</li>').join('') + '</ul>' : '<p class="ft-outline-ref">' + cite(o.ref) + '</p>');
+    }
+    return '<div class="ft-map-detail" id="ftMapDetail" role="region" aria-live="polite" aria-label="Selected bubble">' + body + '</div>';
   }
   /* ── Audio overview ────────────────────────────────────────────────────
      The study guide read aloud by the browser's own voice: each section's
@@ -2953,6 +2998,13 @@
         break;
       }
       case 'guide-listen': toggleListen(); break;
+      case 'guide-map': app.ui.guideMap = !app.ui.guideMap; app.ui.mapPick = null; renderScreen('[data-act="guide-map"]'); break;
+      case 'map-pick': {
+        const same = app.ui.mapPick && app.ui.mapPick.kind === btn.dataset.kind && app.ui.mapPick.id === btn.dataset.id;
+        app.ui.mapPick = same ? null : { kind: btn.dataset.kind, id: btn.dataset.id };
+        renderScreen('[data-act="map-pick"][data-kind="' + btn.dataset.kind + '"][data-id="' + CSS.escape(btn.dataset.id) + '"]');
+        break;
+      }
       case 'card-flip': flipCard(); break;
       case 'card-rate': rateCard(Number(btn.dataset.grade)); break;
       case 'cards-ahead': cardsAhead(); break;
