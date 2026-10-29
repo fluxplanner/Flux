@@ -1004,3 +1004,22 @@ test.describe('Flux Tutor', () => {
     expect(await wide()).toBeLessThanOrEqual(390);
   });
 });
+
+test('the study guide draws as a mind map, and a tapped bubble shows its cited definition', async ({ page }) => {
+  await openSample(page);
+  await page.getByRole('button', { name: 'Mind map' }).click();
+  await expect(page.getByRole('heading', { name: 'Mind map' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Key terms' })).toHaveCount(0);
+  const map = page.locator('.ft-map');
+  await expect(map.getByRole('button', { name: 'Photosynthesis', exact: true })).toBeVisible();
+  const term = map.getByRole('button', { name: /^Ribosomes \(/ });
+  await term.click();
+  await expect(term).toHaveAttribute('aria-pressed', 'true');
+  const detail = page.locator('#ftMapDetail');
+  await expect(detail).toContainText('build proteins');
+  await expect(detail.locator('.ft-cite')).toContainText('paragraph');
+  await map.getByRole('button', { name: /^Ribosomes \(/ }).click();
+  await expect(page.locator('#ftMapDetail')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Show as list' }).click();
+  await expect(page.getByRole('heading', { name: 'Key terms' })).toBeVisible();
+});
