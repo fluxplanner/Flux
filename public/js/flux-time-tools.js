@@ -512,8 +512,7 @@
   function fsEl() { return $('fttFocusFs'); }
 
   /* The id stays fttFocusFs even now that it shows four different tools. It is
-     load-bearing: flux-mood-prompt.js checks for it before deciding whether to
-     interrupt, and the CSS and tests key off it. Renaming it to something
+     load-bearing: the CSS and tests key off it. Renaming it to something
      tidier would be a rename in five files to no one's benefit. */
   function buildFsShell() {
     var el = fsEl();
