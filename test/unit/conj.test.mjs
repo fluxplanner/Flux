@@ -213,3 +213,25 @@ test('a verb outside the dictionary still conjugates by the rules for its ending
   assert.equal(C.conjugate('fr', 'googler').tenses.present[3], 'googlons');
   assert.equal(C.conjugate('es', 'zzz'), null);
 });
+
+test('an English phrase finds the verb, tense and person it means', () => {
+  const top = (lang, q) => { const h = C.fromEnglish(lang, q)[0]; return h ? h.verb + ' ' + h.tense + ' ' + h.person + ' ' + h.form : null; };
+  assert.equal(top('es', 'I ate'), 'comer preterite 0 comí');
+  assert.equal(top('fr', 'I ate'), 'manger passeCompose 0 ai mangé');
+  assert.equal(top('es', 'we will speak'), 'hablar future 3 hablaremos');
+  assert.equal(top('fr', 'we will speak'), 'parler future 3 parlerons');
+  assert.equal(top('es', 'he goes'), 'ir present 2 va');
+  assert.equal(top('es', 'they had gone'), 'ir pluperfect 5 habían ido');
+  assert.equal(top('es', 'he was running'), 'correr imperfect 2 corría');
+  assert.equal(top('fr', 'I used to swim'), 'nager imperfect 0 nageais');
+  assert.equal(top('es', "I'll write"), 'escribir future 0 escribiré');
+  assert.equal(top('es', 'you all live'), 'vivir present 4 vivís');
+  assert.equal(top('fr', 'I have written'), 'écrire passeCompose 0 ai écrit');
+  // Not English, or nothing to go on: no guess.
+  assert.deepEqual(C.fromEnglish('es', 'tengo'), []);
+  assert.deepEqual(C.fromEnglish('es', 'I'), []);
+  // Search puts the phrase's verb first, carrying the form to highlight.
+  const s = C.search('es', 'I ate', 3)[0];
+  assert.equal(s.verb, 'comer');
+  assert.equal(s.hit.tense, 'preterite');
+});

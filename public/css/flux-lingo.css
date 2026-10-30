@@ -158,13 +158,49 @@
 @media (prefers-reduced-motion: reduce) { .lg-row.is-flash { animation: none; background: color-mix(in srgb, var(--accent) 20%, transparent); } .lg-sw, .lg-sw::after { transition: none; } }
 
 /* Print: just the verb, every tense, black on white. */
+/* ── Find the form you need ── */
+.lg-find, .lg-pp { margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--lg-soft); }
+.lg-find-h { margin: 0 0 8px; font-size: .95rem; }
+.lg-find-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.lg-find-sel { min-height: 44px; max-width: 100%; padding: 0 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg, transparent); color: var(--text); font: inherit; }
+#lgFindTense { flex: 1 1 260px; min-width: 0; }
+.lg-find-out { margin: 10px 0 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.lg-find-form { font-size: 1.25rem; color: var(--accent); cursor: pointer; }
+.lg-find-use { flex-basis: 100%; color: var(--muted2); font-size: .85rem; }
+/* ── Print panel ── */
+.lg-pp-quick { margin: 0 0 8px; color: var(--muted2); font-size: .88rem; }
+.lg-linkbtn { appearance: none; border: 0; padding: 4px 2px; background: none; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
+.lg-pp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px 16px; }
+.lg-pp-g { margin: 0; padding: 0; border: 0; }
+.lg-pp-g legend { padding: 0; margin-bottom: 2px; font-weight: 700; font-size: .85rem; }
+.lg-pp-c { display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: .9rem; }
+.lg-pp-fit { margin-top: 8px; }
+.lg-pp-btns { display: flex; gap: 8px; margin-top: 10px; }
+/* The printed sheet: only exists while printing (and for one measurement). */
+.lg-sheet { display: none; }
+.lg-sheet.is-measuring { display: block; position: absolute; left: -10000px; top: 0; width: 190mm; }
+.lg-sheet { font-size: 8.5pt; color: #000; background: #fff; }
+.lg-sheet-h { margin: 0 0 4mm; font-size: 14pt; }
+.lg-sheet-h span { font-weight: 400; font-size: 10pt; color: #444; }
+.lg-sheet-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2.5mm; }
+.lg-sheet .lg-card { padding: 2mm 2.5mm; border: 1px solid #999; border-radius: 2mm; background: #fff; break-inside: avoid; }
+.lg-sheet .lg-th { margin: 0 0 1mm; font-size: 9pt; }
+.lg-sheet .lg-te, .lg-sheet .lg-alt { display: none; }
+.lg-sheet .lg-tu { margin: 0 0 1mm; font-size: 7pt; color: #444; }
+.lg-sheet .lg-rows { margin: 0; padding: 0; list-style: none; }
+.lg-sheet .lg-row { display: flex; gap: 2mm; padding: 0; min-height: 0; }
+.lg-sheet .lg-pron { min-width: 17mm; color: #444; }
+.lg-sheet .lg-form { color: #000; }
+.lg-sheet .lg-form.is-irr { font-weight: 700; text-decoration: underline; }
+
 @media print {
-  header.top, .lg-tabs, .lg-head, .lg-chips, .lg-actions, .lg-tools, .lg-foot, #lgPractice, #lgTranslate { display: none !important; }
+  @page { size: A4 portrait; margin: 10mm; }
+  html, body.lg-printing { height: auto !important; min-height: 0 !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; }
+  body.lg-printing > *:not(#lgPrintSheet) { display: none !important; }
+  #lgPrintSheet { break-after: avoid; page-break-after: avoid; }
   body, main { background: #fff !important; color: #000 !important; }
-  .lg-card { border: 1px solid #999; background: #fff; break-inside: avoid; }
-  .lg-cards { grid-template-columns: repeat(3, 1fr); }
-  .lg-pron, .lg-tu, .lg-te, .lg-gh, .lg-gloss, .lg-notes { color: #444 !important; }
-  .lg-form.is-irr { color: #000 !important; text-decoration: underline; }
+  #lgPrintSheet { display: block; }
+  header.top, .lg-tabs, .lg-head, .lg-chips, .lg-actions, .lg-tools, .lg-foot, .lg-find, .lg-pp, #lgPractice, #lgTranslate { display: none !important; }
 }
 
 /* ── Practice setup, v2: header, what-to-practise cards, one bottom bar ── */
