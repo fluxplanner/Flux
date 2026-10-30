@@ -18,7 +18,7 @@
   var root = typeof window !== 'undefined' ? window : globalThis;
   if (root.FluxIbNotes) return;
 
-  var SUBJECTS = ['biology', 'chemistry', 'physics', 'ess', 'math-aa', 'math-ai', 'economics', 'global-politics', 'history', 'psychology', 'business', 'geography', 'cs', 'english-lit', 'english-langlit', 'french-b', 'spanish-b', 'german-b', 'visual-arts', 'music', 'tok', 'myp-langlit', 'myp-langacq', 'myp-ins', 'myp-sciences', 'myp-maths', 'myp-arts', 'myp-phe', 'myp-design', 'myp-pp'];
+  var SUBJECTS = ['biology', 'chemistry', 'physics', 'ess', 'math-aa', 'math-ai', 'economics', 'global-politics', 'history', 'psychology', 'business', 'geography', 'cs', 'english-lit', 'english-langlit', 'french-b', 'spanish-b', 'german-b', 'visual-arts', 'music', 'tok', 'sehs', 'design-tech', 'digital-society', 'philosophy', 'anthropology', 'world-religions', 'film', 'theatre', 'dance', 'spanish-ab', 'french-ab', 'myp-langlit', 'myp-langacq', 'myp-ins', 'myp-sciences', 'myp-maths', 'myp-arts', 'myp-phe', 'myp-design', 'myp-pp'];
   var cache = {};
 
   function sidOf(unitId) { return String(unitId || '').split(':')[0]; }
@@ -39,7 +39,7 @@
   }
 
   root.FluxIbNotes = {
-    SOURCE_NAME: 'Flux starter notes (check them against your class notes)',
+    SOURCE_NAME: 'Flux IB notes',
     subjects: function () { return SUBJECTS.slice(); },
     has: has,
     load: load,
