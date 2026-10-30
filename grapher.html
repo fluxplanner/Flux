@@ -309,10 +309,10 @@
         if (!linked) setTimeout(function () { G.toast('That 3D link is damaged — it may have been cut short when it was copied.', 'warning'); }, 300);
       }
 
-      var saved = 'data';
-      try { saved = localStorage.getItem(G.MODE_KEY) || 'data'; } catch (e) {}
-      if (!window.FluxGrapher3D && saved === '3d') saved = 'data';
-      show(linked ? '3d' : hand ? modeOk(hand.kind) : modeOk(saved));
+      /* Always opens on Measurements: reopening on whichever tab was used last
+         dropped students into 3D. A shared 3D link, or a graph carried over
+         from the planner, still opens on its own tab. */
+      show(linked ? '3d' : hand ? modeOk(hand.kind) : 'data');
       if (linked) inst.loadDoc(linked, null);
       else if (hand) inst.loadDoc(hand.payload, hand.cloud);
 

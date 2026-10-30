@@ -166,6 +166,8 @@ textarea.fc-input { resize: vertical; line-height: 1.45; }
 .fc-wkey:active { background: #d9cffd; }
 .fc-bkey:active { background: #4c1d95; }
 .fc-kb-info { margin-top: 12px; }
+.fc-staves--full { display: block; }
+.fc-staves--full .fc-staff { width: 100%; }
 .fc-kb-now { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
 .fc-kb-name { font-size: 2.4rem; font-weight: 800; line-height: 1; }
 .fc-kb-name sub { font-size: 1rem; color: var(--fc-mut); }

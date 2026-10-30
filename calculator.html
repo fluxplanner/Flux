@@ -22,7 +22,7 @@
   any school computer and needs no account. Its memory (variables, lists,
   programs) stays in this browser, like the handheld's RAM.
 -->
-<link rel="stylesheet" href="public/css/flux-ti84.css?v=5bacc7a7">
+<link rel="stylesheet" href="public/css/flux-ti84.css?v=a92eaf16">
 <link rel="stylesheet" href="public/css/flux-hub.css?v=6a462093">
 <link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
 <style>
@@ -58,12 +58,18 @@
 
   main {
     display: grid;
-    grid-template-columns: minmax(0, 400px) minmax(0, 300px);
+    /* The calculator column grows with the screen height (it is about 2.45
+       times as tall as it is wide) so a tall screen shows it big, never
+       taller than the window. */
+    --reg: clamp(390px, calc((100dvh - 135px) / 2.43), 500px);
+    grid-template-columns: minmax(0, var(--reg)) minmax(0, 300px);
     justify-content: center;
     align-items: start;
     gap: clamp(20px, 4vw, 48px);
     padding: clamp(16px, 4vw, 40px) max(16px, env(safe-area-inset-right, 0px)) calc(48px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
   }
+  /* The shared 390px cap is for the planner's side panel; here the column sizes it. */
+  main .t84-wrap { max-width: none; }
   .tips {
     position: sticky; top: calc(72px + env(safe-area-inset-top, 0px));
     padding: 18px 20px;
@@ -90,7 +96,7 @@
   /* Wide view (the switch above the calculator) takes the whole row and
      sizes one column so the keys fit the height; the tips go underneath. */
   main:has(.t84-wrap.is-wide) {
-    --col: min(42vw, calc((100dvh - 52px - env(safe-area-inset-top, 0px) - 130px) / 1.55));
+    --col: min(46vw, calc((100dvh - 52px - env(safe-area-inset-top, 0px) - 110px) / 1.57));
     grid-template-columns: minmax(0, calc(var(--col) * 2 + 64px)); padding-top: 16px;
   }
   main:has(.t84-wrap.is-wide) .tips { position: static; }
