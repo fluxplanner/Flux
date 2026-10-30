@@ -156,7 +156,7 @@
         b.setAttribute('aria-checked', String(on));
         b.classList.toggle('is-on', on);
       });
-      q.placeholder = state.lang === 'es' ? 'Type a verb, any form, or English — tener, tuvimos, "to have"' : 'Type a verb, any form, or English — avoir, eûmes, "to have"';
+      q.placeholder = state.lang === 'es' ? 'Type a verb, any form, or English — tener, tuvimos, "we had"' : 'Type a verb, any form, or English — avoir, eûmes, "we had"';
       drawChips();
     }
     host.querySelector('.lg-langs').addEventListener('click', function (e) {
@@ -201,7 +201,15 @@
       } else if (act === 'copy') {
         copyTable();
       } else if (act === 'print') {
-        window.print();
+        printOpen = !printOpen; drawVerb();
+        if (printOpen) { var pp = verbEl.querySelector('#lgPrintPanel input'); if (pp) pp.focus(); }
+      } else if (act === 'print-go') {
+        printNow();
+      } else if (act === 'print-cancel') {
+        printOpen = false; drawVerb();
+      } else if (act === 'print-set') {
+        var pick = a.dataset.v === 'all' ? allTenses(cur.lang) : a.dataset.v === 'none' ? [] : allTenses(cur.lang).filter(function (id) { return ESSENTIAL[cur.lang][id]; });
+        verbEl.querySelectorAll('#lgPrintPanel [data-ptense]').forEach(function (c) { c.checked = pick.indexOf(c.dataset.ptense) !== -1; });
       } else if (act === 'practice') {
         startPracticeWith([cur.infinitive], cur.lang);
       } else if (act === 'view') {
@@ -332,11 +340,144 @@
         + (r.lang === 'es' ? toggle('vosotros', 'vosotros', state.vosotros) : '')
         + toggle('highlight', 'Highlight irregular', state.highlight)
         + '</div>'
+        + (printOpen ? printPanel(r) : '')
+        + finderHtml(r)
         + '<div class="lg-groups' + (state.highlight ? ' hl' : '') + '">' + C.groups(r.lang).map(function (g) { return drawGroup(r, g, view); }).join('') + '</div>'
         + '<p class="lg-foot">Tap any form to hear it. ' + (r.lang === 'fr' ? 'With être, the participle agrees: (e) feminine, (s) plural.' : 'Forms in colour are irregular or change their spelling.') + '</p>'
         + '</article>';
       verbEl.innerHTML = h;
+      showFound(false);
     }
+
+    /* ── Find a form: who + which tense, with what each tense is for ───── */
+    function allTenses(lang) {
+      var out = [];
+      C.groups(lang).forEach(function (g) { g.tenses.forEach(function (t) { out.push(t[0]); }); });
+      return out;
+    }
+    function tenseInfo(lang, id) {
+      var out = null;
+      C.groups(lang).forEach(function (g) { g.tenses.forEach(function (t) { if (t[0] === id) out = { group: g.name, name: t[1], ex: t[2], use: t[3] }; }); });
+      return out;
+    }
+    function finderHtml(r) {
+      var f = state.find = state.find || {};
+      var tense = f[r.lang] && tenseInfo(r.lang, f[r.lang].tense) ? f[r.lang].tense : 'present';
+      var person = f[r.lang] ? f[r.lang].person : 0;
+      var imp = isImp(tense);
+      var persons = imp ? C.imperativePersons(r.lang) : C.persons(r.lang);
+      if (!persons[person]) person = persons.findIndex(Boolean);
+      var who = '<select id="lgFindWho" class="lg-find-sel" aria-label="Who">' + persons.map(function (p, i) {
+        return p ? '<option value="' + i + '"' + (i === person ? ' selected' : '') + '>' + esc(p) + '</option>' : '';
+      }).join('') + '</select>';
+      var when = '<select id="lgFindTense" class="lg-find-sel" aria-label="Tense">' + C.groups(r.lang).map(function (g) {
+        return '<optgroup label="' + esc(g.name) + '">' + g.tenses.map(function (t) {
+          return '<option value="' + t[0] + '"' + (t[0] === tense ? ' selected' : '') + '>' + esc(t[1]) + ' — ' + esc(t[3]) + '</option>';
+        }).join('') + '</optgroup>';
+      }).join('') + '</select>';
+      return '<section class="lg-find" aria-labelledby="lgFindH"><h2 class="lg-find-h" id="lgFindH">Find the form you need</h2>'
+        + '<div class="lg-find-row">' + who + when + '</div><p class="lg-find-out" id="lgFindOut" aria-live="polite"></p></section>';
+    }
+    function showFound(jump) {
+      var r = cur, out = verbEl.querySelector('#lgFindOut');
+      if (!r || !out) return;
+      var who = Number(verbEl.querySelector('#lgFindWho').value), tense = verbEl.querySelector('#lgFindTense').value;
+      var info = tenseInfo(r.lang, tense);
+      var form = (r.tenses[tense] || [])[who];
+      var persons = isImp(tense) ? C.imperativePersons(r.lang) : C.persons(r.lang);
+      out.innerHTML = form
+        ? '<span class="lg-find-who">' + esc(persons[who]) + ', ' + esc(info.name.toLowerCase()) + ':</span> <b class="lg-find-form" data-say="' + esc(withSubject(r.lang, tense, who, form).replace(/\(e\)|\(s\)/g, '')) + '">' + esc(form) + '</b>'
+          + '<span class="lg-find-use">' + esc(info.use) + ' (' + esc(info.ex) + ')</span>'
+        : 'This verb has no ' + esc(info.name.toLowerCase()) + ' form for ' + esc(persons[who] || 'that person') + '.';
+      if (!jump || !form) return;
+      var cell = verbEl.querySelector('[data-cell="' + tense + '-' + who + '"]');
+      if (!cell && state.view !== 'all') { state.view = 'all'; save(state); drawVerb(); cell = verbEl.querySelector('[data-cell="' + tense + '-' + who + '"]'); }
+      if (cell) { cell.classList.remove('is-flash'); void cell.offsetWidth; cell.classList.add('is-flash'); cell.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    }
+    verbEl.addEventListener('change', function (e) {
+      if (!cur || !e.target.closest('.lg-find')) return;
+      var f = state.find = state.find || {};
+      f[cur.lang] = { person: Number(verbEl.querySelector('#lgFindWho').value), tense: verbEl.querySelector('#lgFindTense').value };
+      save(state);
+      if (e.target.id === 'lgFindTense') {
+        // The imperative has its own persons: redraw the Who list for it.
+        var sel = verbEl.querySelector('.lg-find');
+        sel.outerHTML = finderHtml(cur);
+      }
+      showFound(true);
+    });
+
+    /* ── Print: the tenses the student ticks, portrait, small, one page ── */
+    var printOpen = false;
+    function printPanel(r) {
+      var chosen = state.printTenses && state.printTenses[r.lang];
+      var on = function (id) { return chosen ? chosen.indexOf(id) !== -1 : (state.view === 'all' || !!ESSENTIAL[r.lang][id]); };
+      return '<section class="lg-pp" id="lgPrintPanel" aria-labelledby="lgPpH"><h2 class="lg-find-h" id="lgPpH">Print</h2>'
+        + '<p class="lg-pp-quick">Tick the tenses to print: <button type="button" class="lg-linkbtn" data-act="print-set" data-v="essential">Essentials</button> · '
+        + '<button type="button" class="lg-linkbtn" data-act="print-set" data-v="all">All</button> · <button type="button" class="lg-linkbtn" data-act="print-set" data-v="none">None</button></p>'
+        + '<div class="lg-pp-grid">' + C.groups(r.lang).map(function (g) {
+          return '<fieldset class="lg-pp-g"><legend>' + esc(g.name) + '</legend>' + g.tenses.map(function (t) {
+            return '<label class="lg-pp-c"><input type="checkbox" data-ptense="' + t[0] + '"' + (on(t[0]) ? ' checked' : '') + '> ' + esc(t[1]) + '</label>';
+          }).join('') + '</fieldset>';
+        }).join('') + '</div>'
+        + '<label class="lg-pp-c lg-pp-fit"><input type="checkbox" id="lgPrintFit"' + (state.printFit === false ? '' : ' checked') + '> Shrink to fit on one page</label>'
+        + '<div class="lg-pp-btns"><button type="button" class="lg-act lg-act--wide is-on" data-act="print-go"><span aria-hidden="true">⎙</span><span>Print</span></button>'
+        + '<button type="button" class="lg-act lg-act--wide" data-act="print-cancel"><span>Cancel</span></button></div></section>';
+    }
+    function printNow() {
+      var r = cur;
+      var ids = [];
+      verbEl.querySelectorAll('#lgPrintPanel [data-ptense]').forEach(function (c) { if (c.checked) ids.push(c.dataset.ptense); });
+      if (!ids.length) { var q0 = verbEl.querySelector('#lgPrintPanel .lg-pp-quick'); if (q0) q0.textContent = 'Tick at least one tense to print.'; return; }
+      var fit = verbEl.querySelector('#lgPrintFit').checked;
+      state.printTenses = state.printTenses || {};
+      state.printTenses[r.lang] = ids; state.printFit = fit; save(state);
+      buildSheet(r, ids, fit);
+      printOpen = false; drawVerb();
+      window.print();
+    }
+    /* The page that is printed: just the chosen tenses, nothing else on it, so
+       no stray element (a full-height app shell, the hidden tabs) can push a
+       blank second page out. Ctrl/Cmd+P without the panel prints the same
+       sheet, with the last choice or the tenses on screen. */
+    function buildSheet(r, ids, fit) {
+      var old = document.getElementById('lgPrintSheet');
+      if (old) old.remove();
+      var lex = C.lexicon(r.lang);
+      var sheet = document.createElement('div');
+      sheet.id = 'lgPrintSheet';
+      sheet.className = 'lg-sheet';
+      sheet.innerHTML = '<h1 class="lg-sheet-h">' + esc(r.infinitive) + (lex[r.base] || lex[r.infinitive] ? ' <span>' + esc(lex[r.base] || lex[r.infinitive]) + '</span>' : '') + '</h1>'
+        + '<div class="lg-sheet-grid">' + C.groups(r.lang).map(function (g) {
+          // Without the section headings, "Present" alone could be either mood.
+          var mood = g.name.replace(/ ·.*$/, '');
+          var plain = /^(Indicative|Indicatif)$/.test(mood);
+          return g.tenses.filter(function (t) { return ids.indexOf(t[0]) !== -1; }).map(function (t) {
+            return drawCard(r, plain || t[1].indexOf(mood) === 0 ? t : [t[0], mood + ' · ' + t[1].toLowerCase(), t[2], t[3]]);
+          }).join('');
+        }).join('') + '</div>';
+      document.body.appendChild(sheet);
+      // Measure at the printed width (A4 portrait, 10 mm margins: 190 × 277 mm),
+      // then shrink the whole sheet just enough to fit one page, with 4% to
+      // spare: a sheet that is exactly a page tall rounds onto a blank second one.
+      sheet.classList.add('is-measuring');
+      var pageH = 277 * 96 / 25.4 * 0.96;
+      var h = sheet.scrollHeight;
+      sheet.classList.remove('is-measuring');
+      sheet.style.zoom = fit && h > pageH ? String(Math.max(0.3, Math.floor(pageH / h * 100) / 100)) : '';
+      document.body.classList.add('lg-printing');
+    }
+    window.addEventListener('beforeprint', function () {
+      if (document.getElementById('lgPrintSheet') || !cur || tab !== 'conjugate') return;
+      var saved = state.printTenses && state.printTenses[cur.lang];
+      var ids = saved && saved.length ? saved : allTenses(cur.lang).filter(function (id) { return state.view === 'all' || ESSENTIAL[cur.lang][id]; });
+      buildSheet(cur, ids, state.printFit !== false);
+    });
+    window.addEventListener('afterprint', function () {
+      var sheet = document.getElementById('lgPrintSheet');
+      if (sheet) sheet.remove();
+      document.body.classList.remove('lg-printing');
+    });
     function nf(label, val, irr, plain) {
       if (!val) return '';
       return '<div class="lg-nf-i"><span class="lg-nf-k">' + label + '</span><span class="lg-nf-v' + (irr ? ' is-irr' : '') + '"' + (plain ? '' : ' data-say="' + esc(val) + '"') + '>' + esc(val) + '</span></div>';
