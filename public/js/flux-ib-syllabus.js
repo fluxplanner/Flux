@@ -211,6 +211,46 @@
       sec('Areas of knowledge', [['AOK', 'History'], ['AOK', 'The human sciences'], ['AOK', 'The natural sciences'], ['AOK', 'Mathematics'], ['AOK', 'The arts']]),
       sec('Assessment', [['EX', 'TOK exhibition'], ['ES', 'TOK essay on a prescribed title']])) },
 
+    /* ── More DP subjects ─────────────────────────────────────────────── */
+    { id: 'sehs', name: "Sports, Exercise and Health Science", group: 'Sciences', aliases: ["sehs", "sports science", "sport science"], units: units(
+      sec("A · Exercise physiology and nutrition", [["A", "The musculoskeletal system"], ["A", "The cardiorespiratory system"], ["A", "Energy systems"], ["A", "Nutrition and hydration"]]),
+      sec("B · Biomechanics", [["B", "Forces and motion"], ["B", "Projectile motion and fluid forces"], ["B", "Injury"]]),
+      sec("C · Sport psychology and motor learning", [["C", "Motivation and goal setting"], ["C", "Arousal, anxiety and performance"], ["C", "Skill acquisition"]]),
+      sec("Assessment", [["IA", "Scientific investigation"]])) },
+    { id: 'design-tech', name: "Design Technology", group: 'Sciences', aliases: ["dt", "design technology", "design tech"], units: units(
+      sec("Core topics", [["A", "Human factors and ergonomics"], ["B", "Resource management and sustainable production"], ["C", "Modelling and prototyping"], ["D", "Materials and their properties"], ["E", "Innovation and markets"], ["F", "Commercial production"]]),
+      sec("Assessment", [["IA", "Design project"]])) },
+    { id: 'digital-society', name: "Digital Society", group: 'Individuals and Societies', aliases: ["digital society"], units: units(
+      sec("Concepts and contexts", [["1", "Concepts"], ["3", "Contexts"]]),
+      sec("Content", [["2.1", "Data"], ["2.2", "Algorithms"], ["2.3", "Computers"], ["2.4", "Media"], ["2.5", "Networks and the internet"], ["2.6", "Artificial intelligence"], ["2.7", "Robots and autonomous technologies"]]),
+      sec("HL and assessment", [["HL", "HL challenges and interventions", 1], ["IA", "Inquiry project"]])) },
+    { id: 'philosophy', name: "Philosophy", group: 'Individuals and Societies', aliases: ["philosophy", "philo"], units: units(
+      sec("Core theme", [["Core", "Being human"]]),
+      sec("Optional themes", [["OT", "Ethics"], ["OT", "Epistemology"], ["OT", "Political philosophy"], ["OT", "Philosophy of religion"], ["OT", "Philosophy of science"], ["OT", "Aesthetics"]]),
+      sec("Texts and assessment", [["PT", "Prescribed text"], ["IA", "Philosophical analysis"]])) },
+    { id: 'anthropology', name: "Social and Cultural Anthropology", group: 'Individuals and Societies', aliases: ["anthropology", "sca", "social and cultural anthropology"], units: units(
+      sec("Foundations", [["1", "Key concepts"], ["2", "Ethnography and fieldwork"]]),
+      sec("Areas of inquiry", [["AI", "Classifying the world"], ["AI", "Production, exchange and consumption"], ["AI", "Health, illness and healing"], ["AI", "Movement, time and space"], ["AI", "Belief and practice"]]),
+      sec("Assessment", [["IA", "Fieldwork"]])) },
+    { id: 'world-religions', name: "World Religions", group: 'Individuals and Societies', aliases: ["world religions", "religion", "religious studies"], units: units(
+      sec("Part 1 · Introduction to world religions", [["R", "Hinduism"], ["R", "Buddhism"], ["R", "Sikhism"], ["R", "Judaism"], ["R", "Christianity"], ["R", "Islam"], ["R", "Taoism"], ["R", "Jainism"], ["R", "The Bahá’í Faith"]]),
+      sec("Part 2 and assessment", [["P2", "In-depth study"], ["IA", "Investigation"]])) },
+    { id: 'film', name: "Film", group: 'The Arts', aliases: ["film", "film studies"], units: units(
+      sec("Core areas", [["CA", "Reading film"], ["CA", "Contextualizing film"], ["CA", "Exploring film production roles"]]),
+      sec("Assessment", [["TA", "Textual analysis"], ["CS", "Comparative study"], ["FP", "Film portfolio"], ["HL", "Collaborative film project", 1]])) },
+    { id: 'theatre', name: "Theatre", group: 'The Arts', aliases: ["theatre", "theater", "drama"], units: units(
+      sec("Core areas", [["CA", "Theatre in context"], ["CA", "Theatre processes"], ["CA", "Presenting theatre"]]),
+      sec("Assessment", [["PP", "Production proposal"], ["RP", "Research presentation"], ["CP", "Collaborative project"], ["HL", "Solo theatre piece", 1]])) },
+    { id: 'dance', name: "Dance", group: 'The Arts', aliases: ["dance"], units: units(
+      sec("Core areas", [["CA", "Composition and analysis"], ["CA", "World dance studies"], ["CA", "Performance"]]),
+      sec("Assessment", [["IA", "Composition, performance and investigation"]])) },
+    { id: 'spanish-ab', name: "Spanish ab initio", group: 'Language Acquisition', aliases: ["spanish ab initio", "spanish ab"], units: units(
+      sec("Themes", [["T1", "Identities"], ["T2", "Experiences"], ["T3", "Human ingenuity"], ["T4", "Social organization"], ["T5", "Sharing the planet"]]),
+      sec("Assessment", [["P1", "Paper 1: writing"], ["P2", "Paper 2: listening and reading"], ["IA", "Individual oral"]])) },
+    { id: 'french-ab', name: "French ab initio", group: 'Language Acquisition', aliases: ["french ab initio", "french ab"], units: units(
+      sec("Themes", [["T1", "Identities"], ["T2", "Experiences"], ["T3", "Human ingenuity"], ["T4", "Social organization"], ["T5", "Sharing the planet"]]),
+      sec("Assessment", [["P1", "Paper 1: writing"], ["P2", "Paper 2: listening and reading"], ["IA", "Individual oral"]])) },
+
     /* ── MYP ──────────────────────────────────────────────────────────────
        The MYP prescribes no content units: schools write their own. What it
        does prescribe is the same for every school — the four assessment

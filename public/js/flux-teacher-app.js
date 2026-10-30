@@ -725,34 +725,68 @@
     if (focusSel) focusEl(focusSel) || focusEl('#ftLibTitle');
   }
 
+  /* The library has two halves: IB notes (every unit of every IB subject,
+     with Flux's starter notes ready to study) and My notes (sets built from
+     the student's own uploads). Which one shows is remembered. */
+  const LIB_MODE_KEY = 'flux_tutor_lib_mode';
+  function libMode() {
+    let m = '';
+    try { m = localStorage.getItem(LIB_MODE_KEY) || ''; } catch (e) { /* storage blocked */ }
+    if (m === 'ib' && IB) return 'ib';
+    if (m === 'mine' || !IB) return 'mine';
+    return 'ib';
+  }
+  function setLibMode(m) {
+    try { localStorage.setItem(LIB_MODE_KEY, m); } catch (e) { /* storage blocked */ }
+  }
+
   function renderLibrary() {
     app.view = 'library';
     document.title = 'Flux Tutor · Study from your notes';
     setSaveLabel(idleLabel(), app.store.persistent ? 'idle' : 'warn');
     const sets = app.metas;
+    const mode = libMode();
+    const mine = sets.filter((m) => !m.unit);
+    const tab = (id, label, count) => '<button type="button" role="tab" class="ft-mode-tab" id="ftMode-' + id + '" data-act="lib-mode" data-mode="' + id + '" aria-selected="' + (mode === id) + '" aria-controls="ftLibBody"' + (mode === id ? '' : ' tabindex="-1"') + '>'
+      + label + (count ? ' <span class="ft-count">' + count + '</span>' : '') + '</button>';
     root.innerHTML = storeBanners()
       + '<section class="ft-library" aria-labelledby="ftLibTitle">'
       + '<div class="ft-lib-head"><div class="ft-lib-intro">'
       + '<h1 id="ftLibTitle" class="ft-h1" tabindex="-1">Your study sets</h1>'
       + '<p class="ft-promise">' + icon('shield', 17) + '<span>' + esc(PROMISE) + '</span></p></div>'
-      + '<div class="ft-lib-actions">'
-      + '<a class="ft-btn" href="#new">' + icon('plus') + 'New study set</a>'
-      + (window.FluxTeach ? '<a class="ft-btn ft-btn--quiet" href="#learn">' + icon('sparkle') + 'Learn step by step</a>' : '')
-      + '<button type="button" class="ft-btn ft-btn--quiet" data-act="sample">' + icon('sparkle') + 'Try it with a sample</button>'
-      + '<button type="button" class="ft-btn ft-btn--quiet" data-act="import">' + icon('upload') + 'Import</button>'
-      + (sets.length ? '<button type="button" class="ft-btn ft-btn--quiet" data-act="export-all">' + icon('download') + 'Back up all</button>' : '')
       + '<input type="file" id="ftImportFile" class="ft-visually-hidden" accept=".json,application/json" tabindex="-1" aria-label="Choose a Flux Tutor export to import">'
-      + '</div></div>'
+      + '</div>'
       + (app.notice ? '<p class="ft-notice" role="status">' + icon('info', 17) + '<span>' + esc(app.notice) + '</span></p>' : '')
+      + (IB ? '<div class="ft-modes" role="tablist" aria-label="What to study">' + tab('ib', 'IB notes', 0) + tab('mine', 'My notes', mine.length) + '</div>' : '')
       + progressHtml(sets)
-      + syllabusHtml(sets)
-      + '<p id="ftLibAlert" class="ft-alert" role="alert"' + (app.libError ? '' : ' hidden') + '>' + esc(app.libError) + '</p>'
-      + (sets.length ? '<ul class="ft-sets" aria-label="Study sets">' + sets.map(setCard).join('') + '</ul>' : emptyLibrary())
+      + '<div id="ftLibBody" role="tabpanel" aria-labelledby="ftMode-' + mode + '">'
+      + (mode === 'ib' ? ibHtml(sets) : mineHtml(mine))
+      + '</div>'
       + (app.bin.length ? binHtml() : '')
       + '<p class="ft-storage-note">' + esc(app.store.backend === 'memory'
         ? 'Nothing here is saved after you close this tab. Use Export to keep a copy.'
         : 'Your study sets are saved in this browser on this device. In a private or incognito window they are deleted when the window closes. Use Export to keep a copy, or to move a set to another device.') + '</p>'
       + '</section>';
+  }
+
+  /** IB notes: pick a subject, then any unit opens with Flux's notes ready. */
+  function ibHtml(sets) {
+    return '<p class="ft-mode-lead">Every unit of every IB subject comes with Flux starter notes. Pick a unit to get its study guide, flashcards and practice straight away, then add your class notes to it.'
+      + (window.FluxTeach ? ' <a href="#learn">Step-by-step lessons</a> are there for many units too.' : '') + '</p>'
+      + syllabusHtml(sets)
+      + '<p id="ftLibAlert" class="ft-alert" role="alert"' + (app.libError ? '' : ' hidden') + '>' + esc(app.libError) + '</p>';
+  }
+
+  /** My notes: the student's own uploads, and where to add more. */
+  function mineHtml(mine) {
+    return '<div class="ft-lib-actions">'
+      + '<a class="ft-btn" href="#new">' + icon('upload') + 'New study set</a>'
+      + '<button type="button" class="ft-btn ft-btn--quiet" data-act="sample">' + icon('sparkle') + 'Try it with a sample</button>'
+      + '<button type="button" class="ft-btn ft-btn--quiet" data-act="import">' + icon('upload') + 'Import</button>'
+      + (app.metas.length ? '<button type="button" class="ft-btn ft-btn--quiet" data-act="export-all">' + icon('download') + 'Back up all</button>' : '')
+      + '</div>'
+      + '<p id="ftLibAlert" class="ft-alert" role="alert"' + (app.libError ? '' : ' hidden') + '>' + esc(app.libError) + '</p>'
+      + (mine.length ? '<ul class="ft-sets" aria-label="Study sets">' + mine.map(setCard).join('') + '</ul>' : emptyLibrary());
   }
 
   /** The progress dashboard: streak, cards due and a predicted grade per subject, from every set. */
@@ -809,22 +843,25 @@
     const byGroup = {};
     subjects.forEach((s) => { (byGroup[s.group] || (byGroup[s.group] = [])).push(s); });
     return '<section class="ft-syllabus" aria-labelledby="ftSylTitle"><div class="ft-syl-head"><div>'
-      + '<h2 class="ft-h2" id="ftSylTitle">IB syllabus</h2>'
-      + '<p class="ft-help">Every unit of the current DP guide. File a study set under a unit to see what you have covered; ' + covered + ' of ' + subj.units.length + ' ' + esc(subj.name) + ' units have one.</p></div>'
+      + '<h2 class="ft-h2" id="ftSylTitle">' + esc(subj.name) + '</h2>'
+      + '<p class="ft-help">' + covered + ' of ' + subj.units.length + ' units started.</p></div>'
       + '<div class="ft-field"><label class="ft-label" for="ftSylSubject">Subject</label><select class="ft-select" id="ftSylSubject">'
       + Object.keys(byGroup).map((g) => '<optgroup label="' + esc(g) + '">' + byGroup[g].map((s) => '<option value="' + esc(s.id) + '"' + (s.id === sid ? ' selected' : '') + '>' + esc(s.name) + '</option>').join('') + '</optgroup>').join('')
       + '</select></div></div>'
       + '<div class="ft-meter" role="progressbar" aria-label="Units with a study set" aria-valuemin="0" aria-valuemax="' + subj.units.length + '" aria-valuenow="' + covered + '"><span style="width:' + Math.round(covered / subj.units.length * 100) + '%"></span></div>'
       + groups.map((g) => '<h3 class="ft-h3 ft-syl-sec">' + esc(g.name) + '</h3><ul class="ft-syl-units">' + g.units.map((u) => {
         const mine = filed.get(u.id) || [];
-        return '<li class="ft-syl-unit' + (mine.length ? ' is-covered' : '') + '"><span class="ft-syl-name">'
-          + (/\d/.test(u.code) && !/^\d+$/.test(u.code) ? '<span class="ft-syl-code">' + esc(u.code) + '</span> ' : '') + esc(u.title)
-          + (u.hl ? ' <span class="ft-chip ft-chip--hl" title="Higher level only">HL</span>' : '') + '</span>'
-          + learnLink(u)
+        const has = window.FluxIbNotes && window.FluxIbNotes.has(u.id);
+        return '<li class="ft-syl-unit' + (mine.length ? ' is-covered' : '') + '">'
+          + '<span class="ft-syl-code">' + (/\d/.test(u.code) && !/^\d+$/.test(u.code) ? esc(u.code) : '') + '</span>'
+          + '<span class="ft-syl-name">' + esc(u.title)
+          + (u.hl ? ' <span class="ft-chip ft-chip--hl" title="Higher level only">HL</span>' : '')
+          + (mine.length ? ' <span class="ft-chip ft-chip--good">' + (mine.length > 1 ? plural(mine.length, 'set') : 'Started') + '</span>' : '') + '</span>'
+          + '<span class="ft-syl-acts">' + learnLink(u)
           + (mine.length
-            ? '<a class="ft-mini" href="' + esc(setHash(mine[0].id, '')) + '">' + (mine.length > 1 ? plural(mine.length, 'set') : 'Open set') + '</a>'
-            : '<button type="button" class="ft-mini" data-act="syl-new" data-unit="' + esc(u.id) + '" aria-label="' + (window.FluxIbNotes && window.FluxIbNotes.has(u.id) ? 'Start a study set from Flux notes for ' : 'New study set for ') + esc(u.title) + '">' + (window.FluxIbNotes && window.FluxIbNotes.has(u.id) ? 'Start with notes' : 'New set') + '</button>')
-          + '</li>';
+            ? '<a class="ft-mini ft-mini--go" href="' + esc(setHash(mine[0].id, '')) + '" aria-label="Open ' + esc(u.title) + '">Open</a>'
+            : '<button type="button" class="ft-mini ft-mini--go" data-act="syl-new" data-unit="' + esc(u.id) + '" aria-label="' + (has ? 'Study ' : 'New study set for ') + esc(u.title) + '">' + (has ? 'Study' : 'New set') + '</button>')
+          + '</span></li>';
       }).join('') + '</ul>').join('')
       + '</section>';
   }
@@ -834,7 +871,7 @@
     const ks = window.FluxTeach ? window.FluxTeach.forUnit(u.id) : [];
     if (!ks.length) return '';
     const sid = u.id.split(':')[0];
-    return '<a class="ft-mini ft-mini--learn" href="#learn/' + esc(sid) + (ks.length === 1 ? '/' + esc(ks[0].id) : '') + '" aria-label="Learn ' + esc(u.title) + ' step by step">Learn' + (ks.length > 1 ? ' · ' + ks.length : '') + '</a>';
+    return '<a class="ft-mini ft-mini--learn" href="#learn/' + esc(sid) + (ks.length === 1 ? '/' + esc(ks[0].id) : '') + '" aria-label="Lessons for ' + esc(u.title) + '">Lessons' + (ks.length > 1 ? ' (' + ks.length + ')' : '') + '</a>';
   }
 
   function emptyLibrary() {
@@ -1040,6 +1077,13 @@
       + '<div id="ftOtherTab">' + (o.conflict ? conflictBanner() : '') + '</div>'
       + screen
       + (o.draft ? '' : stuckPanel(set));
+    // The tab row scrolls sideways on narrow screens: keep the current tab in view.
+    const bar = root.querySelector('.ft-tabs ul');
+    const on = bar && bar.querySelector('[aria-current="page"]');
+    if (on) {
+      const li = on.parentElement;
+      if (li.offsetLeft < bar.scrollLeft || li.offsetLeft + li.offsetWidth > bar.scrollLeft + bar.clientWidth) bar.scrollLeft = li.offsetLeft - 24;
+    }
   }
   function renderScreen(target) {
     renderSet();
@@ -2926,6 +2970,7 @@
     const act = btn.dataset.act;
     const id = btn.dataset.id;
     switch (act) {
+      case 'lib-mode': setLibMode(btn.dataset.mode); renderLibrary(); focusEl('#ftMode-' + btn.dataset.mode); break;
       case 'sample': guarded(createSample); break;
       case 'syl-new': guarded(() => startUnitSet(btn.dataset.unit || '')); break;
       case 'import': { const f = document.getElementById('ftImportFile'); if (f) f.click(); break; }

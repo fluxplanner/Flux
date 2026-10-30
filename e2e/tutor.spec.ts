@@ -65,6 +65,8 @@ async function answer(scope: Locator, q: any, right: boolean) {
 async function openSample(page: Page) {
   await page.goto(APP);
   await expect(page.getByRole('heading', { name: 'Your study sets' })).toBeVisible();
+  // The sample lives under My notes.
+  await page.getByRole('tab', { name: /^My notes/ }).click();
   await page.getByRole('button', { name: 'Try it with a sample' }).click();
   await expect(page).toHaveURL(/#set\/[^/]+\/guide$/);
   await expect(page.getByRole('heading', { name: 'Study guide' })).toBeVisible();
@@ -79,9 +81,16 @@ function tab(page: Page, name: string) {
 const DP_EXAMS = true;
 
 test.describe('Flux Tutor', () => {
+  /* The library opens on IB notes for a new student; these tests work with
+     their own notes, so they start on My notes unless a test says otherwise. */
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => { try { if (!sessionStorage.getItem('ftMode')) { sessionStorage.setItem('ftMode', '1'); if (!localStorage.getItem('flux_tutor_lib_mode')) localStorage.setItem('flux_tutor_lib_mode', 'mine'); } } catch (e) { /* storage blocked */ } });
+  });
+
   test('IB syllabus: every unit listed, a set started from a unit is filed under it', async ({ page }) => {
     const D = '/private/tmp/claude-503/-Users-AzferMohammed-dev-Flux-Planner/90d122e6-8ef4-4284-a24d-18026299ae02/scratchpad/shots/';
     await page.goto('/teacher.html');
+    await page.getByRole('tab', { name: 'IB notes' }).click();
     const syl = page.locator('.ft-syllabus');
     await expect(syl).toBeVisible();
     await page.locator('#ftSylSubject').selectOption('biology');
@@ -91,7 +100,7 @@ test.describe('Flux Tutor', () => {
     if (process.env.FT_SHOTS) await page.screenshot({ path: D + 'syl.png', fullPage: true });
     // Without the starter notes (here: they fail to load) the unit opens a new, empty set filed under it.
     await page.route('**/public/data/ib-notes/**', (r) => r.abort());
-    await syl.getByRole('button', { name: 'Start a study set from Flux notes for Kinematics' }).click();
+    await syl.getByRole('button', { name: 'Study Kinematics' }).click();
     await expect(page.locator('#ftTitle')).toHaveValue('Physics: A.1 Kinematics');
     await expect(page.locator('#ftSubject')).toHaveValue('Physics');
     await expect(page.locator('#ftUnit')).toHaveValue('physics:A.1');
@@ -100,12 +109,13 @@ test.describe('Flux Tutor', () => {
     await expect(page.locator('#ftUnit option[value="economics:2.5"]')).toHaveText('2.5 Elasticity of demand');
   });
 
-  test('IB syllabus: "Start with notes" makes a set from Flux starter notes and opens its guide', async ({ page }) => {
+  test('IB notes: "Study" makes a set from Flux IB notes and opens its guide, and My notes keeps it apart', async ({ page }) => {
     await page.goto('/teacher.html');
+    await page.getByRole('tab', { name: 'IB notes' }).click();
     const syl = page.locator('.ft-syllabus');
     await page.locator('#ftSylSubject').selectOption('physics');
-    const start = syl.getByRole('button', { name: 'Start a study set from Flux notes for Kinematics' });
-    await expect(start).toHaveText('Start with notes');
+    const start = syl.getByRole('button', { name: 'Study Kinematics' });
+    await expect(start).toHaveText('Study');
     await start.click();
     await expect(page).toHaveURL(/#set\/[^/]+\/guide$/);
     await expect(page.getByRole('heading', { name: 'Study guide' })).toBeVisible();
@@ -113,10 +123,23 @@ test.describe('Flux Tutor', () => {
     await expect(page.getByText('Projectile', { exact: true }).first()).toBeVisible();
     // The set says where its notes came from, and is filed under the unit.
     await tab(page, 'Notes').click();
-    await expect(page.getByText('Flux starter notes (check them against your class notes)').first()).toBeVisible();
+    await expect(page.getByText('Flux IB notes').first()).toBeVisible();
     await page.goto('/teacher.html');
+    // The library remembers IB notes was the last half used.
+    await expect(page.getByRole('tab', { name: 'IB notes' })).toHaveAttribute('aria-selected', 'true');
     await page.locator('#ftSylSubject').selectOption('physics');
-    await expect(syl.locator('.ft-syl-unit', { hasText: 'Kinematics' }).getByRole('link', { name: 'Open set' })).toBeVisible();
+    await expect(syl.locator('.ft-syl-unit', { hasText: 'Kinematics' }).getByRole('link', { name: 'Open Kinematics' })).toBeVisible();
+    // An IB unit's set is not listed among the student's own uploads.
+    await page.getByRole('tab', { name: 'My notes' }).click();
+    await expect(page.locator('.ft-set-card')).toHaveCount(0);
+    // Every subject in the list has notes for every unit.
+    await page.getByRole('tab', { name: 'IB notes' }).click();
+    for (const sid of ['sehs', 'philosophy', 'film', 'spanish-ab']) {
+      await page.locator('#ftSylSubject').selectOption(sid);
+      const units = syl.locator('.ft-syl-unit');
+      expect(await units.count()).toBeGreaterThan(3);
+      expect(await syl.getByRole('button', { name: /^New study set for / }).count()).toBe(0);
+    }
   });
 
   test('IB practice and mock exams stay hidden while paused', async ({ page }) => {
