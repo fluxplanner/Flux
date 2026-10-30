@@ -21,6 +21,55 @@ test.describe('Flux Lingo', () => {
     await expect(page.locator('.lg-tab[data-tab="conjugate"]')).toHaveAttribute('aria-selected', 'true');
   });
 
+  test('an English phrase finds the Spanish and French form it means', async ({ page }) => {
+    const errors = await open(page, '#es');
+    await page.locator('#lgQ').fill('we will speak');
+    await expect(page.locator('.lg-opt').first()).toContainText('hablar');
+    await expect(page.locator('.lg-opt').first()).toContainText('hablaremos');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.lg-inf')).toHaveText('hablar');
+    await expect(page.locator('[data-cell="future-3"]')).toHaveClass(/is-flash/);
+    await open(page, '#fr');
+    await page.locator('#lgQ').fill('I ate');
+    await expect(page.locator('.lg-opt').first()).toContainText('manger');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.lg-inf')).toHaveText('manger');
+    await expect(page.locator('[data-cell="passeCompose-0"]')).toHaveClass(/is-flash/);
+    expect(errors).toEqual([]);
+  });
+
+  test('Find the form you need: pick who and the tense, see the form and what the tense is for', async ({ page }) => {
+    const errors = await open(page, '#es/tener');
+    await page.locator('#lgFindTense').selectOption('subjImperfect');
+    await page.locator('#lgFindWho').selectOption('3');
+    await expect(page.locator('#lgFindOut .lg-find-form')).toHaveText('tuviéramos');
+    await expect(page.locator('#lgFindOut')).toContainText('si clauses');
+    // A tense the Essentials view hides is shown when asked for.
+    await page.locator('#lgFindTense').selectOption('subjFuture');
+    await expect(page.locator('[data-cell="subjFuture-3"]')).toHaveClass(/is-flash/);
+    await open(page, '#fr/aller');
+    await page.locator('#lgFindTense').selectOption('passeCompose');
+    await page.locator('#lgFindWho').selectOption('3');
+    await expect(page.locator('#lgFindOut .lg-find-form')).toHaveText('sommes allé(e)s');
+    expect(errors).toEqual([]);
+  });
+
+  test('Print: tick the tenses, and one portrait page holds only those', async ({ page }) => {
+    await open(page, '#es/hablar');
+    await page.evaluate(() => { (window as any).print = () => {}; });
+    await page.locator('[data-act="print"]').click();
+    await page.locator('[data-act="print-set"][data-v="none"]').click();
+    await page.locator('[data-ptense="present"]').check();
+    await page.locator('[data-ptense="subjPresent"]').check();
+    await page.locator('[data-act="print-go"]').click();
+    const sheet = page.locator('#lgPrintSheet');
+    await expect(sheet.locator('.lg-card')).toHaveCount(2);
+    await expect(sheet.locator('.lg-th').nth(1)).toContainText('Subjunctive');
+    await page.emulateMedia({ media: 'print' });
+    await expect(sheet).toBeVisible();
+    await expect(page.locator('#lgConj')).toBeHidden();
+  });
+
   test('a form finds its verb, and the table shows every tense with irregulars marked', async ({ page }) => {
     const errors = await open(page);
     await page.locator('#lgQ').fill('tuvimos');
