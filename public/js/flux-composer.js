@@ -643,7 +643,7 @@
     let kbKeyHandler = null;
     function renderKeyboard() {
       const kb = st.kb;
-      const last = kb.played.slice(-6);
+      const last = kb.played;
       const lit = new Set(last.slice(-1));
       const lastNote = last.length ? spellMidi(last[last.length - 1], kb.flat) : null;
       let intervalTxt = '';
@@ -654,11 +654,15 @@
         const oct = Math.floor(diff / 12);
         intervalTxt = diff === 0 ? 'Same note' : `${diff % 12 === 0 ? 'Octave' + (oct > 1 ? ' ×' + oct : '') : iv[1] + (oct ? ' + ' + oct + ' octave' + (oct > 1 ? 's' : '') : '')} ${b > a ? 'up' : 'down'} · ${diff} semitone${diff === 1 ? '' : 's'}`;
       }
+      // The staff spans the whole card and shows as many of the latest notes
+      // as fit across it (about 38px each, after the clef).
+      const staffW = Math.max(240, Math.floor((body.clientWidth || 700) - 64));
+      const shown = last.slice(-Math.max(4, Math.floor((staffW - 88) / 38)));
       const info = lastNote
         ? `<div class="fc-kb-now"><div class="fc-kb-name">${esc(nm(lastNote))}<sub>${lastNote.oct}</sub></div>
              <div class="fc-kb-sub">${esc(pcName(last[last.length - 1]))} · ${freq(last[last.length - 1]).toFixed(2)} Hz · midi ${last[last.length - 1]}</div>
              ${intervalTxt ? `<div class="fc-kb-int">${esc(intervalTxt)}</div>` : ''}</div>
-           <div class="fc-staves">${staffSVG({ notes: last.map((m) => spellMidi(m, kb.flat)), label: 'Notes played' })}</div>`
+           <div class="fc-staves fc-staves--full">${staffSVG({ notes: shown.map((m) => spellMidi(m, kb.flat)), label: 'Notes played', width: staffW })}</div>`
         : '<p class="fc-sub">Tap a key, or use your computer keyboard: <b>A W S E D F T G Y H U J K</b> play a chromatic octave.</p>';
       body.innerHTML = card('Keyboard', 'Three octaves. Every note you play is named, measured and written on the staff.',
         `<div class="fc-row">
@@ -693,7 +697,7 @@
     function pressKey(m) {
       tone(m, 0, 1.1, 0.25);
       st.kb.played.push(m);
-      if (st.kb.played.length > 12) st.kb.played.shift();
+      if (st.kb.played.length > 64) st.kb.played.shift();
       renderKeyboard();
     }
 

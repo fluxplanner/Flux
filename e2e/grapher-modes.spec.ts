@@ -22,6 +22,9 @@ async function open(page: Page, opts: { mode?: 'functions' | 'data'; tour?: bool
   }, { mode: opts.mode, tour: !!opts.tour });
   await page.goto('/grapher.html');
   await page.waitForTimeout(700);
+  // The grapher always opens on Measurements; go to the tab under test.
+  const tabId = ({ functions: '#modeFunctions', '3d': '#mode3d' } as Record<string, string>)[opts.mode || ''];
+  if (tabId) { await page.locator(tabId).click(); await page.waitForTimeout(500); }
 }
 
 /** A cell in the first table, by row and column index. */
@@ -669,13 +672,14 @@ test.describe('Flux Grapher', () => {
     await expect(page.locator('.flg-kb [data-key]').filter({ hasText: '[ ]' })).toHaveCount(1);
   });
 
-  test('the chosen half survives a reload', async ({ page }) => {
+  test('always opens on Measurements, whichever tab was used last', async ({ page }) => {
     await open(page);
-    await page.locator('#modeFunctions').click();
+    await expect(page.locator('#modeData')).toHaveAttribute('aria-selected', 'true');
+    await page.locator('#mode3d').click();
     await page.waitForTimeout(200);
     await page.reload();
     await page.waitForTimeout(700);
-    await expect(page.locator('#modeFunctions')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#modeData')).toHaveAttribute('aria-selected', 'true');
   });
 
   test('first visit offers a tour, once', async ({ page }) => {
