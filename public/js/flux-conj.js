@@ -1095,6 +1095,103 @@
     return row[b.length];
   }
 
+  /* ── English phrases ─────────────────────────────────────────────────
+     "I ate", "we will speak", "they had gone": the person from the pronoun,
+     the tense from the English verb shape, the verb from the lexicon's
+     English meanings. The answer is always a form this file conjugates;
+     only the reading of the English is new. */
+  var EN_PRONOUN = { i: 0, you: 1, he: 2, she: 2, it: 2, one: 2, we: 3, they: 5 };
+  // base past participle, for the irregular English verbs a student is likely to type.
+  var EN_IRREGULAR = ('be was been|be were been|have had had|do did done|go went gone|eat ate eaten|drink drank drunk|'
+    + 'see saw seen|come came come|take took taken|give gave given|get got gotten|get got got|make made made|say said said|'
+    + 'know knew known|think thought thought|find found found|tell told told|leave left left|feel felt felt|bring brought brought|'
+    + 'buy bought bought|begin began begun|run ran run|write wrote written|read read read|speak spoke spoken|sleep slept slept|'
+    + 'swim swam swum|sing sang sung|sit sat sat|stand stood stood|lose lost lost|pay paid paid|meet met met|put put put|'
+    + 'hear heard heard|hold held held|keep kept kept|win won won|choose chose chosen|fall fell fallen|break broke broken|'
+    + 'drive drove driven|fly flew flown|forget forgot forgotten|grow grew grown|throw threw thrown|wear wore worn|'
+    + 'understand understood understood|teach taught taught|catch caught caught|fight fought fought|sell sold sold|send sent sent|'
+    + 'spend spent spent|build built built|lend lent lent|mean meant meant|ride rode ridden|rise rose risen|wake woke woken|'
+    + 'die died died|lie lay lain|lay laid laid|cost cost cost|cut cut cut|hit hit hit|shut shut shut|let let let|set set set|'
+    + 'can could could|feed fed fed|lead led led|light lit lit|show showed shown|draw drew drawn|hide hid hidden|bite bit bitten|'
+    + 'shake shook shaken|steal stole stolen|freeze froze frozen|forgive forgave forgiven|become became become|'
+    + 'follow followed followed').split('|').map(function (x) { return x.split(' '); });
+  var EN_PAST = {}, EN_PP = {};
+  EN_IRREGULAR.forEach(function (x) { (EN_PAST[x[1]] = EN_PAST[x[1]] || []).push(x[0]); (EN_PP[x[2]] = EN_PP[x[2]] || []).push(x[0]); });
+  function enStems(w, kind) {
+    // Possible base forms of an English word that is the given kind of form.
+    var out = [];
+    var add = function (b) { if (b && out.indexOf(b) === -1) out.push(b); };
+    if (kind === 'past' || kind === 'pp') {
+      ((kind === 'past' ? EN_PAST : EN_PP)[w] || []).forEach(add);
+      if (/ied$/.test(w)) add(w.slice(0, -3) + 'y');
+      if (/ed$/.test(w)) { add(w.slice(0, -2)); add(w.slice(0, -1)); if (/([b-df-hj-np-tv-z])\1ed$/.test(w)) add(w.slice(0, -3)); }
+    } else if (kind === 'ing') {
+      if (/ing$/.test(w)) { var b = w.slice(0, -3); add(b); add(b + 'e'); if (/([b-df-hj-np-tv-z])\1$/.test(b)) add(b.slice(0, -1)); if (/y$/.test(b)) add(b.slice(0, -1) + 'ie'); }
+    } else if (kind === 'third') {
+      if (w === 'is') add('be'); if (w === 'has') add('have'); if (w === 'does') add('do'); if (w === 'goes') add('go');
+      if (/ies$/.test(w)) add(w.slice(0, -3) + 'y');
+      if (/es$/.test(w)) add(w.slice(0, -2));
+      if (/s$/.test(w)) add(w.slice(0, -1));
+    } else add(w);
+    return out;
+  }
+  function enVerbs(lang, bases) {
+    // Verbs whose English meaning is one of the bases: first meaning first.
+    var lex = LEX[lang] || {};
+    var scored = [];
+    Object.keys(lex).forEach(function (v) {
+      var parts = lex[v].toLowerCase().split(/,|;/).map(function (x) { return x.trim().replace(/^to /, '').replace(/\s*\(.*\)$/, ''); });
+      bases.forEach(function (b, bi) {
+        var at = parts.indexOf(b);
+        if (at !== -1) scored.push([v, bi * 10 + (at ? 2 : parts.length > 1 ? 1 : 0)]);
+      });
+    });
+    return scored.sort(function (a, b) { return a[1] - b[1]; }).map(function (x) { return x[0]; });
+  }
+  /** [{ verb, tense, person, form }] for an English phrase like "I ate", or []. */
+  function fromEnglish(lang, query) {
+    var w = String(query || '').toLowerCase().replace(/’/g, "'").replace(/[.!?]/g, '')
+      .replace(/'ll\b/g, ' will').replace(/'ve\b/g, ' have').replace(/'m\b/g, ' am').replace(/'re\b/g, ' are')
+      .replace(/\bwon't\b/, 'will').replace(/\bdidn't\b|\bdon't\b|\bdoesn't\b|\bnot\b/g, '')
+      .trim().split(/\s+/).filter(Boolean);
+    var person = EN_PRONOUN[w[0]];
+    if (person === undefined) return [];
+    w = w.slice(1);
+    if (w[0] === 'all' && person === 1) { person = 4; w = w.slice(1); }
+    var fr = lang === 'fr';
+    var t = null, stems = [];
+    var aux = w.join(' ');
+    var m;
+    if ((m = /^will have (\S+)$/.exec(aux))) { t = 'futurePerfect'; stems = enStems(m[1], 'pp'); }
+    else if ((m = /^would have (\S+)$/.exec(aux))) { t = 'conditionalPerfect'; stems = enStems(m[1], 'pp'); }
+    else if ((m = /^(?:have|has) (\S+)$/.exec(aux))) { t = fr ? 'passeCompose' : 'perfect'; stems = enStems(m[1], 'pp'); }
+    else if ((m = /^had (\S+)$/.exec(aux))) { t = 'pluperfect'; stems = enStems(m[1], 'pp'); }
+    else if ((m = /^will (\S+)$/.exec(aux))) { t = 'future'; stems = [m[1]]; }
+    else if ((m = /^would (\S+)$/.exec(aux))) { t = 'conditional'; stems = [m[1]]; }
+    else if ((m = /^(?:am|is|are) (\S+ing)$/.exec(aux))) { t = 'present'; stems = enStems(m[1], 'ing'); }
+    else if ((m = /^(?:was|were) (\S+ing)$/.exec(aux)) || (m = /^used to (\S+)$/.exec(aux))) { t = 'imperfect'; stems = /ing$/.test(m[1]) ? enStems(m[1], 'ing') : [m[1]]; }
+    else if ((m = /^(?:do|does) (\S+)$/.exec(aux))) { t = 'present'; stems = [m[1]]; }
+    else if ((m = /^did (\S+)$/.exec(aux))) { t = fr ? 'passeCompose' : 'preterite'; stems = [m[1]]; }
+    else if (w.length === 1) {
+      var word = w[0];
+      if (/^(am|are|is)$/.test(word)) { t = 'present'; stems = ['be']; }
+      else if (/^(was|were)$/.test(word)) { t = fr ? 'imperfect' : 'preterite'; stems = ['be']; }
+      else if (EN_PAST[word] || (/ed$/.test(word) && !EN_PP[word])) { t = fr ? 'passeCompose' : 'preterite'; stems = enStems(word, 'past'); }
+      else if (person === 2 && /s$/.test(word)) { t = 'present'; stems = enStems(word, 'third'); }
+      else { t = 'present'; stems = [word]; }
+    }
+    if (!t || !stems.length) return [];
+    var out = [];
+    enVerbs(lang, stems).forEach(function (v) {
+      if (out.length >= 3) return;
+      var r;
+      try { r = conjugate(lang, v); } catch (e) { r = null; }
+      var form = r && r.tenses[t] && r.tenses[t][person];
+      if (form) out.push({ verb: v, tense: t, person: person, form: form });
+    });
+    return out;
+  }
+
   /** What the student typed: an infinitive, a form, an English meaning, or a near miss. */
   function search(lang, query, limit) {
     limit = limit || 8;
@@ -1104,6 +1201,8 @@
     var fq = fold(q).replace(/^(se |s')/, '').replace(/se$/, lang === 'es' ? '' : 'se');
     var out = [], seen = {};
     var push = function (v, why, extra) { if (seen[v] || out.length >= limit) return; seen[v] = 1; out.push({ verb: v, why: why, gloss: lex[v] || '', hit: extra || null }); };
+    // An English sentence: "I ate" is the yo preterite of comer.
+    fromEnglish(lang, q).forEach(function (h) { push(h.verb, 'form', h); });
     var fi = foldIndex(lang);
     if (fi[fold(q)]) push(fi[fold(q)], 'infinitive');
     if (fi[fq]) push(fi[fq], 'infinitive');
@@ -1143,6 +1242,7 @@
   root.FluxConj = {
     conjugate: conjugate,
     search: search,
+    fromEnglish: fromEnglish,
     setLexicon: setLexicon,
     lexicon: function (lang) { return LEX[lang] || {}; },
     groups: function (lang) { return lang === 'fr' ? FR_GROUPS : ES_GROUPS; },
