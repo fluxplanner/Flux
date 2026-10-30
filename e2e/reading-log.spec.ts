@@ -302,7 +302,6 @@ async function openSignedIn(page: Page) {
 }
 /** Outside ?e2e=1 the morning/evening mood card can open on a timer; it is not what this test is about. */
 async function noMoodCard(page: Page) {
-  await page.evaluate(() => (window as any).FluxMoodPrompt?.close?.());
 }
 
 test('the log goes up to the account and comes back merged with another device\'s entries', async ({ page }) => {
