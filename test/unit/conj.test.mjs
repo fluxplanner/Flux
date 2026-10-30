@@ -71,8 +71,41 @@ const EXPECT = {
     },
     vestirse: { impAffirmative: '—,vístete,vístase,vistámonos,vestíos,vístanse' },
     irse: { impAffirmative: '—,vete,váyase,vámonos,idos,váyanse' },
+    // Verbs a full-list sweep found conjugated wrong or as if regular.
+    adscribir: { present: 'adscribo,adscribes,adscribe,adscribimos,adscribís,adscriben' },
+    inscribir: { preterite: 'inscribí,inscribiste,inscribió,inscribimos,inscribisteis,inscribieron' },
+    ordeñar: { present: 'ordeño,ordeñas,ordeña,ordeñamos,ordeñáis,ordeñan' },
+    uñir: { present: 'uño,uñes,uñe,uñimos,uñís,uñen' },
+    henchir: { preterite: 'henchí,henchiste,hinchió,henchimos,henchisteis,hinchieron' },
+    desleír: { present: 'deslío,deslíes,deslíe,desleímos,desleís,deslíen' },
+    descocer: { present: 'descuezo,descueces,descuece,descocemos,descocéis,descuecen' },
+    aserrar: { present: 'asierro,asierras,asierra,aserramos,aserráis,asierran' },
+    desolar: { present: 'desuelo,desuelas,desuela,desolamos,desoláis,desuelan' },
+    disentir: { preterite: 'disentí,disentiste,disintió,disentimos,disentisteis,disintieron' },
+    advenir: { present: 'advengo,advienes,adviene,advenimos,advenís,advienen' },
+    fotografiar: { present: 'fotografío,fotografías,fotografía,fotografiamos,fotografiáis,fotografían' },
+    descafeinar: { present: 'descafeíno,descafeínas,descafeína,descafeinamos,descafeináis,descafeínan' },
+    reenviar: { present: 'reenvío,reenvías,reenvía,reenviamos,reenviáis,reenvían' },
+    desosar: { present: 'deshueso,deshuesas,deshuesa,desosamos,desosáis,deshuesan' },
   },
   fr: {
+    léguer: { present: 'lègue,lègues,lègue,léguons,léguez,lèguent' },
+    disséquer: { present: 'dissèque,dissèques,dissèque,disséquons,disséquez,dissèquent' },
+    déguster: { present: 'déguste,dégustes,déguste,dégustons,dégustez,dégustent' },
+    détrôner: { present: 'détrône,détrônes,détrône,détrônons,détrônez,détrônent' },
+    briefer: { present: 'briefe,briefes,briefe,briefons,briefez,briefent' },
+    pécher: { present: 'pèche,pèches,pèche,péchons,péchez,pèchent' },
+    bailler: { present: 'baille,bailles,baille,baillons,baillez,baillent' },
+    répartir: { present: 'répartis,répartis,répartit,répartissons,répartissez,répartissent' },
+    assoir: { present: 'assois,assois,assoit,assoyons,assoyez,assoient' },
+    déchoir: { present: 'déchois,déchois,déchoit,déchoyons,déchoyez,déchoient', passeSimple: 'déchus,déchus,déchut,déchûmes,déchûtes,déchurent' },
+    seoir: { present: '—,—,sied,—,—,siéent' },
+    bruire: { present: 'bruis,bruis,bruit,bruissons,bruissez,bruissent' },
+    dédire: { present: 'dédis,dédis,dédit,dédisons,dédisez,dédisent' },
+    ouïr: { present: 'ouïs,ouïs,ouït,ouïssons,ouïssez,ouïssent' },
+    gésir: { present: 'gis,gis,gît,gisons,gisez,gisent' },
+    foutre: { present: 'fous,fous,fout,foutons,foutez,foutent' },
+    braire: { present: 'brais,brais,brait,brayons,brayez,braient' },
     être: { subjImperfect: 'fusse,fusses,fût,fussions,fussiez,fussent', imperative: '—,sois,—,soyons,soyez,—' },
     avoir: { passeSimple: 'eus,eus,eut,eûmes,eûtes,eurent', subjPresent: 'aie,aies,ait,ayons,ayez,aient' },
     aller: {
@@ -134,6 +167,8 @@ test('spelling-rule forms are marked irregular too (leyó, huyo, busqué)', () =
   assert.ok(!irr('es', 'hablar', 'preterite', 0));
   assert.equal(C.conjugate('fr', 'paître').tenses.passeSimple[0], null);
   assert.equal(C.conjugate('fr', 'renaître').participle, null);
+  assert.equal(C.conjugate('fr', 'frire').participle, 'frit');
+  assert.equal(C.conjugate('fr', 'recroître').participle, 'recrû');
 });
 
 test('agrees with the verb drill on every verb the drill knows', () => {

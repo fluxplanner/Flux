@@ -58,19 +58,22 @@
     'advertir arrepentir asentir conferir consentir controvertir convertir diferir digerir divertir herir hervir inferir ' +
     'invertir mentir pervertir preferir presentir proferir referir requerir resentir revertir sentir sugerir transferir ' +
     'desmentir subvertir malherir ' +
-    'discernir concernir cernir tener venir');
+    'discernir concernir cernir tener venir ' +
+    'apacentar aventar cimentar decentar dentar desasentar desatentar descimentar desdentar destentar desventar encentar endentar ensarmentar herventar reaventar recalentar recentar regimentar retentar salpimentar sarmentar sementar sobrecalentar aspaventar rusentar sotaventar aferrar aserrar desaferrar desaterrar descerrar desencerrar desherrar desterrar entrecerrar ferrar herrar reherrar abnegar derrenegar desosegar estregar refregar replegar resegar sorregar trasegar trasfregar apernar desgobernar desinvernar despernar desarrendar hacendar remendar subarrendar deshelar desmelar enmelar melar desmembrar remembrar resembrar sobresembrar abeldar albeldar beldar aliquebrar patiquebrar perniquebrar atestar contramanifestar enhestar desempedrar despedrar empedrar enlenzar recomenzar desacertar encubertar desapretar reapretar desherbar herbar adestrar despezar dezmar emperrar entesar incensar retemblar jamerdar cerner coextender condecender distender sobreentender subentender subtender superentender transcender reverter trasverter sobreverter adherir circunferir deferir injerir inserir interferir reherir trasferir zaherir desadvertir reconvertir desconsentir disentir ingerir rehervir hendir');
   /* -ir verbs whose change stays in the boot: discierne, but discernió. */
-  var ES_IE_ONLY = set('discernir concernir cernir');
+  var ES_IE_ONLY = set('discernir concernir cernir hendir');
   var ES_UE = set('acordar acostar almorzar apostar aprobar avergonzar colar colgar comprobar concordar consolar contar ' +
     'costar degollar demostrar descontar desaprobar descolgar encontrar esforzar forzar mostrar poblar probar recontar ' +
     'recordar reforzar renovar rodar rogar soldar soltar sonar soñar tostar tronar volar volcar revolcar trocar desollar ' +
     'despoblar repoblar resonar consonar asonar acostar emporcar avergonzar descornar' +
     ' absolver cocer conmover demoler disolver doler llover moler morder mover poder promover remover resolver soler ' +
     'torcer volver escocer recocer retorcer destorcer devolver envolver revolver desenvolver' +
-    ' dormir morir');
+    ' dormir morir ' +
+    'abuñolar amolar anzolar asolar azolar circunvolar desconsolar desmajolar desolar dolar empajolar escolar recolar remolar revolar sobresolar sobrevolar socolar solar subsolar trascolar trasvolar acollar afollar apercollar apergollar apescollar desacollar descollar follar hollar percollar rehollar resollar aclocar clocar desflocar destrocar enclocar enrocar trastrocar atronar disonar grandisonar retronar tonar unisonar desacordar descordar desencordar discordar encordar aforar desaforar encorar engorar amoblar desamoblar moblar asoldar desoldar regoldar denostar recostar retostar acornar mancornar desaporcar descostar encostar desencovar encovar desengrosar engrosar discontar redescontar ensoñar trasoñar improbar reprobar alongar disforzar enrodar entortar premostrar holgar resolgar reencontrar rencontrar rescontrar sonrodar trascordar solver condoler desmoler remoler atorcer estorcer contorcer descocer remorder adormir');
   var ES_I = set('ceñir colegir competir concebir corregir derretir despedir elegir embestir expedir gemir impedir ' +
     'investir medir pedir regir reñir rendir repetir revestir seguir conseguir perseguir proseguir servir teñir vestir ' +
-    'desvestir estreñir desteñir constreñir travestir reelegir decir rehenchir henchir');
+    'desvestir estreñir desteñir constreñir travestir reelegir decir rehenchir henchir ' +
+    'afreñir astreñir circunceñir costreñir desceñir heñir receñir reteñir comedir desmedir reexpedir remedir acomedir descomedir aseguir deseguir reseguir subseguir envestir sobrevestir preelegir recolegir preconcebir deservir');
 
   /* Verbs whose yo alone is irregular — the "go" verbs and friends. The
      present subjunctive is built from it (tengo → tenga, tengamos). */
@@ -87,18 +90,23 @@
     'ataviar aliar aviar desliar ansiar arriar autografiar cartografiar caligrafiar coreografiar escalofriar estriar ' +
     'malcriar radiografiar vigiar guiar criar fiar liar piar' +
     ' continuar actuar graduar evaluar situar acentuar efectuar habituar insinuar perpetuar puntuar devaluar valuar ' +
-    'tatuar conceptuar exceptuar fluctuar atenuar menstruar redituar individuar avaluar desvirtuar');
+    'tatuar conceptuar exceptuar fluctuar atenuar menstruar redituar individuar avaluar desvirtuar ' +
+    'abaliar adiar baquiar biografiar cablegrafiar calcografiar ciar cinematografiar cromolitografiar cuantiar cuchichiar dactilografiar desataviar desaviar descarriar desvariar ejecutoriar engarfiar enhastiar enlejiar enriar entrecriar entriar esgrafiar espurriar estenografiar expatriar extasiar fotolitografiar litofotografiar litografiar mecanografiar mimeografiar ortografiar calofriar calosfriar refriar reenviar recriar teleguiar repatriar triar radiotelegrafiar taquigrafiar tipografiar xerografiar xilografiar gloriar jipiar pipiar zurriar acensuar arruar cachuar contextuar desbruar desconceptuar descontinuar deshabituar desvaluar discontinuar estatuar extenuar ganzuar infatuar preceptuar puar revaluar ruar usufructuar');
   /* Forms of these with a one-syllable stem (crie, crio, guie, fie) lost
      their accent in the 2010 rules; textbooks still print crié and crió, so
      both are given. */
-  var ES_IU_MONO = set('guiar criar fiar liar piar');
+  var ES_IU_MONO = set('guiar criar fiar liar piar triar');
   /* A stressed i or u that is not the last vowel of the stem: reúno,
      prohíbo, aíslo. */
   var ES_HIATUS = { reunir: 'u', prohibir: 'i', aislar: 'i', rehusar: 'u', ahumar: 'u', aullar: 'u', maullar: 'u',
     cohibir: 'i', enraizar: 'i', rehilar: 'i', ahijar: 'i', ahincar: 'i', airar: 'i', amohinar: 'i', aunar: 'u',
-    embaular: 'u', rehundir: 'u', reusar: 'u' };
+    embaular: 'u', rehundir: 'u', reusar: 'u',
+    ahilar: 'i', raspahilar: 'i', reilar: 'i', respahilar: 'i', sobrehilar: 'i', arcaizar: 'i', desraizar: 'i', europeizar: 'i',
+    hebraizar: 'i', judaizar: 'i', amaitinar: 'i', desainar: 'i', descafeinar: 'i', sainar: 'i', ahusar: 'u', parahusar: 'u',
+    atraillar: 'i', desatraillar: 'i', traillar: 'i', desahijar: 'i', prohijar: 'i', ahitar: 'i', desahumar: 'u', sahumar: 'u',
+    ahuchar: 'u', desembaular: 'u', maular: 'u', aupar: 'u', desairar: 'i', desbarahustar: 'u' };
 
-  var ES_ZC_EXCEPT = set('hacer deshacer rehacer satisfacer contrahacer cocer recocer escocer mecer torcer retorcer destorcer');
+  var ES_ZC_EXCEPT = set('descocer remecer hacer deshacer rehacer satisfacer contrahacer cocer recocer escocer mecer torcer retorcer destorcer');
 
   /* Strong preterites: an irregular stem and one unstressed ending set. */
   var ES_PRET = { tener: 'tuv', poder: 'pud', poner: 'pus', saber: 'sup', hacer: 'hic', querer: 'quis', venir: 'vin',
@@ -106,7 +114,7 @@
   var ES_FUT = { tener: 'tendr', venir: 'vendr', poner: 'pondr', salir: 'saldr', valer: 'valdr', poder: 'podr',
     saber: 'sabr', caber: 'cabr', haber: 'habr', querer: 'querr', hacer: 'har', decir: 'dir' };
   var ES_PP = { hacer: 'hecho', decir: 'dicho', ver: 'visto', poner: 'puesto', volver: 'vuelto', resolver: 'resuelto',
-    absolver: 'absuelto', disolver: 'disuelto', morir: 'muerto', abrir: 'abierto', cubrir: 'cubierto',
+    absolver: 'absuelto', solver: 'suelto', disolver: 'disuelto', morir: 'muerto', abrir: 'abierto', cubrir: 'cubierto',
     escribir: 'escrito', romper: 'roto', imprimir: 'impreso', freír: 'frito', pudrir: 'podrido', satisfacer: 'satisfecho' };
   var ES_TU = { decir: 'di', hacer: 'haz', ir: 've', poner: 'pon', salir: 'sal', ser: 'sé', tener: 'ten', venir: 'ven' };
 
@@ -114,30 +122,36 @@
      Listed, never spotted: "entender" is not en + tender. */
   var ES_COMPOUND = {};
   function compounds(base, list) { list.split(/\s+/).forEach(function (v) { if (v) ES_COMPOUND[v] = base; }); }
-  compounds('tener', 'obtener mantener contener detener retener sostener entretener abstener atener');
+  compounds('tener', 'manutener obtener mantener contener detener retener sostener entretener abstener atener');
   compounds('poner', 'componer proponer suponer disponer exponer imponer oponer reponer posponer descomponer deponer ' +
     'anteponer interponer presuponer yuxtaponer contraponer sobreponer superponer trasponer transponer recomponer ' +
-    'predisponer indisponer');
-  compounds('venir', 'prevenir convenir intervenir provenir devenir sobrevenir avenir contravenir reconvenir subvenir');
+    'predisponer indisponer aponer desimponer fotocomponer preponer sobreexponer subexponer telecomponer');
+  compounds('venir', 'prevenir convenir intervenir provenir devenir sobrevenir avenir contravenir reconvenir subvenir advenir antevenir aprevenir desavenir desconvenir disconvenir revenir supervenir');
   compounds('hacer', 'deshacer rehacer contrahacer satisfacer');
-  compounds('decir', 'predecir contradecir desdecir bendecir maldecir');
-  compounds('traer', 'atraer contraer distraer extraer sustraer retraer abstraer detraer');
-  compounds('volver', 'envolver revolver devolver desenvolver');
+  compounds('decir', 'predecir contradecir desdecir bendecir maldecir antedecir entredecir condecir interdecir redecir');
+  compounds('traer', 'atraer contraer distraer extraer sustraer retraer abstraer detraer bistraer dentrotraer desastraer maltraer retrotraer substraer');
+  compounds('volver', 'envolver revolver devolver desenvolver arrevolver desarrevolver desvolver ensolver entrevolver');
   compounds('mover', 'conmover promover remover');
-  compounds('salir', 'sobresalir');
+  compounds('salir', 'sobresalir asalir resalir');
   compounds('valer', 'equivaler prevaler');
-  compounds('caer', 'decaer recaer');
-  compounds('ver', 'entrever');
-  compounds('oír', 'desoír entreoír');
-  compounds('reír', 'sonreír');
-  compounds('escribir', 'describir inscribir prescribir suscribir subscribir transcribir proscribir adscribir circunscribir manuscribir reescribir');
+  compounds('caer', 'decaer recaer descaer');
+  compounds('asir', 'desasir');
+  compounds('yacer', 'adyacer entreyacer subyacer');
+  compounds('freír', 'sofreír refreír');
+  compounds('mover', 'amover');
+  compounds('ver', 'entrever antever rever trasver');
+  compounds('oír', 'desoír entreoír trasoír');
+  compounds('reír', 'sonreír desleír engreír esleír');
+  compounds('escribir', 'describir inscribir prescribir suscribir subscribir transcribir proscribir adscribir circunscribir manuscribir reescribir reinscribir rescribir sobrescribir trascribir');
   compounds('abrir', 'entreabrir reabrir');
   compounds('cubrir', 'descubrir encubrir recubrir');
-  compounds('querer', 'bienquerer malquerer');
+  compounds('querer', 'bienquerer malquerer desquerer');
+  compounds('adquirir', 'coadquirir');
+  compounds('argüir', 'reargüir redargüir');
   compounds('andar', 'desandar');
   compounds('tener', 'atener');
   compounds('poder', '');
-  compounds('morir', 'premorir');
+  compounds('morir', 'premorir entremorir');
   compounds('imprimir', 'reimprimir');
   compounds('romper', '');
   compounds('caber', '');
@@ -178,6 +192,12 @@
     podrir: { present: 'pudro pudres pudre pudrimos pudrís pudren', preterite: 'pudrí pudriste pudrió pudrimos pudristeis pudrieron',
       imperfect: 'pudría pudrías pudría pudríamos pudríais pudrían', subjPresent: 'pudra pudras pudra pudramos pudráis pudran',
       ger: 'pudriendo', tu: 'pudre', pp: 'podrido' },
+    desosar: { present: 'deshueso deshuesas deshuesa desosamos desosáis deshuesan',
+      subjPresent: 'deshuese deshueses deshuese desosemos desoséis deshuesen', tu: 'deshuesa' },
+    perquirir: { present: 'perquiero perquieres perquiere perquirimos perquirís perquieren',
+      subjPresent: 'perquiera perquieras perquiera perquiramos perquiráis perquieran', tu: 'perquiere' },
+    pesquirir: { present: 'pesquiero pesquieres pesquiere pesquirimos pesquirís pesquieren',
+      subjPresent: 'pesquiera pesquieras pesquiera pesquiramos pesquiráis pesquieran', tu: 'pesquiere' },
     rehacer: { preterite: 'rehíce rehiciste rehízo rehicimos rehicisteis rehicieron' },
   };
   var ES_ALTS = {
@@ -247,7 +267,7 @@
   function esIsUir(v) { return /uir$/.test(v) && !/[gq]uir$/.test(v); }
   function esIsVowel(v) { return /[aeo]er$/.test(v) && !/[qg]uer$/.test(v) || /[aeo]ír$/.test(v); }
   /** -ñer, -ñir, -llir: the i of -ió/-ieron/-iendo is swallowed (gruñó, bulló). */
-  function esSwallow(v) { return /(ñ|ll|ch)(er|ir)$/.test(v); }
+  function esSwallow(v) { return /(ñ|ll)(er|ir)$/.test(v); }
   /** Put the written accent on the stressed i or u of the stem. */
   function esAccentLast(stem, vowel) {
     var at = stem.lastIndexOf(vowel);
@@ -498,10 +518,14 @@
     var base = ES_COMPOUND[v], pre = '';
     var core;
     if (base) {
-      pre = v === 'satisfacer' ? 'satis' : v.slice(0, v.length - base.length);
+      // adscribir, inscribir: the prefix takes the e of escribir (ad + scribir).
+      var dropE = base === 'escribir' && !/escribir$/.test(v);
+      // desleír, engreír: like reír on the stem before -eír (desl-ío, as sonr-ío).
+      var dropR = base === 'reír';
+      pre = v === 'satisfacer' ? 'satis' : v.slice(0, v.length - base.length + (dropE || dropR ? 1 : 0));
       core = esSimple(base, false);
       // satisfacer is satis + facer, the old spelling of hacer: satisfago, satisfice.
-      var sub = function (f) { return f == null ? f : pre + (v === 'satisfacer' ? f.replace(/^h/, 'f') : f); };
+      var sub = function (f) { return f == null ? f : pre + (v === 'satisfacer' ? f.replace(/^h/, 'f') : dropE ? f.replace(/^e/, '') : dropR ? f.replace(/^r/, '') : f); };
       Object.keys(core.t).forEach(function (k) { core.t[k] = core.t[k].map(sub); });
       core.ger = sub(core.ger); core.pp = sub(core.pp); core.vos = sub(core.vos);
       // A prefixed one-syllable imperative takes an accent: obtén, propón, prevén.
@@ -640,7 +664,7 @@
   /* -eler / -eter verbs that take è instead of doubling (traditional spelling). */
   var FR_E_GRAVE = set('acheter racheter geler congeler dégeler surgeler peler modeler ciseler démanteler écarteler ' +
     'marteler haleter crocheter fureter déceler receler celer harceler corseter encasteler');
-  var FR_TWO = set('répartir impartir assortir asservir désassortir');
+  var FR_TWO = set('répartir impartir assortir asservir désassortir rassortir réassortir');
 
   function frElide(next) { return /^[aeiouyâàäéèêëîïôöûùüœh]/i.test(next); }
 
@@ -671,9 +695,9 @@
       if (!/^(appel|rappel|jet|rejet|projet|interjet|déjet|surjet|épel)$/.test(stem.replace(/^(r|ré|re)/, '')) && !/(appel|jet)$/.test(stem)) {
         alt = m[1] + 'è' + m[2]; futAlt = alt + 'er';
       }
-    } else if ((m = stem.match(/^(.*)e([^aeiouyéèê]{1,2})$/)) && /[bcdfghjklmnpqrstvz]/.test(m[2]) && !/(gn|ll|tt|ss|cc|ch)$/.test(m[2]) && (m[2].length === 1 || /^(vr|br)$/.test(m[2]))) {
+    } else if ((m = stem.match(/^(.*)e([^aeiouyàâäéèêëîïôöùûü]{1,2})$/)) && !/[aeiouy]$/.test(m[1]) && /[bcdfghjklmnpqrstvz]/.test(m[2]) && !/(gn|ll|tt|ss|cc|ch)$/.test(m[2]) && (m[2].length === 1 || /^(vr|br)$/.test(m[2]))) {
       silent = m[1] + 'è' + m[2]; fut = silent + 'er'; note = 'e → è before a silent ending: ' + silent + 'e';
-    } else if ((m = stem.match(/^(.*)é([^aeiouyéèê]+)$/))) {
+    } else if ((m = stem.match(/^(.*)é([^aeiouyàâäéèêëîïôöùûü]+|[^aeiouyàâäéèêëîïôöùûü]*[gq]u)$/))) {
       silent = m[1] + 'è' + m[2]; note = 'é → è before a silent ending: ' + silent + 'e';
       futAlt = m[1] + 'è' + m[2] + 'er';
     } else if (/[ou]yer$/.test(v)) {
@@ -698,6 +722,8 @@
     if ((m = v.match(/^(.*)faire$/))) { var f = m[1]; return M([f + 'fais', f + 'fais', f + 'fait', f + 'faisons', f + 'faites', f + 'font'], { imp: f + 'fais', ps: ['i', f + 'f'], fut: f + 'fer', pp: f + 'fait', subj: [f + 'fass', f + 'fass'] }); }
 
     if (v === 'haïr') return M(['hais', 'hais', 'hait', 'haïssons', 'haïssez', 'haïssent'], { ps: ['i', 'ha'], fut: 'haïr', pp: 'haï', haiPs: true });
+    // ouïr, amuïr: like haïr, with the tréma kept everywhere (j'ouïs, nous ouïssons).
+    if ((m = v.match(/^(ou|amu)ïr$/))) { var oi = m[1]; return M([oi + 'ïs', oi + 'ïs', oi + 'ït', oi + 'ïssons', oi + 'ïssez', oi + 'ïssent'], { ps: ['i', oi], fut: v, pp: oi + 'ï', haiPs: true }); }
     // ── -er: the first group
     if (/er$/.test(v)) {
       var s = frErStems(v);
@@ -720,6 +746,12 @@
     if (v === 'falloir') return M([null, null, 'faut', null, null, null], { imp: 'fall', ps: ['u', 'fall'], fut: 'faudr', pp: 'fallu', subj: ['faill', 'fall'], impersonal: true, imper: [null, null, null] });
     if (v === 'pleuvoir') return M([null, null, 'pleut', null, null, 'pleuvent'], { imp: 'pleuv', ps: ['u', 'pl'], fut: 'pleuvr', pp: 'plu', subj: ['pleuv', 'pleuv'], impersonal: true, imper: [null, null, null] });
     if ((m = v.match(/^(.*)asseoir$/))) { var a = m[1] + 'ass'; return M([a + 'ieds', a + 'ieds', a + 'ied', a + 'eyons', a + 'eyez', a + 'eyent'], { ps: ['i', a], fut: a + 'iér', pp: a + 'is', subj: [a + 'ey', a + 'ey'], alts: { present: [[a + 'ois'], [a + 'ois'], [a + 'oit'], [a + 'oyons'], [a + 'oyez'], [a + 'oient']] } }); }
+    // assoir, rassoir: the 1990 spelling of asseoir, in its oi forms (j'assois, nous assoyons).
+    if ((m = v.match(/^(r?)assoir$/))) { var ao = m[1] + 'ass'; return M([ao + 'ois', ao + 'ois', ao + 'oit', ao + 'oyons', ao + 'oyez', ao + 'oient'], { ps: ['i', ao], fut: v, pp: ao + 'is', subj: [ao + 'oi', ao + 'oy'] }); }
+    if (v === 'surseoir' || v === 'sursoir') return M(['sursois', 'sursois', 'sursoit', 'sursoyons', 'sursoyez', 'sursoient'], { ps: ['i', 'surs'], fut: v, pp: 'sursis', subj: ['sursoi', 'sursoy'] });
+    if ((m = v.match(/^(dé|é|)choir$/))) { var ch = m[1] + 'ch'; return M([ch + 'ois', ch + 'ois', ch + 'oit', ch + 'oyons', ch + 'oyez', ch + 'oient'], { ps: ['u', ch], fut: v, pp: ch + 'u', subj: [ch + 'oi', ch + 'oy'] }); }
+    // seoir, messeoir (to suit): third persons only, no passé simple.
+    if ((m = v.match(/^(mes|)seoir$/))) { var se = m[1]; return M([null, null, se + 'sied', null, null, se + 'siéent'], { imp: se + 'sey', ps: null, fut: se + 'siér', pp: null, subj: [se + 'sié', se + 'sey'], ppr: se + 'séant' }); }
     if ((m = v.match(/^(.*)mouvoir$/))) { var mv = m[1] + 'm'; return M([mv + 'eus', mv + 'eus', mv + 'eut', mv + 'ouvons', mv + 'ouvez', mv + 'euvent'], { ps: ['u', mv], fut: mv + 'ouvr', pp: m[1] ? mv + 'u' : 'mû', subj: [mv + 'euv', mv + 'ouv'] }); }
 
     // ── -ir verbs of the third group
@@ -738,7 +770,8 @@
         var full = v.slice(0, -2), short = full.slice(0, -1);
         return M([short + 's', short + 's', short + 't', full + 'ons', full + 'ez', full + 'ent'], { ps: ['i', full], fut: v, pp: full + 'i' });
       }
-      if (/(ouïr|gésir)$/.test(v)) return null;
+      // gésir: present and imperfect only (ci-gît).
+      if (v === 'gésir') return M(['gis', 'gis', 'gît', 'gisons', 'gisez', 'gisent'], { ps: null, fut: null, pp: null, ppr: 'gisant', none: ['subjPresent'], imper: [null, null, null] });
       // ── everything else in -ir: the second group, finir
       var st = v.slice(0, -2);
       return M([st + 'is', st + 'is', st + 'it', st + 'issons', st + 'issez', st + 'issent'], { ps: ['i', st], fut: v, pp: st + 'i', group: 2 });
@@ -747,12 +780,15 @@
 
     // ── -re
     if (/^(re|)dire$/.test(v)) { var di = v.slice(0, -4); return M([di + 'dis', di + 'dis', di + 'dit', di + 'disons', di + 'dites', di + 'disent'], { ps: ['i', di + 'd'], fut: di + 'dir', pp: di + 'dit' }); }
-    if (/(contre|inter|mé|pré)dire$/.test(v)) { var dd = v.slice(0, -4); return M([dd + 'dis', dd + 'dis', dd + 'dit', dd + 'disons', dd + 'disez', dd + 'disent'], { ps: ['i', dd + 'd'], fut: dd + 'dir', pp: dd + 'dit' }); }
+    if (/(contre|inter|mé|pré|dé)dire$/.test(v)) { var dd = v.slice(0, -4); return M([dd + 'dis', dd + 'dis', dd + 'dit', dd + 'disons', dd + 'disez', dd + 'disent'], { ps: ['i', dd + 'd'], fut: dd + 'dir', pp: dd + 'dit' }); }
     if (v === 'maudire') return M(['maudis', 'maudis', 'maudit', 'maudissons', 'maudissez', 'maudissent'], { ps: ['i', 'maud'], fut: 'maudir', pp: 'maudit' });
     if (/lire$/.test(v) && !/(é?crire|suffire)$/.test(v)) { var li = v.slice(0, -4); return M([li + 'lis', li + 'lis', li + 'lit', li + 'lisons', li + 'lisez', li + 'lisent'], { ps: ['u', li + 'l'], fut: li + 'lir', pp: li + 'lu' }); }
     if (/crire$/.test(v)) { var cr = v.slice(0, -2); return M([cr + 's', cr + 's', cr + 't', cr + 'vons', cr + 'vez', cr + 'vent'], { ps: ['i', cr + 'v'], fut: cr + 'r', pp: cr + 't' }); }
+    if (v === 'frire') return M(['fris', 'fris', 'frit', null, null, null], { imp: null, ps: null, fut: 'frir', pp: 'frit', none: ['subjPresent'] });
     if (/rire$/.test(v)) { var ri = v.slice(0, -2); return M([ri + 's', ri + 's', ri + 't', ri + 'ons', ri + 'ez', ri + 'ent'], { ps: ['i', ri.slice(0, -1)], fut: ri + 'r', pp: ri }); }
     if (/(suffire|confire|circoncire)$/.test(v)) { var su = v.slice(0, -2); return M([su + 's', su + 's', su + 't', su + 'sons', su + 'sez', su + 'sent'], { ps: ['i', su.slice(0, -1)], fut: su + 'r', pp: v === 'suffire' ? 'suffi' : v === 'confire' ? 'confit' : 'circoncis' }); }
+    // bruire: il bruit, but ils bruissent, il bruissait.
+    if (v === 'bruire') return M(['bruis', 'bruis', 'bruit', 'bruissons', 'bruissez', 'bruissent'], { ps: null, fut: 'bruir', pp: 'bruit' });
     if (/uire$/.test(v)) { var ui = v.slice(0, -2); var ppU = /^(re|)(nuire|luire)$/.test(v) || /luire$/.test(v) || v === 'nuire' ? ui : ui + 't'; return M([ui + 's', ui + 's', ui + 't', ui + 'sons', ui + 'sez', ui + 'sent'], { ps: ['i', ui + 's'], fut: ui + 'r', pp: ppU }); }
     if (/plaire$/.test(v)) { var pl = v.slice(0, -6); return M([pl + 'plais', pl + 'plais', pl + 'plaît', pl + 'plaisons', pl + 'plaisez', pl + 'plaisent'], { ps: ['u', pl + 'pl'], fut: pl + 'plair', pp: pl + 'plu' }); }
     if (v === 'taire') return M(['tais', 'tais', 'tait', 'taisons', 'taisez', 'taisent'], { ps: ['u', 't'], fut: 'tair', pp: 'tu' });
@@ -773,10 +809,11 @@
     // paître: no passé simple and no participle, so no compound tenses.
     if (v === 'paître') return M(['pais', 'pais', 'paît', 'paissons', 'paissez', 'paissent'], { ps: null, fut: 'paîtr', pp: null, alts: { present: [[], [], ['pait'], [], [], []] } });
     if ((m = v.match(/^(.*)aître$/))) { var ai = m[1] + 'a'; return M([ai + 'is', ai + 'is', ai + 'ît', ai + 'issons', ai + 'issez', ai + 'issent'], { ps: ['u', m[1]], fut: ai + 'îtr', pp: m[1] + 'u', alts: { present: [[], [], [ai + 'it'], [], [], []] } }); }
-    if ((m = v.match(/^(.*)croître$/))) { var cx = m[1]; var bare = !cx; return M([cx + (bare ? 'croîs' : 'crois'), cx + (bare ? 'croîs' : 'crois'), cx + 'croît', cx + 'croissons', cx + 'croissez', cx + 'croissent'], { ps: ['u', cx + (bare ? 'cr' : 'cr')], fut: cx + 'croîtr', pp: bare ? 'crû' : cx + 'cru', psCirc: bare }); }
+    if ((m = v.match(/^(.*)croître$/))) { var cx = m[1]; var bare = !cx; return M([cx + (bare ? 'croîs' : 'crois'), cx + (bare ? 'croîs' : 'crois'), cx + 'croît', cx + 'croissons', cx + 'croissez', cx + 'croissent'], { ps: ['u', cx + (bare ? 'cr' : 'cr')], fut: cx + 'croîtr', pp: bare ? 'crû' : cx === 're' ? 'recrû' : cx + 'cru', psCirc: bare }); }
     if ((m = v.match(/^(.*)clure$/))) { var cl = m[1] + 'clu'; return M([cl + 's', cl + 's', cl + 't', cl + 'ons', cl + 'ez', cl + 'ent'], { ps: ['u', m[1] + 'cl'], fut: cl + 'r', pp: /inclure|occlure/.test(v) ? cl + 's' : cl }); }
     if (/vaincre$/.test(v)) { var va = v.slice(0, -2); return M([va + 's', va + 's', va, va.slice(0, -1) + 'quons', va.slice(0, -1) + 'quez', va.slice(0, -1) + 'quent'], { ps: ['i', va.slice(0, -1) + 'qu'], fut: va + 'r', pp: va + 'u' }); }
-    if (/traire$/.test(v)) { var tr = v.slice(0, -3); return M([tr + 'is', tr + 'is', tr + 'it', tr + 'yons', tr + 'yez', tr + 'ient'], { ps: null, fut: v.slice(0, -1), pp: tr + 'it', subj: [tr + 'i', tr + 'y'] }); }
+    if (/foutre$/.test(v)) { var fo = v.slice(0, -6); return M([fo + 'fous', fo + 'fous', fo + 'fout', fo + 'foutons', fo + 'foutez', fo + 'foutent'], { ps: ['i', fo + 'fout'], fut: fo + 'foutr', pp: fo + 'foutu' }); }
+    if (/(traire|braire|^raire)$/.test(v)) { var tr = v.slice(0, -3); return M([tr + 'is', tr + 'is', tr + 'it', tr + 'yons', tr + 'yez', tr + 'ient'], { ps: null, fut: v.slice(0, -1), pp: tr + 'it', subj: [tr + 'i', tr + 'y'] }); }
     if (/clore$/.test(v)) { var clo = v.slice(0, -2); return M([clo + 's', clo + 's', clo.replace(/o$/, 'ô') + 't', clo + 'sons', clo + 'sez', clo + 'sent'], { ps: null, fut: clo + 'r', pp: clo + 's' }); }
     if (/être$/.test(v)) return null;
     return null;
@@ -839,13 +876,13 @@
     if (mdl.ps) {
       var kind = mdl.ps[0], pst = mdl.ps[1];
       t.passeSimple = PS[kind].map(function (e) { return frJoin(pst, e, v); });
-      if (mdl.haiPs) t.passeSimple = ['haïs', 'haïs', 'haït', 'haïmes', 'haïtes', 'haïrent'];
+      if (mdl.haiPs) t.passeSimple = ['ïs', 'ïs', 'ït', 'ïmes', 'ïtes', 'ïrent'].map(function (e) { return pst + e; });
       if (mdl.psCirc) t.passeSimple = ['crûs', 'crûs', 'crût', 'crûmes', 'crûtes', 'crûrent'];
     } else t.passeSimple = [null, null, null, null, null, null];
     // Future and conditional.
-    var futS = /re$/.test(mdl.fut) ? mdl.fut.slice(0, -1) : mdl.fut;
-    t.future = ['ai', 'as', 'a', 'ons', 'ez', 'ont'].map(function (e) { return futS + e; });
-    t.conditional = ['ais', 'ais', 'ait', 'ions', 'iez', 'aient'].map(function (e) { return futS + e; });
+    var futS = mdl.fut == null ? null : /re$/.test(mdl.fut) ? mdl.fut.slice(0, -1) : mdl.fut;
+    t.future = ['ai', 'as', 'a', 'ons', 'ez', 'ont'].map(function (e) { return futS == null ? null : futS + e; });
+    t.conditional = ['ais', 'ais', 'ait', 'ions', 'iez', 'aient'].map(function (e) { return futS == null ? null : futS + e; });
     // Present subjunctive: the ils of the present, minus -ent; nous/vous from the imperfect.
     if (mdl.subj && mdl.subj.length === 1) t.subjPresent = mdl.subj[0].split(' ');
     else {
@@ -857,16 +894,18 @@
     if (mdl.ps) {
       var tu = t.passeSimple[1];
       var bse = tu.replace(/s$/, '');
-      if (mdl.haiPs) bse = 'haï';
+      if (mdl.haiPs) bse = mdl.ps[1] + 'ï';
       var circ = bse.replace(/([aiu])(n?)$/, function (mm, vv, n) { return (CIRC[vv] || vv) + n; }).replace(/ïn?$/, 'ï');
       t.subjImperfect = ['sse', 'sses', 't', 'ssions', 'ssiez', 'ssent'].map(function (e, i) { return i === 2 ? circ + 't' : bse + e; });
-      if (mdl.haiPs) t.subjImperfect[2] = 'haït';
+      if (mdl.haiPs) t.subjImperfect[2] = bse + 't';
     } else t.subjImperfect = [null, null, null, null, null, null];
     // Imperative: from the present tu/nous/vous; -e verbs drop the s (parle, ouvre, va).
     var imper = mdl.imper || [p[1] && (mdl.group === 1 || mdl.tuDrop ? p[1].replace(/es$/, 'e') : p[1]), p[3], p[4]];
     if (v === 'aller') imper = ['va', 'allons', 'allez'];
     t.imperative = [null, imper[0], null, imper[1], imper[2], null];
     var ppr = mdl.ppr || (imp != null ? frJoin(imp, 'ant', v) : null);
+    // Defective verbs: tenses that do not exist (gésir has no future, no subjunctive).
+    (mdl.none || []).forEach(function (k) { t[k] = [null, null, null, null, null, null]; });
     if (mdl.impersonal) {
       Object.keys(t).forEach(function (k) { t[k] = t[k].map(function (f, i) { return i === 2 ? f : null; }); });
     }
@@ -1032,8 +1071,11 @@
     return o;
   }
   /** "reir" → "reír", "etre" → "être": the dictionary's spelling of a verb typed without accents. */
-  function esResolve(v) { if (LEX.es && LEX.es[v]) return v; var f = foldIndex('es')[fold(v)]; return f || (ES_FULL[fold(v).replace(/ir$/, 'ír')] && /^(o|re|fre)ir$/.test(fold(v)) ? fold(v).replace(/ir$/, 'ír') : v); }
-  function frResolve(v) { if (LEX.fr && LEX.fr[v]) return v; var f = foldIndex('fr')[fold(v)]; return f || (fold(v) === 'etre' ? 'être' : v); }
+  /* Only when nothing was typed with an accent: ordeñar is not ordenar, pécher is not pêcher. */
+  /* And not for the verbs that are spelt that way already: ensenar, bailler. */
+  var FOLD_KEEP = set('ensenar bailler');
+  function esResolve(v) { if (LEX.es && LEX.es[v]) return v; var f = fold(v) === v && !FOLD_KEEP[v] ? foldIndex('es')[v] : null; return f || (ES_FULL[fold(v).replace(/ir$/, 'ír')] && /^(o|re|fre)ir$/.test(fold(v)) ? fold(v).replace(/ir$/, 'ír') : v); }
+  function frResolve(v) { if (LEX.fr && LEX.fr[v]) return v; var f = fold(v) === v && !FOLD_KEEP[v] ? foldIndex('fr')[v] : null; return f || (fold(v) === 'etre' ? 'être' : v); }
 
   function setLexicon(lang, text) {
     var o = {};
