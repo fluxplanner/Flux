@@ -16029,7 +16029,7 @@ function showTemplateMenu(){
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       ${TASK_TEMPLATES.map(t=>`
-        <button type="button" onclick="applyTemplate(${JSON.stringify(t).replace(/"/g,'&quot;')})" style="padding:12px;background:var(--card2);border:1px solid var(--border);border-radius:12px;text-align:left;cursor:pointer;transition:all .15s">
+        <button type="button" onclick="applyTemplate(${JSON.stringify(t).replace(/"/g,'&quot;')})" style="padding:12px;background:var(--card2);border:1px solid var(--border);border-radius:12px;text-align:left;cursor:pointer;transition:all .15s;color:var(--text)">
           <div style="font-size:1.2rem;margin-bottom:4px">${t.icon}</div>
           <div style="font-size:.82rem;font-weight:700">${t.name}</div>
           <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${t.estTime}min · Diff ${t.difficulty}</div>
@@ -16037,8 +16037,8 @@ function showTemplateMenu(){
     </div>
     <div style="margin-top:14px;font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px">Multi-task packs</div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-      <button type="button" onclick="applyExamWeekPack()" style="padding:12px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;text-align:left;cursor:pointer;font-weight:700;font-size:.82rem">Exam week (3 tasks)</button>
-      <button type="button" onclick="applyProjectMilestonePack()" style="padding:12px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;text-align:left;cursor:pointer;font-weight:700;font-size:.82rem">Project milestones (3 tasks)</button>
+      <button type="button" onclick="applyExamWeekPack()" style="padding:12px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;text-align:left;cursor:pointer;font-weight:700;font-size:.82rem;color:var(--text)">Exam week (3 tasks)</button>
+      <button type="button" onclick="applyProjectMilestonePack()" style="padding:12px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;text-align:left;cursor:pointer;font-weight:700;font-size:.82rem;color:var(--text)">Project milestones (3 tasks)</button>
     </div>
   </div>`;
   document.body.appendChild(menu);
