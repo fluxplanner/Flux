@@ -933,7 +933,6 @@ function renderDynamicFocus(){
       </div>
       ${gapSug?`<div style="background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.15);border-radius:10px;padding:10px 14px;font-size:.8rem">
         <span style="color:var(--muted2)">Gap task:</span> <strong>${esc(gapSug.name)}</strong>
-        <span style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.72rem;margin-left:6px">~${gapSug.estTime}min</span>
       </div>`:''}
     </div>`;
     if(mode==='collapsed'){
@@ -956,7 +955,7 @@ function renderDynamicFocus(){
     html=`<div class="focus-card">
       <div class="focus-label">Focus on now</div>
       <div style="font-size:1rem;font-weight:700;margin-top:6px">${esc(urgent.name)}</div>
-      <div style="font-size:.75rem;color:var(--muted2);margin-top:4px">Due today${urgent.estTime?' · ~'+urgent.estTime+'min':''}</div>
+      <div style="font-size:.75rem;color:var(--muted2);margin-top:4px">Due today</div>
     </div>`;
   }
   el.innerHTML=useIntel?FluxIntel.appendFocusHtml(html):html;
@@ -8966,7 +8965,7 @@ function updateDynamicFocus(){
   const sugHtml=fitTask?`<div style="margin-top:12px;padding:10px;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid var(--border)">
     <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:4px">Suggested task for this gap</div>
     <div style="font-size:.85rem;font-weight:600">${esc(fitTask.name)}</div>
-    <div style="font-size:.7rem;color:var(--muted2)">⏱ ${fitTask.estTime}m — fits before ${nextClass.name}</div>
+    <div style="font-size:.7rem;color:var(--muted2)">Fits before ${nextClass.name}</div>
   </div>`:'';
 
   el.innerHTML=`<div class="focus-card">
@@ -15692,7 +15691,7 @@ function renderPredictiveGapFill(){
             </div>
             <div class="flux-gap-row-task" title="${esc(task.name)}">
               <div class="flux-gap-row-name">${esc(task.name)}</div>
-              <div class="flux-gap-row-meta">${esc(task.subject||'no subject')} · est ${task.estTime||'?'}m</div>
+              <div class="flux-gap-row-meta">${esc(task.subject||'no subject')}</div>
             </div>
             <button type="button" class="flux-gap-row-cta" onclick="fluxStartGapTask(${task.id})">Start →</button>
           </div>`;
@@ -16032,7 +16031,7 @@ function showTemplateMenu(){
         <button type="button" onclick="applyTemplate(${JSON.stringify(t).replace(/"/g,'&quot;')})" style="padding:12px;background:var(--card2);border:1px solid var(--border);border-radius:12px;text-align:left;cursor:pointer;transition:all .15s;color:var(--text)">
           <div style="font-size:1.2rem;margin-bottom:4px">${t.icon}</div>
           <div style="font-size:.82rem;font-weight:700">${t.name}</div>
-          <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${t.estTime}min · Diff ${t.difficulty}</div>
+          <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace">Difficulty ${t.difficulty}</div>
         </button>`).join('')}
     </div>
     <div style="margin-top:14px;font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px">Multi-task packs</div>
@@ -17963,7 +17962,6 @@ function showKanban(){
             ${s?`<span style="font-size:.62rem;padding:2px 7px;border-radius:20px;background:${c}22;color:${c}">${s.short}</span>`:''}
             ${due?`<span style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${due}</span>`:''}
             ${t.priority==='high'?'<span style="font-size:.6rem;color:var(--red)">●</span>':''}
-            ${t.estTime?`<span style="font-size:.62rem;color:var(--muted)">~${t.estTime}m</span>`:''}
           </div>
         </div>`;
       }).join('')||`<div style="padding:16px;text-align:center;color:var(--muted);font-size:.78rem;border:1px dashed var(--border);border-radius:10px">Drop tasks here</div>`;
@@ -18104,7 +18102,6 @@ function showDayTasksPopup(dateStr){
     ${dayTasks.map(t=>{const s=subjs[t.subject];return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
       <div style="width:8px;height:8px;border-radius:50%;background:${s?s.color:'var(--accent)'}"></div>
       <div style="flex:1;font-size:.83rem">${esc(t.name)}</div>
-      ${t.estTime?`<div style="font-size:.7rem;color:var(--muted)">~${t.estTime}m</div>`:''}
     </div>`}).join('')}
     <button type="button" class="flux-day-popup-close" style="width:100%;margin-top:12px;padding:8px">Close</button>
   </div>`;
@@ -19507,10 +19504,6 @@ function updateQuickAddPreview(raw){
   if(parsed.priority!=='med')chips+=`<span class="task-chip task-chip-priority ${parsed.priority}">${parsed.priority}</span>`;
   if(parsed.date)chips+=`<span class="task-chip task-chip-due">${fmtFluxDue(parsed.date)}</span>`;
   if(parsed.type&&parsed.type!=='hw')chips+=`<span class="task-chip" style="background:rgba(255,255,255,.03);color:var(--muted2);border:1px solid rgba(255,255,255,.06)">${parsed.type}</span>`;
-  if(parsed.estTime){
-    const tl=parsed.estTime>=60?`${Math.round(parsed.estTime/60)}h`:`${parsed.estTime}m`;
-    chips+=`<span class="task-chip task-chip-time">~${tl}</span>`;
-  }
   el.innerHTML=chips;
   if(titleEl)titleEl.textContent=parsed.name?`“${parsed.name}”`:'';
 }
