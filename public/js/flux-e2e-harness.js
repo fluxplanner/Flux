@@ -324,11 +324,34 @@
       return { data: rows, error: null };
     }
 
+    /* flux_hidden_apps, refusing non-owners the way its RLS does: an error on
+       insert, and a delete that succeeds with no rows. The real policies are
+       checked against the database, not here. Seed via window.__fluxE2EHiddenApps. */
+    function hiddenAppsResult(state) {
+      if (!Array.isArray(window.__fluxE2EHiddenApps)) window.__fluxE2EHiddenApps = [];
+      const store = window.__fluxE2EHiddenApps;
+      const owner = window.currentUser && window.currentUser.id === 'eabe2b1f-e428-4181-8530-8e5366eb3975';
+      if (state.op === 'insert') {
+        if (!owner) return { data: null, error: { message: 'new row violates row-level security policy' } };
+        const row = { app_id: state.payload.app_id };
+        store.push(row);
+        return { data: [{ ...row }], error: null };
+      }
+      if (state.op === 'delete') {
+        if (!owner) return { data: [], error: null };
+        const hits = store.filter((r) => matchesFilters(r, state.filters));
+        window.__fluxE2EHiddenApps = store.filter((r) => !matchesFilters(r, state.filters));
+        return { data: hits, error: null };
+      }
+      return { data: store.map((r) => ({ ...r })), error: null };
+    }
+
     function buildResult(table, state) {
       const empty = { data: [], error: null };
       const single = (row) => ({ data: row, error: null });
       if (table === 'flux_help_tickets') return helpTicketResult(state);
       if (table === 'owner_direct_messages') return ownerMessageResult(state);
+      if (table === 'flux_hidden_apps') return hiddenAppsResult(state);
       if (table === 'counselors' && scenario === 'counselor-path') {
         if (state.op === 'insert' || state.op === 'update') return single(counselorRow);
         if (state.single) return single(counselorRow);

@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'">
+<script src="public/js/flux-app-visibility.js?v=74dbc85a"></script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://lfigdijuqmbensebnevo.supabase.co">
 <script>
 (function(){
   try{
@@ -226,7 +227,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 46px;color:var(--dim);fon
     <div class="stats rv" aria-label="Flux by the numbers">
       <div class="stat"><b class="grad-txt" data-flux-countup>16</b><span>study subjects</span></div>
       <div class="stat"><b class="grad-txt" data-flux-countup>118</b><span>interactive study tools</span></div>
-      <div class="stat"><b class="grad-txt">2-in-1</b><span>graphing and lab grapher</span></div>
+      <div class="stat" data-flux-app="grapher"><b class="grad-txt">2-in-1</b><span>graphing and lab grapher</span></div>
       <div class="stat"><b class="grad-txt" data-flux-countup>4</b><span>account types, student to admin</span></div>
     </div>
   </section>
@@ -240,8 +241,8 @@ footer{border-top:1px solid var(--line);padding:36px 0 46px;color:var(--dim);fon
       <div class="card rv" data-flux-spotlight><div class="ico">🗓</div><h4>Plan it out</h4><p>Tell Flux what “finished” looks like and how long it takes. It splits a big assignment into daily sessions that end the day before it's due.</p></div>
       <div class="card rv" data-flux-spotlight><div class="ico">🔗</div><h4>Canvas, built in</h4><p>Connect your school's Canvas once and your assignments, due dates and classes come straight into your planner.</p></div>
       <div class="card rv" data-flux-spotlight><div class="ico">📅</div><h4>Smart calendar</h4><p>Tasks, classes and tests on one month, your school's no-school days built in, and a countdown to any day you pick.</p></div>
-      <div class="card rv" data-flux-spotlight><div class="ico">📈</div><h4>Flux Grapher</h4><p>Graph equations like Desmos and lab data like Graphical Analysis — error bars, best-fit lines and print-ready graphs.</p></div>
-      <div class="card rv" data-flux-spotlight><div class="ico">🧪</div><h4>Periodic Table</h4><p>Trends, melting and boiling as you heat it up, electron configurations, spectra, isotopes and every atom in 3D.</p></div>
+      <div class="card rv" data-flux-app="grapher" data-flux-spotlight><div class="ico">📈</div><h4>Flux Grapher</h4><p>Graph equations like Desmos and lab data like Graphical Analysis — error bars, best-fit lines and print-ready graphs.</p></div>
+      <div class="card rv" data-flux-app="periodic" data-flux-spotlight><div class="ico">🧪</div><h4>Periodic Table</h4><p>Trends, melting and boiling as you heat it up, electron configurations, spectra, isotopes and every atom in 3D.</p></div>
       <div class="card rv" data-flux-spotlight><div class="ico">⏱</div><h4>Focus &amp; time</h4><p>Pomodoro sessions, a clock, stopwatch, countdowns and alarms, with a full-screen mode for the classroom.</p></div>
       <div class="card rv" data-flux-spotlight><div class="ico">🎓</div><h4>College prep</h4><p>Activities, your college list with deadlines, and GPA, SAT, ACT and AP/IB scores in one place.</p></div>
       <div class="card rv" data-flux-spotlight><div class="ico">❤</div><h4>Mood &amp; balance</h4><p>A quick daily check-in, gratitude and a one-line journal, plus a breathing exercise for the stressful weeks.</p></div>

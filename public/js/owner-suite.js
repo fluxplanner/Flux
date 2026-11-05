@@ -487,6 +487,45 @@
     return emoji;
   }
 
+  /* Hide apps. The database refuses anyone but the owner (flux_hidden_apps RLS);
+     isOwner() only decides whether this tab is drawn. A delete refused by RLS
+     succeeds with no rows, so the count is checked as well as the error. */
+  async function paintHiddenApps(root){
+    const mount=root.querySelector('#osHiddenApps');
+    const client=typeof getSB==='function'?getSB():null;
+    if(!mount)return;
+    if(!client){mount.textContent='Sign in to change this.';return;}
+    const {data,error}=await client.from('flux_hidden_apps').select('app_id');
+    if(error){mount.textContent='Could not read the hidden apps: '+error.message;return;}
+    const hidden=new Set((data||[]).map(r=>r.app_id));
+    const apps=((window.FluxHub&&window.FluxHub.PRODUCTS)||[]).filter(p=>p.id!=='planner');
+    mount.innerHTML=apps.map(p=>{
+      const on=hidden.has(p.id);
+      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:12px">
+        <div style="min-width:0"><div style="font-weight:700;font-size:.86rem">${esc(p.name)}</div><div style="font-size:.72rem;color:var(--muted)">${on?'Hidden from everyone but you':'Visible to everyone'}</div></div>
+        <button type="button" class="os-head-btn" style="width:auto;padding:8px 14px;flex:none" data-hide-app="${esc(p.id)}" data-hidden="${on?'1':'0'}">${on?'Show':'Hide'} ${esc(p.name)}</button>
+      </div>`;
+    }).join('');
+    mount.querySelectorAll('[data-hide-app]').forEach(btn=>{
+      btn.addEventListener('click',async()=>{
+        const id=btn.getAttribute('data-hide-app');
+        const hide=btn.getAttribute('data-hidden')!=='1';
+        btn.disabled=true;
+        const res=hide
+          ?await client.from('flux_hidden_apps').insert({app_id:id}).select()
+          :await client.from('flux_hidden_apps').delete().eq('app_id',id).select();
+        if(res.error||!(res.data||[]).length){
+          showToast('Not saved: '+(res.error?res.error.message:'the database refused the change'),'error');
+        }else{
+          ownerAuditAppend(hide?'app_hidden':'app_shown',{app:id});
+          showToast(hide?'Hidden from everyone but you':'Visible to everyone','success');
+          try{await window.FluxAppVisibility.refresh();}catch(_){/* the list is saved; pages catch up on their next load */}
+        }
+        paintHiddenApps(root);
+      });
+    });
+  }
+
   /** Tab id → { label, icon, group }.  Order here drives the sidebar nav order. */
   const OS_TAB_DEFS={
     overview:    {label:'Overview',         icon:'📊', group:'home'},
@@ -501,6 +540,7 @@
     usage:       {label:'Platform usage',   icon:'🌐', group:'insights'},
     feedback:    {label:'Feedback inbox',   icon:'💬', group:'insights'},
     config:      {label:'Platform config',  icon:'⚙️', group:'build'},
+    hideapps:    {label:'Hide apps',        icon:'🙈', group:'build'},
     integrations:{label:'Integrations',     icon:'🔌', group:'build'},
     megamap:     {label:'Mega map',         icon:'🗺',  group:'build'},
     ideas:       {label:'Product ideas',    icon:'💡', group:'build'},
@@ -1062,6 +1102,10 @@
           <input type="number" id="osRetention" value="${pc.dataRetentionDays||365}" min="30" max="3650" style="width:100%;margin-top:4px;padding:8px;border-radius:10px" onchange="savePlatformConfig({dataRetentionDays:parseInt(this.value)||365})">
         </div>`;
 
+      if(tab==='hideapps')return`
+        <p style="font-size:.82rem;color:var(--muted2);line-height:1.6;margin:0 0 6px">A hidden app disappears for everyone but you, on every device, and its address sends people to Flux Suite. You still see it, marked Hidden. Nothing needs deploying.</p>
+        <p style="font-size:.72rem;color:var(--muted);line-height:1.6;margin:0 0 14px">This hides an app from people using the site. Its files and code are still public on GitHub.</p>
+        <div id="osHiddenApps" style="display:flex;flex-direction:column;gap:8px">Loading…</div>`;
       if(tab==='config')return`
         <label style="font-size:.72rem;color:var(--muted)">Global announcement (toast after sync — optional)</label>
         <input type="text" id="osAnnounce" value="${esc(pc.announcement)}" placeholder="e.g. Maintenance Sunday 2am UTC" style="width:100%;margin:6px 0 10px;padding:10px;border-radius:10px" onblur="savePlatformConfig({announcement:this.value.trim()})">
@@ -1301,6 +1345,7 @@
           }catch(_){}
         }
       }
+      if(tab==='hideapps')paintHiddenApps(root);
       const sb=root.querySelector('#osSidebar');
       if(sb)sb.innerHTML=buildOsSidebarHtml(tab);
       root.querySelectorAll('[data-os-tab]').forEach(b=>{
