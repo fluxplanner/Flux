@@ -183,3 +183,16 @@ DROP TRIGGER IF EXISTS flux_block_reserved_signup ON auth.users;
 CREATE TRIGGER flux_block_reserved_signup
   BEFORE INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.flux_block_reserved_signup();
+
+-- WITH CHECK (true) was OR'd with every other update policy on this table.
+DROP POLICY IF EXISTS roles_platform_owner_update ON public.user_roles;
+CREATE POLICY roles_platform_owner_update ON public.user_roles
+  FOR UPDATE TO authenticated
+  USING (public.flux_is_platform_admin())
+  WITH CHECK (public.flux_is_platform_admin());
+
+DROP POLICY IF EXISTS roles_update_own ON public.user_roles;
+CREATE POLICY roles_update_own ON public.user_roles
+  FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
