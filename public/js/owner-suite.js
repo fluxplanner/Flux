@@ -490,7 +490,7 @@
   /* Hide apps. The database refuses anyone but the owner (flux_hidden_apps RLS);
      isOwner() only decides whether this tab is drawn. A delete refused by RLS
      succeeds with no rows, so the count is checked as well as the error. */
-  async function paintHiddenApps(root){
+  async function paintHiddenApps(root,focusId){
     const mount=root.querySelector('#osHiddenApps');
     const client=typeof getSB==='function'?getSB():null;
     if(!mount)return;
@@ -499,13 +499,16 @@
     if(error){mount.textContent='Could not read the hidden apps: '+error.message;return;}
     const hidden=new Set((data||[]).map(r=>r.app_id));
     const apps=((window.FluxHub&&window.FluxHub.PRODUCTS)||[]).filter(p=>p.id!=='planner');
+    /* The planner's own side-tab switch (.tab-row-toggle): on means visible. */
     mount.innerHTML=apps.map(p=>{
       const on=hidden.has(p.id);
-      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:12px">
-        <div style="min-width:0"><div style="font-weight:700;font-size:.86rem">${esc(p.name)}</div><div style="font-size:.72rem;color:var(--muted)">${on?'Hidden from everyone but you':'Visible to everyone'}</div></div>
-        <button type="button" class="os-head-btn" style="width:auto;padding:8px 14px;flex:none" data-hide-app="${esc(p.id)}" data-hidden="${on?'1':'0'}">${on?'Show':'Hide'} ${esc(p.name)}</button>
+      return `<div class="tab-row">
+        <span class="tab-row-icon">${p.mark||''}</span>
+        <span class="tab-row-name">${esc(p.name)}<small style="display:block;font-size:.72rem;font-weight:400;color:var(--muted)">${on?'Hidden from everyone but you':'Visible to everyone'}</small></span>
+        <button type="button" class="tab-row-toggle ${on?'':'on'}" role="switch" aria-checked="${on?'false':'true'}" aria-label="${esc(p.name)} visible" title="${on?'Show':'Hide'}" data-hide-app="${esc(p.id)}" data-hidden="${on?'1':'0'}"></button>
       </div>`;
     }).join('');
+    if(focusId)mount.querySelector(`[data-hide-app="${focusId}"]`)?.focus();
     mount.querySelectorAll('[data-hide-app]').forEach(btn=>{
       btn.addEventListener('click',async()=>{
         const id=btn.getAttribute('data-hide-app');
@@ -521,7 +524,7 @@
           showToast(hide?'Hidden from everyone but you':'Visible to everyone','success');
           try{await window.FluxAppVisibility.refresh();}catch(_){/* the list is saved; pages catch up on their next load */}
         }
-        paintHiddenApps(root);
+        paintHiddenApps(root,id);
       });
     });
   }

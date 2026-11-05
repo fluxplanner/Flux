@@ -136,13 +136,16 @@ test.describe('the Hide apps control', () => {
   test('the owner hides an app and shows it again', async ({ page }) => {
     await asUser(page, OWNER_UID);
     const panel = page.locator('#osHiddenApps');
-    await expect(panel.getByRole('button', { name: 'Hide Flux Planner' })).toHaveCount(0);
-    await panel.getByRole('button', { name: 'Hide Synara' }).click();
-    await expect(panel.getByRole('button', { name: 'Show Synara' })).toBeVisible();
+    await expect(panel.getByRole('switch', { name: 'Flux Planner visible' })).toHaveCount(0);
+    const toggle = panel.getByRole('switch', { name: 'Synara visible' });
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await expect(toggle).toBeFocused();
     await expect(panel).toContainText('Hidden from everyone but you');
     expect(await page.evaluate(() => (window as unknown as Win).__fluxE2EHiddenApps)).toEqual([{ app_id: 'synara' }]);
-    await panel.getByRole('button', { name: 'Show Synara' }).click();
-    await expect(panel.getByRole('button', { name: 'Hide Synara' })).toBeVisible();
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
     expect(await page.evaluate(() => (window as unknown as Win).__fluxE2EHiddenApps)).toEqual([]);
   });
 
@@ -153,12 +156,13 @@ test.describe('the Hide apps control', () => {
 
   test('says so when the database refuses, instead of pretending it worked', async ({ page }) => {
     await asUser(page, OWNER_UID);
-    const button = page.locator('#osHiddenApps').getByRole('button', { name: 'Hide Synara' });
-    await expect(button).toBeVisible();
+    const toggle = page.locator('#osHiddenApps').getByRole('switch', { name: 'Synara visible' });
+    await expect(toggle).toBeVisible();
     // The session ends while the panel is open: the database no longer sees the owner.
     await page.evaluate(() => { (window as unknown as Win).currentUser.id = 'not-the-owner'; });
-    await button.click();
-    await expect(page.locator('#osHiddenApps').getByRole('button', { name: 'Hide Synara' })).toBeVisible();
+    await toggle.click();
+    await expect(page.locator('#toastLive')).toContainText('Not saved');
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
     await expect(page.locator('#osHiddenApps')).not.toContainText('Hidden from everyone but you');
   });
 });
