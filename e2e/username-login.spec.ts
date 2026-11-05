@@ -217,7 +217,7 @@ test.describe('Name + password sign-in', () => {
       return {
         display: getComputedStyle(el).display,
         mentionsNoReset: /no reset link/i.test(el.textContent || ''),
-        namesTheOwner: /azfer/i.test(el.textContent || ''),
+        saysHowToRecover: /request a reset/i.test(el.textContent || ''),
       };
     });
 
@@ -227,7 +227,7 @@ test.describe('Name + password sign-in', () => {
     /* The whole reason the notice exists: with no email there is no recovery,
        so the copy has to say that, not just "keep it safe". */
     expect(keepsafe!.mentionsNoReset, 'the notice must explain there is no reset').toBe(true);
-    expect(keepsafe!.namesTheOwner, 'the notice must say who to ask').toBe(true);
+    expect(keepsafe!.saysHowToRecover, 'the notice must say how to get back in').toBe(true);
   });
 
   test('a locked-out student can ask for help without signing in', async ({ page }) => {

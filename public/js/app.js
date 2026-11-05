@@ -7663,7 +7663,7 @@ async function fluxSyncLoginNameToProfile(newName, oldName){
     'You sign in as:  '+was+'\n'+
     'You will sign in as:  '+now+'\n\n'+
     'Your password stays the same. Write the new name down — there is no reset '+
-    'email, so if you forget it only Azfer can get you back in.\n\n'+
+    'email, so if you forget it you\'ll have to request a reset from the sign-in screen.\n\n'+
     'Change it?');
   if(!ok)return false;
 
@@ -13078,7 +13078,7 @@ function fluxAuthErrorText(e,mode,name){
   }
   if(m.includes('invalid login credentials')){
     return mode==='signin'
-      ?'That name and password don\'t match. Check the spelling, or ask Azfer to reset it.'
+      ?'That name and password don\'t match. Check the spelling, or request a reset below.'
       :'Could not sign you in. Please try again.';
   }
   /* Must come before the generic password branch. This is the alphabet
@@ -13189,10 +13189,10 @@ async function fluxRequestPasswordHelp(){
       note:'Asked for help from the sign-in screen.'
     });
     if(error)throw error;
-    showAuthError('Sent. Azfer will get you back in — ask him next time you see him.','ok');
+    showAuthError('Request sent. We\'ll get you back in as soon as we can.','ok');
     if(btn){btn.textContent='Request sent';}
   }catch(e){
-    showAuthError('Could not send that just now. Tell Azfer directly and he can reset it.');
+    showAuthError('Could not send that just now. Please try again in a moment.');
     if(btn){btn.disabled=false;btn.textContent=prev;}
   }
 }
@@ -13242,7 +13242,7 @@ async function handleEmailAuth(){
         /* Reachable only if email confirmation gets switched back on, which
            would strand every account created this way. Say so plainly rather
            than telling someone to check an inbox that does not exist. */
-        showAuthError('Your account was made, but Flux is waiting on a confirmation it cannot send. Tell Azfer.','ok');
+        showAuthError('Your account was made, but Flux is waiting on a confirmation it cannot send. Use "Forgot your password?" on the sign-in screen to get help.','ok');
         if(btn){_setLoginEmailBtnText(btn,'Create account');btn.disabled=false;}
         return;
       }
