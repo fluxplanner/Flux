@@ -226,10 +226,15 @@
     icon: '🅢',
     category: 'lms',
     auth_kind: 'api_key',
-    description: 'Assignments, grades, calendar.',
-    supports: ['assignments', 'grades', 'calendar'],
+    description: 'Assignment and event dates from your Schoology calendar.',
+    supports: ['assignments', 'calendar'],
     role: 'student',
-    status: () => (ls('flux_schoology_token', null) ? 'connected' : 'coming_soon'),
+    status: () => (window.FluxSchoology?.isConnected() ? 'connected' : 'off'),
+    connect: async () => {
+      window.FluxSchoology?.open();
+      return false;
+    },
+    disconnect: async () => { window.FluxSchoology?.disconnect(); },
   });
 
   // 5 · PowerSchool / Infinite Campus (gradebook read)

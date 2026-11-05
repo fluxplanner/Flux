@@ -234,6 +234,7 @@ const DATA_VERSION=6;
     'flux_data_version','flux_splash_shown',
     'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
     'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
+    'flux_schoology_v1',
     'flux_canvas_token','flux_canvas_url','flux_canvas_host',
     'flux_canvas_last_view','flux_canvas_last_params',
     'flux_canvas_autosync','flux_canvas_last_sync',
@@ -3503,6 +3504,7 @@ const API={
   ai:`${SB_URL}/functions/v1/ai-proxy`,
   gemini:`${SB_URL}/functions/v1/gemini-proxy`,
   canvas:`${SB_URL}/functions/v1/canvas-proxy`,
+  schoology:`${SB_URL}/functions/v1/schoology-feed`,
   ecCollegeChat:`${SB_URL}/functions/v1/ec-college-chat`,
   userFeedback:`${SB_URL}/functions/v1/user-feedback`,
   mcp:`${SB_URL}/functions/v1/mcp`,
@@ -10596,6 +10598,7 @@ function getCloudPayload(){
     examPrepPlan:(window.FluxExamPrepPlan?.getCloudSlice?FluxExamPrepPlan.getCloudSlice():load('flux_exam_prep_plan_v1',{defaultReviewMin:90,overrides:{}})),
     syllabusWeekScaffold:(window.FluxSyllabusWeekScaffold?.getCloudSlice?FluxSyllabusWeekScaffold.getCloudSlice():load('flux_syllabus_week_scaffold_v1',{termStart:'',defaultSubject:'',scaffoldedWeeks:[]})),
     taskTemplateMarketplace:(window.FluxTaskTemplateMarketplace?.getCloudSlice?FluxTaskTemplateMarketplace.getCloudSlice():load('flux_task_template_marketplace_v1',{importedPacks:[],recentPackIds:[]})),
+    schoology:(window.FluxSchoology?.getCloudSlice?FluxSchoology.getCloudSlice():load('flux_schoology_v1',null)),
     emailTaskInbox:(window.FluxEmailTaskInbox?.getCloudSlice?FluxEmailTaskInbox.getCloudSlice():load('flux_email_task_inbox_v1',{queue:[]})),
     icalSubscribe:(window.FluxIcalSubscribe?.getCloudSlice?FluxIcalSubscribe.getCloudSlice():load('flux_ical_subscribe_v1',{includeFocus:true,token:'',lastPublishedAt:0})),
     icsTimetableImport:(window.FluxIcsTimetableImport?.getCloudSlice?FluxIcsTimetableImport.getCloudSlice():load('flux_ics_timetable_import_v1',{lastImportAt:0,lastFileName:'',importBlackouts:true,importWeekly:true})),
@@ -11249,6 +11252,9 @@ async function syncFromCloud(opts){
     }
     if(d.taskTemplateMarketplace&&typeof d.taskTemplateMarketplace==='object'){
       try{if(window.FluxTaskTemplateMarketplace?.applyFromCloud)FluxTaskTemplateMarketplace.applyFromCloud(d.taskTemplateMarketplace);else save('flux_task_template_marketplace_v1',d.taskTemplateMarketplace);}catch(_){}
+    }
+    if(d.schoology&&typeof d.schoology==='object'){
+      try{if(window.FluxSchoology?.applyFromCloud)FluxSchoology.applyFromCloud(d.schoology);else save('flux_schoology_v1',d.schoology);}catch(_){}
     }
     if(d.emailTaskInbox&&typeof d.emailTaskInbox==='object'){
       try{if(window.FluxEmailTaskInbox?.applyFromCloud)FluxEmailTaskInbox.applyFromCloud(d.emailTaskInbox);else save('flux_email_task_inbox_v1',d.emailTaskInbox);}catch(_){}

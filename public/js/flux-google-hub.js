@@ -449,7 +449,7 @@
     if (!googleOn()) {
       // This is a Canvas tab now — do not advertise Gmail/Tasks/Docs to a
       // student who may not have a Google account at all.
-      sub.textContent = 'Connect your school\'s Canvas to pull assignments, modules and due dates into Flux.';
+      sub.textContent = 'Connect your school\'s Canvas or Schoology to pull assignments and due dates into Flux.';
       return;
     }
     if (isStaffHub()) {
@@ -592,6 +592,7 @@
           )
           .join('')}
       </nav>` : ''}
+      <div id="fluxSchoologySlot" class="g-hub-pane g-hub-pane--pad"></div>
       <div id="gHubTasksSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'tasks' ? '' : 'style="display:none"'}></div>
       <div id="gHubCalendarSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'calendar' ? '' : 'style="display:none"'}></div>
       <div id="gHubGmailSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'gmail' ? '' : 'style="display:none"'}>
@@ -602,6 +603,8 @@
       <div id="gHubDriveSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'drive' ? '' : 'style="display:none"'}></div>
       <div id="gHubCanvasSlot" class="g-hub-pane" ${tab === 'canvas' ? '' : 'style="display:none"'}></div>
     </div>`;
+
+    if (window.FluxSchoology) FluxSchoology.render(document.getElementById('fluxSchoologySlot'));
 
     if (tab === 'canvas') {
       if (typeof window.__fluxRenderCanvasPanelCore === 'function') window.__fluxRenderCanvasPanelCore();
