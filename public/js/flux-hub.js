@@ -131,6 +131,13 @@
     },
   ];
 
+  /** PRODUCTS minus any the owner has hidden from this viewer (flux-app-visibility.js).
+      PRODUCTS itself stays complete: the owner's control lists from it. */
+  function visibleProducts() {
+    var v = window.FluxAppVisibility;
+    return PRODUCTS.filter(function (p) { return !(v && v.isHidden(p.id)); });
+  }
+
   function mount(host) {
     if (!host || host.getAttribute('data-flux-hub-ready') === '1') return;
     host.setAttribute('data-flux-hub-ready', '1');
@@ -304,5 +311,5 @@
     return cv;
   }
 
-  window.FluxHub = { mount: mount, mountAll: mountAll, openPage: openPage, PRODUCTS: PRODUCTS, GROUPS: GROUPS, canPrint: canPrint, printImage: printImage, markCanvas: markCanvas, printMarkHTML: printMarkHTML };
+  window.FluxHub = { mount: mount, mountAll: mountAll, openPage: openPage, PRODUCTS: PRODUCTS, visibleProducts: visibleProducts, GROUPS: GROUPS, canPrint: canPrint, printImage: printImage, markCanvas: markCanvas, printMarkHTML: printMarkHTML };
 })();

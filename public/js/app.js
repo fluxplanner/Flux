@@ -15377,8 +15377,8 @@ function buildFeatPillsHtml(){
   // (paused), no iCal feeds or what-if grades (switched off by default).
   const pills=[
     {label:'Study tools',c:'#6366f1'},
-    {label:'Flux Grapher',c:'#34d399'},
-    {label:'Flux Tutor',c:'#7c5cff'},
+    {label:'Flux Grapher',c:'#34d399',app:'grapher'},
+    {label:'Flux Tutor',c:'#7c5cff',app:'teacher'},
     {label:'Plan my week',c:'#22d3ee'},
     {label:'Reading log',c:'#f472b6'},
     {label:'Verb drill',c:'#ef6c4d'},
@@ -15398,7 +15398,7 @@ function buildFeatPillsHtml(){
     {label:'Themes & accent',c:'#38bdf8'},
   ];
   const all=[...pills,...pills];
-  return all.map(p=>`<div class="feat-pill" style="color:${p.c};border-color:${p.c}33;background:${p.c}11">${p.label}</div>`).join('');
+  return all.map(p=>`<div class="feat-pill"${p.app?` data-flux-app="${p.app}"`:''} style="color:${p.c};border-color:${p.c}33;background:${p.c}11">${p.label}</div>`).join('');
 }
 function initFeaturePills(){
   const html=buildFeatPillsHtml();
@@ -16548,7 +16548,7 @@ function fluxTourSteps(){
       tab('calendar','Calendar','Tasks, classes and no-school days on one month. Pick a day to add something, or count down to it: the countdown then sits in the top bar.'),
       tab('timer','Time','Pomodoro focus sessions with a budget for each subject, plus a clock, stopwatch, countdown and alarms.'),
       tab('school','School Info','Your classes, bell schedule and locker. Upload a photo or PDF of your timetable and Flux fills in your periods.'),
-      tab('toolbox','Study tools','Tools for 16 subjects, sorted into units: a periodic table, an equation balancer, formula sheets, a verb drill and a full graphing calculator. Search finds a tool from a few words, even with a typo. The row at the top opens the other Flux apps: Flux Tutor, the 3D Grapher, Pixel, Flashcards and more.'),
+      tab('toolbox','Study tools','Tools for 16 subjects, sorted into units: a periodic table, an equation balancer, formula sheets, a verb drill and a full graphing calculator. Search finds a tool from a few words, even with a typo. The row at the top opens the other Flux apps.'),
       tab('readingLog','Reading log','Log what you read each day for English class, keep quotes, set a weekly goal and print a log to hand in.'),
       tab('canvas','Canvas','Connect Canvas to bring your assignments in, then add the ones you want to your planner.'),
       tab('profile','Profile','Your details, study style, how confident you feel in each course, and your stats.'),

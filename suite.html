@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<script src="public/js/flux-app-visibility.js?v=74dbc85a" data-app="suite"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flux Suite — every Flux app</title>
 <meta name="description" content="Flux Suite: every Flux app in one place — the Flux Planner, Grapher, Periodic Table, Composer and Calculator. The tools are free and need no account.">
@@ -160,14 +161,14 @@
     <div class="pd-slot" data-purple-day-slot></div>
     <div class="apps" id="apps" aria-label="Flux apps"></div>
     <!-- Moved into the Partners tab by the script below. -->
-    <aside class="partners-strip" id="partnersStrip" aria-label="Flux Partners">
+    <aside class="partners-strip" id="partnersStrip" aria-label="Flux Partners" data-flux-app="synara">
       <p><strong>Flux Partners.</strong> Synara is built and hosted by Flux for the team behind it. Want Flux to build your organization’s app?</p>
       <a href="partners.html">See Flux Partners →</a>
     </aside>
     <p class="note">Bookmark this page, or add it to your home screen, to get to every Flux app.</p>
   </main>
 
-  <script src="public/js/flux-hub.js?v=041f8224"></script>
+  <script src="public/js/flux-hub.js?v=e74f9d2d"></script>
   <script>
     (function () {
       /* A sentence each, longer than the switcher's one-line tagline. A
@@ -199,8 +200,13 @@
           ? '<span class="app-icon app-icon--logo" aria-hidden="true">' + p.logo + '</span>'
           : '<span class="app-icon" aria-hidden="true">' + p.mark + '</span>';
       };
+      /* Only the owner can see an app that is hidden, so only they get this label. */
+      var isHiddenFromOthers = function (p) {
+        var v = window.FluxAppVisibility;
+        return !!(v && v.isOwner() && v.hiddenIds().indexOf(p.id) >= 0);
+      };
       var title = function (p) {
-        return '<div class="app-name">' + esc(p.name) + (p.partner ? '<span class="app-partner">Partner</span>' : '') + '</div><div class="app-tag">' + esc(p.tagline) + '</div>';
+        return '<div class="app-name">' + esc(p.name) + (p.partner ? '<span class="app-partner">Partner</span>' : '') + (isHiddenFromOthers(p) ? '<span class="app-partner">Hidden</span>' : '') + '</div><div class="app-tag">' + esc(p.tagline) + '</div>';
       };
       var card = function (p) {
         return '<a class="app app--' + esc(p.id) + '" href="' + esc(p.href) + '">'
@@ -218,50 +224,57 @@
           + '</a>';
       };
       var inGroup = function (id) { return list.filter(function (p) { return groupOf(p) === id; }); };
-      var tabbed = groups.filter(function (g) { return g.id !== 'planner' && inGroup(g.id).length; });
-      /* suite.html#partners (or any group id) opens on that tab. */
-      var want = (location.hash || '').replace(/^#/, '');
-      if (want === 'partners') want = 'partner';
-      var active = tabbed.some(function (g) { return g.id === want; }) ? want : (tabbed[0] && tabbed[0].id);
-
-      host.innerHTML = inGroup('planner').map(bar).join('')
-        + '<div class="hub-tabs" role="tablist" aria-label="Apps">'
-        + tabbed.map(function (g) {
-          var on = g.id === active;
-          return '<button type="button" role="tab" class="hub-tab hub-tab--' + esc(g.id) + '" id="tab-' + esc(g.id) + '" aria-controls="apps-' + esc(g.id) + '" aria-selected="' + on + '" tabindex="' + (on ? 0 : -1) + '">'
-            + esc(g.name) + '<span class="hub-tab-n">' + inGroup(g.id).length + '</span></button>';
-        }).join('')
-        + '</div>'
-        + tabbed.map(function (g) {
-          return '<div class="apps-grid" role="tabpanel" id="apps-' + esc(g.id) + '" aria-labelledby="tab-' + esc(g.id) + '"' + (g.id === active ? '' : ' hidden') + '>'
-            + inGroup(g.id).map(card).join('') + '</div>';
-        }).join('');
-
+      /* Held before the first render: redrawing the tabs would otherwise lose it. */
       var strip = document.getElementById('partnersStrip');
-      var partnerPanel = document.getElementById('apps-partner');
-      if (strip && partnerPanel) partnerPanel.appendChild(strip);
+      var render = function () {
+        list = window.FluxHub.visibleProducts();
+        var tabbed = groups.filter(function (g) { return g.id !== 'planner' && inGroup(g.id).length; });
+        /* suite.html#partners (or any group id) opens on that tab. */
+        var want = (location.hash || '').replace(/^#/, '');
+        if (want === 'partners') want = 'partner';
+        var active = tabbed.some(function (g) { return g.id === want; }) ? want : (tabbed[0] && tabbed[0].id);
 
-      var tabs = [].slice.call(host.querySelectorAll('.hub-tab'));
-      var select = function (tab, focus) {
-        tabs.forEach(function (t) {
-          var on = t === tab;
-          t.setAttribute('aria-selected', String(on));
-          t.tabIndex = on ? 0 : -1;
-          document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+        host.innerHTML = inGroup('planner').map(bar).join('')
+          + '<div class="hub-tabs" role="tablist" aria-label="Apps">'
+          + tabbed.map(function (g) {
+            var on = g.id === active;
+            return '<button type="button" role="tab" class="hub-tab hub-tab--' + esc(g.id) + '" id="tab-' + esc(g.id) + '" aria-controls="apps-' + esc(g.id) + '" aria-selected="' + on + '" tabindex="' + (on ? 0 : -1) + '">'
+              + esc(g.name) + '<span class="hub-tab-n">' + inGroup(g.id).length + '</span></button>';
+          }).join('')
+          + '</div>'
+          + tabbed.map(function (g) {
+            return '<div class="apps-grid" role="tabpanel" id="apps-' + esc(g.id) + '" aria-labelledby="tab-' + esc(g.id) + '"' + (g.id === active ? '' : ' hidden') + '>'
+              + inGroup(g.id).map(card).join('') + '</div>';
+          }).join('');
+
+        var partnerPanel = document.getElementById('apps-partner');
+        if (strip && partnerPanel) partnerPanel.appendChild(strip);
+
+        var tabs = [].slice.call(host.querySelectorAll('.hub-tab'));
+        var select = function (tab, focus) {
+          tabs.forEach(function (t) {
+            var on = t === tab;
+            t.setAttribute('aria-selected', String(on));
+            t.tabIndex = on ? 0 : -1;
+            document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+          });
+          if (focus) tab.focus();
+          var id = tab.id.replace(/^tab-/, '');
+          try { history.replaceState(null, '', id === (tabbed[0] && tabbed[0].id) ? location.pathname + location.search : '#' + (id === 'partner' ? 'partners' : id)); } catch (e) {}
+        };
+        tabs.forEach(function (t, i) {
+          t.addEventListener('click', function () { select(t, false); });
+          t.addEventListener('keydown', function (e) {
+            var n = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+            if (e.key === 'Home') { e.preventDefault(); select(tabs[0], true); }
+            else if (e.key === 'End') { e.preventDefault(); select(tabs[tabs.length - 1], true); }
+            else if (n) { e.preventDefault(); select(tabs[(i + n + tabs.length) % tabs.length], true); }
+          });
         });
-        if (focus) tab.focus();
-        var id = tab.id.replace(/^tab-/, '');
-        try { history.replaceState(null, '', id === (tabbed[0] && tabbed[0].id) ? location.pathname + location.search : '#' + (id === 'partner' ? 'partners' : id)); } catch (e) {}
       };
-      tabs.forEach(function (t, i) {
-        t.addEventListener('click', function () { select(t, false); });
-        t.addEventListener('keydown', function (e) {
-          var n = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
-          if (e.key === 'Home') { e.preventDefault(); select(tabs[0], true); }
-          else if (e.key === 'End') { e.preventDefault(); select(tabs[tabs.length - 1], true); }
-          else if (n) { e.preventDefault(); select(tabs[(i + n + tabs.length) % tabs.length], true); }
-        });
-      });
+      render();
+      /* A fresher hidden list arrived after the first draw. */
+      window.addEventListener('flux-app-visibility', render);
     })();
   </script>
 </body>
