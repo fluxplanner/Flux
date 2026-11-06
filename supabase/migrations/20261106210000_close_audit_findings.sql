@@ -446,9 +446,9 @@ REVOKE EXECUTE ON FUNCTION public.flux_guard_appointment_student() FROM PUBLIC, 
 REVOKE EXECUTE ON FUNCTION public.flux_guard_message_update() FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.flux_guard_thread_update() FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.flux_password_help_rate_limit() FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.flux_device_checkin(text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.flux_device_checkin(text) TO authenticated, service_role;
 -- flux_check_request stays callable by anon: it runs before every API request.
+-- flux_device_checkin stays callable by anon: the client can call it before a session
+-- is valid, and it returns straight away when no user is signed in.
 -- flux_get_sub_plan stays callable by anon: substitutes open it by code, signed out.
 
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON ALL TABLES IN SCHEMA public FROM anon;
