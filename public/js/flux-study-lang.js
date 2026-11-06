@@ -308,6 +308,8 @@
         params: { verb: 'string', lang: 'es|fr|de', tense: 'a tense id for that language' },
         run: (a) => {
           const m = String(a).trim().split(/\s+/);
+          // "se laver fr", "sich waschen de": the reflexive pronoun belongs to the verb.
+          if (/^(se|sich)$/i.test(m[0]) && m.length > 1) m.splice(0, 2, m[0] + ' ' + m[1]);
           const r = ENG().conjugate((m[1] || 'es').toLowerCase(), m[0], m[2] || 'present');
           return r.pronouns.map((p, i) => p + ' ' + r.forms[i]).concat(['(' + r.note + ')']);
         },
