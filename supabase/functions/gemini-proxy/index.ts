@@ -15,7 +15,7 @@ const PAYMENTS_ENABLED = Deno.env.get("PAYMENTS_ENABLED") === "true";
 // P0 A5 (mirrors ai-proxy): auth required independent of payments. Guest mode
 // stays allowed for the pre-signup onboarding schedule import, but tightly
 // metered — vision calls are the most expensive thing we proxy.
-const ALLOW_GUESTS = (Deno.env.get("AI_PROXY_ALLOW_GUESTS") ?? "true") === "true";
+const ALLOW_GUESTS = (Deno.env.get("AI_PROXY_ALLOW_GUESTS") ?? "false") === "true";
 const GUEST_DAILY = Number(Deno.env.get("GEMINI_PROXY_GUEST_DAILY") ?? "10");
 const USER_DAILY = Number(Deno.env.get("AI_PROXY_USER_DAILY") ?? "300");
 

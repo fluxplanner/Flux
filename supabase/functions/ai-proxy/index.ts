@@ -45,7 +45,7 @@ const TABLE_SCAN_USER = "Read the table in this photo.";
 // P0 A5: auth is required independent of payments. Guest mode (the app signed
 // out sends the anon key as Bearer) keeps working through a narrow,
 // table-backed allowance; disable entirely with AI_PROXY_ALLOW_GUESTS=false.
-const ALLOW_GUESTS = (Deno.env.get("AI_PROXY_ALLOW_GUESTS") ?? "true") === "true";
+const ALLOW_GUESTS = (Deno.env.get("AI_PROXY_ALLOW_GUESTS") ?? "false") === "true";
 const GUEST_DAILY = Number(Deno.env.get("AI_PROXY_GUEST_DAILY") ?? "20");
 const USER_DAILY = Number(Deno.env.get("AI_PROXY_USER_DAILY") ?? "300");
 const GUEST_MODEL = "openai/gpt-oss-20b";

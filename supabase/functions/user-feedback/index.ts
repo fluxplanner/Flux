@@ -1,8 +1,8 @@
 import { verifyUserJWT, json, corsHeaders, serviceClient } from "../_shared/auth.ts";
 
-const OWNER_EMAIL = (Deno.env.get("FLUX_OWNER_EMAIL") || "azfermohammed21@gmail.com")
-  .trim()
-  .toLowerCase();
+/** Matches OWNER_UID in release-admin and public/js/app.js. */
+const OWNER_UID = (Deno.env.get("FLUX_OWNER_UID") ||
+  "eabe2b1f-e428-4181-8530-8e5366eb3975").trim();
 const MAX_MSG = 4000;
 const MAX_INBOX = 250;
 
@@ -26,71 +26,20 @@ function sanitizeMessage(s: unknown): string {
 
 type OwnerRow = { id: string; data: Record<string, unknown> | null };
 
-/** Owner's Auth user id (best-effort memo; resets on isolate restart, like _hits). */
-let _ownerUserId: string | null = null;
-
-/** Resolve the owner's Auth user id by email (paginated; cap pages for safety). */
-async function findOwnerUserId(
-  admin: ReturnType<typeof serviceClient>,
-): Promise<string | null> {
-  if (_ownerUserId) return _ownerUserId;
-  const perPage = 200;
-  const maxPages = 50;
-  for (let page = 1; page <= maxPages; page++) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
-    if (error) throw error;
-    const users = data?.users ?? [];
-    const hit = users.find((u) =>
-      String(u.email || "").trim().toLowerCase() === OWNER_EMAIL
-    );
-    // Only a positive result is memoized, so an owner account created later is
-    // still picked up by a later request.
-    if (hit?.id) return (_ownerUserId = hit.id);
-    if (users.length < perPage) return null;
-  }
-  return null;
-}
-
 /**
- * Fetch just the owner's user_data row.
+ * Fetch just the owner's user_data row, by the owner's fixed Auth user id.
  *
- * Preferred path is the owner's Auth user id: the owner's own client reads its
- * inbox back from the row keyed by its auth id (app.js syncToCloud), so that is
- * the only row where an appended entry is guaranteed to be seen.
- *
- * Fallback matches the ownerEmail marker the client writes into that same row,
- * for when the Auth lookup is unavailable. Either way Postgres does the
- * filtering and returns one row, so no other user's data blob is ever read
- * into this isolate.
+ * Neither the owner's email nor the ownerEmail marker inside the row can be
+ * trusted here: anyone can register an unclaimed address, and every user can
+ * write their own row, so either lookup could divert the feedback inbox.
  */
 async function findOwnerRow(
   admin: ReturnType<typeof serviceClient>,
 ): Promise<OwnerRow | null> {
-  let ownerId: string | null = null;
-  try {
-    ownerId = await findOwnerUserId(admin);
-  } catch (e) {
-    // Degrade to the marker lookup rather than dropping the feedback.
-    console.error("user-feedback: owner auth lookup failed", e);
-  }
-
-  if (ownerId) {
-    const { data, error } = await admin
-      .from("user_data")
-      .select("id,data")
-      .eq("id", ownerId)
-      .maybeSingle();
-    if (error) throw error;
-    if (data) return data as OwnerRow;
-  }
-
-  // limit(1) keeps this from erroring if a stale duplicate marker ever exists,
-  // preserving the old "first match wins" behaviour.
   const { data, error } = await admin
     .from("user_data")
     .select("id,data")
-    .eq("data->>ownerEmail", OWNER_EMAIL)
-    .limit(1)
+    .eq("id", OWNER_UID)
     .maybeSingle();
   if (error) throw error;
   return (data as OwnerRow) ?? null;
@@ -144,7 +93,7 @@ Deno.serve(async (req) => {
   }
 
   if (!hit?.id) {
-    console.error("user-feedback: no owner row for", OWNER_EMAIL);
+    console.error("user-feedback: no owner row for", OWNER_UID);
     return json({ error: "Feedback inbox not configured" }, 503, origin);
   }
 
