@@ -65,7 +65,7 @@
         run: function () {
           close();
           if (window.FluxSchoology) window.FluxSchoology.open();
-          else go('canvas');
+          else go('schoology');
         },
       });
       list.push({

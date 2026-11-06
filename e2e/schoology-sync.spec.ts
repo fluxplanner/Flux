@@ -26,9 +26,8 @@ const ics = [
 async function openCard(page: Page) {
   await page.setViewportSize({ width: 1280, height: 900 });
   await gotoScenario(page, 'student-semester');
-  await page.evaluate(() => (window as any).nav('canvas'));
-  await expect(page.locator('#fluxSchoologyCard')).toBeVisible();
-  await page.locator('#fluxSchoologyCard summary').click();
+  await page.locator('#sidebar .nav-item[data-tab="schoology"]').click();
+  await expect(page.locator('#schoology.panel.active #fluxSchoologyCard')).toBeVisible();
 }
 
 const schoologyTasks = (page: Page) => page.evaluate(() =>

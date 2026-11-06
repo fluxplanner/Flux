@@ -328,8 +328,8 @@
         '</div>';
     } else {
       slot.innerHTML =
-        '<details class="g-hub-import-card" id="fluxSchoologyCard"' + (lastError ? ' open' : '') + '>' +
-          '<summary style="cursor:pointer"><strong>Use Schoology?</strong> Bring your assignments into Flux.</summary>' +
+        '<div class="g-hub-import-card" id="fluxSchoologyCard">' +
+          '<strong>Connect Schoology</strong>' +
           '<ol class="g-hub-muted" style="margin:10px 0 0 18px;padding:0;line-height:1.6">' +
             '<li>Open <strong>Calendar</strong> in Schoology.</li>' +
             '<li>Find the option to share or subscribe to your calendar. Turn it on if it asks.</li>' +
@@ -344,7 +344,7 @@
           '<div class="g-tasks-head" style="margin-top:12px">' +
             '<button type="button" class="flux-schoology-connect" id="fluxSchoologyConnect"' + (syncing ? ' disabled' : '') + '>' + (syncing ? 'Connecting…' : 'Connect Schoology') + '</button>' +
           '</div>' +
-        '</details>';
+        '</div>';
     }
     var on = function (id, fn) { var el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
     on('fluxSchoologySync', function () { void syncNow(); });
@@ -358,29 +358,17 @@
   function renderIfVisible() {
     var slot = document.getElementById(SLOT_ID);
     if (!slot) return;
-    /* Don't close the card or wipe a typed link when a refresh finishes. */
+    /* Don't wipe a half-typed link when a refresh finishes. */
     var input = document.getElementById('fluxSchoologyUrl');
     var typed = input ? input.value : '';
-    var card = document.getElementById('fluxSchoologyCard');
-    var wasOpen = !!(card && card.open);
     render(slot);
     var after = document.getElementById('fluxSchoologyUrl');
     if (after && typed) after.value = typed;
-    var cardAfter = document.getElementById('fluxSchoologyCard');
-    if (wasOpen && cardAfter && cardAfter.tagName === 'DETAILS') cardAfter.open = true;
   }
 
-  /** Opens the card from elsewhere in the app. */
+  /** Opens the tab from elsewhere in the app. */
   function open() {
-    if (typeof window.nav === 'function') window.nav('canvas');
-    setTimeout(function () {
-      var card = document.getElementById('fluxSchoologyCard');
-      if (!card) return;
-      if (card.tagName === 'DETAILS') card.open = true;
-      if (card.scrollIntoView) card.scrollIntoView({ block: 'center' });
-      var input = document.getElementById('fluxSchoologyUrl');
-      if (input) input.focus();
-    }, 800);
+    if (typeof window.nav === 'function') window.nav('schoology');
   }
 
   /* ── Boot ─────────────────────────────────────────────────────────── */
@@ -389,6 +377,10 @@
     setTimeout(autoSync, 20000); /* after sign-in and the first cloud pull */
     setInterval(autoSync, 5 * 60 * 1000);
     document.addEventListener('visibilitychange', autoSync);
+    document.addEventListener('flux-nav', function (e) {
+      if (e && e.detail && e.detail.panel === 'schoology') renderIfVisible();
+    });
+    renderIfVisible();
   }
 
   if (typeof document !== 'undefined') {
