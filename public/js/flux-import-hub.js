@@ -60,6 +60,15 @@
         },
       });
       list.push({
+        icon: '🏫', title: 'Schoology',
+        desc: 'Paste your calendar link once, and assignments keep coming in.',
+        run: function () {
+          close();
+          if (window.FluxSchoology) window.FluxSchoology.open();
+          else go('schoology');
+        },
+      });
+      list.push({
         icon: '🎓', title: 'Canvas',
         desc: 'Pull assignments and classes from Canvas in one go.',
         run: function () {

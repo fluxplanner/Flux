@@ -1882,6 +1882,12 @@
     </div>
 
     <!-- ─── Google + Canvas hub (Gmail, Tasks, LMS) — all account types ─── -->
+    <div id="schoology" class="panel flux-page">
+      <header class="flux-page-header flux-page-header--lead">
+        <p class="flux-page-sub">Connect your Schoology calendar to bring assignments and due dates into Flux.</p>
+      </header>
+      <div class="flux-stack" id="fluxSchoologySlot"></div>
+    </div>
     <div id="canvas" class="panel flux-page">
       <header class="flux-page-header flux-page-header--lead">
         <p class="flux-page-sub" id="canvasHubPageSub">Sign in once for Gmail, Tasks, Calendar, and Docs. Use the Canvas tab below when your school uses Canvas LMS.</p>
@@ -3016,8 +3022,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c391de9f.js"></script>
-<script defer src="public/bundles/flux-core.118fe361.js"></script>
-<script defer src="public/bundles/flux-features.8f97c82f.js"></script>
+<script defer src="public/bundles/flux-core.bb8b7c7f.js"></script>
+<script defer src="public/bundles/flux-features.62452768.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
@@ -3099,6 +3105,10 @@
     </button>
     <button type="button" class="more-sheet-item" data-nav-tab="canvas" onclick="navMob('canvas')">
       <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg></span><span class="more-sheet-label">Canvas</span>
+    </button>
+    <button type="button" class="more-sheet-item" data-nav-tab="schoology" onclick="navMob('schoology')">
+      <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 15l3 2 5-4"/></svg></span>
+      <span class="more-sheet-label">Schoology</span>
     </button>
     <button type="button" class="more-sheet-item" data-nav-tab="toolbox" onclick="navMob('toolbox')">
       <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14 M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3Z"/></svg></span><span class="more-sheet-label">Study tools</span>
