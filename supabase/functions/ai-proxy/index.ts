@@ -1,4 +1,5 @@
 import { verifyUserJWT, json, corsHeaders } from "../_shared/auth.ts";
+import { normalizeFeedUrl as publicHttpsUrl } from "../_shared/schoology-feed.ts";
 import {
   type Entitlement,
   getEntitlement,
@@ -608,6 +609,7 @@ async function openOpenAICompatibleStream(
   const payload = buildOpenAIChatPayload(body, rc.model || body.model || "gpt-4o-mini");
   payload.stream = true;
   const res = await fetch(openaiCompatibleUrl(rc.baseUrl), {
+    redirect: "error",
     method: "POST",
     headers: {
       "Authorization": `Bearer ${rc.apiKey}`,
@@ -656,9 +658,12 @@ async function openAnthropicStream(
 function openaiCompatibleUrl(baseUrl: string): string {
   let base = baseUrl.replace(/\/+$/, "");
   if (!base) base = "https://api.openai.com/v1";
-  if (!/^https?:\/\/.+/i.test(base)) {
-    throw new Error("OpenAI-compatible base URL must start with http:// or https://");
+  // The server calls this address, so it may never point at anything private.
+  const safe = publicHttpsUrl(base);
+  if (!safe) {
+    throw new Error("OpenAI-compatible base URL must be a public https address");
   }
+  base = safe.replace(/\/+$/, "");
   return base.endsWith("/chat/completions")
     ? base
     : base.endsWith("/v1")
@@ -712,6 +717,7 @@ async function callOpenAICompatible(
   const payload = buildOpenAIChatPayload(body, model);
 
   const res = await fetch(openaiCompatibleUrl(rc.baseUrl), {
+    redirect: "error",
     method: "POST",
     headers: {
       "Authorization": `Bearer ${rc.apiKey}`,

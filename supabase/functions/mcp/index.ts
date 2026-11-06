@@ -22,6 +22,7 @@ import {
   rpcError,
   RPC,
   randomToken,
+  isAllowedRedirectUri,
   sha256hex,
   verifyPkceS256,
   type JsonRpcId,
@@ -170,13 +171,7 @@ async function register(req: Request, ch: Record<string, string>) {
   }
   for (const u of redirectUris) {
     try {
-      const parsed = new URL(u);
-      // Allow https + Claude's localhost/loopback desktop redirects.
-      const ok =
-        parsed.protocol === "https:" ||
-        parsed.hostname === "localhost" ||
-        parsed.hostname === "127.0.0.1" ||
-        parsed.hostname === "[::1]";
+      const ok = isAllowedRedirectUri(u);
       if (!ok) return oauthError("invalid_redirect_uri", `Unsupported redirect_uri: ${u}`, 400, ch);
     } catch {
       return oauthError("invalid_redirect_uri", `Malformed redirect_uri: ${u}`, 400, ch);
@@ -236,7 +231,7 @@ async function authorize(req: Request, base: string, ch: Record<string, string>)
 
   // Invalid client / redirect_uri → must NOT redirect (RFC 6749 §4.1.2.1).
   if (!client || !clientId) return htmlError("Unknown client_id.", ch);
-  if (!redirectUri || !(client.redirect_uris as string[]).includes(redirectUri)) {
+  if (!isAllowedRedirectUri(redirectUri) || !(client.redirect_uris as string[]).includes(redirectUri)) {
     return htmlError("redirect_uri does not match the registered client.", ch);
   }
 
@@ -293,7 +288,7 @@ async function grant(req: Request, ch: Record<string, string>) {
     .select("client_id, redirect_uris")
     .eq("client_id", clientId)
     .maybeSingle();
-  if (!client || !(client.redirect_uris as string[]).includes(redirectUri) || !codeChallenge) {
+  if (!client || !isAllowedRedirectUri(redirectUri) || !(client.redirect_uris as string[]).includes(redirectUri) || !codeChallenge) {
     return json({ error: "invalid_request" }, 400, ch);
   }
 

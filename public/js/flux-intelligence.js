@@ -3,7 +3,7 @@
  * Depends on globals from app.js: tasks, todayStr, isTaskSnoozed, moodHistory, settings, load
  */
 (function(){
-  const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   function blocked(t){
     return typeof isBlocked==='function'&&isBlocked(t);
   }

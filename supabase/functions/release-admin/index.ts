@@ -53,13 +53,13 @@ function devAccounts(ownerData: JsonRecord): DevAccount[] {
   return Array.isArray(raw) ? raw.filter(Boolean) as DevAccount[] : [];
 }
 
-function findDev(ownerData: JsonRecord, email: string) {
-  return devAccounts(ownerData).find((d) => normEmail(d.email) === email) || null;
+function findDev(ownerData: JsonRecord, userId: string) {
+  return devAccounts(ownerData).find((d) => !!userId && d.userId === userId) || null;
 }
 
 function canPushRelease(ownerData: JsonRecord, email: string, userId: string) {
   if (isOwnerCaller(email, userId)) return { ok: true, role: "owner" };
-  const dev = findDev(ownerData, email);
+  const dev = findDev(ownerData, userId);
   if (!dev) return { ok: false, role: "user" };
   const role = String(dev.role || "viewer").toLowerCase();
   const perms = Array.isArray(dev.perms) ? dev.perms : [];

@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     });
     if (!customerRes.ok) {
       const errText = await customerRes.text();
-      return json({ error: "Failed to create customer", details: errText }, 502, origin);
+      return json({ error: "Failed to create customer" }, 502, origin);
     }
     const customer = await customerRes.json();
     stripeCustomerId = customer.id as string;
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
 
   if (!sessionRes.ok) {
     const errText = await sessionRes.text();
-    return json({ error: "Failed to create checkout session", details: errText }, 502, origin);
+    return json({ error: "Failed to create checkout session" }, 502, origin);
   }
 
   const session = await sessionRes.json();

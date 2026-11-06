@@ -74,12 +74,21 @@
       params.code_challenge_method === "S256";
   }
 
+  /* A javascript: address here would run on the Flux site, where sessions live. */
+  function goTo(target) {
+    const u = new URL(target);
+    if (u.protocol !== "https:" && u.protocol !== "http:") {
+      throw new Error("Blocked redirect");
+    }
+    location.assign(u.toString());
+  }
+
   function denyRedirect() {
     try {
       const u = new URL(params.redirect_uri);
       u.searchParams.set("error", "access_denied");
       if (params.state) u.searchParams.set("state", params.state);
-      location.assign(u.toString());
+      goTo(u.toString());
     } catch {
       fatal("The connection request was cancelled.");
     }
@@ -152,7 +161,7 @@
       });
       const json = await res.json().catch(() => ({}));
       if (res.ok && json.redirect) {
-        location.assign(json.redirect);
+        goTo(json.redirect);
         return;
       }
       showMsg(json.error_description || json.error || "Could not complete the connection.", "err");
