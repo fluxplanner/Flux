@@ -148,7 +148,7 @@
        of this list produced "tenes" — right about the yo, wrong about the
        other five. */
     ie: ['pensar', 'querer', 'empezar', 'comenzar', 'entender', 'perder', 'cerrar',
-      'despertar', 'sentir', 'preferir', 'mentir', 'divertir', 'nevar', 'encender',
+      'despertar', 'sentir', 'preferir', 'mentir', 'divertir', 'arrepentir', 'nevar', 'encender',
       'defender', 'atender', 'convertir', 'sugerir', 'herir', 'calentar', 'sentar',
       'tener', 'venir',
       // Common enough to be typed into a custom drill list.
@@ -235,12 +235,12 @@
   var ES_IU_ACCENT = {
     enviar: 1, esquiar: 1, confiar: 1, desconfiar: 1, ampliar: 1, vaciar: 1,
     variar: 1, espiar: 1, desviar: 1, enfriar: 1, resfriar: 1,
-    continuar: 1, actuar: 1, graduar: 1, evaluar: 1, situar: 1, acentuar: 1,
+    reunir: 1, continuar: 1, actuar: 1, graduar: 1, evaluar: 1, situar: 1, acentuar: 1,
     efectuar: 1,
   };
   function esAccentIU(stem) {
-    var last = stem.slice(-1);
-    return stem.slice(0, -1) + (last === 'i' ? 'í' : last === 'u' ? 'ú' : last);
+    // The last i or u of the stem, which is not always its last letter: reúno.
+    return stem.replace(/[iu](?=[^iu]*$)/, function (c) { return c === 'i' ? 'í' : 'ú'; });
   }
 
   /* Compound verbs: a prefix on a verb these tables already know, conjugated
@@ -251,6 +251,7 @@
      rehacer is missing on purpose: the hiatus gives it accents (rehíce,
      rehízo) that a plain prefix would not. */
   var ES_COMPOUND = {
+    desvestir: 'vestir',
     obtener: 'tener', mantener: 'tener', contener: 'tener', detener: 'tener',
     retener: 'tener', sostener: 'tener', entretener: 'tener',
     componer: 'poner', proponer: 'poner', suponer: 'poner', disponer: 'poner',
@@ -445,7 +446,25 @@
      base verb's forms with the prefix on the last word, and alternatives are
      attached afterwards. A compound drops its base's alternatives on purpose —
      "rio" is a monosyllable, "sonrio" is not, so sonrió keeps its accent. */
+  /* Spanish reflexives are written as one word (levantarse, reírse), and the
+     pronoun goes in front of every form: me levanto, me he levantado. */
+  var ES_REFL_PRONOUN = ['me', 'te', 'se', 'nos', 'os', 'se'];
+  var ES_REFL_REFUSED = ['ser', 'haber'];
+  function esReflexiveBase(verb) {
+    var m = /^(.*(?:ar|er|ir|ír))se$/.exec(verb);
+    return m ? m[1] : null;
+  }
+  function esReflexive(base, tense) {
+    if (ES_REFL_REFUSED.indexOf(base) !== -1) {
+      throw new Error('"' + base + 'se" is not a Spanish reflexive verb Flux can conjugate. Check it in a dictionary.');
+    }
+    var r = conjugateEs(base, tense);
+    return reflexiveForms(r, function (form, i) { return ES_REFL_PRONOUN[i] + ' ' + form; }, 'reflexive — ' + r.note);
+  }
+
   function conjugateEs(verb, tense) {
+    var reflexiveBase = esReflexiveBase(verb);
+    if (reflexiveBase) return esReflexive(reflexiveBase, tense);
     var base = ES_COMPOUND[verb];
     if (base) {
       var pre = verb.slice(0, verb.length - base.length);
@@ -675,6 +694,14 @@
     rire: { present: ['ris', 'ris', 'rit', 'rions', 'riez', 'rient'] },
     'paraître': { present: ['parais', 'parais', 'paraît', 'paraissons', 'paraissez', 'paraissent'] },
     plaire: { present: ['plais', 'plais', 'plaît', 'plaisons', 'plaisez', 'plaisent'] },
+    taire: { present: ['tais', 'tais', 'tait', 'taisons', 'taisez', 'taisent'] },
+    /* Both sets of forms are correct French; assieds is the one schools teach,
+       so it is shown and assois is accepted when marking. */
+    asseoir: {
+      present: ['assieds', 'assieds', 'assied', 'asseyons', 'asseyez', 'asseyent'],
+      alts: [['assois'], ['assois'], ['assoit'], ['assoyons'], ['assoyez'], ['assoient']],
+      note: 'irregular — assois, assoit… are also correct',
+    },
     valoir: { present: ['vaux', 'vaux', 'vaut', 'valons', 'valez', 'valent'] },
     fuir: { present: ['fuis', 'fuis', 'fuit', 'fuyons', 'fuyez', 'fuient'] },
     'acquérir': { present: ['acquiers', 'acquiers', 'acquiert', 'acquérons', 'acquérez', 'acquièrent'] },
@@ -698,7 +725,7 @@
     dire: 'dis', lire: 'lis', 'écrire': 'écriv', mettre: 'mett', boire: 'buv',
     croire: 'croy', recevoir: 'recev', 'connaître': 'connaiss', courir: 'cour',
     mourir: 'mour', vivre: 'viv', suivre: 'suiv',
-    'naître': 'naiss', rire: 'ri', 'paraître': 'paraiss', plaire: 'plais',
+    'naître': 'naiss', rire: 'ri', 'paraître': 'paraiss', plaire: 'plais', taire: 'tais', asseoir: 'assey',
     valoir: 'val', fuir: 'fuy', 'acquérir': 'acquér', 'conquérir': 'conquér',
     'prévoir': 'prévoy', contredire: 'contredis', interdire: 'interdis', 'prédire': 'prédis',
   };
@@ -710,7 +737,7 @@
     'être': 'ser', avoir: 'aur', aller: 'ir', faire: 'fer', pouvoir: 'pourr',
     vouloir: 'voudr', devoir: 'devr', savoir: 'saur', voir: 'verr', venir: 'viendr',
     tenir: 'tiendr', recevoir: 'recevr', courir: 'courr', mourir: 'mourr',
-    envoyer: 'enverr', falloir: 'faudr', valoir: 'vaudr',
+    envoyer: 'enverr', falloir: 'faudr', valoir: 'vaudr', asseoir: 'assiér',
     'acquérir': 'acquerr', 'conquérir': 'conquerr', 'prévoir': 'prévoir',
     // An -ir verb conjugated like -er all the way into the future: cueillerai.
     cueillir: 'cueiller',
@@ -726,7 +753,7 @@
     'connaître': 'connu', vivre: 'vécu', suivre: 'suivi', mourir: 'mort',
     ouvrir: 'ouvert', offrir: 'offert', couvrir: 'couvert', souffrir: 'souffert',
     courir: 'couru', 'naître': 'né', descendre: 'descendu',
-    rire: 'ri', 'paraître': 'paru', plaire: 'plu', valoir: 'valu',
+    rire: 'ri', 'paraître': 'paru', plaire: 'plu', valoir: 'valu', taire: 'tu', asseoir: 'assis',
     'acquérir': 'acquis', 'conquérir': 'conquis', 'prévoir': 'prévu',
     contredire: 'contredit', interdire: 'interdit', 'prédire': 'prédit',
   };
@@ -787,8 +814,8 @@
      and apparaître takes être where paraître takes avoir. */
   var FR_COMPOUND = {
     devenir: 'venir', revenir: 'venir', parvenir: 'venir', intervenir: 'venir',
-    survenir: 'venir', 'prévenir': 'venir', provenir: 'venir',
-    appartenir: 'tenir', contenir: 'tenir', obtenir: 'tenir', maintenir: 'tenir',
+    survenir: 'venir', 'prévenir': 'venir', provenir: 'venir', souvenir: 'venir',
+    abstenir: 'tenir', appartenir: 'tenir', contenir: 'tenir', obtenir: 'tenir', maintenir: 'tenir',
     retenir: 'tenir', soutenir: 'tenir', 'détenir': 'tenir', entretenir: 'tenir',
     permettre: 'mettre', promettre: 'mettre', admettre: 'mettre', remettre: 'mettre',
     soumettre: 'mettre', commettre: 'mettre', transmettre: 'mettre', omettre: 'mettre',
@@ -899,7 +926,77 @@
     return null;
   }
 
+  /** A plain verb's result with the reflexive pronoun placed into every form. */
+  function reflexiveForms(r, place, note) {
+    var out = { forms: r.forms.map(place), note: note };
+    if (r.alts) {
+      out.alts = r.alts.map(function (list, i) {
+        return list.map(function (a) { return place(a, i); });
+      });
+    }
+    return out;
+  }
+
+  /* Reflexive verbs: se réveiller, s'endormir. Conjugated from the plain verb's
+     own forms with a pronoun in front, so they cannot disagree with it. The
+     subject stays in the pronoun column: je | me réveille. */
+  var FR_REFL_PRONOUN = ['me', 'te', 'se', 'nous', 'vous', 'se'];
+  // These exist for typing without accents: "se reveiller" must not print "reveille".
+  var FR_REFL_ACCENTED = ['réveiller', 'dépêcher', 'détendre', 'préparer', 'présenter', 'énerver',
+    'échapper', 'déshabiller', 'débrouiller', 'démaquiller', 'fâcher', 'arrêter', 'intéresser',
+    'réunir', 'mêler', 'étonner', 'éloigner', 'évanouir', 'écrier', 'régaler'];
+  // Verbs whose h blocks elision: il se hâte, never "il s'hâte".
+  var FR_REFL_ASPIRATED = ['hâter', 'hasarder', 'hisser', 'heurter', 'hausser', 'haïr', 'hurler'];
+  /* Here se means "to oneself / to each other" (on parle À quelqu'un), so the
+     participle stays as it is: elles se sont parlé, elle s'est demandé. */
+  var FR_REFL_INVARIANT = ['parler', 'téléphoner', 'demander', 'dire', 'sourire', 'rire', 'succéder',
+    'mentir', 'écrire', 'répondre', 'ressembler', 'plaire', 'déplaire', 'nuire'];
+  var FR_REFL_REFUSED = ['être', 'avoir', 'aller'];
+
+  /** The plain verb inside a reflexive infinitive, or null when it is not one. */
+  function frReflexiveBase(verb) {
+    var m = /^(?:se\s+|s\s*['’ʼ‘`´]\s*|s\s+)(\S.*)$/.exec(verb);
+    return m ? m[1] : null;
+  }
+  function frElides(base, word) {
+    return /^[aeiouàâéèêëîïôûùœ]/.test(word) || (/^h/.test(word) && FR_REFL_ASPIRATED.indexOf(base) === -1);
+  }
+  function frReflexiveName(base) {
+    return (frElides(base, base) ? "s'" : 'se ') + base;
+  }
+  function frReflexive(typedBase, tense) {
+    var base = frResolve(typedBase);
+    if (FR_IMPERSONAL[base] || FR_REFL_REFUSED.indexOf(base) !== -1) {
+      throw new Error('"' + frReflexiveName(base) + '" is not a French reflexive verb Flux can conjugate. Check it in a dictionary.');
+    }
+    var withPronoun = function (form, i) {
+      var p = FR_REFL_PRONOUN[i];
+      // nous and vous never elide: nous nous endormons.
+      return i !== 3 && i !== 4 && frElides(base, form) ? p.charAt(0) + "'" + form : p + ' ' + form;
+    };
+    // Plain conjugation first, so a verb Flux cannot do is refused in every tense.
+    var r = conjugateFr(base, tense);
+    var out;
+    if (tense === 'passeCompose') {
+      var pp = frPastParticiple(base);
+      var invariant = FR_REFL_INVARIANT.indexOf(base) !== -1;
+      out = {
+        forms: FR_ETRE.map(function (a, i) {
+          return withPronoun(a + ' ' + (invariant || /s$/.test(pp) ? pp : pp + FR_ETRE_AGREE[i]), i);
+        }),
+        note: invariant
+          ? 'reflexive verbs take être — but se means "to oneself" here, so the participle does not change'
+          : 'reflexive verbs take être — the participle agrees with the subject',
+      };
+      if (!invariant) out.agree = true;
+      return out;
+    }
+    return reflexiveForms(r, withPronoun, 'reflexive — ' + r.note);
+  }
+
   function frPastParticiple(verb) {
+    var reflexiveBase = frReflexiveBase(verb);
+    if (reflexiveBase) return frPastParticiple(reflexiveBase);
     verb = frResolve(verb);
     var base = FR_COMPOUND[verb];
     if (base) return verb.slice(0, verb.length - base.length) + frPastParticiple(base);
@@ -930,9 +1027,11 @@
   function frKnownNames() {
     return Object.keys(FR_IRREGULAR).concat(Object.keys(FR_COMPOUND), Object.keys(FR_IMPERSONAL),
       Object.keys(FR_PP), FR_UIRE, FR_NDRE, FR_BATTRE, FR_ROMPRE, FR_CEVOIR, FR_CRIRE,
-      FR_IR_BARE_VERBS, FR_IR_AS_ER, FR_E_GRAVE, FR_DOUBLE, FR_E_ACUTE_COMMON, FR_ETRE_VERBS);
+      FR_IR_BARE_VERBS, FR_IR_AS_ER, FR_E_GRAVE, FR_DOUBLE, FR_E_ACUTE_COMMON, FR_ETRE_VERBS, FR_REFL_ACCENTED);
   }
   function frResolve(verb) {
+    var reflexiveBase = frReflexiveBase(verb);
+    if (reflexiveBase) return frReflexiveName(frResolve(reflexiveBase));
     if (FR_IRREGULAR[verb] || FR_COMPOUND[verb]) return verb;
     if (!FR_UNACCENTED) {
       FR_UNACCENTED = {};
@@ -990,6 +1089,8 @@
   }
 
   function conjugateFr(verb, tense) {
+    var reflexiveBase = frReflexiveBase(verb);
+    if (reflexiveBase) return frReflexive(reflexiveBase, tense);
     verb = frResolve(verb);
     if (FR_COMPOUND[verb]) return frCompound(verb, FR_COMPOUND[verb], tense);
     var fam = frFamily(verb);
@@ -1037,7 +1138,12 @@
     }
 
     // Present.
-    if (fam === 'irregular') return { forms: FR_IRREGULAR[verb].present.slice(), note: 'irregular' };
+    if (fam === 'irregular') {
+      var irr = FR_IRREGULAR[verb];
+      var irrRes = { forms: irr.present.slice(), note: irr.note || 'irregular' };
+      if (irr.alts) irrRes.alts = irr.alts;
+      return irrRes;
+    }
     if (pat) return { forms: pat.present.slice(), note: pat.note };
     if (fam === 'er') {
       var alts = null, how = '';
@@ -1163,6 +1269,7 @@
     fallen: { du: 'fäll', prat: 'fiel', pp: 'gefallen', aux: 's', en: 'to fall' },
     gefallen: { du: 'gefäll', prat: 'gefiel', pp: 'gefallen', aux: 'h', en: 'to please, be liked' },
     halten: { du: 'hält', prat: 'hielt', pp: 'gehalten', aux: 'h', en: 'to hold, stop' },
+    unterhalten: { du: 'unterhält', prat: 'unterhielt', pp: 'unterhalten', aux: 'h', en: 'to entertain; sich: to talk' },
     schlafen: { du: 'schläf', prat: 'schlief', pp: 'geschlafen', aux: 'h', en: 'to sleep' },
     tragen: { du: 'träg', prat: 'trug', pp: 'getragen', aux: 'h', en: 'to carry, wear' },
     schlagen: { du: 'schläg', prat: 'schlug', pp: 'geschlagen', aux: 'h', en: 'to hit' },
@@ -1224,6 +1331,7 @@
     'lügen': { du: '', prat: 'log', pp: 'gelogen', aux: 'h', en: 'to lie, tell a lie' },
 
     finden: { du: '', prat: 'fand', pp: 'gefunden', aux: 'h', en: 'to find' },
+    befinden: { du: '', prat: 'befand', pp: 'befunden', aux: 'h', en: 'sich: to be located' },
     binden: { du: '', prat: 'band', pp: 'gebunden', aux: 'h', en: 'to tie' },
     verschwinden: { du: '', prat: 'verschwand', pp: 'verschwunden', aux: 's', en: 'to disappear' },
     singen: { du: '', prat: 'sang', pp: 'gesungen', aux: 'h', en: 'to sing' },
@@ -1283,6 +1391,16 @@
     'zurückkommen': { p: 'zurück', base: 'kommen', aux: 's', en: 'to come back' },
     'zurückgeben': { p: 'zurück', base: 'geben', aux: 'h', en: 'to give back' },
     aufwachen: { p: 'auf', base: 'wachen', aux: 's', en: 'to wake up' },
+    ausruhen: { p: 'aus', base: 'ruhen', aux: 'h', en: 'sich: to rest' },
+    hinlegen: { p: 'hin', base: 'legen', aux: 'h', en: 'sich: to lie down' },
+    hinsetzen: { p: 'hin', base: 'setzen', aux: 'h', en: 'sich: to sit down' },
+    aufregen: { p: 'auf', base: 'regen', aux: 'h', en: 'sich: to get upset' },
+    anmelden: { p: 'an', base: 'melden', aux: 'h', en: 'to register' },
+    abmelden: { p: 'ab', base: 'melden', aux: 'h', en: 'to sign out' },
+    ansehen: { p: 'an', base: 'sehen', aux: 'h', en: 'to look at' },
+    anschauen: { p: 'an', base: 'schauen', aux: 'h', en: 'to look at' },
+    umsehen: { p: 'um', base: 'sehen', aux: 'h', en: 'sich: to look around' },
+    einbilden: { p: 'ein', base: 'bilden', aux: 'h', en: 'sich: to imagine' },
   };
 
   /* Weak verbs that still take sein in the Perfekt: travel and change of
@@ -1293,7 +1411,7 @@
     'segeln', 'joggen', 'passieren', 'stolpern', 'eilen'];
 
   // No ge- in the participle after any of these: besucht, verkauft, erklärt.
-  var DE_INSEPARABLE = /^(be|emp|ent|er|ge|miss|ver|zer)/;
+  var DE_INSEPARABLE = /^(be|emp|ent|er|ge|miss|über|unter|ver|zer)/;
 
   /** Stem: drop -en, or just the -n of tun / sammeln / ändern. */
   function deStem(verb) {
@@ -1365,6 +1483,8 @@
   }
 
   function dePastParticiple(verb) {
+    var reflexiveBase = deReflexiveBase(verb);
+    if (reflexiveBase) return dePastParticiple(reflexiveBase);
     var sep = DE_SEPARABLE[verb];
     // The prefix sits in front of whatever the base does: auf + gestanden.
     if (sep) return sep.p + dePastParticiple(sep.base);
@@ -1377,7 +1497,44 @@
     return 'ge' + tail;
   }
 
+  /* sich waschen, sich anziehen. The pronoun goes straight after the first
+     word, which is the only rule the tenses need: ich wasche mich, ich ziehe
+     mich an, ich habe mich angezogen, ich werde mich anziehen. */
+  var DE_REFL_ACC = ['mich', 'dich', 'sich', 'uns', 'euch', 'sich'];
+  var DE_REFL_DAT = ['mir', 'dir', 'sich', 'uns', 'euch', 'sich'];
+  // These take something else as their object, so the pronoun is dative: ich merke mir.
+  var DE_REFL_DATIVE = ['merken', 'wünschen', 'leisten', 'überlegen', 'ansehen', 'anschauen', 'einbilden'];
+  var DE_REFL_REFUSED = ['sein', 'haben', 'werden', 'können', 'müssen', 'dürfen', 'sollen', 'wollen', 'mögen'];
+  // These exist for typing without umlauts: "sich fuhlen" must not print "fuhle".
+  var DE_REFL_ACCENTED = ['fühlen', 'ärgern', 'kämmen', 'wünschen', 'überlegen', 'schämen',
+    'beschäftigen', 'erkälten', 'gewöhnen', 'verspäten', 'bemühen', 'fürchten'];
+  function deReflexiveBase(verb) {
+    var m = /^sich\s+(\S.*)$/.exec(verb);
+    return m ? m[1] : null;
+  }
+  function deReflexive(base, tense) {
+    if (DE_REFL_REFUSED.indexOf(base) !== -1) {
+      throw new Error('"sich ' + base + '" is not a German reflexive verb Flux can conjugate. Check it in a dictionary.');
+    }
+    var r = conjugateDe(base, tense);
+    var dative = DE_REFL_DATIVE.indexOf(base) !== -1;
+    var pronouns = dative ? DE_REFL_DAT : DE_REFL_ACC;
+    var note = (dative ? 'reflexive with the dative (mir, dir) — ' : 'reflexive — ') + r.note;
+    // A reflexive takes haben even where the plain verb takes sein: ich bin umgezogen, ich habe mich umgezogen.
+    if (tense === 'perfect') {
+      var pp = dePastParticiple(base);
+      r = { forms: DE_PRESENT_IRREG.haben.map(function (a) { return a + ' ' + pp; }) };
+      note = (dative ? 'reflexive with the dative (mir, dir) — ' : 'reflexive — ') + 'always takes haben, participle "' + pp + '"';
+    }
+    return reflexiveForms(r, function (form, i) {
+      var at = form.indexOf(' ');
+      return at < 0 ? form + ' ' + pronouns[i] : form.slice(0, at) + ' ' + pronouns[i] + form.slice(at);
+    }, note);
+  }
+
   function conjugateDe(verb, tense) {
+    var reflexiveBase = deReflexiveBase(verb);
+    if (reflexiveBase) return deReflexive(reflexiveBase, tense);
     // Every German infinitive ends in -n. Saying so beats conjugating "haus".
     if (verb.slice(-1) !== 'n') throw new Error('German infinitives end in -en or -n. Try sprechen, fahren or arbeiten.');
     var sep = DE_SEPARABLE[verb];
@@ -1440,6 +1597,11 @@
   /** Which of the three tables a language code lands in. */
   function langOf(lang) { return lang === 'fr' ? 'fr' : lang === 'de' ? 'de' : 'es'; }
 
+  /** The plain verb inside a reflexive infinitive, or null when it is not one. */
+  function reflexiveBaseOf(l, v) {
+    return l === 'fr' ? frReflexiveBase(v) : l === 'de' ? deReflexiveBase(v) : esReflexiveBase(v);
+  }
+
   function conjugate(lang, verb, tense) {
     var l = langOf(lang);
     var v = clean(verb);
@@ -1447,7 +1609,8 @@
     if (!v) throw new Error('Type a verb first.');
     // ä ö ß joined the set for German; without them "heißen" is rejected as
     // punctuation and the error blames the student for a correct spelling.
-    if (!/^[a-záéíóúüäößñçàâèêëîïôûùœ]+$/.test(v)) throw new Error('Letters only — one verb at a time.');
+    var plain = reflexiveBaseOf(l, v) || v;
+    if (!/^[a-záéíóúüäößñçàâèêëîïôûùœ]+$/.test(plain)) throw new Error('Letters only — one verb at a time.');
     var known = TENSES[l].some(function (x) { return x.id === t; });
     if (!known) t = 'present';
     v = resolve(l, v);
@@ -1506,7 +1669,7 @@
     if (NAMES[l]) return NAMES[l];
     var list;
     if (l === 'fr') list = frKnownNames();
-    else if (l === 'de') list = Object.keys(DE_STRONG).concat(Object.keys(DE_PRESENT_IRREG), Object.keys(DE_SEPARABLE), DE_WEAK_SEIN);
+    else if (l === 'de') list = Object.keys(DE_STRONG).concat(Object.keys(DE_PRESENT_IRREG), Object.keys(DE_SEPARABLE), DE_WEAK_SEIN, DE_REFL_ACCENTED);
     else {
       list = Object.keys(ES_IRREGULAR).concat(Object.keys(ES_YO), Object.keys(ES_PRET_STEM), Object.keys(ES_PRET_STEM_J),
         Object.keys(ES_FUT_STEM), Object.keys(ES_PP), Object.keys(ES_SUBJ_IRREG), Object.keys(ES_COMPOUND), Object.keys(ES_IU_ACCENT));
@@ -1520,12 +1683,19 @@
   /** The table's own spelling of a verb typed with no accents (ecrire → écrire). */
   function resolve(l, v) {
     if (l === 'fr') return frResolve(v);
+    var reflexiveBase = reflexiveBaseOf(l, v);
+    if (reflexiveBase) {
+      var plainVerb = resolve(l, reflexiveBase);
+      return l === 'de' ? 'sich ' + plainVerb : plainVerb + 'se';
+    }
     var n = namesOf(l);
     if (n.set[v] || fold(v) !== v) return v;
     return n.bare[v] || v;
   }
   /** Spanish participle, compounds included. */
   function esPastParticiple(v) {
+    var reflexiveBase = esReflexiveBase(v);
+    if (reflexiveBase) return esPastParticiple(reflexiveBase);
     var base = ES_COMPOUND[v];
     if (base) return v.slice(0, v.length - base.length) + esPastParticiple(base);
     var end = v.slice(-2).replace('í', 'i').replace('é', 'e');
@@ -1593,6 +1763,7 @@
     known: function (lang, verb) {
       var l = langOf(lang);
       var v = resolve(l, clean(verb));
+      v = reflexiveBaseOf(l, v) || v;
       return !!namesOf(l).set[v] || (l === 'fr' && frAcute(v));
     },
     /** The table's spelling of a verb typed without accents, else the verb as typed. */

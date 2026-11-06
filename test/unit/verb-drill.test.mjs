@@ -278,3 +278,38 @@ test('the conjugator engine takes a verb with punctuation round it', () => {
   assert.equal(E.conjugate('es', '¡ir!', 'present').forms[0], 'voy');
   assert.equal(E.conjugate('fr', '"manger."', 'present').forms[0], 'mange');
 });
+
+test('French reflexive verbs: typed into a list, asked, and marked', () => {
+  const parsed = C.parseCustom(E, 'fr', "se reveiller, s’endormir; parler se laver");
+  assert.deepEqual([...parsed.verbs], ['se réveiller', "s'endormir", 'parler', 'se laver']);
+  assert.equal(parsed.refused.length, 0);
+  assert.equal(C.parseCustom(E, 'es', 'se hablar').verbs.length, 1, 'only French joins "se" to the next word');
+
+  const q = C.makeQuestion(E, { verb: "s'endormir", tense: 'present', person: 0 }, 'fr', () => 0);
+  assert.equal(q.answers[0], "m'endors");
+  assert.equal(C.phrase(q), "je m'endors");
+  assert.equal(C.check("m'endors", q, { lang: 'fr' }).ok, true);
+  assert.equal(C.check("je m’endors", q, { lang: 'fr' }).ok, true);
+  assert.equal(C.check('endors', q, { lang: 'fr' }).ok, false, 'the pronoun is part of the answer');
+
+  // Agreement follows the pronoun shown, exactly as for the other être verbs.
+  const she = C.makeQuestion(E, { verb: 'se réveiller', tense: 'passeCompose', person: 2 }, 'fr', () => 0.99);
+  assert.equal(C.check("s'est réveillée", she, { lang: 'fr' }).ok, true);
+});
+
+test('Spanish and German reflexive verbs: typed into a list, asked, and marked', () => {
+  const de = C.parseCustom(E, 'de', 'sich waschen, sich anziehen; lernen');
+  assert.deepEqual(plain(de.verbs), ['sich waschen', 'sich anziehen', 'lernen']);
+  assert.equal(de.refused.length, 0);
+  const qd = C.makeQuestion(E, { verb: 'sich anziehen', tense: 'present', person: 0 }, 'de', () => 0);
+  assert.equal(qd.answers[0], 'ziehe mich an');
+  assert.equal(C.check('ich ziehe mich an', qd, { lang: 'de' }).ok, true);
+  assert.equal(C.check('ziehe an', qd, { lang: 'de' }).ok, false);
+
+  const es = C.parseCustom(E, 'es', 'levantarse reirse');
+  assert.deepEqual(plain(es.verbs), ['levantarse', 'reírse']);
+  const qe = C.makeQuestion(E, { verb: 'levantarse', tense: 'present', person: 0 }, 'es', () => 0);
+  assert.equal(qe.answers[0], 'me levanto');
+  assert.equal(C.check('yo me levanto', qe, { lang: 'es' }).ok, true);
+  assert.equal(C.check('levanto', qe, { lang: 'es' }).ok, false);
+});

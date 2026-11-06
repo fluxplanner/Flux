@@ -395,7 +395,18 @@
   function parseCustom(E, lang, text) {
     var l = langOf(lang);
     var seen = {}, verbs = [], refused = [], unlisted = [];
-    String(text || '').split(/[\s,;/]+/).forEach(function (raw) {
+    var words = String(text || '').split(/[\s,;/]+/);
+    // "se laver" and "sich waschen" are one verb even though the list splits on spaces.
+    var pronoun = l === 'fr' ? /^(se|s['’])$/i : l === 'de' ? /^sich$/i : null;
+    if (pronoun) {
+      words = words.reduce(function (acc, w) {
+        var last = acc[acc.length - 1];
+        if (last && pronoun.test(last)) acc[acc.length - 1] = last + ' ' + w;
+        else acc.push(w);
+        return acc;
+      }, []);
+    }
+    words.forEach(function (raw) {
       var t = E.clean(raw).replace(/^to$/, '');
       if (!t || seen[t]) return;
       seen[t] = 1;
