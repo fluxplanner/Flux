@@ -10294,12 +10294,6 @@ function setSyncStatus(status){
       el.title=ts?('Last sync: '+new Date(ts).toLocaleString(undefined,{dateStyle:'short',timeStyle:'short'})):'Cloud sync ready';
     }
   }else el.removeAttribute('title');
-  // Show guest banner in account settings if guest
-  const guestBanner=document.getElementById('guestAccountBanner');
-  const signedOutMsg=document.getElementById('accountSignedOutMsg');
-  const wasGuest=load('flux_was_guest',false);
-  if(guestBanner){guestBanner.style.display=wasGuest&&!currentUser?'block':'none';}
-  if(signedOutMsg){signedOutMsg.style.display=wasGuest&&!currentUser?'none':'block';}
 }
 function getIbProgramProgress(){
   return{
@@ -13880,51 +13874,6 @@ function skipLogin(){
   if(typeof showLoginScreen==='function')showLoginScreen();
 }
 
-function showGuestDisclaimer(){
-  const existing=document.getElementById('guestModal');if(existing)existing.remove();
-  const modal=document.createElement('div');
-  modal.id='guestModal';
-  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9500;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
-  modal.innerHTML=`
-    <div style="background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:30px 24px;width:100%;max-width:380px;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.5)">
-      <div style="font-size:2.2rem;margin-bottom:14px"></div>
-      <div style="font-size:1.1rem;font-weight:800;margin-bottom:8px">Continuing as Guest</div>
-      <div style="font-size:.84rem;color:var(--muted2);line-height:1.75;margin-bottom:22px">
-        Your data will be saved <strong style="color:var(--gold)">on this device only</strong>.<br>
-        It won't sync across devices and could be lost if you clear your browser storage.<br><br>
-        <span style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace">You can sign in with Google anytime from Settings to back everything up.</span>
-      </div>
-      <button onclick="confirmGuestLogin()" style="width:100%;padding:13px;margin-bottom:10px;font-size:.92rem">Got it — Continue as Guest</button>
-      <button onclick="document.getElementById('guestModal').remove()" class="btn-sec" style="width:100%;padding:11px;font-size:.85rem">← Back to Sign In</button>
-    </div>`;
-  document.body.appendChild(modal);
-}
-
-function confirmGuestLogin(){
-  const modal=document.getElementById('guestModal');if(modal)modal.remove();
-  save('flux_was_guest',true);
-  document.getElementById('loginScreen').classList.remove('visible');
-  document.getElementById('loginScreen').style.display='none';
-  const splash=document.getElementById('splash');
-  if(splash)splash.style.display='block';
-  const finishGuestEntry=()=>{
-    const onboarded=load('flux_onboarded',false);
-    const hasData=tasks.length>0||notes.length>0||classes.length>0;
-    if(!onboarded&&!hasData){
-      showOnboarding();
-    }else{
-      showApp();
-      if(!isTourCompleted())setTimeout(()=>startOnboardingTour(),1600);
-    }
-    setSyncStatus('offline');
-  };
-  if(typeof window.runSplash==='function'){
-    window.runSplash(finishGuestEntry,true);
-  }else{
-    finishGuestEntry();
-  }
-}
-
 const FLUX_SENSITIVE_STAFF_KEYS=[
   'flux_staff_tickets_v1',
   'flux_staff_checklist_v1',
@@ -14287,8 +14236,9 @@ function fluxExtAuthBroadcast(session){
 function showLoginOrApp(){
   const onboarded=load('flux_onboarded',false);
   const hasData=tasks.length>0||notes.length>0||classes.length>0;
-  // Only the e2e harness may still enter without an account.
-  const wasGuest=load('flux_was_guest',false)&&/[?&]e2e=1/.test(location.search);
+  // Only the e2e harness may enter without an account, and it refuses to run
+  // anywhere but this machine.
+  const wasGuest=load('flux_was_guest',false)&&!!window.FluxE2e?.active?.();
   if(wasGuest){
     const enterGuest=()=>{
       if(!onboarded&&!hasData){
