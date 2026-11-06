@@ -329,7 +329,8 @@
     } else {
       slot.innerHTML =
         '<div class="g-hub-import-card" id="fluxSchoologyCard">' +
-          '<strong>Connect Schoology</strong>' +
+          '<strong>Connect Schoology</strong> ' +
+          '<button type="button" class="btn-sec" onclick="FluxHowTo.open(\'schoology\')" style="margin-left:10px">Watch how</button>' +
           '<ol class="g-hub-muted" style="margin:10px 0 0 18px;padding:0;line-height:1.6">' +
             '<li>Open <strong>Calendar</strong> in Schoology.</li>' +
             '<li>Find the option to share or subscribe to your calendar. Turn it on if it asks.</li>' +
