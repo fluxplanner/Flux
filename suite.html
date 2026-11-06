@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <script src="public/js/flux-app-visibility.js?v=74dbc85a" data-app="suite"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flux Suite — every Flux app</title>
@@ -185,7 +186,7 @@
         translate: 'Every tense of every Spanish and French verb, irregular forms highlighted. Type any form (tuvimos, eûmes) to find the verb, hear it read aloud, and practise against the clock. Plus translation between 35 languages.',
         synara: 'For students with epilepsy: dose reminders and a medication calendar, a seizure log that spots patterns with missed doses, sleep and stress, and an emergency card a teacher can follow, one tap away. Stays on this device.',
       };
-      var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+      var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); };
       var host = document.getElementById('apps');
       var list = (window.FluxHub && window.FluxHub.PRODUCTS) || [];
       if (!list.length) {

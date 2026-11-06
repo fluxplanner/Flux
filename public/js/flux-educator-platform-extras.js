@@ -1247,13 +1247,11 @@
     const twoWeeks = fluxLocalDateStr(new Date(Date.now() + 14 * 86400000));
     let booked = [];
     try {
-      const { data: b } = await client
-        .from('counselor_appointments')
-        .select('date,time_slot')
-        .eq('counselor_id', counselorId)
-        .gte('date', today)
-        .lte('date', twoWeeks)
-        .neq('status', 'cancelled');
+      const { data: b } = await client.rpc('flux_counselor_taken_slots', {
+        p_counselor_id: counselorId,
+        p_from: today,
+        p_to: twoWeeks,
+      });
       booked = b || [];
     } catch (_) {}
     const bookedSet = new Set(booked.map((x) => x.date + '|' + x.time_slot));

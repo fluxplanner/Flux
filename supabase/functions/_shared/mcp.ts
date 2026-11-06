@@ -74,3 +74,19 @@ export function json(body: unknown, status: number, headers: HeadersInit = {}) {
 export function oauthError(error: string, description: string, status = 400, headers: HeadersInit = {}) {
   return json({ error, error_description: description }, status, headers);
 }
+
+/**
+ * Https anywhere, or http on this machine for Claude's desktop redirects.
+ * The scheme is the check that matters: javascript://localhost/ has the hostname
+ * "localhost", and sending a browser there runs script on the Flux site.
+ */
+export function isAllowedRedirectUri(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    if (u.protocol === "https:") return true;
+    return u.protocol === "http:" &&
+      (u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "[::1]");
+  } catch {
+    return false;
+  }
+}

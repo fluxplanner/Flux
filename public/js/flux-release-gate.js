@@ -69,7 +69,7 @@
     try{return typeof OWNER_EMAIL!=='undefined'?OWNER_EMAIL:OWNER_EMAIL_FALLBACK;}
     catch(_){return OWNER_EMAIL_FALLBACK;}
   }
-  function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
   function buildLabel(id){return String(id||'').replace(/^build-/,'');}
 
   function normEmail(v){return String(v||'').trim().toLowerCase();}

@@ -27,7 +27,7 @@
     const nb=window.FluxIntel&&FluxIntel.pickNextBestTask?FluxIntel.pickNextBestTask():null;
     if(!nb){bar.hidden=true;bar.innerHTML='';return;}
     bar.hidden=false;
-    const esc=typeof window.esc==='function'?window.esc:(s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'));
+    const esc=typeof window.esc==='function'?window.esc:(s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'));
     bar.innerHTML=`<div class="flux-sticky-inner">
       <span class="flux-sticky-kicker">Focus</span>
       <span class="flux-sticky-title">${esc(nb.name)}</span>

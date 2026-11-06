@@ -3641,7 +3641,7 @@ async function fetchAndCacheEntitlement(){
 // ══ HELPERS ══
 const G=10.0000; // Physics constant — enforced everywhere
 const precise=n=>Number(n).toFixed(4);
-const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 window.esc=esc; // 144 cross-module reads expected this on window
 /** Settings → Account: lets student-role accounts become educators so Work/Personal mode appears. */
 function syncStudentEducatorUpgradeCard(){
@@ -6364,7 +6364,7 @@ async function syncGoogleCalendar(opts){
         return`<div style="display:flex;gap:6px;align-items:flex-start;padding:5px 0;border-bottom:1px solid var(--border)">
           <div style="width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:4px"></div>
           <div style="flex:1;min-width:0"><div style="font-size:.72rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ev.summary||'(no title)')}</div><div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${d}</div></div>
-          <button onclick="addGCalEventAsTask('${encodeURIComponent(ev.summary||'')}','${start.slice(0,10)}')" style="padding:2px 6px;font-size:.62rem;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.25);color:var(--accent);border-radius:6px;flex-shrink:0">+ Task</button>
+          <button onclick="addGCalEventAsTask('${encodeURIComponent(ev.summary||'').replace(/'/g,'%27')}','${esc(start.slice(0,10))}')" style="padding:2px 6px;font-size:.62rem;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.25);color:var(--accent);border-radius:6px;flex-shrink:0">+ Task</button>
         </div>`;
       }).join('');
     }
@@ -9084,9 +9084,9 @@ function fmtAI(raw){
   }).join('');
 
   // 3. Markdown links [text](url)
-  t=t.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer" class="ai-link">$1</a>');
+  t=t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s"'<>\)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer" class="ai-link">$1</a>');
   // 4. Bare URLs not already in href
-  t=t.replace(/(?<!href=")(https?:\/\/[^\s<>")\]]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer" class="ai-link">$1</a>');
+  t=t.replace(/(?<!href=")(https?:\/\/[^\s<>"')\]]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer" class="ai-link">$1</a>');
 
   // 5. Horizontal rule
   t=t.replace(/^---+$/gm,'<hr style="border:none;border-top:1px solid var(--border);margin:10px 0">');
@@ -15109,7 +15109,7 @@ function _updateUserUI(user,name){
   const fullName=name||firstName;
   fluxSaveStoredString('flux_user_name',firstName);
   const avatarHTML=avatarUrl
-    ?`<img src="${avatarUrl}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`
+    ?`<img src="${esc(avatarUrl)}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`
     :`<span style="font-size:.9rem;font-weight:700;line-height:1">${firstName.charAt(0).toUpperCase()}</span>`;
   // Update every user display element
   ['sidebarAv','mobAv'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=avatarHTML;});
@@ -15124,7 +15124,7 @@ function _updateUserUI(user,name){
   if(topMobAv){
     const initial=firstName.charAt(0).toUpperCase();
     topMobAv.innerHTML=avatarUrl
-      ?`<img src="${avatarUrl}" referrerpolicy="no-referrer" alt="${esc(firstName)}">`
+      ?`<img src="${esc(avatarUrl)}" referrerpolicy="no-referrer" alt="${esc(firstName)}">`
       :`<span id="topbarMobAvInitial">${initial}</span>`;
   }
   // Re-call after DOM fully ready in case elements weren't present
@@ -22672,11 +22672,8 @@ async function selectAppointmentDate(btn,counselorId){
   }
   let booked=new Set();
   try{
-    const {data:b}=await sb.from('counselor_appointments')
-      .select('time_slot,status')
-      .eq('counselor_id',counselorId)
-      .eq('date',_selectedApptDate);
-    booked=new Set((b||[]).filter(x=>x.status!=='cancelled').map(x=>x.time_slot));
+    const {data:b}=await sb.rpc('flux_counselor_taken_slots',{p_counselor_id:counselorId,p_from:_selectedApptDate,p_to:_selectedApptDate});
+    booked=new Set((b||[]).map(x=>x.time_slot));
   }catch(_){}
 
   const container=document.getElementById('timeSlotContainer');

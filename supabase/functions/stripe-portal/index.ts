@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
 
   if (!res.ok) {
     const t = await res.text();
-    return json({ error: "Failed to create portal session", details: t }, 502, origin);
+    return json({ error: "Failed to create portal session" }, 502, origin);
   }
 
   const portal = await res.json();

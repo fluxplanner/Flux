@@ -213,7 +213,7 @@
     syncKey('owner_audit',1);
   };
 
-  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
   /** Minimal CSV field parser (handles quoted fields). */
   function parseCsvLine(line){
