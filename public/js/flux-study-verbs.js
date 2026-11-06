@@ -763,7 +763,7 @@
       + '<input id="fvdLink" class="fvd-line" readonly value="' + esc(link) + '">'
       + '<div class="fvd-actions fvd-actions--sm"><button type="button" class="fsh-btn mini" data-act="copy-link" data-for="fvdLink">Copy link</button>'
       + '<button type="button" class="fsh-btn ghost mini" data-act="try-link" data-for="fvdLink">Try it as a student</button></div>'
-      + '<p class="fvd-hint">Students open it in Flux (signed in or as a guest). It is saved under “Assignments you made” for checking codes later.</p></div>';
+      + '<p class="fvd-hint">Students open it in Flux while signed in. It is saved under “Assignments you made” for checking codes later.</p></div>';
     $('#fvdLink').focus();
     $('#fvdLink').select();
     live('Link made. Copy it and send it to your students.');

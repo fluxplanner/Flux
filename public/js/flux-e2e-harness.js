@@ -86,7 +86,21 @@
     }
   }
 
+  /**
+   * This file ships to production, so without this check adding ?e2e=1 to the
+   * live address opened the planner with no account. The tests only ever run
+   * against a server on the same machine.
+   */
+  function onLocalMachine() {
+    try {
+      return /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
+    } catch (_) {
+      return false;
+    }
+  }
+
   function active() {
+    if (!onLocalMachine()) return false;
     if (qsFlag()) return true;
     try {
       return localStorage.getItem('flux_e2e') === '1';
@@ -468,6 +482,7 @@
   }
 
   function getMockClient() {
+    if (!active()) return null;
     if (!active()) return null;
     const scenario = pendingScenario();
     const cfg = SCENARIOS[scenario];
