@@ -215,6 +215,10 @@
       '<input id="fluxModIp" class="flux-mod-input" type="text" placeholder="IP address" ' +
       'style="flex:1;min-width:0;padding:6px 10px;border-radius:8px;border:1px solid var(--border);' +
       'background:transparent;color:inherit">' + button('Ban this IP', 'ban-ip-typed') + '</div>' +
+      '<div style="display:flex;gap:6px;margin-bottom:12px">' +
+      '<input id="fluxModUser" class="flux-mod-input" type="text" placeholder="Username" ' +
+      'style="flex:1;min-width:0;padding:6px 10px;border-radius:8px;border:1px solid var(--border);' +
+      'background:transparent;color:inherit">' + button('Ban this account', 'ban-username') + '</div>' +
       (rows.length ? rows.map(function (r) {
         return card('<b>' + esc(r.kind) + '</b> ' + esc(r.label || r.value) +
           '<div>' + muted((r.reason || 'No reason given') + ' · ' + when(r.created_at)) + '</div>' +
@@ -298,6 +302,16 @@
       return paint(mount);
     }
 
+    if (act === 'ban-username') {
+      var nameInput = document.getElementById('fluxModUser');
+      var typed = nameInput ? nameInput.value.trim() : '';
+      var found = await sb().rpc('flux_owner_find_user', { p_username: typed });
+      if (found.error) throw found.error;
+      if (!found.data) return toast('No account with that username', 'error');
+      value = found.data;
+      el.setAttribute('data-label', typed);
+      act = 'ban-user';
+    }
     var kind = act === 'ban-user' ? 'user' : act === 'ban-device' ? 'device' : 'ip';
     var label = el.getAttribute('data-label') || '';
     if (act === 'ban-ip-typed') {
@@ -319,6 +333,7 @@
     if (kind === 'user' && !el.getAttribute('data-deleted')) await setAccountBan(value, true);
     audit('moderation_ban', { kind: kind, value: value, reason: reason });
     toast('Banned', 'success');
+    if (_view === 'bans') paint(mount);
   }
 
   async function paint(mount) {
