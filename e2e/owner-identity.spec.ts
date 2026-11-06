@@ -73,9 +73,26 @@ test.describe('Owner identity', () => {
     expect(r.adminNav).toBe(true);
   });
 
-  test('the old email still works, so a restored backup is not locked out', async ({ page }) => {
+  test('the old email alone gets nothing, because anyone could register it', async ({ page }) => {
     const r = await asUser(page, 'not-the-owner-id', OLD_OWNER_EMAIL);
-    expect(r.isOwner, 'the pre-conversion fallback was dropped').toBe(true);
+    expect(r.isOwner, 'an address was accepted as proof of ownership').toBe(false);
+    expect(r.role).toBe('user');
+  });
+
+  test('editing the dev list in the browser gets nothing', async ({ page }) => {
+    const email = 'jane.doe@users.fluxplanner.app';
+    await page.evaluate((e) => {
+      const list = JSON.stringify([{ email: e, role: 'admin', perms: ['release_push', 'view_users'] }]);
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i) || '';
+        if (k.includes('flux_')) localStorage.setItem(k.replace(/flux_.*/, 'flux_dev_accounts'), list);
+      }
+      localStorage.setItem('flux_dev_accounts', list);
+    }, email);
+    const r = await asUser(page, '11111111-2222-3333-4444-555555555555', email);
+    expect(r.role, 'a browser-side list promoted a student').toBe('user');
+    expect(r.adminNav, 'a browser-side list revealed the Admin nav group').toBe(false);
+    expect(r.backlog, 'a browser-side list opened the master backlog').toBe(false);
   });
 
   test('and nobody else is let in', async ({ page }) => {

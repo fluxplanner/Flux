@@ -8393,18 +8393,17 @@ const OWNER_EMAIL='azfermohammed21@gmail.com';
    restored backup still recognises the owner before any conversion. */
 const OWNER_UID='eabe2b1f-e428-4181-8530-8e5366eb3975';
 
-// Permission levels: owner > dev > user
-// Dev accounts + their permissions stored in Supabase under owner's row
+// Permission levels: owner > user.
+// The dev tier was switched off in the 2026-11-05 incident. It was read from
+// flux_dev_accounts, which any user can edit in their own browser or user_data
+// row, so it could never be evidence of anything. Owner rights come from the
+// account id alone: sign-ups are auto-confirmed, so an address proves nothing.
 function isOwner(){
   if(!currentUser)return false;
-  if(OWNER_UID&&currentUser.id===OWNER_UID)return true;
-  return currentUser.email===OWNER_EMAIL;
+  return !!OWNER_UID&&currentUser.id===OWNER_UID;
 }
 function getMyRole(){
-  if(isOwner())return'owner';
-  const devAccounts=load('flux_dev_accounts',[]);
-  const me=devAccounts.find(d=>d.email===currentUser?.email);
-  return me?'dev':'user';
+  return isOwner()?'owner':'user';
 }
 /** Owner or dev (admin-tier) — used for internal roadmap UI. */
 function canAccessMasterBacklog(){
@@ -8416,9 +8415,7 @@ function updateMasterBacklogCardVisibility(){
   if(mb)mb.style.display=canAccessMasterBacklog()?'block':'none';
 }
 function getMyDevPerms(){
-  const devAccounts=load('flux_dev_accounts',[]);
-  const me=devAccounts.find(d=>d.email===currentUser?.email);
-  return me?.perms||[];
+  return [];
 }
 function hasDevPerm(perm){
   if(isOwner())return true;
@@ -11278,9 +11275,8 @@ async function syncFromCloud(opts){
       const legacyDone=tasks.length>0||notes.length>0||classes.length>0;
       if(legacyDone)save('flux_onboarded',true);
     }
-    // Load devAccounts — owner's list syncs to all dev accounts too
-    if(d.devAccounts)save('flux_dev_accounts',d.devAccounts);
     if(isOwner()){
+      if(d.devAccounts)save('flux_dev_accounts',d.devAccounts);
       if(d.platformConfig&&typeof d.platformConfig==='object')save('flux_platform_config',d.platformConfig);
       if(Array.isArray(d.ownerAuditLog))save('flux_owner_audit',d.ownerAuditLog.slice(-300));
       // Union, never replace. This device may have dismissed things the cloud
