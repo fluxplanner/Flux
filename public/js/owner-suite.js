@@ -547,6 +547,7 @@
     integrations:{label:'Integrations',     icon:'🔌', group:'build'},
     megamap:     {label:'Mega map',         icon:'🗺',  group:'build'},
     ideas:       {label:'Product ideas',    icon:'💡', group:'build'},
+    moderation:  {label:'Moderation',       icon:'🛡', group:'safety'},
     audit:       {label:'Audit log',        icon:'📜', group:'safety'},
     data:        {label:'Data & backup',    icon:'💾', group:'safety'},
     advanced:    {label:'Advanced',         icon:'🛠', group:'safety'},
@@ -1226,6 +1227,7 @@
         </div>
         <div id="osUsageMount">${typeof window.__ownerUsageHtml==='string'&&window.__ownerUsageHtml?window.__ownerUsageHtml:'<div style="color:var(--muted);font-size:.82rem">Click <b>Refresh from cloud</b> to load cross-account aggregates (requires Supabase to return multiple <code style="font-size:.65rem">user_data</code> rows — see RLS note after load).</div>'}</div>`;
 
+      if(tab==='moderation')return`<div id="osModerationMount">Loading…</div>`;
       if(tab==='audit')return`
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
         <button type="button" onclick="ownerClearAudit()" style="padding:6px 12px;font-size:.72rem;border-radius:8px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);color:var(--red)">Clear audit log</button>
@@ -1349,6 +1351,7 @@
         }
       }
       if(tab==='hideapps')paintHiddenApps(root);
+      if(tab==='moderation'&&window.FluxOwnerModeration)window.FluxOwnerModeration.render(root.querySelector('#osModerationMount'));
       const sb=root.querySelector('#osSidebar');
       if(sb)sb.innerHTML=buildOsSidebarHtml(tab);
       root.querySelectorAll('[data-os-tab]').forEach(b=>{

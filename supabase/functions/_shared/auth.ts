@@ -3,6 +3,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // Clean discriminated union: `"error" in auth` is a real discriminant, so the
 // shared `if ("error" in auth && auth.error)` guard narrows `auth` to AuthResult
 // (userId: string) in the success path across every function.
+const OWNER_UID = (Deno.env.get("FLUX_OWNER_UID") ||
+  "eabe2b1f-e428-4181-8530-8e5366eb3975").trim();
+
 export interface AuthResult {
   userId: string;
   email: string;
@@ -33,6 +36,21 @@ export async function verifyUserJWT(
       error: msg || "Invalid or expired token",
       status: 401,
     };
+  }
+
+  // Only PostgREST runs flux_check_request, so functions check bans themselves.
+  // cf-connecting-ip is set by Cloudflare; a client sending its own is refused.
+  const ip = (req.headers.get("cf-connecting-ip") ?? "").trim();
+  const values = ip ? `(${user.id},"${ip}")` : `(${user.id})`;
+  const { data: bans } = await serviceClient()
+    .from("flux_bans")
+    .select("id")
+    .eq("active", true)
+    .in("kind", ["user", "ip"])
+    .filter("value", "in", values)
+    .limit(1);
+  if (bans?.length && user.id !== OWNER_UID) {
+    return { error: "flux_banned", status: 403 };
   }
   return { userId: user.id, email: user.email ?? "" };
 }

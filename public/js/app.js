@@ -14003,8 +14003,10 @@ async function signOut(){
 }
 
 // ── GUEST LOGIN ──
+/* Guest mode was removed after the 2026-11-05 incident: every account must be
+   signed in. Old links to this now just show the sign-in form. */
 function skipLogin(){
-  showGuestDisclaimer();
+  if(typeof showLoginScreen==='function')showLoginScreen();
 }
 
 function showGuestDisclaimer(){
@@ -14414,7 +14416,8 @@ function fluxExtAuthBroadcast(session){
 function showLoginOrApp(){
   const onboarded=load('flux_onboarded',false);
   const hasData=tasks.length>0||notes.length>0||classes.length>0;
-  const wasGuest=load('flux_was_guest',false);
+  // Only the e2e harness may still enter without an account.
+  const wasGuest=load('flux_was_guest',false)&&/[?&]e2e=1/.test(location.search);
   if(wasGuest){
     const enterGuest=()=>{
       if(!onboarded&&!hasData){

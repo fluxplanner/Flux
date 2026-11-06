@@ -242,9 +242,6 @@
         <a class="lx-navlink" href="#features">Features</a>
         <a class="lx-navlink" href="#grapher">Grapher</a>
         <a class="lx-navlink" href="suite.html">All apps</a>
-        <button type="button" class="lx-ghost-btn" onclick="skipLogin()">
-          Continue as guest <span aria-hidden="true">→</span>
-        </button>
       </nav>
     </div>
   </header>
@@ -391,9 +388,6 @@
           </div>
 
           <div class="lx-auth-foot">
-            <button type="button" class="lx-guest" onclick="skipLogin()">
-              Continue as a guest <span class="lx-guest-arrow" aria-hidden="true">→</span>
-            </button>
             <p class="lx-fineprint">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               Your data stays yours. Encrypted in transit, synced across your devices.
@@ -633,11 +627,10 @@
     <section class="login-scroll-section lx-section" aria-label="Get started">
       <div class="lx-wrap">
         <div class="lx-cta-band">
-          <h2>Try it before you even sign up.</h2>
-          <p>Jump in as a guest, poke every tool, and add an account only when it earns it.</p>
+          <h2>Ready when you are.</h2>
+          <p>Create a free account and every tool is yours.</p>
           <div class="lx-cta-actions">
             <button type="button" class="lx-submit lx-cta-main" onclick="document.getElementById('top').scrollIntoView({behavior:'smooth'})">Create your account <span aria-hidden="true">↑</span></button>
-            <button type="button" class="lx-ghost-btn" onclick="skipLogin()">Continue as guest <span aria-hidden="true">→</span></button>
           </div>
         </div>
       </div>
@@ -652,7 +645,7 @@
           <span class="lx-trust-item"><span class="lx-trust-ico lx-trust-ico--p" aria-hidden="true"></span>Cross-device sync</span>
           <span class="lx-trust-item"><span class="lx-trust-ico" aria-hidden="true"></span>Private by design</span>
         </div>
-        <p class="lx-foot-note">Sign in to sync across devices — or jump in as a guest and add an account whenever you're ready.</p>
+        <p class="lx-foot-note">Sign in to sync across devices.</p>
         <p class="lx-credit">Developed by Azfer Mohammed</p>
       </div>
     </footer>
@@ -3023,8 +3016,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c391de9f.js"></script>
-<script defer src="public/bundles/flux-core.6bf5aa07.js"></script>
-<script defer src="public/bundles/flux-features.943c81ce.js"></script>
+<script defer src="public/bundles/flux-core.118fe361.js"></script>
+<script defer src="public/bundles/flux-features.8f97c82f.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
