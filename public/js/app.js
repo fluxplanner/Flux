@@ -5932,8 +5932,6 @@ function changeMonth(d){
     if(calMonth>11){calMonth=0;calYear++;}
     if(calMonth<0){calMonth=11;calYear--;}
     renderCalendar();
-    const gdd=document.getElementById('calGlassDropdown');
-    if(gdd&&!gdd.hidden&&typeof renderCalGlassDropdown==='function')renderCalGlassDropdown();
     if(!animate&&!reduced){try{window.FluxMotionMore?.calRipple(document.getElementById('calGrid'),d);}catch(_){}}
     if(animate){
       const g=document.getElementById('calGrid');
@@ -5959,141 +5957,10 @@ function selectDay(d){
   const b=document.getElementById('calAddEventBtn');if(b)b.style.display='inline-flex';
 }
 
-// ── Calendar glass date picker (month title dropdown; task-focused) ──
-let calGlassMode='month';
-function calGlassOpenTasksOn(y,m,d){
-  const ds=fluxLocalYMD(new Date(y,m,d));
-  return tasks.filter(t=>t.date===ds&&!t.done).length;
-}
-function toggleCalGlassDropdown(ev){
-  if(ev&&typeof ev.stopPropagation==='function')ev.stopPropagation();
-  const dd=document.getElementById('calGlassDropdown');
-  const btn=document.getElementById('calMonthOpenBtn');
-  if(!dd||!btn)return;
-  if(!dd.hidden){closeCalGlassDropdown();return;}
-  dd.hidden=false;
-  btn.setAttribute('aria-expanded','true');
-  renderCalGlassDropdown();
-  setTimeout(()=>{document.addEventListener('click',calGlassOutsideClose,true);},0);
-}
-function closeCalGlassDropdown(){
-  const dd=document.getElementById('calGlassDropdown');
-  const btn=document.getElementById('calMonthOpenBtn');
-  if(dd)dd.hidden=true;
-  if(btn)btn.setAttribute('aria-expanded','false');
-  document.removeEventListener('click',calGlassOutsideClose,true);
-}
-function calGlassOutsideClose(e){
-  const dd=document.getElementById('calGlassDropdown');
-  const btn=document.getElementById('calMonthOpenBtn');
-  if(!dd||dd.hidden)return;
-  if(dd.contains(e.target)||btn&&btn.contains(e.target))return;
-  closeCalGlassDropdown();
-}
-function calGlassSetMode(mode){
-  calGlassMode=mode==='week'?'week':'month';
-  renderCalGlassDropdown();
-}
-function calGlassScrollToSchedule(){
-  closeCalGlassDropdown();
-  const el=document.querySelector('[data-flux-cal-section="schedule"]');
-  if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
-}
-function calGlassSelectDay(d){
-  selectDay(d);
-  closeCalGlassDropdown();
-}
 function calGlassSelectDayFromDate(y,ma,d){
   calYear=y;calMonth=ma;calSelected=d;
   renderCalendar();
-  closeCalGlassDropdown();
 }
-function calGlassNoteQuick(){
-  const ds=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
-  closeCalGlassDropdown();
-  nav('notes');
-  if(typeof showToast==='function')showToast('Notes — capture something for '+ds,'info');
-}
-function renderCalGlassDropdown(){
-  const dd=document.getElementById('calGlassDropdown');
-  if(!dd||dd.hidden)return;
-  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const now=new Date();now.setHours(0,0,0,0);
-  const y=calYear,m=calMonth;
-  const daysInMonth=new Date(y,m+1,0).getDate();
-  const selStr=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
-  let daysHtml='';
-  if(calGlassMode==='month'){
-    for(let d=1;d<=daysInMonth;d++){
-      const dt=new Date(y,m,d);
-      const isToday=dt.getTime()===now.getTime();
-      const isSel=fluxLocalYMD(dt)===selStr;
-      const wk=dt.toLocaleDateString('en-US',{weekday:'short'}).charAt(0);
-      const cnt=calGlassOpenTasksOn(y,m,d);
-      daysHtml+=`<button type="button" class="flux-cal-glass-day${isSel?' is-selected':''}${isToday?' is-today':''}" onclick="calGlassSelectDay(${d})" aria-pressed="${isSel?'true':'false'}" aria-label="${months[m]} ${d}, ${cnt} open tasks">
-        <span class="flux-cal-glass-dow">${wk}</span>
-        <span class="flux-cal-glass-dn">${cnt>0?`<span class="flux-cal-glass-task-dot" aria-hidden="true"></span>`:''}${d}</span>
-      </button>`;
-    }
-  }else{
-    const ref=new Date(y,m,calSelected);
-    const dow=ref.getDay();
-    const start=new Date(ref);
-    start.setDate(ref.getDate()-dow);
-    for(let i=0;i<7;i++){
-      const dt=new Date(start);
-      dt.setDate(start.getDate()+i);
-      const dy=dt.getDate(),dm=dt.getMonth(),dyy=dt.getFullYear();
-      const isToday=dt.getTime()===now.getTime();
-      const isSel=fluxLocalYMD(dt)===selStr;
-      const wk=dt.toLocaleDateString('en-US',{weekday:'short'}).charAt(0);
-      const cnt=calGlassOpenTasksOn(dyy,dm,dy);
-      daysHtml+=`<button type="button" class="flux-cal-glass-day${isSel?' is-selected':''}${isToday?' is-today':''}" onclick="calGlassSelectDayFromDate(${dyy},${dm},${dy})" aria-pressed="${isSel?'true':'false'}">
-        <span class="flux-cal-glass-dow">${wk}</span>
-        <span class="flux-cal-glass-dn">${cnt>0?`<span class="flux-cal-glass-task-dot" aria-hidden="true"></span>`:''}${dy}</span>
-      </button>`;
-    }
-  }
-  const selDs=selStr;
-  const openTasks=tasks.filter(t=>t.date===selDs&&!t.done).length;
-  const evList=load('flux_events',[]);
-  const dayEv=(Array.isArray(evList)?evList:[]).filter(e=>e.date===selDs).length;
-  let summary=`${openTasks} open task${openTasks===1?'':'s'}`;
-  if(dayEv)summary+=` · ${dayEv} event${dayEv===1?'':'s'}`;
-  summary+=` · <strong>${selDs}</strong>`;
-  dd.innerHTML=`
-    <div class="flux-cal-glass-inner">
-      <div class="flux-cal-glass-top">
-        <div class="flux-cal-glass-tabs" role="tablist">
-          <button type="button" role="tab" class="${calGlassMode==='week'?'on':''}" onclick="calGlassSetMode('week')">Weekly</button>
-          <button type="button" role="tab" class="${calGlassMode==='month'?'on':''}" onclick="calGlassSetMode('month')">Monthly</button>
-        </div>
-        <button type="button" class="flux-cal-glass-iconbtn" onclick="calGlassScrollToSchedule()" title="Cycle &amp; weekly schedule">⚙</button>
-      </div>
-      <div class="flux-cal-glass-monthrow">
-        <span class="flux-cal-glass-monthtitle">${months[m]} ${y}</span>
-        <div class="flux-cal-glass-chevrow">
-          <button type="button" aria-label="Previous month" onclick="changeMonth(-1)">‹</button>
-          <button type="button" aria-label="Next month" onclick="changeMonth(1)">›</button>
-        </div>
-      </div>
-      <div class="flux-cal-glass-scroll"><div class="flux-cal-glass-scroll-inner">${daysHtml}</div></div>
-      <div class="flux-cal-glass-divider" aria-hidden="true"></div>
-      <div class="flux-cal-glass-footer">
-        <div class="flux-cal-glass-taskline" role="status">${summary}</div>
-        <div class="flux-cal-glass-actions">
-          <button type="button" class="flux-cal-glass-notehit" onclick="calGlassNoteQuick()">✎ Add a note…</button>
-          <!-- Was ＋ Task and ＋ Event. Same dialog either way now, and it
-               opens on Task, so the split bought nothing but a second button. -->
-          <button type="button" class="flux-cal-glass-btn-ev" onclick="closeCalGlassDropdown();openAddEventModal();">＋ Add</button>
-        </div>
-      </div>
-    </div>`;
-}
-document.addEventListener('keydown',e=>{
-  const dd=document.getElementById('calGlassDropdown');
-  if(dd&&!dd.hidden&&e.key==='Escape'){e.preventDefault();closeCalGlassDropdown();}
-});
 
 /* openAddForDate / showCalAddModal / submitCalTask lived here and are gone.
    They were the "+ Task" dialog: a name, a subject and a priority, built from
