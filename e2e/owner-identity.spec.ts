@@ -7,8 +7,7 @@ import { gotoScenario } from './helpers';
  * isOwner() used to compare emails, and the owner's email changed when the
  * accounts moved off Google — azfermohammed21@gmail.com became
  * azfer.mohammed@users.fluxplanner.app. From that moment isOwner() returned
- * false and every owner control disappeared: the Admin nav group, the
- * More-sheet slot, the master backlog card, the Owner control panel.
+ * false and every owner control disappeared.
  *
  * Nothing threw, because each of those is written as "show this if owner". An
  * owner who is not recognised looks exactly like a student, which is why it
@@ -26,7 +25,6 @@ type Win = {
   currentUser: { id?: string; email?: string };
   isOwner: () => boolean;
   getMyRole: () => string;
-  canAccessMasterBacklog?: () => boolean;
   renderSidebars?: () => void;
 };
 
@@ -43,7 +41,6 @@ async function asUser(page: import('@playwright/test').Page, id: string, email: 
       isOwner: w.isOwner(),
       role: w.getMyRole(),
       adminNav: labels.some((l) => /owner control|dev panel/i.test(l)),
-      backlog: typeof w.canAccessMasterBacklog === 'function' ? w.canAccessMasterBacklog() : null,
     };
   }, [id, email] as [string, string]);
 }
@@ -62,15 +59,13 @@ test.describe('Owner identity', () => {
     const r = await asUser(page, OWNER_UID, 'azfer.mohammed@users.fluxplanner.app');
     expect(r.isOwner, 'the renamed owner was not recognised').toBe(true);
     expect(r.role).toBe('owner');
-    expect(r.adminNav, 'the Admin nav group is missing').toBe(true);
-    expect(r.backlog, 'the master backlog is locked to the owner').toBe(true);
+    expect(r.adminNav, 'owner tools moved to owner.html and must not return to the planner').toBe(false);
   });
 
   test('and after any future rename, because the id never moves', async ({ page }) => {
     // The setup prompt lets the owner choose a new name; this must survive it.
     const r = await asUser(page, OWNER_UID, 'something.else.entirely@users.fluxplanner.app');
     expect(r.isOwner, 'a later rename would lock the owner out again').toBe(true);
-    expect(r.adminNav).toBe(true);
   });
 
   test('the old email alone gets nothing, because anyone could register it', async ({ page }) => {
@@ -92,7 +87,6 @@ test.describe('Owner identity', () => {
     const r = await asUser(page, '11111111-2222-3333-4444-555555555555', email);
     expect(r.role, 'a browser-side list promoted a student').toBe('user');
     expect(r.adminNav, 'a browser-side list revealed the Admin nav group').toBe(false);
-    expect(r.backlog, 'a browser-side list opened the master backlog').toBe(false);
   });
 
   test('and nobody else is let in', async ({ page }) => {
@@ -100,6 +94,5 @@ test.describe('Owner identity', () => {
     expect(r.isOwner, 'a student was treated as the owner').toBe(false);
     expect(r.role).toBe('user');
     expect(r.adminNav, 'a student can see the Admin nav group').toBe(false);
-    expect(r.backlog, 'a student can reach the master backlog').toBe(false);
   });
 });

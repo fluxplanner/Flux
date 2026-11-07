@@ -154,117 +154,6 @@
       .then(function (v) { state.inFlight = false; return v; });
   }
 
-  /* ---------- owner control panel ---------- */
-
-  function isOwner() {
-    try { return typeof window.isOwner === 'function' && window.isOwner(); } catch (e) { return false; }
-  }
-
-  /** The live sidebar is the source of truth for what tabs exist and are called. */
-  function knownTabs() {
-    var out = [];
-    var seen = {};
-    document.querySelectorAll('#sidebar .nav-item[data-tab]').forEach(function (el) {
-      var id = el.getAttribute('data-tab');
-      if (!id || seen[id] || NEVER_HIDE[id]) return;
-      seen[id] = 1;
-      var label = (el.querySelector('.nl') || {}).textContent || id;
-      out.push({ id: id, label: String(label).trim() || id });
-    });
-    return out;
-  }
-
-  function renderOwnerPanel() {
-    var card = $('platformUiCard');
-    if (!card) return;
-    if (!isOwner()) { card.style.display = 'none'; return; }
-    card.style.display = '';
-
-    var tabs = knownTabs();
-    var list = $('platformUiList');
-    if (list) {
-      list.innerHTML = tabs.map(function (t) {
-        var off = state.hiddenTabs.indexOf(t.id) >= 0;
-        return '<label class="flux-pui-row">'
-          + '<input type="checkbox" class="flux-pui-check" data-pui-tab="' + esc(t.id) + '"'
-          + (off ? '' : ' checked') + '>'
-          + '<span class="flux-pui-label">' + esc(t.label) + '</span>'
-          + '<span class="flux-pui-state">' + (off ? 'Hidden for everyone' : 'Visible') + '</span>'
-          + '</label>';
-      }).join('') || '<p class="flux-pui-empty">No tabs found.</p>';
-    }
-    var st = $('platformUiStatus');
-    if (st) {
-      st.textContent = state.hiddenTabs.length
-        ? state.hiddenTabs.length + ' tab' + (state.hiddenTabs.length === 1 ? '' : 's') + ' hidden for everyone'
-        : 'Every tab is visible to everyone';
-    }
-  }
-
-  function selectedHidden() {
-    var out = [];
-    document.querySelectorAll('#platformUiList .flux-pui-check').forEach(function (cb) {
-      if (!cb.checked) out.push(cb.getAttribute('data-pui-tab'));
-    });
-    return sanitize(out);
-  }
-
-  function save() {
-    var btn = $('platformUiSave');
-    var st = $('platformUiStatus');
-    var hiddenTabs = selectedHidden();
-    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
-
-    return Promise.resolve(typeof window.getSB === 'function' ? window.getSB() : null)
-      .then(function (sb) { return sb && sb.auth ? sb.auth.getSession() : null; })
-      .then(function (s) {
-        var token = s && s.data && s.data.session && s.data.session.access_token;
-        if (!token) throw new Error('Sign in as the owner first');
-        return fetch(SB_URL + '/functions/v1/release-admin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-          body: JSON.stringify({ action: 'set_platform_ui', hiddenTabs: hiddenTabs })
-        });
-      })
-      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (res) {
-        if (!res.ok) throw new Error(res.j && res.j.error ? res.j.error : 'Save failed');
-        state.hiddenTabs = sanitize(res.j.value && res.j.value.hiddenTabs);
-        writeCache(state.hiddenTabs);
-        apply();
-        renderOwnerPanel();
-        if (st) st.textContent = 'Saved — this applies to every planner.';
-        if (window.showToast) window.showToast('Saved for every planner', 'success', 3000);
-      })
-      .catch(function (e) {
-        if (st) st.textContent = String(e.message || e);
-        if (window.showToast) window.showToast(String(e.message || e), 'error', 5000);
-      })
-      .then(function () {
-        if (btn) { btn.disabled = false; btn.textContent = 'Save for everyone'; }
-      });
-  }
-
-  function wireOwnerPanel() {
-    var card = $('platformUiCard');
-    if (!card || card.__puiWired) return;
-    card.__puiWired = true;
-    var btn = $('platformUiSave');
-    if (btn) btn.addEventListener('click', save);
-    var reset = $('platformUiReset');
-    if (reset) {
-      reset.addEventListener('click', function () {
-        document.querySelectorAll('#platformUiList .flux-pui-check').forEach(function (cb) { cb.checked = true; });
-        save();
-      });
-    }
-  }
-
-  function renderSettings() {
-    wireOwnerPanel();
-    refresh(true).then(renderOwnerPanel);
-  }
-
   /* ---------- boot ---------- */
 
   function init() {
@@ -281,7 +170,6 @@
   window.FluxPlatformUI = {
     apply: apply,
     refresh: refresh,
-    renderSettings: renderSettings,
     hiddenTabs: function () { return state.hiddenTabs.slice(); }
   };
 })();

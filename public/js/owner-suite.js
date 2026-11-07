@@ -213,7 +213,7 @@
     syncKey('owner_audit',1);
   };
 
-  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
   /** Minimal CSV field parser (handles quoted fields). */
   function parseCsvLine(line){
@@ -498,7 +498,7 @@
     const {data,error}=await client.from('flux_hidden_apps').select('app_id');
     if(error){mount.textContent='Could not read the hidden apps: '+error.message;return;}
     const hidden=new Set((data||[]).map(r=>r.app_id));
-    const apps=((window.FluxHub&&window.FluxHub.PRODUCTS)||[]).filter(p=>p.id!=='planner');
+    const apps=((window.FluxHub&&window.FluxHub.PRODUCTS)||[]).filter(p=>p.id!=='planner'&&!p.ownerOnly);
     /* The planner's own side-tab switch (.tab-row-toggle): on means visible. */
     mount.innerHTML=apps.map(p=>{
       const on=hidden.has(p.id);
@@ -531,7 +531,8 @@
 
   /** Tab id → { label, icon, group }.  Order here drives the sidebar nav order. */
   const OS_TAB_DEFS={
-    overview:    {label:'Overview',         icon:'📊', group:'home'},
+    today:       {label:'Today',            icon:'📊', group:'home'},
+    overview:    {label:'Overview',         icon:'📈', group:'home'},
     preview:     {label:'Switch to staff',  icon:'🧪', group:'home'},
     nuke:        {label:'Nuke Controls',    icon:'☢️', group:'home'},
     release:     {label:'Release & push',   icon:'🚀', group:'home'},
@@ -539,16 +540,20 @@
     testers:     {label:'Testers',          icon:'🧪', group:'people'},
     auth:        {label:'Users & roster',   icon:'🔐', group:'people'},
     staffverify: {label:'Staff verify',     icon:'✅', group:'people'},
+    pwhelp:      {label:'Password help',    icon:'🔐', group:'people'},
     analytics:   {label:'My analytics',     icon:'📈', group:'insights'},
     usage:       {label:'Platform usage',   icon:'🌐', group:'insights'},
     feedback:    {label:'Feedback inbox',   icon:'💬', group:'insights'},
     config:      {label:'Platform config',  icon:'⚙️', group:'build'},
     hideapps:    {label:'Hide apps',        icon:'🙈', group:'build'},
+    plannertabs: {label:'Planner tabs',     icon:'📌', group:'build'},
     integrations:{label:'Integrations',     icon:'🔌', group:'build'},
     megamap:     {label:'Mega map',         icon:'🗺',  group:'build'},
     ideas:       {label:'Product ideas',    icon:'💡', group:'build'},
+    backlog:     {label:'Master backlog',   icon:'📋', group:'build'},
     moderation:  {label:'Moderation',       icon:'🛡', group:'safety'},
     audit:       {label:'Audit log',        icon:'📜', group:'safety'},
+    health:      {label:'System health',    icon:'🚦', group:'safety'},
     data:        {label:'Data & backup',    icon:'💾', group:'safety'},
     advanced:    {label:'Advanced',         icon:'🛠', group:'safety'},
   };
@@ -570,7 +575,7 @@
         <button type="button" data-os-tab="${id}" onclick="window.__osSetTab('${id}')" style="${tabStyle(id===activeTab)}">
           <span style="font-size:.95rem;line-height:1">${osIcon(def.icon)}</span>
           <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(def.label)}</span>
-          ${id==='staffverify'?'<span id="osStaffVerifyBadge" style="display:none;min-width:18px;padding:1px 6px;border-radius:999px;background:var(--red,#f43f5e);color:#fff;font-size:.62rem;font-weight:800;line-height:1.5;text-align:center"></span>':''}
+          <span id="osBadge-${id}" class="own-badge" hidden></span>
         </button>`).join('');
       return`<div style="margin-bottom:14px">
         <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.18em;color:var(--muted);font-family:JetBrains Mono,monospace;padding:6px 12px 4px;font-weight:700">${esc(g.label)}</div>
@@ -579,20 +584,9 @@
     }).join('');
   }
 
-  /** Paint the waiting-request count onto the Staff verify row, so a pending
-   *  teacher is visible from anywhere in the suite — not only once that tab is
-   *  open. Silent on failure: a badge is never worth breaking the sidebar for. */
+  /** A waiting request is visible from anywhere in the app, not only on its own tab. */
   function refreshStaffVerifyBadge(){
-    const el=document.getElementById('osStaffVerifyBadge');
-    if(!el)return;
-    const count=window.FluxStaffPlatform&&window.FluxStaffPlatform.pendingStaffRequestCount;
-    if(typeof count!=='function')return;
-    Promise.resolve(count()).then(n=>{
-      const badge=document.getElementById('osStaffVerifyBadge');
-      if(!badge)return;
-      if(n>0){badge.textContent=n>99?'99+':String(n);badge.style.display='';}
-      else badge.style.display='none';
-    }).catch(()=>{});
+    try{window.FluxOwnerPanels.refreshBadges();}catch(_){/* a badge is never worth breaking the sidebar for */}
   }
   window.FluxOwnerSuite=window.FluxOwnerSuite||{};
   window.FluxOwnerSuite.refreshStaffVerifyBadge=refreshStaffVerifyBadge;
@@ -600,28 +594,13 @@
   window.openOwnerSuite=function(prefTab, opts){
     if(!isOwner())return;
     opts=opts||{};
-    let mountEl=null;
-    if(opts.overlay===true)mountEl=null;
-    else mountEl=opts.mount||document.getElementById('fluxControlMount');
-    let tab=OS_TABS.has(prefTab)?prefTab:(window.__osActiveTab&&OS_TABS.has(window.__osActiveTab)?window.__osActiveTab:'overview');
-    if(mountEl&&!opts.skipNav){
-      const fc=document.getElementById('flux_control');
-      if(!fc||!fc.classList.contains('active')){
-        window.__fluxOwnerPrefTab=tab;
-        if(typeof nav==='function')nav('flux_control');
-        return;
-      }
-    }
-    document.getElementById('modPanel')?.remove();
+    const mountEl=opts.mount||document.getElementById('ownerApp');
+    let tab=OS_TABS.has(prefTab)?prefTab:(window.__osActiveTab&&OS_TABS.has(window.__osActiveTab)?window.__osActiveTab:'today');
+    window.__osActiveTab=tab;
     document.getElementById('ownerSuite')?.remove();
-    const embedUi=!!mountEl;
+    const embedUi=true;
     const root=document.createElement('div');
     root.id='ownerSuite';
-    if(embedUi){
-      root.style.cssText='position:relative;width:100%;min-height:0;margin:0;padding:0;background:transparent;z-index:auto;overflow:visible;display:block';
-    }else{
-      root.style.cssText='position:fixed;inset:0;background:rgba(5,8,16,.92);z-index:9900;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;backdrop-filter:blur(12px);overflow-y:auto';
-    }
     function body(){
       const devAccounts=load('flux_dev_accounts',[]);
       const auditRaw=load('flux_owner_audit',[]);
@@ -818,7 +797,8 @@
           // detection — so opening this tab first left it permanently empty,
           // and "refresh the page" never helped because nothing here called
           // hydrate(). Kick it off now and repaint when it lands.
-          if(dir&&typeof dir.hydrate==='function'&&!window.__osDirHydrating){
+          if(dir&&typeof dir.hydrate==='function'&&!window.__osDirHydrating&&!window.__osDirAsked){
+            window.__osDirAsked=true; // once: an empty directory would otherwise repaint and ask again forever
             window.__osDirHydrating=true;
             Promise.resolve(dir.hydrate())
               .catch(()=>{})
@@ -907,7 +887,6 @@
         <div style="font-size:.72rem;color:var(--muted2);margin-bottom:12px;line-height:1.5">
           <b>Roles</b> map to permission bundles. <b>Admin</b> = all tools. <b>Editor</b> = flags + dev mode + clear + release push (no manage devs). <b>Viewer</b> = read-only panel hooks.
         </div>
-        ${typeof renderDevPanelLayoutEditorHtml==='function'?renderDevPanelLayoutEditorHtml():''}
         ${devAccounts.length?devAccounts.map((d,i)=>`
           <div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px">
             <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px">
@@ -1228,6 +1207,7 @@
         <div id="osUsageMount">${typeof window.__ownerUsageHtml==='string'&&window.__ownerUsageHtml?window.__ownerUsageHtml:'<div style="color:var(--muted);font-size:.82rem">Click <b>Refresh from cloud</b> to load cross-account aggregates (requires Supabase to return multiple <code style="font-size:.65rem">user_data</code> rows — see RLS note after load).</div>'}</div>`;
 
       if(tab==='moderation')return`<div id="osModerationMount">Loading…</div>`;
+      if(tab==='today'||tab==='pwhelp'||tab==='plannertabs'||tab==='health'||tab==='backlog')return`<div id="osPanelMount"></div>`;
       if(tab==='audit')return`
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
         <button type="button" onclick="ownerClearAudit()" style="padding:6px 12px;font-size:.72rem;border-radius:8px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);color:var(--red)">Clear audit log</button>
@@ -1306,9 +1286,8 @@
         <div style="font-size:.72rem;color:var(--muted2);line-height:1.6;margin-bottom:14px">
           <b>Impersonation</b> requires a dedicated Admin API workflow — never the anon key. Session revoke / ban flows for arbitrary users live under <button type="button" onclick="window.__osSetTab('auth')" style="background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent);padding:3px 10px;border-radius:8px;font-size:.72rem;cursor:pointer;font-weight:700">Users &amp; roster</button>.
         </div>
-        <button type="button" onclick="document.getElementById('ownerSuite')?.remove();openModPanel();" style="padding:10px 16px;font-size:.78rem;border-radius:12px;margin-bottom:10px;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.3)">Open classic Dev Panel</button>
         <button type="button" onclick="forceSyncNow()" style="display:block;width:100%;padding:10px;margin-bottom:8px;font-size:.78rem;border-radius:10px">⟳ Force sync now</button>
-        <button type="button" onclick="clearCache()" style="display:block;width:100%;padding:10px;font-size:.78rem;border-radius:10px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);color:var(--red)">⚠ Nuclear: clear local cache (typed confirm)</button>`;
+        <button type="button" onclick="fluxOwnerClearAppCache()" style="display:block;width:100%;padding:10px;font-size:.78rem;border-radius:10px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);color:var(--red)">⚠ Nuclear: clear local cache (typed confirm)</button>`;
 
       return'';
     }
@@ -1351,12 +1330,19 @@
         }
       }
       if(tab==='hideapps')paintHiddenApps(root);
-      if(tab==='moderation'&&window.FluxOwnerModeration)window.FluxOwnerModeration.render(root.querySelector('#osModerationMount'));
+      if(tab==='moderation')window.FluxOwnerModerationPanel.render(root.querySelector('#osModerationMount'));
+      const panelMount=root.querySelector('#osPanelMount');
+      if(panelMount){
+        const P=window.FluxOwnerPanels;
+        ({today:P.renderToday,pwhelp:P.renderPasswordHelp,plannertabs:P.renderPlannerTabs,health:P.renderHealth,backlog:P.renderBacklog})[tab](panelMount);
+      }
+      try{if(location.hash.slice(1)!==tab)history.replaceState(null,'','#'+tab);}catch(_){}
       const sb=root.querySelector('#osSidebar');
       if(sb)sb.innerHTML=buildOsSidebarHtml(tab);
       root.querySelectorAll('[data-os-tab]').forEach(b=>{
         b.style.cssText=tabStyle(b.getAttribute('data-os-tab')===tab);
       });
+      root.querySelector('[data-os-tab="'+tab+'"]')?.scrollIntoView({block:'nearest',inline:'center'});
       refreshStaffVerifyBadge();
       const pushBtn=root.querySelector('#osReleasePushBtn');
       if(pushBtn&&!pushBtn.disabled){
@@ -1368,11 +1354,7 @@
       }
     }
 
-    const cardMax=embedUi?'min(1180px,100%)':'min(1100px,100%)';
-    const osBodyStyle=embedUi?'padding:22px 24px;max-height:none;overflow-y:visible':'padding:22px 24px;max-height:min(74vh,720px);overflow-y:auto';
-    const closeBtn=embedUi
-      ?`<button type="button" onclick="nav('dashboard')" class="os-head-btn" title="Back to planner">← Planner</button>`
-      :`<button type="button" onclick="try{window.FluxOwnerSuite&&FluxOwnerSuite.teardownVerificationQueue&&FluxOwnerSuite.teardownVerificationQueue();}catch(e){}document.getElementById('ownerSuite')?.remove()" class="os-head-btn" title="Close" aria-label="Close">✕</button>`;
+    const closeBtn=`<a href="index.html" class="os-head-btn">Planner</a><a href="suite.html#owner" class="os-head-btn">Flux Suite</a>`;
 
     /* Current release state — show "live build" badge in header and "Push update" button */
     let __buildLabel='unknown';
@@ -1394,16 +1376,17 @@
       </button>`;
 
     root.innerHTML=`
-      <div class="owner-suite-card owner-suite-card--v2" style="max-width:${cardMax};${embedUi?'margin:0 auto;':''}">
+      <div class="owner-suite-card owner-suite-card--v2">
         <header class="os-head">
           <div class="os-head__title">
             <span class="os-head__crown" aria-hidden="true"></span>
             <div>
-              <div class="os-head__name flux-color-title">Owner Command Center</div>
-              <div class="os-head__meta">${esc(currentUser?.email||'')} · god-mode for your data plane</div>
+              <div class="os-head__name flux-color-title">Owner Controls</div>
+              <div class="os-head__meta">${esc(currentUser?.email||'')} · <span id="ownerSyncState" class="own-sync">Saved</span></div>
             </div>
           </div>
           <div class="os-head__actions">
+            <form class="own-find" id="ownFindForm" action="javascript:void 0"><input id="ownFindUser" type="search" placeholder="Find a person by username" aria-label="Find a person by username"></form>
             ${pushBtnHeader}
             <button type="button" id="osHeaderQuickSyncBtn" onclick="(function(){try{forceSyncNow&&forceSyncNow();if(typeof showToast==='function')showToast('Sync requested','info');}catch(e){}})()" class="os-head-btn" title="Force sync">⟳</button>
             ${closeBtn}
@@ -1413,7 +1396,7 @@
           <aside class="os-sidebar" id="osSidebar" aria-label="Owner sections">
             ${buildOsSidebarHtml(tab)}
           </aside>
-          <main class="os-main" id="osBody" style="${osBodyStyle}"></main>
+          <main class="os-main" id="osBody"></main>
         </div>
       </div>`;
 
@@ -1468,9 +1451,16 @@
     }
     paint();
     refreshStaffVerifyBadge();
-    ownerAuditAppend('owner_suite_open',{embed:!!mountEl});
-    const ann=getPlatformConfig().announcement;
-    if(ann&&!embedUi)showToast(ann,'info');
+    root.querySelector('#ownFindForm').addEventListener('submit',async ev=>{
+      ev.preventDefault();
+      const input=root.querySelector('#ownFindUser');
+      const name=input.value.trim().replace(/^@/,'');
+      if(!name)return;
+      const found=await getSB().rpc('flux_owner_find_user',{p_username:name});
+      if(found.error||!found.data){showToast(found.error?found.error.message:'No account called '+name,'error');return;}
+      input.value='';
+      window.FluxOwnerModerationPanel.show('person',found.data);
+    });
     if(tab==='staffverify')subscribeToVerificationQueue();
   };
 
@@ -1503,10 +1493,48 @@
 
   window.reopenOwnerSuite=function(prefTab){
     if(!isOwner())return;
-    const m=document.getElementById('fluxControlMount');
-    const next=OS_TABS.has(prefTab)?prefTab:(window.__osActiveTab&&OS_TABS.has(window.__osActiveTab)?window.__osActiveTab:'overview');
-    if(m)openOwnerSuite(next,{mount:m,skipNav:true});
-    else openOwnerSuite(next,{overlay:true});
+    openOwnerSuite(OS_TABS.has(prefTab)?prefTab:window.__osActiveTab);
+  };
+
+  window.removeDevAccount=function(idx){
+    if(!isOwner())return;
+    const devAccounts=load('flux_dev_accounts',[]);
+    devAccounts.splice(idx,1);
+    saveDevAccounts(devAccounts);
+    reopenOwnerSuite();
+  };
+
+  window.ownerRefreshFeedbackInbox=async function(){
+    if(!isOwner())return;
+    try{
+      await fluxOwnerPull();
+      showToast('Inbox refreshed','success');
+    }catch(e){showToast('Could not refresh: '+(e.message||e),'error');}
+    window.__osSetTab('feedback');
+  };
+
+  window.ownerDismissFeedback=function(fid){
+    if(!isOwner())return;
+    const ts=load('flux_feedback_tombstones',[]);
+    if(fid&&!ts.includes(fid)){
+      ts.push(fid);
+      save('flux_feedback_tombstones',ts.slice(-500));
+    }
+    save('flux_feedback_inbox',(load('flux_feedback_inbox',[])||[]).filter(x=>x&&x.id!==fid));
+    void syncToCloud();
+    ownerAuditAppend('feedback_dismiss',{id:fid});
+    window.__osSetTab('feedback');
+  };
+
+  window.ownerExportFeedbackJson=function(){
+    if(!isOwner())return;
+    const arr=load('flux_feedback_inbox',[])||[];
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([JSON.stringify(arr,null,2)],{type:'application/json'}));
+    a.download='flux-feedback-'+new Date().toISOString().slice(0,10)+'.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    ownerAuditAppend('feedback_export',{n:arr.length});
   };
 
   window.ownerSetDevRole=function(idx,role){
@@ -1652,18 +1680,21 @@
     r.onload=()=>{
       try{
         const d=JSON.parse(r.result);
-        if(d.tasks){tasks=d.tasks;save('tasks',tasks);}
-        if(d.notes){notes=d.notes;save('flux_notes',notes);}
-        if(d.habits){habits=d.habits;save('flux_habits',habits);}
-        if(d.goals){goals=d.goals;save('flux_goals',goals);}
         if(d.devAccounts&&isOwner())save('flux_dev_accounts',d.devAccounts);
         if(d.ownerAuditLog&&isOwner())save('flux_owner_audit',d.ownerAuditLog.slice(-300));
         if(d.platformConfig&&isOwner())save('flux_platform_config',d.platformConfig);
-        if(d.profile)save('profile',d.profile);
-        if(currentUser)syncToCloud();
-        ownerAuditAppend('backup_restore',{keys:Object.keys(d).slice(0,20).join(',')});
-        showToast('Restore applied — verify data & sync','success');
-        location.reload();
+        // The planner's own data goes straight to your saved row, and the planner picks it up from there.
+        const planner={};
+        ['tasks','notes','habits','goals','profile'].forEach(k=>{if(d[k])planner[k]=d[k];});
+        Promise.resolve()
+          .then(()=>fluxOwnerPatchRow(()=>planner))
+          .then(()=>syncToCloud())
+          .then(()=>{
+            ownerAuditAppend('backup_restore',{keys:Object.keys(d).slice(0,20).join(',')});
+            showToast('Restore applied. Open the planner to check it.','success');
+            return fluxOwnerPull();
+          })
+          .catch(e=>showToast('Restore failed: '+(e.message||e),'error'));
       }catch(e){alert('Restore failed: '+e.message);}
     };
     r.readAsText(f);
@@ -1672,13 +1703,16 @@
 
   window.ownerArchiveDoneTasks=function(){
     if(!confirm('Remove all completed tasks from the active list? (Backup first.)'))return;
-    const n=tasks.filter(t=>t.done).length;
-    tasks=tasks.filter(t=>!t.done);
-    save('tasks',tasks);
-    if(currentUser)syncToCloud();
-    ownerAuditAppend('archive_done_tasks',{removed:n});
-    showToast('Archived '+n+' done tasks','info');
-    reopenOwnerSuite();
+    let n=0;
+    fluxOwnerPatchRow(d=>{
+      const all=Array.isArray(d.tasks)?d.tasks:[];
+      n=all.filter(t=>t.done).length;
+      return{tasks:all.filter(t=>!t.done)};
+    }).then(()=>fluxOwnerPull()).then(()=>{
+      ownerAuditAppend('archive_done_tasks',{removed:n});
+      showToast('Archived '+n+' done tasks','info');
+      reopenOwnerSuite();
+    }).catch(e=>showToast('Could not archive: '+(e.message||e),'error'));
   };
 
   window.ownerSaveIntegrationWebhooks=function(){
