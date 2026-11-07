@@ -2613,8 +2613,6 @@ button:focus-visible,.nav-item:focus-visible,.tmode-btn:focus-visible,.check:foc
 .sidebar.collapsed .uc-av{margin:0 auto}
 
 /* Owner / dev control tab (full planner panel) */
-#flux_control.flux-control-tab.panel{padding-top:12px;padding-bottom:110px}
-#flux_control .flux-control-mount{width:100%;min-height:min(60vh,520px)}
 
 /* ── Release preview banner (owner/dev only): push sticky chrome below it ── */
 body.flux-has-release-banner .sidebar{top:var(--flux-release-banner-h,34px)!important;height:calc(100vh - var(--flux-release-banner-h,34px))!important}
@@ -5582,7 +5580,7 @@ html[data-flux-glass="on"] .more-sheet{
 .panel,
 #dashboard,#calendar,#ai,#study,#timer,#notes,#habits,#goals,
 #mood,#settings,#profile,#canvas,#teacherDashboard,#counselorDashboard,#adminDashboard,
-#gmail,#school,#toolbox,#flux_control,#references{
+#gmail,#school,#toolbox,#references{
   background:transparent !important;
   position:relative;
   z-index:1;

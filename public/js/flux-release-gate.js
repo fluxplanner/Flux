@@ -69,7 +69,7 @@
     try{return typeof OWNER_EMAIL!=='undefined'?OWNER_EMAIL:OWNER_EMAIL_FALLBACK;}
     catch(_){return OWNER_EMAIL_FALLBACK;}
   }
-  function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
   function buildLabel(id){return String(id||'').replace(/^build-/,'');}
 
   function normEmail(v){return String(v||'').trim().toLowerCase();}
@@ -443,6 +443,8 @@
   }
 
   function renderPreviewBanner(gate){
+    // Owner Controls shows this in its own header.
+    if(window.__FLUX_OWNER_APP)return;
     ensureHost();
     if(document.getElementById('fluxReleasePreviewBanner'))return;
     try{
@@ -461,7 +463,7 @@
     ensureHost().appendChild(bar);
     document.documentElement.style.setProperty('--flux-release-banner-h','34px');
     document.body.classList.add('flux-has-release-banner');
-    bar.querySelector('#fluxReleaseOpenBtn').addEventListener('click',()=>{if(canPush)openPushDialog();});
+    bar.querySelector('#fluxReleaseOpenBtn').addEventListener('click',()=>{if(canPush)location.href='owner.html#release';});
     bar.querySelector('#fluxReleaseCloseBtn').addEventListener('click',removeBanner);
   }
 

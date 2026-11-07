@@ -175,8 +175,6 @@
     "public/js/flux-parent-portal.js",
     "public/js/flux-a11y.js",
     "public/js/flux-enhancements-v100.js",
-    "public/js/flux-master-backlog.js",
-    "public/js/owner-suite.js",
     "public/js/flux-owner-messages.js",
     "public/js/flux-owner-moderation.js",
     "public/js/flux-pro.js",
@@ -440,5 +438,25 @@
     "public/css/flux-settings-shell.css",
     "public/css/flux-design-2026.css",
     "public/css/flux-staff-2026.css"
+  ],
+  "ownerVendor": [
+    "public/js/flux-supabase-vendor.js"
+  ],
+  "owner": [
+    "public/js/flux-iconify.js",
+    "public/js/flux-hub.js",
+    "public/js/flux-owner-runtime.js",
+    "public/js/flux-staff-directory.js",
+    "public/js/flux-release-gate.js",
+    "public/js/flux-owner-messages.js",
+    "public/js/flux-ops-health.js",
+    "public/js/flux-master-backlog.js",
+    "public/js/owner-suite.js",
+    "public/js/flux-owner-moderation-panel.js",
+    "public/js/flux-owner-panels.js"
+  ],
+  "ownerCss": [
+    "public/css/flux-standalone-dark.css",
+    "public/css/flux-owner-app.css"
   ]
 }

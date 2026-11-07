@@ -29,6 +29,7 @@
     { id: 'planner', name: 'Planner' },
     { id: 'study', name: 'Study apps' },
     { id: 'partner', name: 'Partners' },
+    { id: 'owner', name: 'Owner Controls' },
   ];
   var PRODUCTS = [
     {
@@ -129,13 +130,27 @@
          directory's violet gradient (.app-icon--logo). */
       logo: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19h4l2.5-6.5L16.5 23l2.8-7H26"/></svg>',
     },
+    {
+      // Only the owner sees this tile, and owner.html turns anyone else away.
+      // The database is what actually protects what is inside.
+      id: 'owner',
+      group: 'owner',
+      name: 'Flux Owner Controls',
+      tagline: 'Moderation, people, releases and every switch',
+      href: 'owner.html',
+      ownerOnly: true,
+      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>',
+    },
   ];
 
   /** PRODUCTS minus any the owner has hidden from this viewer (flux-app-visibility.js).
       PRODUCTS itself stays complete: the owner's control lists from it. */
   function visibleProducts() {
     var v = window.FluxAppVisibility;
-    return PRODUCTS.filter(function (p) { return !(v && v.isHidden(p.id)); });
+    return PRODUCTS.filter(function (p) {
+      if (p.ownerOnly) return !!(v && v.isOwner());
+      return !(v && v.isHidden(p.id));
+    });
   }
 
   function mount(host) {

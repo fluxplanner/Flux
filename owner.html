@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="public/js/flux-app-visibility.js?v=74dbc85a"></script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Flux Owner Controls</title>
+<meta name="theme-color" content="#0b0d14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Owner Controls">
+<link rel="icon" type="image/png" href="public/flux-planner-logo.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<!-- Owner Controls: the owner's own app, moved out of the planner. It shares the
+     planner's sign-in but loads none of its code. See public/js/flux-owner-runtime.js. -->
+<script>/* GitHub Pages cannot send a frame header, and every button here is powerful. */
+if (window.top !== window.self) window.top.location = window.self.location;</script>
+<link rel="stylesheet" href="public/bundles/flux-owner.2789f89c.css">
+</head>
+<body>
+  <div id="ownerGate" class="own-gate"><p class="own-muted">Checking your account…</p></div>
+  <div id="ownerApp" hidden></div>
+  <div id="ownerToasts" class="own-toasts" aria-live="polite"></div>
+  <noscript><div class="own-gate"><h1>Owner Controls needs JavaScript</h1></div></noscript>
+  <script type="module" src="public/bundles/flux-owner_vendor.5c242cc4.js"></script>
+  <script defer src="public/bundles/flux-owner.0f32edb8.js"></script>
+</body>
+</html>
