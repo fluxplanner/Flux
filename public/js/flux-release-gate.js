@@ -443,6 +443,8 @@
   }
 
   function renderPreviewBanner(gate){
+    // Owner Controls shows this in its own header.
+    if(window.__FLUX_OWNER_APP)return;
     ensureHost();
     if(document.getElementById('fluxReleasePreviewBanner'))return;
     try{
@@ -461,7 +463,7 @@
     ensureHost().appendChild(bar);
     document.documentElement.style.setProperty('--flux-release-banner-h','34px');
     document.body.classList.add('flux-has-release-banner');
-    bar.querySelector('#fluxReleaseOpenBtn').addEventListener('click',()=>{if(canPush)openPushDialog();});
+    bar.querySelector('#fluxReleaseOpenBtn').addEventListener('click',()=>{if(canPush)location.href='owner.html#release';});
     bar.querySelector('#fluxReleaseCloseBtn').addEventListener('click',removeBanner);
   }
 

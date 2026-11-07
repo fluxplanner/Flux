@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <script src="public/js/flux-app-visibility.js?v=74dbc85a"></script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: data:; worker-src 'self' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://api.anthropic.com https://api.openai.com https://api.groq.com https://api.mistral.ai https://api.deepseek.com https://en.wikipedia.org https://api.duckduckgo.com https://html.duckduckgo.com https://corsproxy.io https://api.allorigins.win https://tessdata.projectnaptha.com https://api.open-meteo.com https://nominatim.openstreetmap.org https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: data:; worker-src 'self' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://api.anthropic.com https://api.openai.com https://api.groq.com https://api.mistral.ai https://api.deepseek.com https://en.wikipedia.org https://api.duckduckgo.com https://html.duckduckgo.com https://corsproxy.io https://api.allorigins.win https://tessdata.projectnaptha.com https://api.open-meteo.com https://nominatim.openstreetmap.org https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com">
 <script>/* Flux Pulse layout — REMOVED. The experimental "Pulse" reskin caused lag and is
    gone for good. Force legacy layout for everyone and purge any stale opt-in so
    users who previously enabled Pulse are migrated back automatically. */
@@ -118,7 +118,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.77dd0ffd.css">
+<link rel="stylesheet" href="public/bundles/flux.40f4bf99.css">
 </head>
 <body>
 <noscript>
@@ -2398,10 +2398,6 @@
       </div>
     </div>
 
-    <!-- ─── OWNER / DEV CONTROL (injected from sidebar when role allows) ─── -->
-    <div id="flux_control" class="panel flux-page flux-control-tab">
-      <div id="fluxControlMount" class="flux-control-mount"></div>
-    </div>
 
     <!-- ─── SETTINGS ─── -->
     <div id="settings" class="panel flux-page">
@@ -2565,23 +2561,6 @@
           <div style="font-size:.78rem;color:var(--muted2);margin-bottom:14px;line-height:1.6">Drag to reorder · Toggle to show/hide · Settings tab is always visible</div>
           <div class="tab-customizer" id="tabCustomizerList"></div>
           <button onclick="resetTabs()" class="btn-sec" style="width:100%;margin-top:14px;font-size:.78rem">↺ Reset to defaults</button>
-        </div>
-        <div class="card" id="platformUiCard" style="display:none;border-color:rgba(var(--accent-rgb),.28)">
-          <!-- Owner only: hides sidebar tabs for EVERY planner. Backed by
-               public.platform_settings, written via the release-admin function.
-               Moved here from Data & info. It is the same decision as the card
-               directly above — which tabs appear in the sidebar — just applied to
-               everyone instead of to you, so having the two in different sections
-               meant hunting for the second one. flux-platform-ui.js finds it by
-               id, so the pane it lives in was never load-bearing. -->
-          <h3>Sidebar tabs — everyone</h3>
-          <p class="flux-pui-help">Untick a tab to hide it from every Flux planner, not just yours. Dashboard and Settings can't be hidden — they're the way back here.</p>
-          <div class="flux-pui-list" id="platformUiList"></div>
-          <p class="flux-pui-status" id="platformUiStatus"></p>
-          <div class="flux-pui-actions">
-            <button type="button" class="flux-pui-save" id="platformUiSave">Save for everyone</button>
-            <button type="button" class="flux-pui-reset" id="platformUiReset">Show all again</button>
-          </div>
         </div>
       </div>
       <div class="spane" id="spane-account">
@@ -2827,13 +2806,6 @@
           <div class="flux-changelog-list" id="changelogList"></div>
           <button type="button" class="flux-changelog-more" id="changelogMore" style="display:none">Show more</button>
         </div>
-        <div class="card" id="settingsMasterBacklogCard" style="display:none">
-          <h3>Master backlog</h3>
-          <div class="srow" style="border:none">
-            <div><div class="slabel">Full improvement catalog</div><div class="ssub">Searchable list of roadmap items (AI, calendar, tasks, polish, …)</div></div>
-            <button type="button" onclick="openFluxMasterBacklog()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Open backlog</button>
-          </div>
-        </div>
       </div>
       </div><!-- /flux-settings-panes -->
       </div><!-- /flux-settings-shell -->
@@ -3014,8 +2986,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.bf294322.js"></script>
-<script defer src="public/bundles/flux-core.18b02a7b.js"></script>
-<script defer src="public/bundles/flux-features.695224b2.js"></script>
+<script defer src="public/bundles/flux-core.bb1eee15.js"></script>
+<script defer src="public/bundles/flux-features.0c4baa7e.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
@@ -3063,7 +3035,6 @@
   </div>
 
   <div class="more-sheet-grid">
-    <div id="moreSheetAdminSlot" class="more-sheet-admin-slot" style="display:contents"></div>
     <button type="button" class="more-sheet-item" data-nav-tab="notes" onclick="navMob('notes')">
       <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9 M16.4 3.6a2 2 0 0 1 2.8 2.8L7.5 18.1 3 19.5l1.4-4.5Z"/></svg></span><span class="more-sheet-label">Notebook</span>
     </button>

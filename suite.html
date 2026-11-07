@@ -169,7 +169,7 @@
     <p class="note">Bookmark this page, or add it to your home screen, to get to every Flux app.</p>
   </main>
 
-  <script src="public/js/flux-hub.js?v=e74f9d2d"></script>
+  <script src="public/js/flux-hub.js?v=cfbb1836"></script>
   <script>
     (function () {
       /* A sentence each, longer than the switcher's one-line tagline. A
@@ -184,11 +184,12 @@
         periodic: 'Every trend, the table melting and boiling with temperature, electron configurations, spectra, isotopes and every atom in 3D.',
         composer: 'A table of every key, a keyboard that writes what you play, scales, chords, cadences, an ear trainer, a beat maker and DP Music.',
         translate: 'Every tense of every Spanish and French verb, irregular forms highlighted. Type any form (tuvimos, eûmes) to find the verb, hear it read aloud, and practise against the clock. Plus translation between 35 languages.',
+        owner: 'Your own app for running Flux: moderation, bans, people, the public archive, releases and every switch that used to live in the planner.',
         synara: 'For students with epilepsy: dose reminders and a medication calendar, a seizure log that spots patterns with missed doses, sleep and stress, and an emergency card a teacher can follow, one tap away. Stays on this device.',
       };
       var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); };
       var host = document.getElementById('apps');
-      var list = (window.FluxHub && window.FluxHub.PRODUCTS) || [];
+      var list = (window.FluxHub && window.FluxHub.visibleProducts()) || [];
       if (!list.length) {
         host.innerHTML = '<p style="color:#fbbf24">The app list could not load. <a href="index.html" style="color:#7fe3ff">Open the Flux Planner</a>.</p>';
         return;

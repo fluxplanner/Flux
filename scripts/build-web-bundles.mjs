@@ -167,11 +167,17 @@ results.push(await buildClassic('flux-core.js', manifest.core));
 results.push(await buildClassic('flux-features.js', manifest.features));
 results.push(await buildCss('flux.css', manifest.css));
 const synara = fs.existsSync(path.join(SYNARA, 'js', 'main.js')) ? await buildSynara() : [];
+// Owner Controls (owner.html) is its own app. Not precached: nobody else loads it.
+const owner = [
+  await buildVendor('flux-owner_vendor.js', manifest.ownerVendor),
+  await buildClassic('flux-owner.js', manifest.owner),
+  await buildCss('flux-owner.css', manifest.ownerCss),
+];
 
 /* ── Post-build wiring (B5.4) ── */
 
 // 1. Prune stale bundle outputs (older hashes) so git status stays exact.
-const keep = new Set([...results.map((r) => r.out), ...synara.map((r) => r.out), 'precache-manifest.json']);
+const keep = new Set([...results.map((r) => r.out), ...synara.map((r) => r.out), ...owner.map((r) => r.out), 'precache-manifest.json']);
 for (const f of fs.readdirSync(OUT)) {
   if (!keep.has(f) && /^flux(-\w+)?\.[0-9a-f]{8}\.(js|css)$/.test(f)) fs.unlinkSync(path.join(OUT, f));
   if (!keep.has(f) && /^flux(-\w+)?\.(js|css)$/.test(f)) fs.unlinkSync(path.join(OUT, f)); // pre-hash era outputs
@@ -200,13 +206,24 @@ if (synara.length && fs.existsSync(SYNARA_HTML)) {
   fs.writeFileSync(SYNARA_HTML, page);
 }
 
+// 2a-owner. owner.html too.
+{
+  const OWNER_HTML = path.join(ROOT, 'owner.html');
+  let page = fs.readFileSync(OWNER_HTML, 'utf8');
+  for (const r of owner) {
+    const [base, ext] = r.name.split('.');
+    page = page.replace(new RegExp(`public/bundles/${base}(\\.[0-9a-f]{8})?\\.${ext}`, 'g'), `public/bundles/${r.out}`);
+  }
+  fs.writeFileSync(OWNER_HTML, page);
+}
+
 // 2b. grapher.html loads plain source files — it has to work on its own —
 //     and the service worker serves unhashed files stale-while-revalidate.
 //     So after a deploy a returning visitor got the NEW grapher.html with
 //     the OLD scripts, and the page broke ("G.create is not a function").
 //     A content hash in each query string makes every version its own URL.
 //     calculator.html, periodic.html and composer.html are built the same way, for the same reason.
-for (const page of ['grapher.html', 'calculator.html', 'periodic.html', 'composer.html', 'flashcards.html', 'translate.html', 'pixel.html', 'synara.html', 'partners.html', 'landing.html', 'suite.html', 'teacher.html', 'synara-welcome.html', 'index.html']) {
+for (const page of ['owner.html', 'grapher.html', 'calculator.html', 'periodic.html', 'composer.html', 'flashcards.html', 'translate.html', 'pixel.html', 'synara.html', 'partners.html', 'landing.html', 'suite.html', 'teacher.html', 'synara-welcome.html', 'index.html']) {
   const file = path.join(ROOT, page);
   if (!fs.existsSync(file)) continue;
   const before = fs.readFileSync(file, 'utf8');
@@ -234,7 +251,7 @@ if (stamped === sw && !sw.includes(`const BUILD = '${build}';`)) {
   fs.writeFileSync(SW, stamped);
 }
 
-for (const r of [...results, ...synara]) {
+for (const r of [...results, ...synara, ...owner]) {
   console.log(`  ${r.out.padEnd(30)} ${String(r.files).padStart(3)} files  ${(r.bytes / 1024).toFixed(0)} KB`);
 }
 console.log(`Bundles written to public/bundles/ (build ${build})`);

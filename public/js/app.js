@@ -1813,7 +1813,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notebook',notebook:'Notebook',timer:'Time',canvas:'Canvas',schoology:'Schoology',google:'Google',profile:'Profile',goals:'College Prep',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',teacherResources:'Resources',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffMessages:'Messages',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notebook',notebook:'Notebook',timer:'Time',canvas:'Canvas',schoology:'Schoology',google:'Google',profile:'Profile',goals:'College Prep',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',teacherResources:'Resources',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffMessages:'Messages',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
 
 // ══ Time / format helpers (used by educator dashboards + onboarding) ══
 function getTimeGreeting(){
@@ -2522,81 +2522,6 @@ function renderImpersonatePill(){
   document.getElementById('fluxImpersonatePill')?.remove();
 }
 window.renderImpersonatePill=renderImpersonatePill;
-
-/** Modal picker: choose Off / Student / any staff directory entry. */
-function openImpersonatePicker(){
-  if(typeof isOwner==='function'&&!isOwner())return;
-  document.getElementById('fluxImpersonatePicker')?.remove();
-  const dir=window.FluxStaffDirectory;
-  const ov=document.createElement('div');
-  ov.id='fluxImpersonatePicker';
-  ov.style.cssText='position:fixed;inset:0;background:rgba(5,8,16,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:9990;display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto';
-  ov.innerHTML=`
-    <div style="max-width:560px;width:100%;background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,.55)">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-        <span style="font-size:1.4rem"></span>
-        <h2 style="margin:0;font-size:1.2rem;font-weight:900" class="flux-color-title">Owner test mode</h2>
-      </div>
-      <p style="font-size:.82rem;color:var(--muted2);margin:0 0 16px">Impersonate any role or staff member to test their planner. Your real Supabase data is untouched. Exit at any time.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-        <button type="button" data-imp="off" style="padding:11px;border-radius:12px;background:var(--card2);border:1px solid var(--border2);color:var(--text);font-weight:700;cursor:pointer">Off (real owner)</button>
-        <button type="button" data-imp="student" style="padding:11px;border-radius:12px;background:rgba(var(--accent-rgb),.1);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent);font-weight:700;cursor:pointer">Student (generic)</button>
-      </div>
-      <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px">Pick a real staff member</label>
-      <select id="impDirSelect" style="width:100%;padding:10px;font-size:.9rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);margin-bottom:10px">
-        <option value="">— choose —</option>
-      </select>
-      <div style="display:flex;gap:8px;margin-bottom:14px">
-        <label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:10px;background:var(--card2);border:1px solid var(--border2);font-size:.78rem;cursor:pointer"><input type="radio" name="impMode" value="work" checked> Work mode</label>
-        <label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:10px;background:var(--card2);border:1px solid var(--border2);font-size:.78rem;cursor:pointer"><input type="radio" name="impMode" value="personal"> Personal mode</label>
-      </div>
-      <div style="display:flex;gap:10px">
-        <button type="button" id="impCancel" style="flex:0 0 auto;padding:11px 16px;border-radius:12px;background:var(--card2);border:1px solid var(--border2);color:var(--muted2);font-weight:700;cursor:pointer">Cancel</button>
-        <button type="button" id="impGo" style="flex:1;padding:11px;border-radius:12px;background:linear-gradient(90deg,#7c5cff,#ff5c7c);color:#fff;font-weight:800;border:none;cursor:pointer">Switch into selected staff</button>
-      </div>
-    </div>`;
-  document.body.appendChild(ov);
-
-  const sel=document.getElementById('impDirSelect');
-  if(sel&&dir){
-    const list=dir.all.slice().sort((a,b)=>a.name.localeCompare(b.name));
-    const ROLE_LABEL={teacher:'Teacher',counselor:'Counselor',staff:'Staff',admin:'Admin'};
-    sel.innerHTML='<option value="">— choose —</option>'+list.map(d=>{
-      const roleTxt=ROLE_LABEL[d.role]||d.role;
-      const subj=d.subject?' · '+d.subject:'';
-      return `<option value="${esc(d.email)}">${esc(d.name)} — ${esc(roleTxt)}${esc(subj)}</option>`;
-    }).join('');
-    const cur=FluxImpersonate.active();
-    if(cur&&cur.email)sel.value=cur.email;
-  }
-
-  const close=()=>ov.remove();
-  ov.querySelectorAll('[data-imp]').forEach(b=>b.addEventListener('click',()=>{
-    const v=b.dataset.imp;
-    if(v==='off'){FluxImpersonate.clear();close();return;}
-    if(v==='student'){
-      FluxImpersonate.set({role:'student',name:'Test Student',subject:'',email:'',mode:'personal'});
-      close();
-    }
-  }));
-  document.getElementById('impCancel')?.addEventListener('click',close);
-  document.getElementById('impGo')?.addEventListener('click',()=>{
-    const email=sel?.value||'';
-    if(!email||!dir){return;}
-    const rec=dir.findByEmail(email);
-    if(!rec)return;
-    const mode=document.querySelector('input[name="impMode"]:checked')?.value||'work';
-    FluxImpersonate.set({
-      role:rec.role,
-      name:rec.name,
-      subject:rec.subject||'',
-      email:rec.email,
-      mode,
-    });
-    close();
-  });
-}
-window.openImpersonatePicker=openImpersonatePicker;
 
 /** Sidebar / drawer: educator Work mode shows School tab strip; students keep classic rows. */
 function syncSchoolNavChrome(){
@@ -3832,9 +3757,11 @@ function nav(id,btn,navOpt){
   // would not catch them — send them somewhere real rather than to a blank
   // panel with no way back.
   if(!FLUX_NOTEBOOK_ENABLED&&(id==='notebook'||id==='notes')){ id='dashboard'; }
+  // Owner Controls moved to its own app. Old saved links still lead somewhere.
   if(id==='flux_control'){
-    const r=getMyRole();
-    if(r!=='owner'&&r!=='dev'){nav('dashboard');return;}
+    if(isOwner())location.href='owner.html';
+    else nav('dashboard');
+    return;
   }
   // Check if tab is visible
   const tc=tabConfig.find(t=>t.id===id);
@@ -3951,11 +3878,10 @@ function nav(id,btn,navOpt){
   syncPanelScrollLayout();
   const tTitle=document.getElementById('topbarTitle');
   if(tTitle){
-    if(id==='flux_control')tTitle.textContent=isOwner()?'Owner control':(getMyRole()==='dev'?'Dev panel':'Control');
-    else if(id==='canvas')tTitle.textContent=PANEL_TITLES.canvas||'Canvas';
+    if(id==='canvas')tTitle.textContent=PANEL_TITLES.canvas||'Canvas';
     else tTitle.textContent=PANEL_TITLES[id]||id;
   }
-  const fns={dashboard:()=>{try{const pendStaff=typeof currentUser!=='undefined'&&currentUser&&String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'&&FluxRole.current==='student'&&FluxRole.isPersonalMode();const eduDash=(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode())||pendStaff;if(eduDash){fluxApplyStudentDashboardChrome(false);if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function'){FluxStaffPlatform.renderStaffPersonalDashboard();return;}}fluxApplyStudentDashboardChrome(true);}catch(e){}renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderScheduleConflictNotices();if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();if(FluxPersonal.applyDashboardVisibility)FluxPersonal.applyDashboardVisibility();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>{ensureNbkSubtabs();renderNotesList();},notebook:()=>{ensureNbkSubtabs();try{const m=document.getElementById('notebookMount');if(m&&!m.dataset.fnbReady&&window.FluxNotebook&&FluxNotebook.open){FluxNotebook.open(m);m.dataset.fnbReady='1';}}catch(e){}},goals:()=>{renderExtrasList();renderSchoolsList();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();try{window.FluxAcademicScores?.render();}catch(e){}},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();restoreTodayMood();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();try{window.FluxChangelog?.render();}catch(e){}try{window.FluxPlatformUI?.renderSettings();}catch(e){}loadSettingsUI();try{fluxUpgradeSwatchA11y();}catch(e){}try{if(window.FluxParentPortal?.renderStudentSettings)FluxParentPortal.renderStudentSettings();}catch(e){}try{if(window.FluxLearnerProfile?.renderCard)FluxLearnerProfile.renderCard();}catch(e){}},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},counselorWorkspace:()=>{try{renderCounselorWorkspace();}catch(e){}},adminDashboard:()=>{try{renderAdminDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},teacherResources:()=>{try{if(typeof renderTeacherResources==='function')renderTeacherResources();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}},staffTasks:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffTasksPanel==='function')FluxStaffPlatform.renderStaffTasksPanel();}catch(e){}},staffMeetingNotes:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderMeetingNotesPanel==='function')FluxStaffPlatform.renderMeetingNotesPanel();}catch(e){}},staffPD:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderPDPanel==='function')FluxStaffPlatform.renderPDPanel();}catch(e){}},staffWellbeing:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderWellbeingPanel==='function')FluxStaffPlatform.renderWellbeingPanel();}catch(e){}},staffResources:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderResourcesPanel==='function')FluxStaffPlatform.renderResourcesPanel();}catch(e){}},staffPersonalHub:()=>{try{if(typeof renderStaffPersonalHub==='function')renderStaffPersonalHub();}catch(e){}},schoolFeedPanel:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderSchoolFeed==='function')FluxStaffPlatform.renderSchoolFeed();}catch(e){}},staffHub:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffWorkHub==='function')FluxStaffPlatform.renderStaffWorkHub();}catch(e){}},staffMessages:()=>{try{if(typeof renderStaffMessages==='function')renderStaffMessages();}catch(e){}},parentPortal:()=>{try{if(window.renderParentPortal)renderParentPortal();}catch(e){}}};
+  const fns={dashboard:()=>{try{const pendStaff=typeof currentUser!=='undefined'&&currentUser&&String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'&&FluxRole.current==='student'&&FluxRole.isPersonalMode();const eduDash=(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode())||pendStaff;if(eduDash){fluxApplyStudentDashboardChrome(false);if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function'){FluxStaffPlatform.renderStaffPersonalDashboard();return;}}fluxApplyStudentDashboardChrome(true);}catch(e){}renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderScheduleConflictNotices();if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();if(FluxPersonal.applyDashboardVisibility)FluxPersonal.applyDashboardVisibility();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>{ensureNbkSubtabs();renderNotesList();},notebook:()=>{ensureNbkSubtabs();try{const m=document.getElementById('notebookMount');if(m&&!m.dataset.fnbReady&&window.FluxNotebook&&FluxNotebook.open){FluxNotebook.open(m);m.dataset.fnbReady='1';}}catch(e){}},goals:()=>{renderExtrasList();renderSchoolsList();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();try{window.FluxAcademicScores?.render();}catch(e){}},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();restoreTodayMood();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();try{window.FluxChangelog?.render();}catch(e){}try{window.FluxPlatformUI?.renderSettings();}catch(e){}loadSettingsUI();try{fluxUpgradeSwatchA11y();}catch(e){}try{if(window.FluxParentPortal?.renderStudentSettings)FluxParentPortal.renderStudentSettings();}catch(e){}try{if(window.FluxLearnerProfile?.renderCard)FluxLearnerProfile.renderCard();}catch(e){}},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},counselorWorkspace:()=>{try{renderCounselorWorkspace();}catch(e){}},adminDashboard:()=>{try{renderAdminDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},teacherResources:()=>{try{if(typeof renderTeacherResources==='function')renderTeacherResources();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}},staffTasks:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffTasksPanel==='function')FluxStaffPlatform.renderStaffTasksPanel();}catch(e){}},staffMeetingNotes:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderMeetingNotesPanel==='function')FluxStaffPlatform.renderMeetingNotesPanel();}catch(e){}},staffPD:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderPDPanel==='function')FluxStaffPlatform.renderPDPanel();}catch(e){}},staffWellbeing:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderWellbeingPanel==='function')FluxStaffPlatform.renderWellbeingPanel();}catch(e){}},staffResources:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderResourcesPanel==='function')FluxStaffPlatform.renderResourcesPanel();}catch(e){}},staffPersonalHub:()=>{try{if(typeof renderStaffPersonalHub==='function')renderStaffPersonalHub();}catch(e){}},schoolFeedPanel:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderSchoolFeed==='function')FluxStaffPlatform.renderSchoolFeed();}catch(e){}},staffHub:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffWorkHub==='function')FluxStaffPlatform.renderStaffWorkHub();}catch(e){}},staffMessages:()=>{try{if(typeof renderStaffMessages==='function')renderStaffMessages();}catch(e){}},parentPortal:()=>{try{if(window.renderParentPortal)renderParentPortal();}catch(e){}}};
   // A panel renderer must never abort the rest of nav(): the panel class has
   // already been swapped above, so throwing here strands the user on a
   // half-initialised tab with the post-render steps (split layout, bumpNav,
@@ -4208,7 +4134,6 @@ const NAV_TAB_SVGS={
   mood:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 10h.01M16 10h.01"/><path d="M8.2 15a4 4 0 0 0 7.6 0"/></svg>`,
   /* Sliders — distinct from Flux AI sparkles */
   settings:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 3v5"/><path d="M20 21v-5"/><path d="M20 8V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 14h4"/></svg>`,
-  flux_control:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="11" width="7" height="10" rx="1.5"/><rect x="3" y="15" width="7" height="6" rx="1.5"/></svg>`,
   references:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/><path d="M8 7h8M8 11h6"/></svg>`,
   periodic:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
   gmail:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2Z"/><path d="m22 6-10 7L2 6"/></svg>`,
@@ -4247,15 +4172,10 @@ function getNavIconHtml(tabId,variant){
    icon, the label and whether it appears at all from tabConfig — the same
    source renderSidebars() builds the sidebar and the drawer from. The phone
    then cannot disagree with the laptop, which is the point of the redesign,
-   and a tab someone renames in Settings gets renamed here too.
-
-   The admin slot is exempt: flux_control is injected by role a few lines
-   above and deliberately is not a tabConfig entry, so matching on tabConfig
-   would hide it from the owner. */
+   and a tab someone renames in Settings gets renamed here too. */
 function syncMoreSheetNav(){
   const visible=new Set(tabConfig.filter(t=>t.visible).map(t=>t.id));
   document.querySelectorAll('.more-sheet-item[data-nav-tab]').forEach(btn=>{
-    if(btn.closest('#moreSheetAdminSlot'))return;
     const id=btn.getAttribute('data-nav-tab');
     btn.style.display=visible.has(id)?'':'none';
     const tc=tabConfig.find(t=>t.id===id);
@@ -4393,25 +4313,6 @@ function renderSidebars(){
       schoolGroupMob,
       buildStdGroup('Me & Life',groups[2].ids,'navMob','padding:8px 16px 4px'),
     ].join('');
-  }
-
-  const role=getMyRole();
-  if(role==='owner'||role==='dev'){
-    const lab=role==='owner'?'Owner control':'Dev panel';
-    const adminGroup=`<div class="nav-group"><div class="nav-group-label">Admin</div><button type="button" class="nav-item" onclick="nav('flux_control',this)" data-tab="flux_control" aria-label="${lab}"><span class="ni">${getNavIconHtml('flux_control')}</span><span class="nl">${lab}</span></button></div>`;
-    const adminGroupMob=`<div class="nav-group"><div class="nav-group-label">Admin</div><button type="button" class="nav-item" onclick="navMob('flux_control')" data-tab="flux_control" aria-label="${lab}"><span class="ni">${getNavIconHtml('flux_control')}</span><span class="nl">${lab}</span></button></div>`;
-    if(sidebarNav)sidebarNav.insertAdjacentHTML('beforeend',adminGroup);
-    if(drawerNav)drawerNav.insertAdjacentHTML('beforeend',adminGroupMob);
-  }
-
-  const adminSlot=document.getElementById('moreSheetAdminSlot');
-  if(adminSlot){
-    if(role==='owner'||role==='dev'){
-      const lab=role==='owner'?'Owner control':'Dev panel';
-      adminSlot.innerHTML=`<button type="button" class="more-sheet-item" data-nav-tab="flux_control" onclick="navMob('flux_control')"><span class="more-sheet-icon" aria-hidden="true">${getNavIconHtml('flux_control','moreSheet')}</span><span class="more-sheet-label">${lab}</span></button>`;
-    }else{
-      adminSlot.innerHTML='';
-    }
   }
 
   // Mobile bottom nav is always the same 5 spec tabs:
@@ -8211,7 +8112,6 @@ function loadSettingsUI(){
   }
   if(window.FluxPersonal&&FluxPersonal.initSettingsUI)FluxPersonal.initSettingsUI();
   if(typeof window.fluxGoogleDocsLoadSettingsUI==='function')window.fluxGoogleDocsLoadSettingsUI();
-  updateMasterBacklogCardVisibility();
 }
 function requestFluxNotifications(){
   if(!('Notification' in window)){showToast('Notifications not supported here','warning');return;}
@@ -8405,317 +8305,10 @@ function isOwner(){
 function getMyRole(){
   return isOwner()?'owner':'user';
 }
-/** Owner or dev (admin-tier) — used for internal roadmap UI. */
-function canAccessMasterBacklog(){
-  const r=getMyRole();
-  return r==='owner'||r==='dev';
-}
-function updateMasterBacklogCardVisibility(){
-  const mb=document.getElementById('settingsMasterBacklogCard');
-  if(mb)mb.style.display=canAccessMasterBacklog()?'block':'none';
-}
-function getMyDevPerms(){
-  return [];
-}
-function hasDevPerm(perm){
-  if(isOwner())return true;
-  return getMyDevPerms().includes(perm);
-}
-
-/** Sections the owner can show/hide on Dev Panel for dev accounts (owner always sees all + this editor). */
-const DEV_PANEL_SECTION_META=[
-  {id:'devMode',label:'Dev Mode toggle',desc:'Flip local dev mode for testing'},
-  {id:'featureFlags',label:'Feature flags',desc:'Planner tab visibility toggles'},
-  {id:'actions',label:'Clear & sync',desc:'Clear my data and force cloud sync'},
-  {id:'stagedRollout',label:'Staged rollout',desc:'Build preview and push to all users'},
-];
-function getDevPanelSectionsMap(){
-  const pc=load('flux_platform_config',{})||{};
-  const raw=pc.devPanelSections&&typeof pc.devPanelSections==='object'?pc.devPanelSections:{};
-  const out={};
-  DEV_PANEL_SECTION_META.forEach(s=>{out[s.id]=raw[s.id]!==false;});
-  return out;
-}
-function devPanelShowsSection(sectionId){
-  if(isOwner())return true;
-  if(getMyRole()!=='dev')return false;
-  return getDevPanelSectionsMap()[sectionId]===true;
-}
-function saveDevPanelSectionsMap(map){
-  const next={...getDevPanelSectionsMap(),...map};
-  if(typeof savePlatformConfig==='function'){
-    savePlatformConfig({devPanelSections:next});
-  }else{
-    const pc=load('flux_platform_config',{})||{};
-    pc.devPanelSections=next;
-    save('flux_platform_config',pc);
-  }
-  try{if(typeof syncKey==='function')syncKey('platform',1);}catch(_){}
-  try{if(isOwner()&&typeof syncToCloud==='function')void syncToCloud();}catch(_){}
-  try{if(typeof ownerAuditAppend==='function')ownerAuditAppend('dev_panel_layout',JSON.stringify(next));}catch(_){}
-}
-function renderDevPanelLayoutEditorHtml(){
-  if(!isOwner())return'';
-  const map=getDevPanelSectionsMap();
-  return`<div class="dev-panel-layout-editor-wrap" style="margin-bottom:16px;padding:12px 14px;background:var(--card2);border:1px solid var(--border2);border-radius:12px">
-    <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:6px">Dev panel layout</div>
-    <div style="font-size:.72rem;color:var(--muted2);margin-bottom:10px;line-height:1.45">Toggle what <b>dev accounts</b> see in Dev Panel. You always see every section.</div>
-    ${DEV_PANEL_SECTION_META.map(s=>{
-      const on=map[s.id];
-      return`<label style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:.8rem">
-        <input type="checkbox" data-dev-panel-section="${s.id}" ${on?'checked':''} style="margin-top:3px;width:15px;height:15px;flex-shrink:0">
-        <span><b>${esc(s.label)}</b><br><span style="font-size:.68rem;color:var(--muted2)">${esc(s.desc)}</span></span>
-      </label>`;
-    }).join('')}
-    <button type="button" onclick="saveDevPanelSectionsFromCheckboxes(this)" style="margin-top:12px;width:100%;padding:9px;font-size:.78rem;font-weight:700;border-radius:10px;background:rgba(var(--accent-rgb),.14);border:1px solid rgba(var(--accent-rgb),.32);color:var(--accent);cursor:pointer">Save layout for devs</button>
-  </div>`;
-}
-window.saveDevPanelSectionsFromCheckboxes=function(anchor){
-  if(!isOwner())return;
-  const wrap=anchor&&anchor.closest?anchor.closest('.dev-panel-layout-editor-wrap'):null;
-  const scope=wrap||document;
-  const next={};
-  scope.querySelectorAll('[data-dev-panel-section]').forEach(cb=>{
-    next[cb.getAttribute('data-dev-panel-section')]=cb.checked;
-  });
-  saveDevPanelSectionsMap(next);
-  if(typeof showToast==='function')showToast('Dev panel layout saved','success');
-  if(document.getElementById('flux_control')?.classList.contains('active')&&typeof renderFluxControlTab==='function')renderFluxControlTab();
-  else if(document.getElementById('modPanel'))openModPanel();
-  else if(typeof reopenOwnerSuite==='function')reopenOwnerSuite('team');
-};
-window.renderDevPanelLayoutEditorHtml=renderDevPanelLayoutEditorHtml;
-
-function isDevMode(){return load('flux_dev_mode',false);}
-
-// Load dev accounts from cloud (stored under owner's Supabase row)
-async function loadDevAccounts(){
-  const sb=getSB();if(!sb)return;
-  try{
-    const{data}=await sb.from('user_data').select('data').eq('id',currentUser.id).single();
-    if(data?.data?.devAccounts){
-      save('flux_dev_accounts',data.data.devAccounts);
-    }
-  }catch(e){}
-}
-
-// Save dev accounts to cloud under owner's row
-async function saveDevAccounts(devAccounts){
-  save('flux_dev_accounts',devAccounts);
-  // Also push to cloud immediately
-  if(isOwner())await syncToCloud();
-}
-
-function initModFeatures(){
-  /* Owner / dev tools: sidebar → Admin → Owner control or Dev panel (full planner tab). */
-}
-
-function buildModPanelCardHtml(embed){
-  const role=getMyRole();
-  const devMode=isDevMode();
-  const devAccounts=load('flux_dev_accounts',[]);
-  const allPerms=['clear_data','feature_flags','dev_mode','manage_devs','view_users'];
-  const permLabels={clear_data:'Clear Data',feature_flags:'Feature Flags',dev_mode:'Dev Mode Toggle',manage_devs:'Manage Dev Accounts',view_users:'View Users'};
-  const myPerms=getMyDevPerms();
-  const showDevModeBlock=devPanelShowsSection('devMode')&&(isOwner()||myPerms.includes('dev_mode'));
-  const showFlagsBlock=devPanelShowsSection('featureFlags')&&(isOwner()||myPerms.includes('feature_flags'));
-  const showActionsBlock=devPanelShowsSection('actions');
-  const showClearBtn=showActionsBlock&&(isOwner()||myPerms.includes('clear_data'));
-  const showForceSync=showActionsBlock;
-  const showStagedBlock=devPanelShowsSection('stagedRollout');
-  const devPanelEmpty=!isOwner()&&!showDevModeBlock&&!showFlagsBlock&&!showActionsBlock&&!showStagedBlock;
-  const dismissClick=embed?`onclick="nav('dashboard')"`:`onclick="document.getElementById('modPanel')?.remove()"`;
-  const cardScroll=embed?'max-height:none;overflow:visible':'max-height:90vh;overflow-y:auto';
-
-  const devAccountsHTML=isOwner()?`
-    <div style="margin-top:18px">
-      <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:10px">Dev Accounts</div>
-      <div id="devAccountsList">
-        ${devAccounts.length?devAccounts.map((d,i)=>`
-          <div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-              <span style="font-size:.82rem;font-weight:700;flex:1">${esc(d.email)}</span>
-              <button onclick="removeDevAccount(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.8rem;padding:2px 6px">✕ Remove</button>
-            </div>
-            <div style="display:flex;flex-wrap:wrap;gap:6px">
-              ${allPerms.map(p=>`<button onclick="toggleDevPerm(${i},'${p}',this)" style="padding:3px 10px;font-size:.68rem;border-radius:20px;background:${d.perms?.includes(p)?'rgba(var(--accent-rgb),.15)':'rgba(255,255,255,.04)'};border:1px solid ${d.perms?.includes(p)?'rgba(var(--accent-rgb),.35)':'var(--border2)'};color:${d.perms?.includes(p)?'var(--accent)':'var(--muted2)'}">${permLabels[p]}</button>`).join('')}
-            </div>
-          </div>`).join(''):'<div style="color:var(--muted);font-size:.78rem;margin-bottom:10px">No dev accounts yet.</div>'}
-      </div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <input type="email" id="newDevEmail" placeholder="email@gmail.com" style="flex:1;margin:0;padding:8px 12px;font-size:.8rem">
-        <button onclick="addDevAccount()" style="padding:8px 14px;font-size:.78rem;flex-shrink:0">+ Add Dev</button>
-      </div>
-    </div>`:'';
-
-  return`
-    <div style="background:var(--card);border:1px solid ${role==='owner'?'rgba(251,191,36,.4)':'rgba(var(--accent-rgb),.3)'};border-radius:22px;padding:24px;width:100%;max-width:500px;box-shadow:${embed?'0 8px 40px rgba(0,0,0,.2)':'0 32px 80px rgba(0,0,0,.6)'};${cardScroll}">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-        <div style="font-size:1.4rem">${role==='owner'?'👑':'⚡'}</div>
-        <div>
-          <div style="font-size:1rem;font-weight:800">${role==='owner'?'Owner Panel':'Dev Panel'}</div>
-          <div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${esc(currentUser?.email||'')}</div>
-        </div>
-        <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
-          <span style="font-size:.65rem;padding:3px 8px;border-radius:20px;background:${role==='owner'?'rgba(251,191,36,.15)':'rgba(var(--accent-rgb),.12)'};border:1px solid ${role==='owner'?'rgba(251,191,36,.3)':'rgba(var(--accent-rgb),.25)'};color:${role==='owner'?'var(--gold)':'var(--accent)'};font-family:JetBrains Mono,monospace">${role.toUpperCase()} · ${isDevMode()?'DEV':'LIVE'}</span>
-          <button type="button" ${dismissClick} style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:0" aria-label="${embed?'Back to planner':'Close'}">✕</button>
-        </div>
-      </div>
-
-      ${isOwner()?renderDevPanelLayoutEditorHtml():''}
-
-      ${devPanelEmpty?`<div style="padding:14px 12px;margin-bottom:8px;background:var(--card2);border:1px solid var(--border2);border-radius:12px;font-size:.78rem;color:var(--muted2);line-height:1.5">No sections are enabled for dev accounts on this panel. Ask the owner to turn sections on in <b>Dev Panel</b> or <b>Owner Suite → Team &amp; roles</b>.</div>`:''}
-
-      ${showDevModeBlock?`
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">
-        <div><div style="font-size:.87rem;font-weight:700">Dev Mode</div><div style="font-size:.72rem;color:var(--muted)">Test features before pushing to users</div></div>
-        <button onclick="toggleDevMode()" style="padding:6px 16px;font-size:.78rem;background:${devMode?'var(--green)':'rgba(255,255,255,.06)'};border:1px solid ${devMode?'var(--green)':'var(--border2)'};color:${devMode?'#080a0f':'var(--muted2)'}">${devMode?'ON':'OFF'}</button>
-      </div>`:''}
-
-      ${showFlagsBlock?`
-      <div style="margin-top:14px;margin-bottom:6px;font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-family:'JetBrains Mono',monospace">Feature Flags</div>
-      ${['ai','canvas','calendar','goals','mood','timer','notes'].map(f=>{
-        const enabled=load('flux_feat_'+f,true);
-        return`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
-          <span style="font-size:.85rem;font-weight:500">${f.charAt(0).toUpperCase()+f.slice(1)}</span>
-          <button onclick="toggleFeatureFlag('${f}',this)" style="padding:4px 12px;font-size:.72rem;background:${enabled?'rgba(var(--accent-rgb),.15)':'rgba(255,255,255,.04)'};border:1px solid ${enabled?'rgba(var(--accent-rgb),.3)':'var(--border2)'};color:${enabled?'var(--accent)':'var(--muted2)'}">${enabled?'Enabled':'Disabled'}</button>
-        </div>`;
-      }).join('')}`:''}
-
-      ${showActionsBlock?`<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-        ${showClearBtn?`<button onclick="clearMyPlannerData()" style="flex:1;background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);color:var(--red);font-size:.78rem;min-width:120px">Clear My Data</button>`:''}
-        ${showForceSync?`<button onclick="forceSyncNow()" style="flex:1;font-size:.78rem;min-width:100px">⟳ Force Sync</button>`:''}
-      </div>`:''}
-
-      ${showStagedBlock?(()=>{
-        const buildId=(typeof FLUX_BUILD_ID!=='undefined'&&FLUX_BUILD_ID)||(window.FLUX_BUILD_ID||'unknown');
-        const gate=(typeof FluxRelease!=='undefined'&&FluxRelease.getGate())||null;
-        const released=gate&&gate.released?String(gate.released).replace(/^build-/,''):'— none yet';
-        const preview=String(buildId).replace(/^build-/,'');
-        const isLive=gate&&gate.released===buildId;
-        return`
-        <div style="margin-top:16px;padding:12px 14px;background:linear-gradient(135deg,rgba(251,191,36,.1),rgba(124,92,255,.08));border:1px solid rgba(251,191,36,.28);border-radius:12px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-            <span style="font-size:.6rem;font-weight:800;letter-spacing:.08em;color:#fbbf24;font-family:JetBrains Mono,monospace">STAGED ROLLOUT</span>
-            <span style="margin-left:auto;font-size:.62rem;color:var(--muted);font-family:JetBrains Mono,monospace">${isLive?'live':'preview'}</span>
-          </div>
-          <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:10px">Preview build <b style="color:var(--text)">${preview}</b> · users on <b style="color:var(--text)">${released}</b>${isLive?' ✓':''}</div>
-          <button type="button" onclick="window.FluxRelease&&window.FluxRelease.openPushDialog()" ${isLive?'disabled':''} style="width:100%;padding:8px;font-size:.78rem;font-weight:700;border-radius:10px;background:${isLive?'var(--card2)':'linear-gradient(135deg,#fbbf24,#f59e0b)'};border:1px solid ${isLive?'var(--border)':'rgba(251,191,36,.4)'};color:${isLive?'var(--muted)':'#080a0f'};cursor:${isLive?'default':'pointer'};opacity:${isLive?0.6:1}">${isLive?'✓ Build already released':'Push this build to all users'}</button>
-        </div>`;
-      })():''}
-
-      ${devAccountsHTML}
-    </div>`;
-}
-
-function refreshFluxControlIfActive(){
-  const p=document.getElementById('flux_control');
-  if(p&&p.classList.contains('active')&&typeof renderFluxControlTab==='function'){
-    renderFluxControlTab();
-    return true;
-  }
-  return false;
-}
-
-function renderFluxControlTab(){
-  const mount=document.getElementById('fluxControlMount');
-  if(!mount)return;
-  document.getElementById('modPanel')?.remove();
-  document.getElementById('ownerSuite')?.remove();
-  const role=getMyRole();
-  if(role==='owner'&&typeof openOwnerSuite==='function'){
-    const pref=window.__fluxOwnerPrefTab;
-    window.__fluxOwnerPrefTab=null;
-    openOwnerSuite(pref,{mount,skipNav:true});
-  }else if(role==='dev'){
-    openModPanel({mount});
-  }
-}
-window.renderFluxControlTab=renderFluxControlTab;
-
-function openModPanel(opts){
-  opts=opts||{};
-  const role=getMyRole();
-  if(role==='user')return;
-  if(opts.mount){
-    opts.mount.innerHTML=`<div class="flux-mod-panel-embed" style="max-width:520px;margin:0 auto">${buildModPanelCardHtml(true)}</div>`;
-    return;
-  }
-  const existing=document.getElementById('modPanel');if(existing)existing.remove();
-  const panel=document.createElement('div');
-  panel.id='modPanel';
-  panel.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9800;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px);overflow-y:auto';
-  panel.innerHTML=buildModPanelCardHtml(false);
-  document.body.appendChild(panel);
-}
-
-function refreshDevAccountUI(){
-  if(document.getElementById('flux_control')?.classList.contains('active')&&typeof renderFluxControlTab==='function'){
-    renderFluxControlTab();
-    return;
-  }
-  if(typeof reopenOwnerSuite==='function'&&document.getElementById('ownerSuite'))reopenOwnerSuite();
-  else if(document.getElementById('ownerSuite')&&typeof openOwnerSuite==='function')openOwnerSuite(undefined,{overlay:true});
-  else openModPanel();
-}
-
-function addDevAccount(){
-  if(!isOwner())return;
-  const email=(document.getElementById('osNewDevEmail')||document.getElementById('newDevEmail'))?.value?.trim();
-  if(!email||!email.includes('@')){alert('Enter a valid email.');return;}
-  const devAccounts=load('flux_dev_accounts',[]);
-  if(devAccounts.find(d=>d.email===email)){alert('Already a dev account.');return;}
-  devAccounts.push({email,role:'viewer',perms:['view_users'],addedAt:Date.now()});
-  saveDevAccounts(devAccounts);
-  refreshDevAccountUI();
-}
-
-function removeDevAccount(idx){
-  if(!isOwner())return;
-  const devAccounts=load('flux_dev_accounts',[]);
-  devAccounts.splice(idx,1);
-  saveDevAccounts(devAccounts);
-  refreshDevAccountUI();
-}
-
-function toggleDevPerm(idx,perm,btn){
-  if(!isOwner())return;
-  const devAccounts=load('flux_dev_accounts',[]);
-  const acc=devAccounts[idx];if(!acc)return;
-  if(!acc.perms)acc.perms=[];
-  const has=acc.perms.includes(perm);
-  if(has)acc.perms=acc.perms.filter(p=>p!==perm);
-  else acc.perms.push(perm);
-  saveDevAccounts(devAccounts);
-  btn.style.background=!has?'rgba(var(--accent-rgb),.15)':'rgba(255,255,255,.04)';
-  btn.style.borderColor=!has?'rgba(var(--accent-rgb),.35)':'var(--border2)';
-  btn.style.color=!has?'var(--accent)':'var(--muted2)';
-  if(typeof ownerAuditAppend==='function')ownerAuditAppend('dev_perm_toggle',JSON.stringify({idx,perm,on:!has}));
-}
-
-function toggleDevMode(){
-  const cur=isDevMode();
-  save('flux_dev_mode',!cur);
-  if(!refreshFluxControlIfActive())openModPanel();
-}
-
-function toggleFeatureFlag(feature,btn){
-  const cur=load('flux_feat_'+feature,true);
-  save('flux_feat_'+feature,!cur);
-  btn.textContent=cur?'Disabled':'Enabled';
-  btn.style.background=cur?'rgba(255,255,255,.04)':'rgba(var(--accent-rgb),.15)';
-  btn.style.borderColor=cur?'var(--border2)':'rgba(var(--accent-rgb),.3)';
-  btn.style.color=cur?'var(--muted2)':'var(--accent)';
-  const tc=tabConfig.find(t=>t.id===feature);
-  if(tc){tc.visible=!cur;save('flux_tabs',tabConfig);renderSidebars();}
-  if(isOwner()&&typeof ownerAuditAppend==='function')ownerAuditAppend('feature_flag',feature+':'+(!cur));
-}
-
 /* ── Delete my data (Settings › Data & info) ─────────────────────────────────
    The Privacy Policy promises every user can delete their own data. Until this
-   existed the only route was clearMyPlannerData(), which is owner-gated and
-   lives in the dev panel — so for students and teachers the published promise
-   was simply untrue.
+   existed the only route was an owner-gated button, so for students and
+   teachers the published promise was simply untrue.
 
    Order matters. Cloud rows go first, while the session is still valid; local
    storage only after the server confirms. Doing it the other way round would,
@@ -8765,25 +8358,6 @@ async function fluxDeleteMyData(){
   location.replace(location.pathname);
 }
 window.fluxDeleteMyData=fluxDeleteMyData;
-
-function clearMyPlannerData(){
-  if(!confirm('Clear ALL your planner data? This cannot be undone.'))return;
-  tasks=[];notes=[];habits=[];goals=[];colleges=[];moodHistory=[];extras=[];ecSchools=[];ecGoals=[];
-  save('tasks',tasks);save('flux_notes',notes);
-  save('flux_habits',habits);save('flux_goals',goals);save('flux_colleges',colleges);
-  save('flux_mood',moodHistory);
-  save('flux_extras',extras);save('flux_ec_schools',ecSchools);save('flux_ec_goals',ecGoals);
-  renderStats();renderTasks();renderNotesList();
-  renderExtrasList();renderSchoolsList();renderMoodHistory();
-  if(currentUser)syncToCloud();
-  document.getElementById('modPanel')?.remove();
-  refreshFluxControlIfActive();
-  const n=document.createElement('div');
-  n.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--green);color:#080a0f;padding:10px 20px;border-radius:10px;font-size:.82rem;font-weight:700;z-index:9999';
-  n.textContent='✓ Planner data cleared';
-  document.body.appendChild(n);setTimeout(()=>n.remove(),2500);
-}
-
 
 // ══════════════════════════════════════════
 // FEATURE ENHANCEMENTS v3
@@ -11336,7 +10910,6 @@ function fluxRenderAfterPull(){
   // Re-apply accent after renders in case sidebar was rebuilt
   updateLogoColor(fluxLoadStoredString('flux_accent','#00bfff'));
   if(typeof FluxPersonal!=='undefined')FluxPersonal.applyAll();
-  updateMasterBacklogCardVisibility();
 }
 
 /* A pull has been and gone: pushes may now go out. Until the first one of a
@@ -11704,45 +11277,6 @@ function initFluxFeedbackModal(){
     if(e.key==='Escape'&&m.classList.contains('flux-feedback-modal--open'))closeFluxFeedbackModal();
   });
 }
-
-window.ownerRefreshFeedbackInbox=async function(){
-  if(typeof isOwner!=='function'||!isOwner())return;
-  try{
-    await syncFromCloud();
-    if(typeof showToast==='function')showToast('Inbox refreshed','success');
-  }catch(e){}
-  const os=document.getElementById('ownerSuite');
-  if(os&&typeof window.__osSetTab==='function')window.__osSetTab('feedback');
-  else if(typeof reopenOwnerSuite==='function')reopenOwnerSuite('feedback');
-};
-
-window.ownerDismissFeedback=function(fid){
-  if(typeof isOwner!=='function'||!isOwner())return;
-  const ts=load('flux_feedback_tombstones',[]);
-  if(fid&&!ts.includes(fid)){
-    ts.push(fid);
-    save('flux_feedback_tombstones',ts.slice(-500));
-  }
-  const arr=(load('flux_feedback_inbox',[])||[]).filter(x=>x&&x.id!==fid);
-  save('flux_feedback_inbox',arr);
-  void syncToCloud();
-  try{if(typeof ownerAuditAppend==='function')ownerAuditAppend('feedback_dismiss',{id:fid});}catch(_){}
-  const os=document.getElementById('ownerSuite');
-  if(os&&typeof window.__osSetTab==='function')window.__osSetTab('feedback');
-  else if(typeof reopenOwnerSuite==='function')reopenOwnerSuite('feedback');
-};
-
-window.ownerExportFeedbackJson=function(){
-  if(typeof isOwner!=='function'||!isOwner())return;
-  const arr=load('flux_feedback_inbox',[]);
-  const blob=new Blob([JSON.stringify(arr,null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='flux-feedback-inbox.json';
-  a.click();
-  URL.revokeObjectURL(a.href);
-  try{if(typeof ownerAuditAppend==='function')ownerAuditAppend('feedback_export',{n:arr.length});}catch(_){}
-};
 
 // ══ OFFLINE BANNER · NOTIFICATIONS · DEEPLINKS ══
 let _fluxConnInit=false;
@@ -13368,12 +12902,8 @@ function renderCmdResults(){
       cmds.push({icon:'🔄',label:personalLbl,cat:'Workspace',id:'mode:personal',action:()=>{if(FluxRole.isWorkMode())toggleMode();else closeCommandPalette();}});
   }
 
-  const rNav=typeof getMyRole==='function'?getMyRole():'user';
-  if(rNav==='owner'||rNav==='dev'){
-    const pl=rNav==='owner'?'Owner control':'Dev panel';
-    if(cpMatch(pl,'',['admin','owner','dev']))
-      cmds.push({icon:rNav==='owner'?'👑':'⚡',label:pl,cat:'Navigate',id:'nav:flux_control',action:()=>{nav('flux_control');closeCommandPalette();}});
-  }
+  if(isOwner()&&cpMatch('Owner Controls','',['admin','owner','moderation']))
+    cmds.push({icon:'👑',label:'Owner Controls',cat:'Navigate',id:'nav:owner',action:()=>{location.href='owner.html';}});
 
   const refTools=[
     {icon:'📚',label:'Study Tools',action:()=>{nav('toolbox');closeCommandPalette();}},
@@ -14445,7 +13975,6 @@ function showApp(){
   try{if(typeof applyRoleUI==='function')applyRoleUI();}catch(_){}
   renderSidebars();
   populateSubjectSelects();
-  initModFeatures();
   initDashboardFeatures();
   renderStats();renderTasks();renderCalendar();renderCountdown();
   renderSmartSug();renderProfile();
@@ -14470,7 +13999,6 @@ function showApp(){
   if(currentUser){
     _updateUserUI(currentUser, currentUser.user_metadata?.full_name||currentUser.email?.split('@')[0]||'');
   }
-  updateMasterBacklogCardVisibility();
   syncFluxAIModeButtons();
   clearSvgLogoGradientStyles();
   if(typeof FluxRelease!=='undefined'&&FluxRelease&&typeof FluxRelease.applyGate==='function'){
@@ -15147,7 +14675,6 @@ window._refreshUserUI=_refreshUserUI;
 
 function handleSignedOut(){
   try{if(typeof clearSensitiveStaffCache==='function')clearSensitiveStaffCache();}catch(_){}
-  try{if(window.FluxOwnerSuite?.teardownVerificationQueue)window.FluxOwnerSuite.teardownVerificationQueue();}catch(_){}
   try{if(window.FluxStaffPlatform?.teardownVerificationRealtime)window.FluxStaffPlatform.teardownVerificationRealtime();}catch(_){}
   try{if(window.FluxCounselorCaseload?.teardown)window.FluxCounselorCaseload.teardown();}catch(_){}
   try{if(window.FluxFeatureFlags?.clear)FluxFeatureFlags.clear();}catch(_){}
