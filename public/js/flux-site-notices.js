@@ -174,23 +174,38 @@
 
   /* ---------- Site mode ---------- */
 
+  /* A role (Owner Controls › Roles) can let its members keep using Flux during
+     maintenance or keep saving while it is read-only. The database honours the
+     same permissions (flux_site_read_only). */
+  function roleCan(perm) {
+    var v = window.FluxAppVisibility;
+    return !!(v && v.can && v.can(perm));
+  }
+
   var _wasReadOnly = false;
+  var _lastSiteMode = null;
   function applySiteMode(v) {
+    _lastSiteMode = v;
     var mode = (v && v.mode) || 'normal';
     var now = Date.now();
     var starts = v && v.starts_at ? new Date(v.starts_at).getTime() : 0;
     var ends = v && v.ends_at ? new Date(v.ends_at).getTime() : Infinity;
     var maintNow = mode === 'maintenance' && starts <= now && now < ends;
     var maintSoon = mode === 'maintenance' && starts > now;
-    var readOnly = mode === 'read_only' || maintNow;
     var owner = isOwner();
+    var allowed = maintNow ? roleCan('site:maintenance') : roleCan('site:read_only');
+    var readOnly = (mode === 'read_only' || maintNow) && !allowed;
 
-    if (maintNow && !owner) showScreen(v); else hideScreen();
+    if (maintNow && !owner && !allowed) showScreen(v); else hideScreen();
 
     var s = stack();
     var old = s.querySelector('[data-notice="site"]');
     if (old) old.remove();
-    if (readOnly && (owner || !maintNow)) {
+    if ((mode === 'read_only' || maintNow) && !owner && allowed) {
+      s.insertBefore(banner('site', 'info',
+        'Flux is ' + (maintNow ? 'in maintenance' : 'read-only') + ' for everyone else',
+        'Your role lets you keep using it and saving as normal.'), s.firstChild);
+    } else if (readOnly && (owner || !maintNow)) {
       s.insertBefore(banner('site', 'warning',
         owner ? 'You set Flux to ' + (maintNow ? 'maintenance' : 'read-only') : 'Flux is read-only for a little while',
         owner ? 'Everyone else cannot save or post. Switch back in Owner Controls › Site mode.'
@@ -252,6 +267,10 @@
   function start() {
     refresh();
     setInterval(refresh, REFRESH_MS);
+    // This viewer's role permissions arrived or changed.
+    window.addEventListener('flux-app-visibility', function () {
+      if (_lastSiteMode) applySiteMode(_lastSiteMode);
+    });
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') refresh();
     });

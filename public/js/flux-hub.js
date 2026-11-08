@@ -131,6 +131,18 @@
       logo: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19h4l2.5-6.5L16.5 23l2.8-7H26"/></svg>',
     },
     {
+      id: 'aorta',
+      group: 'partner',
+      name: 'Aorta Project',
+      tagline: 'Partner app preview',
+      href: 'aorta.html',
+      free: true,
+      partner: true,
+      // Hidden from the public until the owner shows it (flux_hidden_apps);
+      // a role with "See Aorta Project" lets the partner preview it.
+      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></svg>',
+    },
+    {
       // Only the owner sees this tile, and owner.html turns anyone else away.
       // The database is what actually protects what is inside.
       id: 'owner',

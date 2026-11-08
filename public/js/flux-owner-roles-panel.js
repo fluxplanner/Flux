@@ -3,9 +3,10 @@
 
    Roles the owner makes and hands out, like Discord roles: each has a name, a
    colour and a set of switches for what it allows. Anyone holding a role gets
-   every switch that is on. Today each switch is "see this app even while it
-   is hidden", which is how a partner previews their own app privately:
-   hide the app (Hide apps), then give the partner a role that shows it.
+   every switch that is on: hidden apps, hidden planner tabs, getting through
+   maintenance or read-only mode, posting during a lockdown or slow-down, and
+   tester mode. A partner previews their own app privately this way: hide the
+   app (Hide apps), then give the partner a role that can see it.
 
    The database refuses all of this to anyone but the owner (migration
    20261108144649_flux_custom_roles). Visitors' pages learn their own
@@ -18,6 +19,7 @@
   var COLORS = ['#7c5cff', '#e4776b', '#2fb380', '#3b8beb', '#f2a93b', '#e0569b', '#8a8f98'];
   var _roles = [];
   var _hidden = [];
+  var _hiddenTabs = [];
   var _open = null;
 
   function sb() { return window.getSB(); }
@@ -65,24 +67,66 @@
       (rows || '<p class="own-muted">No roles yet.</p>') + '</div>';
   }
 
-  function permissionsHtml(role) {
-    var known = apps();
-    var ids = known.map(function (p) { return p.id; });
-    /* A permission for an app no longer in the directory still shows, so it can be switched off. */
-    var extra = role.permissions.filter(function (k) { return ids.indexOf(k.slice(4)) < 0; })
-      .map(function (k) { return { id: k.slice(4), name: k.slice(4), mark: '' }; });
-    return known.concat(extra).map(function (p) {
-      var on = role.permissions.indexOf('app:' + p.id) >= 0;
-      var note = _hidden.indexOf(p.id) >= 0
-        ? 'Hidden from the public, so only this role (and you) can see it'
+  function plannerTabs() {
+    return (window.FluxOwnerPanels && window.FluxOwnerPanels.PLANNER_TABS) || [];
+  }
+
+  /** Every switch a role can have, in groups: [{ title, items: [{ key, label, note, mark }] }]. */
+  function catalog(role) {
+    var hiddenNote = function (isHidden) {
+      return isHidden ? 'Hidden from the public, so only roles with this (and you) see it'
         : 'Public right now: this only matters while it is hidden';
-      return '<div class="tab-row">' +
-        '<span class="tab-row-icon">' + (p.mark || '') + '</span>' +
-        '<span class="tab-row-name">See ' + esc(p.name) +
-        '<small style="display:block;font-size:.72rem;font-weight:400;color:var(--muted)">' + esc(note) + '</small></span>' +
-        '<button type="button" class="tab-row-toggle' + (on ? ' on' : '') + '" role="switch" aria-checked="' + on +
-        '" aria-label="' + esc(role.name) + ' can see ' + esc(p.name) + '" data-act="perm" data-app="' + esc(p.id) + '"></button>' +
-        '</div>';
+    };
+    var appItems = [{ key: 'apps:all', label: 'See every hidden app', note: 'Every app you hide, now and later. Good for testers.' }]
+      .concat(apps().map(function (p) {
+        return { key: 'app:' + p.id, label: 'See ' + p.name, note: hiddenNote(_hidden.indexOf(p.id) >= 0), mark: p.mark };
+      }));
+    var tabItems = [{ key: 'tabs:all', label: 'See every hidden planner tab', note: 'Every tab you hide in Planner tabs, now and later.' }]
+      .concat(plannerTabs().map(function (t) {
+        return { key: 'tab:' + t[0], label: 'See the ' + t[1] + ' tab', note: hiddenNote(_hiddenTabs.indexOf(t[0]) >= 0) };
+      }));
+    var groups = [
+      { title: 'Apps', items: appItems },
+      { title: 'Planner tabs', items: tabItems },
+      { title: 'Site mode', items: [
+        { key: 'site:maintenance', label: 'Use Flux during maintenance', note: 'No maintenance screen, and saving still works.' },
+        { key: 'site:read_only', label: 'Keep saving while Flux is read-only', note: 'Their changes still reach the cloud.' },
+      ] },
+      { title: 'Posting', items: [
+        { key: 'posting:lockdown', label: 'Post while posting is paused', note: 'Ignores the lockdown in Moderation. A mute still applies.' },
+        { key: 'posting:slow', label: 'Skip slow-downs', note: 'Posts without waiting, even if you slowed this account.' },
+      ] },
+      { title: 'Perks', items: [
+        { key: 'perk:tester', label: 'Tester mode', note: 'Pro features and the tester badge, like the Testers list.' },
+      ] },
+    ];
+    /* A permission no longer in the catalog (an app taken out of the directory) still shows, so it can be switched off. */
+    var listed = [];
+    groups.forEach(function (g) { g.items.forEach(function (i) { listed.push(i.key); }); });
+    var extra = role.permissions.filter(function (k) { return listed.indexOf(k) < 0; });
+    if (extra.length) groups.push({ title: 'Other', items: extra.map(function (k) { return { key: k, label: k, note: 'No longer listed' }; }) });
+    return groups;
+  }
+
+  function permissionCount() {
+    return catalog({ permissions: [] }).reduce(function (n, g) { return n + g.items.length; }, 0);
+  }
+
+  function permissionsHtml(role) {
+    return catalog(role).map(function (g) {
+      var on = g.items.filter(function (i) { return role.permissions.indexOf(i.key) >= 0; }).length;
+      return '<div class="own-role-group"><div class="own-role-group-h">' + esc(g.title) +
+        ' <span class="own-muted">' + on + ' of ' + g.items.length + ' on</span></div>' +
+        g.items.map(function (i) {
+          var isOn = role.permissions.indexOf(i.key) >= 0;
+          return '<div class="tab-row">' +
+            '<span class="tab-row-icon">' + (i.mark || '') + '</span>' +
+            '<span class="tab-row-name">' + esc(i.label) +
+            '<small style="display:block;font-size:.72rem;font-weight:400;color:var(--muted)">' + esc(i.note) + '</small></span>' +
+            '<button type="button" class="tab-row-toggle' + (isOn ? ' on' : '') + '" role="switch" aria-checked="' + isOn +
+            '" aria-label="' + esc(role.name) + ': ' + esc(i.label) + '" data-act="perm" data-perm="' + esc(i.key) + '"></button>' +
+            '</div>';
+        }).join('') + '</div>';
     }).join('');
   }
 
@@ -102,8 +146,8 @@
       '<div class="own-filters"><input id="ownRoleName" class="own-input" maxlength="40" value="' + esc(role.name) + '" aria-label="Role name">' +
       '<button type="button" class="own-btn own-btn--sm" data-act="rename">Save name</button></div>' +
       '<div class="own-role-swatches">' + swatches + '</div></div>' +
-      '<div class="own-card"><div class="own-eyebrow">What this role can do</div>' +
-      '<div style="display:flex;flex-direction:column;gap:8px">' + permissionsHtml(role) + '</div></div>' +
+      '<div class="own-card"><div class="own-eyebrow">What this role can do (' + role.permissions.length + ' of ' + permissionCount() + ')</div>' +
+      permissionsHtml(role) + '</div>' +
       '<div class="own-card"><div class="own-eyebrow">People with this role (' + role.members.length + ')</div>' +
       '<div class="own-filters"><input id="ownRoleUser" class="own-input" type="search" placeholder="Username" aria-label="Username to add" autocomplete="off">' +
       '<button type="button" class="own-btn own-btn--primary own-btn--sm" data-act="assign">Add</button></div>' +
@@ -128,6 +172,8 @@
     _roles = res.data || [];
     var hid = await sb().from('flux_hidden_apps').select('app_id');
     _hidden = hid.error ? [] : (hid.data || []).map(function (r) { return r.app_id; });
+    var ui = await sb().from('platform_settings').select('value').eq('key', 'ui').maybeSingle();
+    _hiddenTabs = (!ui.error && ui.data && ui.data.value && ui.data.value.hiddenTabs) || [];
     if (_open && !current()) _open = null;
     if (!_open && _roles.length) _open = _roles[0].id;
     draw(mount);
@@ -158,7 +204,7 @@
     } else if (act === 'color') {
       saved(await sb().from('flux_roles').update({ color: el.getAttribute('data-color') }).eq('id', role.id).select());
     } else if (act === 'perm') {
-      var key = 'app:' + el.getAttribute('data-app');
+      var key = el.getAttribute('data-perm');
       var has = role.permissions.indexOf(key) >= 0;
       var perms = has ? role.permissions.filter(function (k) { return k !== key; }) : role.permissions.concat([key]);
       el.disabled = true;
@@ -209,6 +255,9 @@
       '.own-role-swatch{width:30px!important;height:30px!important;min-height:0!important;padding:0!important;border-radius:50%!important;' +
       'border:2px solid transparent!important;cursor:pointer;box-shadow:none!important}' +
       '.own-role-swatch.is-on{border-color:var(--text)!important;box-shadow:0 0 0 2px var(--card)!important}' +
+      '.own-role-group{display:flex;flex-direction:column;gap:8px;margin-top:12px}' +
+      '.own-role-group:first-child{margin-top:4px}' +
+      '.own-role-group-h{font-weight:700;font-size:.85rem}' +
       '.own-role-member{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--border)}' +
       '.own-role-member b{flex:1;min-width:0;overflow-wrap:anywhere}';
     document.head.appendChild(st);

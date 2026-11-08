@@ -290,11 +290,16 @@ test.describe('the app', () => {
     await expect(mount.locator('.own-role-item')).toHaveCount(1);
     await expect(mount.locator('.own-role-member')).toContainText('<img');
     expect(await page.evaluate(() => (window as unknown as { __pwned?: number }).__pwned)).toBeUndefined();
-    await expect(mount.getByRole('switch', { name: /can see Flux Planner/ })).toHaveCount(0);
-    await expect(mount.getByRole('switch', { name: /can see Flux Owner Controls/ })).toHaveCount(0);
-    await expect(mount.getByRole('switch', { name: /can see Flux Grapher/ })).toHaveAttribute('aria-checked', 'true');
-    await mount.getByRole('switch', { name: /can see Synara/ }).click();
+    await expect(mount.getByRole('switch', { name: /See Flux Planner/ })).toHaveCount(0);
+    await expect(mount.getByRole('switch', { name: /See Flux Owner Controls/ })).toHaveCount(0);
+    await expect(mount.getByRole('switch', { name: /: See Flux Grapher$/ })).toHaveAttribute('aria-checked', 'true');
+    await mount.getByRole('switch', { name: /: See Synara$/ }).click();
     await expect.poll(() => db.writes.find((w) => w.table === 'flux_roles' && w.method === 'PATCH')?.body).toEqual({ permissions: ['app:grapher', 'app:synara'] });
+    for (const name of ['See every hidden app', 'See Aorta Project', 'See every hidden planner tab', 'See the Mood tab', 'Use Flux during maintenance',
+      'Keep saving while Flux is read-only', 'Post while posting is paused', 'Skip slow-downs', 'Tester mode']) {
+      await expect(mount.getByRole('switch', { name: new RegExp(': ' + name + '$') })).toHaveCount(1);
+    }
+    expect(await mount.getByRole('switch').count()).toBeGreaterThanOrEqual(28);
     // Each save redraws the panel from the database; type once that is done.
     await expect.poll(() => db.calls.filter((c) => c.rpc === 'flux_owner_roles').length).toBe(2);
     await page.waitForLoadState('networkidle');

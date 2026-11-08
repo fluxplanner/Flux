@@ -79,8 +79,15 @@
    * bar, the "More" sheet) and are re-rendered by renderSidebars(), so this is
    * written to be safely re-runnable and to cover every surface at once.
    */
+  /* A role (Owner Controls › Roles) can show some or all hidden tabs to its
+     members; flux-app-visibility.js knows this viewer's permissions. */
+  function roleShows(id) {
+    var v = window.FluxAppVisibility;
+    return !!(v && v.can && (v.can('tabs:all') || v.can('tab:' + id)));
+  }
+
   function apply() {
-    var hidden = state.hiddenTabs;
+    var hidden = state.hiddenTabs.filter(function (id) { return !roleShows(id); });
     var sel = '#sidebar [data-tab], .mob-drawer [data-tab], .bottom-nav [data-tab],'
       + ' .more-sheet-item[data-nav-tab], [data-tab]';
     document.querySelectorAll(sel).forEach(function (el) {
@@ -159,6 +166,8 @@
   function init() {
     applyFromCache();   // instant, avoids a flash of a hidden tab
     refresh(false);     // then reconcile with the server
+    // This viewer's role permissions arrived or changed.
+    window.addEventListener('flux-app-visibility', apply);
   }
 
   if (document.readyState === 'loading') {
