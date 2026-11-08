@@ -470,6 +470,12 @@
       from(table) {
         return chain(table);
       },
+      /* Database functions answer from window.__fluxE2ERpc[name] (seeded by a
+         spec), or with null, as an unknown function would leave things. */
+      rpc(name) {
+        const answers = window.__fluxE2ERpc || {};
+        return Promise.resolve({ data: name in answers ? answers[name] : null, error: null });
+      },
       auth: {
         getSession: () =>
           Promise.resolve({
