@@ -22,27 +22,10 @@
   var sections = [];
   var bars = [];
 
-  // "Every *class* counts." → one span per word; *word* marks an accent.
-  // Built with DOM nodes, never innerHTML, so the text can't become markup.
-  function splitWords(el) {
-    if (el.getAttribute('data-fs-split')) return;
-    el.setAttribute('data-fs-split', '1');
-    var words = el.textContent.trim().split(/\s+/);
-    el.textContent = '';
-    words.forEach(function (w, i) {
-      var span = document.createElement('span');
-      span.className = 'w' + (/^\*.*\*[^\w]*$/.test(w) ? ' accent' : '');
-      span.textContent = w.replace(/\*/g, '');
-      if (i) el.appendChild(document.createTextNode(' '));
-      el.appendChild(span);
-    });
-  }
-
   function scan() {
-    document.querySelectorAll('[data-fs-words]').forEach(splitWords);
     sections = [].slice.call(document.querySelectorAll('[data-fs]')).map(function (s) {
       return {
-        el: s, words: s.querySelectorAll('.w'), last: -1,
+        el: s, last: -1,
         lift: s.hasAttribute('data-fs-lift'), counts: s.querySelectorAll('[data-fs-count]')
       };
     });
@@ -71,10 +54,8 @@
       s.el.style.setProperty('--p', (key / 1000).toFixed(3));
       if (s.lift) lift(s, p);
       for (var c = 0; c < s.counts.length; c++) count(s.counts[c], p);
-      if (s.words.length) {
-        var lit = Math.round(p * 1.2 * s.words.length);
-        for (var i = 0; i < s.words.length; i++) s.words[i].classList.toggle('on', i < lit);
-      }
+      // For page scripts that draw their own scene from the progress.
+      s.el.dispatchEvent(new CustomEvent('fs-progress', { detail: p }));
     }
     for (var b = 0; b < bars.length; b++) {
       var sel = bars[b].getAttribute('data-fs-progress');
