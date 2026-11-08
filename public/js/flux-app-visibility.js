@@ -243,8 +243,6 @@
     PLANNER_TABS: PLANNER_TABS,
     /** Everything on the list, whoever is looking: for the owner's own view. */
     hiddenIds: function () { return ids.slice(); },
-    /** The signed-in account's id on this device, or null when signed out. */
-    userId: function () { var s = session(); return s ? s.user.id : null; },
     refresh: refresh,
   };
 
