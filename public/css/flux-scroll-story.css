@@ -104,15 +104,20 @@ body:has(.fs-bleed) { overflow-x: clip; }
   display: flex; align-items: flex-start; justify-content: center;
   opacity: calc(.28 + var(--fs-lift, 0) * .72);
 }
-.fs-ghost svg { width: min(1100px, 140vw); height: auto; max-height: 46vh; margin-top: 4vh; }
+.fs-ghost svg { width: auto; height: 92vh; aspect-ratio: 1; margin-top: 2vh; }
 /* No CSS filters anywhere in the mark: blurred drop-shadows were redrawn
    every frame while it moved and made the scroll lag. Glows are wide,
    faint strokes instead (.fs-logo-halo, .fs-logo-comet-halo). */
+/* The mark is laid out at 92vh, twice its resting size, and shown at half
+   scale; lifting grows it towards full size. It is rasterised big and only
+   ever shrunk, so it stays sharp (drawn at 46vh and scaled up 2x, it went
+   soft). --fs-lift-s: how much bigger it gets (1 = twice its resting
+   size); --fs-lift-y: the drop that puts its centre mid-screen. */
 [data-fs-logo] svg {
-  overflow: visible; transform-origin: 50% 50%; will-change: transform;
-  transform: translateY(calc(var(--fs-lift, 0) * var(--fs-lift-y, 22vh))) scale(calc(1 + var(--fs-lift, 0) * var(--fs-lift-s, 1)));
+  overflow: visible; transform-origin: 50% 0; will-change: transform;
+  transform: translateY(calc(var(--fs-lift, 0) * var(--fs-lift-y, 2vh))) scale(calc((1 + var(--fs-lift, 0) * var(--fs-lift-s, 1)) / 2));
 }
-@media (max-width: 600px) { :root { --fs-lift-s: .5; --fs-lift-y: 23vh; } }
+@media (max-width: 600px) { :root { --fs-lift-s: .5; --fs-lift-y: 13.5vh; } }
 [data-fs-logo] .fs-logo-trace {
   fill: none; stroke-width: 15; stroke-linecap: round;
   stroke-dasharray: 1; stroke-dashoffset: calc(1 - var(--fs-comet, 0));
@@ -275,7 +280,7 @@ body:has(.fs-bleed) { overflow-x: clip; }
 @media (max-width: 420px) { .fs-tile p { display: none; } }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-fs-logo] svg { transform: none !important; }
+  [data-fs-logo] svg { transform: scale(.5) !important; }
   .fs-lift { height: auto !important; }
   .fs-lift .fs-stage { position: relative; height: auto; }
   .fs-lift .fs-k { opacity: 1 !important; }

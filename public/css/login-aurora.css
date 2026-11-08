@@ -89,10 +89,10 @@
   opacity:calc(.5 + var(--fs-lift,0) * .5);
 }
 #loginScreen .lx-lemni svg{
-  /* Scale by BOTH width and height so the mark stays fully visible in short
-     browser tabs (the lemniscate is ~2:1, so cap height too) and sits a touch
-     higher than before. */
-  width:min(1100px,140vw);height:auto;max-height:46vh;margin-top:2vh;
+  /* Laid out at twice the size it shows at rest (46vh) and shrunk to half by
+     flux-scroll-story.css: the scroll story enlarges it, and a mark drawn
+     small then stretched up went blurry. Shrinking stays sharp. */
+  width:auto;height:92vh;aspect-ratio:1;margin-top:2vh;
   /* No drop-shadow filter: the scroll story moves this mark, and a 50px
      blur redrawn every frame made scrolling lag. */
 }
