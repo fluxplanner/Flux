@@ -84,7 +84,9 @@
 /* Oversized brand lemniscate ghosted behind the hero */
 #loginScreen .lx-lemni{
   z-index:0;display:flex;align-items:flex-start;justify-content:center;
-  opacity:.5;
+  /* --fs-lift (flux-scroll-story.js) brings it to full strength while the
+     scroll story lifts it into the middle, then lets it sink back. */
+  opacity:calc(.5 + var(--fs-lift,0) * .5);
 }
 #loginScreen .lx-lemni svg{
   /* Scale by BOTH width and height so the mark stays fully visible in short
@@ -417,7 +419,7 @@
   #loginScreen .lx-auth{order:-1}
   #loginScreen .lx-auth-card{margin:0 auto}
   #loginScreen .lx-feature-grid{grid-template-columns:repeat(2,1fr)}
-  #loginScreen .lx-lemni{opacity:.32}
+  #loginScreen .lx-lemni{opacity:calc(.32 + var(--fs-lift,0) * .68)}
 }
 @media (max-width:600px){
   #loginScreen .lx-main{padding-inline:16px}
