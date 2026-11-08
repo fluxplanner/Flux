@@ -539,6 +539,7 @@
     release:     {label:'Release & push',   icon:'🚀', group:'home'},
     announce:    {label:'Announcements',    icon:'📣', group:'home'},
     team:        {label:'Team & roles',     icon:'👥', group:'people'},
+    roles:       {label:'Roles',            icon:'🔑', group:'people'},
     testers:     {label:'Testers',          icon:'🧪', group:'people'},
     auth:        {label:'Users & roster',   icon:'🔐', group:'people'},
     staffverify: {label:'Staff verify',     icon:'✅', group:'people'},
@@ -1218,6 +1219,7 @@
         <div id="osUsageMount">${typeof window.__ownerUsageHtml==='string'&&window.__ownerUsageHtml?window.__ownerUsageHtml:'<div style="color:var(--muted);font-size:.82rem">Click <b>Refresh from cloud</b> to load cross-account aggregates (requires Supabase to return multiple <code style="font-size:.65rem">user_data</code> rows — see RLS note after load).</div>'}</div>`;
 
       if(tab==='moderation')return`<div id="osModerationMount">Loading…</div>`;
+      if(tab==='roles')return`<div id="osRolesMount">Loading…</div>`;
       if(window.FluxOwnerSecurityPanel&&window.FluxOwnerSecurityPanel.views.indexOf(tab)>=0)return`<div id="osSecurityMount"></div>`;
       if(tab==='today'||tab==='pwhelp'||tab==='plannertabs'||tab==='health'||tab==='backlog')return`<div id="osPanelMount"></div>`;
       if(tab==='audit')return`
@@ -1343,6 +1345,7 @@
       }
       if(tab==='hideapps')paintHiddenApps(root);
       if(tab==='moderation')window.FluxOwnerModerationPanel.render(root.querySelector('#osModerationMount'));
+      if(tab==='roles')window.FluxOwnerRolesPanel.render(root.querySelector('#osRolesMount'));
       const secMount=root.querySelector('#osSecurityMount');
       if(secMount)window.FluxOwnerSecurityPanel.render(tab,secMount);
       const panelMount=root.querySelector('#osPanelMount');

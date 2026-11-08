@@ -17,7 +17,14 @@ const SESSION_KEY = 'sb-lfigdijuqmbensebnevo-auth-token';
 
 type Answer = string[] | 'unreachable';
 
-async function setup(page: Page, answer: Answer, opts: { uid?: string; cached?: string[]; synara?: unknown } = {}) {
+async function setup(page: Page, answer: Answer, opts: { uid?: string; cached?: string[]; synara?: unknown; perms?: string[] } = {}) {
+  /* Roles: what flux_my_permissions() says this account may see. */
+  await page.route('**/rest/v1/rpc/flux_my_permissions', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' },
+    body: JSON.stringify(opts.perms || []),
+  }));
   await page.route('**/rest/v1/flux_hidden_apps**', (route) => {
     if (answer === 'unreachable') return route.abort();
     return route.fulfill({
@@ -30,7 +37,7 @@ async function setup(page: Page, answer: Answer, opts: { uid?: string; cached?: 
   await page.addInitScript(([key, o]) => {
     (window as unknown as { __FLUX_APP_VIS_TEST: boolean }).__FLUX_APP_VIS_TEST = true;
     const { uid, cached, synara } = o as { uid?: string; cached?: string[]; synara?: unknown };
-    if (uid) localStorage.setItem(key as string, JSON.stringify({ user: { id: uid } }));
+    if (uid) localStorage.setItem(key as string, JSON.stringify({ access_token: 't', user: { id: uid } }));
     if (cached) localStorage.setItem('flux_hidden_apps_v1', JSON.stringify(cached));
     if (synara) localStorage.setItem('synara.v2', JSON.stringify(synara));
   }, [SESSION_KEY, opts] as const);
@@ -113,6 +120,32 @@ test.describe('the owner', () => {
 
   test('another account signed in on the device is not the owner', async ({ page }) => {
     await setup(page, ['synara'], { uid: '11111111-2222-3333-4444-555555555555' });
+    await page.goto('/synara.html');
+    await expect(page).toHaveURL(/\/suite(\.html)?(#.*)?$/);
+  });
+});
+
+test.describe('someone given a role', () => {
+  const PARTNER = '22222222-3333-4444-5555-666666666666';
+
+  test('sees and opens the hidden app their role shows, marked Hidden', async ({ page }) => {
+    await setup(page, ['synara'], { uid: PARTNER, perms: ['app:synara'] });
+    await page.goto('/suite.html#partners');
+    await expect(page.locator('.app--synara')).toContainText('Hidden');
+    await page.goto('/synara.html');
+    await expect(page).toHaveURL(/\/synara(\.html)?$/);
+    await expect(page.locator('#screen')).toBeVisible();
+  });
+
+  test('still cannot open a hidden app their role does not show', async ({ page }) => {
+    await setup(page, ['synara', 'pixel'], { uid: PARTNER, perms: ['app:synara'] });
+    await page.goto('/pixel.html');
+    await expect(page).toHaveURL(/\/suite(\.html)?(#.*)?$/);
+  });
+
+  test('a grant cached for another account on this device does not carry over', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('flux_my_permissions_v1', JSON.stringify({ uid: 'someone-else', perms: ['app:synara'] })));
+    await setup(page, ['synara']);
     await page.goto('/synara.html');
     await expect(page).toHaveURL(/\/suite(\.html)?(#.*)?$/);
   });
