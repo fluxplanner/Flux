@@ -199,3 +199,9 @@ input[type='checkbox'] { accent-color: var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* Two-step sign-in code entry (flux-owner-runtime.js). */
+.own-mfa-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; margin-top: 12px; }
+.own-mfa-form input { width: 9ch; font: inherit; font-size: 1.25rem; letter-spacing: .2em; text-align: center; padding: 8px 10px; border-radius: 10px; }
+.own-mfa-form p { flex-basis: 100%; min-height: 1.2em; margin: 0; }
+.own-gate img { display: block; margin: 8px auto; background: #fff; border-radius: 8px; }
