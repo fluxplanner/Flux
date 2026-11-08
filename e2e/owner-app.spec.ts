@@ -21,7 +21,7 @@ type Db = {
 };
 
 const RPC: Record<string, unknown> = {
-  flux_owner_mod_summary: { bans: 2, mutes: 1, posts_24h: 3, active_24h: 4, shared_ips: 1, new_accounts_7d: 7, accounts: 28, password_help: 5, staff_waiting: 1, rooms_open: 1, lockdown: false },
+  flux_owner_mod_summary: { bans: 2, mutes: 1, posts_24h: 3, active_24h: 4, shared_ips: 1, new_accounts_7d: 7, accounts: 28, password_help: 5, staff_waiting: 1, rooms_open: 1, lockdown: false, alerts: 1, signed_in: 3, errors_24h: 12, reported_posts: 1, site_mode: 'normal', signup_mode: 'open' },
   flux_owner_user_intel: [{ user_id: 'u1', username: 'a"b', display_name: EVIL, role: 'student', deleted: false, device_id: 'abc', ip: '203.0.113.9', accounts_on_ip: 4, last_seen: '2026-11-05T05:09:00Z' }],
   flux_owner_new_accounts: [{ user_id: 'u1', username: 'newbie', display_name: EVIL, role: 'student', created_at: '2026-11-05T05:09:00Z' }],
   flux_owner_study_rooms: [{ id: 'r1', code: 'ABC', label: EVIL, participants: 2, active: true, host_id: 'u1', host_username: 'host' }],
@@ -31,6 +31,20 @@ const RPC: Record<string, unknown> = {
   flux_owner_remove_content: 1,
   flux_owner_set_lockdown: { on: true },
   flux_owner_save_report: {},
+  flux_owner_sessions: [{ id: 's1', ip: '198.51.100.7', user_agent: EVIL, created_at: '2026-11-05T05:09:00Z', refreshed_at: '2026-11-06T05:09:00Z' }],
+  flux_owner_sign_out: 3,
+  flux_owner_set_setting: {},
+  flux_owner_create_invite: 'ABCD2345',
+  flux_owner_set_profile: null,
+  flux_owner_rename_username: 'jose.alvarez',
+  flux_owner_export_person: { account: { username: 'jo' }, user_data: { data: { tasks: [] } } },
+  flux_owner_cancel_query: true,
+  flux_owner_profiles: [{ user_id: 'u1', username: 'jo', display_name: EVIL, bio: 'selling cheats', avatar_url: 'https://evil.example/pic.png', role: 'student', locked: false }],
+  flux_owner_reported_posts: [{ source: 'school_feed', source_id: 'p1', reports: 4, last_at: '2026-11-06T05:09:00Z', reasons: [EVIL], post: { action: 'INSERT', author_id: 'u1', author_label: EVIL, content: { title: EVIL } } }],
+  flux_owner_announcements: { active_7d: 10, items: [{ id: 'a1', title: EVIL, body: 'b', app: 'grapher', level: 'warning', active: true, starts_at: '2026-11-01T00:00:00Z', ends_at: null, reads: 4, created_at: '2026-11-01T00:00:00Z' }] },
+  flux_owner_errors: [{ message: EVIL, source: 'app.js', times: 12, people: 3, last_seen: '2026-11-06T05:09:00Z', page: '/', version: 'abc' }],
+  flux_owner_uptime: { scheduled: true, targets: [{ target: 'https://fluxplanner.github.io/Flux/', up: 287, down: 1, avg_ms: 210, recent: [{ at: '2026-11-06T05:09:00Z', ok: true, ms: 200 }, { at: '2026-11-06T05:04:00Z', ok: false, error: EVIL }] }] },
+  flux_owner_db_health: { size_bytes: 22 * 1024 * 1024, limit_bytes: 500 * 1024 * 1024, tables: [{ name: 'user_data', bytes: 9000000, rows: 30 }], connections: { active: 1, idle: 9 }, running: [{ pid: 42, role: 'authenticated', state: 'active', seconds: 40, query: EVIL }], slow: [{ query: 'select 1', calls: 5, mean_ms: 2, total_ms: 10 }] },
 };
 
 const TABLES: Record<string, unknown[]> = {
@@ -48,6 +62,11 @@ const TABLES: Record<string, unknown[]> = {
   owner_direct_messages: [],
   platform_settings: [],
   flux_feature_flags: [],
+  flux_owner_alerts: [{ id: 1, kind: 'owner_new_device', title: 'Your owner account was used on a new device', detail: EVIL, user_id: null, created_at: '2026-11-06T05:09:00Z', seen_at: null }],
+  flux_invite_codes: [{ code: 'WXYZ6789', note: EVIL, uses: 1, max_uses: 30, active: true, created_at: '2026-11-06T05:09:00Z' }],
+  flux_name_locks: [],
+  flux_post_reports: [],
+  flux_announcements: [],
 };
 
 /**
@@ -205,7 +224,7 @@ test.describe('the app', () => {
     await setup(page);
     await open(page);
     const tabs = await page.locator('[data-os-tab]').evaluateAll((els) => els.map((e) => e.getAttribute('data-os-tab') as string));
-    for (const name of ['today', 'moderation', 'pwhelp', 'plannertabs', 'hideapps', 'release', 'auth', 'staffverify', 'nuke', 'audit', 'data', 'feedback', 'backlog', 'health', 'preview', 'team', 'testers', 'config', 'integrations', 'analytics', 'usage', 'ideas', 'megamap', 'advanced', 'overview']) {
+    for (const name of ['today', 'moderation', 'pwhelp', 'plannertabs', 'hideapps', 'release', 'auth', 'staffverify', 'nuke', 'audit', 'data', 'feedback', 'backlog', 'health', 'preview', 'team', 'testers', 'config', 'integrations', 'analytics', 'usage', 'ideas', 'megamap', 'advanced', 'overview', 'alerts', 'announce', 'signups', 'sessions', 'profiles', 'errors', 'uptime', 'versions', 'reported', 'sitemode', 'database']) {
       expect(tabs, `${name} is missing`).toContain(name);
     }
     for (const t of tabs) {
@@ -437,5 +456,143 @@ test.describe('moderation', () => {
     await expect(body.locator('img')).toHaveCount(0);
     await body.getByRole('button', { name: 'Mark handled' }).click();
     await expect.poll(() => db.writes.find((w) => w.table === 'flux_password_help')?.body).toEqual({ handled: true });
+  });
+});
+
+test.describe('site-wide controls', () => {
+  const mod = async (page: Page, view: string) => {
+    await open(page, '#moderation');
+    await page.locator(`[data-view=${view}]`).click();
+  };
+  const fill = async (page: Page, confirm: string, text: string) => {
+    const box = page.locator('dialog.own-dialog');
+    await box.locator('textarea').fill(text);
+    await box.getByRole('button', { name: confirm }).click();
+  };
+  test('each new view shows other people\'s text as text and loads nothing from outside', async ({ page }) => {
+    await setup(page);
+    for (const [tab, text] of [
+      ['alerts', 'used on a new device'], ['signups', 'WXYZ6789'], ['profiles', 'selling cheats'], ['reported', '4 reports'],
+      ['announce', 'Seen by 4 people (40% of the 10 active this week)'], ['errors', '12×'], ['uptime', '99.7% up'],
+      ['database', '22.0 MB of 500.0 MB'], ['sessions', '3 sign-ins used in the last day'], ['sitemode', 'Normal: everything works'],
+    ]) {
+      await open(page, '#' + tab);
+      const body = page.locator('#osSecurityMount');
+      await expect(body, tab).toContainText(text);
+      await expect(body.locator('img'), tab).toHaveCount(0);
+      expect(await page.evaluate(() => (window as any).__pwned)).toBeUndefined();
+    }
+  });
+
+  test('alerts show on Today and in the sidebar badge', async ({ page }) => {
+    await setup(page);
+    await open(page);
+    await expect(page.locator('#osBadge-alerts')).toHaveText('1');
+  });
+
+  test('maintenance is saved with its times, and normal clears it', async ({ page }) => {
+    const db = await setup(page);
+    page.on('dialog', (d) => d.accept());
+    await open(page, '#sitemode');
+    await page.locator('#ownSiteMode').selectOption('maintenance');
+    await page.locator('#ownSiteMsg').fill('Upgrading');
+    await page.locator('#ownSiteEnd').fill('2030-01-01T10:00');
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect.poll(() => db.calls.find((c) => c.rpc === 'flux_owner_set_setting')?.args).toMatchObject({
+      p_key: 'site_mode', p_value: { mode: 'maintenance', message: 'Upgrading', starts_at: null },
+    });
+    const v = db.calls.find((c) => c.rpc === 'flux_owner_set_setting')!.args.p_value as any;
+    expect(new Date(v.ends_at).getFullYear()).toBe(2030);
+  });
+
+  test('signing out everyone needs the words typed, and a wrong answer does nothing', async ({ page }) => {
+    const db = await setup(page);
+    let answer = 'yes';
+    page.on('dialog', (d) => d.accept(answer));
+    await open(page, '#sessions');
+    await page.getByRole('button', { name: 'Sign out everyone' }).click();
+    await page.waitForTimeout(200);
+    expect(db.calls.some((c) => c.rpc === 'flux_owner_sign_out')).toBe(false);
+    answer = 'sign out';
+    await page.getByRole('button', { name: 'Sign out everyone' }).click();
+    await expect.poll(() => db.calls.find((c) => c.rpc === 'flux_owner_sign_out')?.args).toEqual({ p_user: null, p_session: null });
+  });
+
+  test('sign-ups and invite codes', async ({ page }) => {
+    const db = await setup(page);
+    page.on('dialog', (d) => d.accept());
+    await open(page, '#signups');
+    await page.locator('#ownSignupMode').selectOption('invite');
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect.poll(() => db.calls.find((c) => c.rpc === 'flux_owner_set_setting')?.args).toEqual({ p_key: 'signup_policy', p_value: { mode: 'invite' } });
+    await expect(page.locator('#ownerToasts')).toContainText('Saved');
+    await expect(page.locator('#osSecurityMount')).not.toHaveClass(/own-muted/);
+    await page.waitForTimeout(150);
+    await page.locator('#ownInviteUses').fill('25');
+    await page.getByRole('button', { name: 'Make a code' }).click();
+    await expect.poll(() => db.calls.find((c) => c.rpc === 'flux_owner_create_invite')?.args).toEqual({ p_note: null, p_max_uses: 25, p_days: null });
+    await page.getByRole('button', { name: 'Turn off' }).click();
+    await expect.poll(() => db.writes.find((w) => w.table === 'flux_invite_codes')?.body).toEqual({ active: false });
+  });
+
+  test('an announcement for one app reaches the database', async ({ page }) => {
+    const db = await setup(page);
+    await open(page, '#announce');
+    await page.locator('#ownAnnTitle').fill('Grapher is back');
+    await page.locator('#ownAnnApp').selectOption('grapher');
+    await page.locator('#ownAnnLevel').selectOption('urgent');
+    await page.getByRole('button', { name: 'Post announcement' }).click();
+    await expect.poll(() => db.writes.find((w) => w.table === 'flux_announcements')?.body).toMatchObject({ title: 'Grapher is back', app: 'grapher', level: 'urgent' });
+  });
+
+  test('a stuck query can be stopped, and a profile cleaned and locked', async ({ page }) => {
+    const db = await setup(page);
+    page.on('dialog', (d) => d.accept());
+    await open(page, '#database');
+    await page.getByRole('button', { name: 'Stop this query' }).click();
+    await expect.poll(() => db.calls.find((c) => c.rpc === 'flux_owner_cancel_query')?.args).toEqual({ p_pid: 42 });
+    await open(page, '#profiles');
+    await page.getByRole('button', { name: 'Remove bio' }).click();
+    await expect.poll(() => db.calls.find((c) => c.rpc === 'flux_owner_set_profile')?.args).toMatchObject({ p_user: 'u1', p_clear: ['bio'] });
+    await page.getByRole('button', { name: 'Lock' }).click();
+    await expect.poll(() => db.calls.filter((c) => c.rpc === 'flux_owner_set_profile').map((c) => c.args.p_lock)).toContain(true);
+  });
+
+  test("a person's file: devices, slow down, hidden posts, rename, data and deletion", async ({ page }) => {
+    const db = await setup(page);
+    let answer = '';
+    page.on('dialog', (d) => d.accept(answer));
+    await mod(page, 'people');
+    await page.getByRole('button', { name: 'Open file' }).click();
+    const body = page.locator('#fluxModBody');
+    await expect(body).toContainText('198.51.100.7');
+    await expect(body.locator('img')).toHaveCount(0);
+
+    await body.getByRole('button', { name: 'Slow down' }).click();
+    await page.locator('dialog select[aria-label="Wait between posts"]').selectOption('900');
+    await fill(page, 'Slow down', 'flooding');
+    await expect.poll(() => db.calls.find((c) => c.rpc === 'flux_owner_ban')?.args).toMatchObject({ p_kind: 'slow', p_cooldown: 900 });
+
+    await body.getByRole('button', { name: 'Hide their posts' }).click();
+    await fill(page, 'Hide their posts', 'harassment');
+    await expect.poll(() => db.calls.filter((c) => c.rpc === 'flux_owner_ban').map((c) => c.args.p_kind)).toContain('shadow');
+
+    answer = 'José Álvarez';
+    await body.getByRole('button', { name: 'Change username' }).click();
+    await expect.poll(() => db.calls.find((c) => c.rpc === 'flux_owner_rename_username')?.args).toEqual({ p_user: 'u1', p_username: 'jose.alvarez' });
+
+    const download = page.waitForEvent('download');
+    await page.locator('#fluxModBody').getByRole('button', { name: 'Download their data' }).click();
+    expect((await download).suggestedFilename()).toBe('flux-data-jo.json');
+
+    answer = 'not-them';
+    await page.locator('#fluxModBody').getByRole('button', { name: 'Delete account' }).click();
+    await page.waitForTimeout(200);
+    expect(db.calls.some((c) => c.rpc === 'flux_owner_save_report')).toBe(false);
+    answer = 'JO';
+    const deleted = page.waitForRequest((r) => r.url().includes('/functions/v1/release-admin') && (r.postDataJSON() || {}).action === 'auth_delete_user');
+    await page.locator('#fluxModBody').getByRole('button', { name: 'Delete account' }).click();
+    expect((await deleted).postDataJSON().userId).toBe('u1');
+    expect(db.calls.find((c) => c.rpc === 'flux_owner_save_report')?.args).toMatchObject({ p_user: 'u1', p_reason: 'Account deleted' });
   });
 });

@@ -453,7 +453,8 @@
     "public/js/flux-master-backlog.js",
     "public/js/owner-suite.js",
     "public/js/flux-owner-moderation-panel.js",
-    "public/js/flux-owner-panels.js"
+    "public/js/flux-owner-panels.js",
+    "public/js/flux-owner-security-panel.js"
   ],
   "ownerCss": [
     "public/css/flux-standalone-dark.css",

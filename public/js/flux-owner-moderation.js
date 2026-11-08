@@ -73,12 +73,30 @@
     return !!err && (err.code === 'PT403' || err.message === 'flux_banned');
   }
 
+  /* The owner signed this account out (Owner Controls › Sign-ins, or the
+     person's file). The server already refuses this browser's token; drop it
+     here too, so the sign-in screen shows instead of a planner that cannot save.
+     Signing out clears this browser's copy (handleSignedOut); the cloud copy
+     is untouched, and changes sync within a second, so little can be lost. */
+  function isSignedOutError(err) {
+    return !!err && (err.code === 'PT401' || err.message === 'flux_signed_out');
+  }
+  var _signingOut = false;
+  function signOutHere(c) {
+    if (_signingOut) return;
+    _signingOut = true;
+    Promise.resolve(c.auth.signOut({ scope: 'local' })).catch(function () {}).then(function () {
+      location.reload();
+    });
+  }
+
   function checkIn() {
     var c = sb();
     if (!c) return;
     try {
       c.rpc('flux_device_checkin', { p_device: deviceId() }).then(function (res) {
         if (isBanError(res.error) || (res.data && res.data.banned)) showLock();
+        else if (isSignedOutError(res.error) && me()) signOutHere(c);
       }, function () { /* being offline is not being banned */ });
     } catch (e) { /* the check must never break the planner */ }
   }
@@ -97,4 +115,8 @@
   setInterval(watchSignIn, 2000);
   setInterval(checkIn, RECHECK_MS);
   setTimeout(checkIn, 1500);
+  /* A laptop opened after a sign-out-everyone should not wait five minutes. */
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') checkIn();
+  });
 })();
