@@ -50,8 +50,15 @@ const TABLES: Record<string, unknown[]> = {
   flux_feature_flags: [],
 };
 
-async function setup(page: Page, opts: { uid?: string | null } = {}) {
+/**
+ * mfa: 'fresh' is a session that entered an authenticator code a minute ago (the
+ * normal state once Owner Controls has opened); 'needed' has an authenticator but
+ * only a password this session; 'none' has never set one up.
+ */
+async function setup(page: Page, opts: { uid?: string | null; mfa?: 'fresh' | 'needed' | 'none' } = {}) {
   const uid = opts.uid === undefined ? OWNER_UID : opts.uid;
+  const mfa = opts.mfa || 'fresh';
+  const factors = mfa === 'none' ? [] : [{ id: 'f1', factor_type: 'totp', status: 'verified', friendly_name: 'phone', created_at: '', updated_at: '' }];
   const db: Db = {
     row: {
       updated_at: '2026-11-01T00:00:00+00:00',
@@ -75,7 +82,7 @@ async function setup(page: Page, opts: { uid?: string | null } = {}) {
     const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', headers: CORS, body: JSON.stringify(body) });
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
     if (url.pathname === '/auth/v1/user') {
-      return uid ? json({ id: uid, aud: 'authenticated', role: 'authenticated', email: 'someone@users.fluxplanner.app' }) : json({ message: 'no session' }, 401);
+      return uid ? json({ id: uid, aud: 'authenticated', role: 'authenticated', email: 'someone@users.fluxplanner.app', factors }) : json({ message: 'no session' }, 401);
     }
     if (url.pathname.startsWith('/functions/v1/release-admin')) return json({ ok: true, gate: null });
     if (url.pathname.startsWith('/rest/v1/rpc/')) {
@@ -103,16 +110,20 @@ async function setup(page: Page, opts: { uid?: string | null } = {}) {
     return json([{ id: 'x', app_id: 'synara' }], 201);
   });
 
-  await page.addInitScript(([key, id]) => {
+  await page.addInitScript(([key, id, fresh]) => {
     if (!id) return;
     const b64 = (o: unknown) => btoa(JSON.stringify(o)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
-    const exp = Math.floor(Date.now() / 1000) + 86400;
-    const token = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: id, exp, role: 'authenticated' })}.sig`;
+    const now = Math.floor(Date.now() / 1000);
+    const exp = now + 86400;
+    const assurance = fresh
+      ? { aal: 'aal2', amr: [{ method: 'totp', timestamp: now - 60 }, { method: 'password', timestamp: now - 90 }] }
+      : { aal: 'aal1', amr: [{ method: 'password', timestamp: now - 90 }] };
+    const token = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: id, exp, role: 'authenticated', session_id: 's1', ...assurance })}.sig`;
     localStorage.setItem(key as string, JSON.stringify({
       access_token: token, refresh_token: 'r', token_type: 'bearer', expires_in: 86400, expires_at: exp,
       user: { id, aud: 'authenticated', role: 'authenticated', email: 'someone@users.fluxplanner.app' },
     }));
-  }, [SESSION_KEY, uid]);
+  }, [SESSION_KEY, uid, mfa === 'fresh'] as const);
   return db;
 }
 
@@ -146,6 +157,25 @@ test.describe('who gets in', () => {
     await page.goto('/owner.html');
     await expect(page.locator('#ownerGate')).toContainText('This page is private');
     expect(db.writes).toEqual([]);
+  });
+
+  test('the owner with only a password is asked for an authenticator code first', async ({ page }) => {
+    const db = await setup(page, { mfa: 'needed' });
+    await page.goto('/owner.html');
+    await expect(page.locator('#ownerGate h1')).toHaveText('Enter your code');
+    await expect(page.locator('#ownerSuite')).toHaveCount(0);
+    expect(db.calls).toEqual([]);
+  });
+
+  test('the owner without an authenticator is made to set one up', async ({ page }) => {
+    await setup(page, { mfa: 'none' });
+    await page.route('**/auth/v1/factors', (route) => route.fulfill({
+      status: 200, contentType: 'application/json', headers: CORS,
+      body: JSON.stringify({ id: 'f1', type: 'totp', friendly_name: 'x', totp: { qr_code: 'data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg"/>', secret: 'JBSWY3DPEHPK3PXP', uri: 'otpauth://x' } }),
+    }));
+    await page.goto('/owner.html');
+    await expect(page.locator('#ownerGate h1')).toHaveText('Set up two-step sign-in');
+    await expect(page.locator('#ownerSuite')).toHaveCount(0);
   });
 });
 
