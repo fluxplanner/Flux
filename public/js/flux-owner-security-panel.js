@@ -15,7 +15,7 @@
 
    Everything shown here was written by someone else, so it goes through
    esc(), and buttons carry data-* attributes. The database refuses all of it
-   to anyone but the owner (migration 20261107230000_owner_controls_more).
+   to anyone but the owner (migration 20261108003756_owner_controls_more).
    ========================================================================== */
 (function () {
   'use strict';
