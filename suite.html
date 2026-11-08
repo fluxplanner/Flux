@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="public/js/flux-app-visibility.js?v=74dbc85a" data-app="suite"></script>
+<script src="public/js/flux-app-visibility.js?v=e1fa2735" data-app="suite"></script>
 <script defer src="public/js/flux-site-notices.js?v=251f073e"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flux Suite — every Flux app</title>
@@ -202,10 +202,11 @@
           ? '<span class="app-icon app-icon--logo" aria-hidden="true">' + p.logo + '</span>'
           : '<span class="app-icon" aria-hidden="true">' + p.mark + '</span>';
       };
-      /* Only the owner can see an app that is hidden, so only they get this label. */
+      /* Only the owner, and people given a role that shows it, can see an app
+         that is hidden, so only they get this label. */
       var isHiddenFromOthers = function (p) {
         var v = window.FluxAppVisibility;
-        return !!(v && v.isOwner() && v.hiddenIds().indexOf(p.id) >= 0);
+        return !!(v && (v.isOwner() || v.hasGrant(p.id)) && v.hiddenIds().indexOf(p.id) >= 0);
       };
       var title = function (p) {
         return '<div class="app-name">' + esc(p.name) + (p.partner ? '<span class="app-partner">Partner</span>' : '') + (isHiddenFromOthers(p) ? '<span class="app-partner">Hidden</span>' : '') + '</div><div class="app-tag">' + esc(p.tagline) + '</div>';
