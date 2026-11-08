@@ -191,8 +191,7 @@
   .founders { background: linear-gradient(180deg, var(--sky), var(--paper)); }
   .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; margin-top: 26px; }
   .person { border-radius: 24px; padding: clamp(22px, 4vw, 32px); background: #fff; border: 1px solid rgba(28,18,176,.1); box-shadow: 0 24px 50px -36px rgba(28,18,176,.6); }
-  .person .initial { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 14px; font-family: var(--serif); font-style: italic; font-size: 1.7rem; color: #fff; background: var(--ink); }
-  .person:nth-child(2) .initial { background: var(--coral); }
+  .person .photo { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; object-position: 50% 20%; border-radius: 18px; margin-bottom: 18px; background: var(--paper2); }
   .person h3 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: 1.9rem; color: var(--ink); }
   .person .role { margin: 0 0 12px; font-size: .86rem; font-weight: 600; color: var(--coral); }
   .person p { margin: 0; color: var(--text); }
@@ -342,13 +341,13 @@
       <p class="lede">Just two motivated teens who kept watching the same thing happen in our own community.</p>
       <div class="pair">
         <article class="person">
-          <div class="initial" aria-hidden="true">A</div>
+          <img class="photo" src="public/partners/aorta/arav.jpg" alt="Arav Sheth" width="640" height="800" loading="lazy">
           <h3>Arav Sheth</h3>
           <p class="role">Junior · Co-founder</p>
           <p>Hi, I’m Arav Sheth, a motivated junior and co-founder of The Aorta Project. I am very passionate about healthcare and serving my community in any way I can, and I am also very connected to my heritage. As part of an immigrant community myself, I kept seeing families around me struggle to navigate a healthcare system that was never made for them. So I decided to build something that was.</p>
         </article>
         <article class="person">
-          <div class="initial" aria-hidden="true">A</div>
+          <img class="photo" src="public/partners/aorta/aryan.jpg" alt="Aryan Khedkar" width="640" height="800" loading="lazy">
           <h3>Aryan Khedkar</h3>
           <p class="role">Junior · Co-founder</p>
           <p>Hi! I’m Aryan Khedkar, a junior and co-founder of The Aorta Project. As a member of a minority community myself, I have seen firsthand how difficult it is for minority and immigrant families to adapt and find the right support, especially if they have just immigrated to another country. Motivated to change that, we decided to build a system where this wouldn’t happen to them — and we’re just getting started.</p>
