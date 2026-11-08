@@ -44,6 +44,7 @@ const RPC: Record<string, unknown> = {
   flux_owner_announcements: { active_7d: 10, items: [{ id: 'a1', title: EVIL, body: 'b', app: 'grapher', level: 'warning', active: true, starts_at: '2026-11-01T00:00:00Z', ends_at: null, reads: 4, created_at: '2026-11-01T00:00:00Z' }] },
   flux_owner_errors: [{ message: EVIL, source: 'app.js', times: 12, people: 3, last_seen: '2026-11-06T05:09:00Z', page: '/', version: 'abc' }],
   flux_owner_uptime: { scheduled: true, targets: [{ target: 'https://fluxplanner.github.io/Flux/', up: 287, down: 1, avg_ms: 210, recent: [{ at: '2026-11-06T05:09:00Z', ok: true, ms: 200 }, { at: '2026-11-06T05:04:00Z', ok: false, error: EVIL }] }] },
+  flux_owner_roles: [{ id: 'role1', name: EVIL, color: '#e4776b', permissions: ['app:grapher'], members: [{ user_id: 'u9', username: EVIL }] }],
   flux_owner_db_health: { size_bytes: 22 * 1024 * 1024, limit_bytes: 500 * 1024 * 1024, tables: [{ name: 'user_data', bytes: 9000000, rows: 30 }], connections: { active: 1, idle: 9 }, running: [{ pid: 42, role: 'authenticated', state: 'active', seconds: 40, query: EVIL }], slow: [{ query: 'select 1', calls: 5, mean_ms: 2, total_ms: 10 }] },
 };
 
@@ -194,7 +195,7 @@ test.describe('the app', () => {
     await setup(page);
     await open(page);
     const tabs = await page.locator('[data-os-tab]').evaluateAll((els) => els.map((e) => e.getAttribute('data-os-tab') as string));
-    for (const name of ['today', 'moderation', 'pwhelp', 'plannertabs', 'hideapps', 'release', 'auth', 'staffverify', 'nuke', 'audit', 'data', 'feedback', 'backlog', 'health', 'preview', 'team', 'testers', 'config', 'integrations', 'analytics', 'usage', 'ideas', 'megamap', 'advanced', 'overview', 'alerts', 'announce', 'signups', 'sessions', 'profiles', 'errors', 'uptime', 'versions', 'reported', 'sitemode', 'database']) {
+    for (const name of ['today', 'moderation', 'pwhelp', 'plannertabs', 'hideapps', 'release', 'auth', 'staffverify', 'nuke', 'audit', 'data', 'feedback', 'backlog', 'health', 'preview', 'team', 'testers', 'config', 'integrations', 'analytics', 'usage', 'ideas', 'megamap', 'advanced', 'overview', 'alerts', 'announce', 'signups', 'sessions', 'profiles', 'errors', 'uptime', 'versions', 'reported', 'sitemode', 'database', 'roles']) {
       expect(tabs, `${name} is missing`).toContain(name);
     }
     for (const t of tabs) {
@@ -280,6 +281,27 @@ test.describe('the app', () => {
     await expect(panel.getByRole('switch', { name: 'Flux Owner Controls visible' })).toHaveCount(0);
     await panel.getByRole('switch', { name: 'Synara visible' }).click();
     await expect.poll(() => db.writes.some((w) => w.table === 'flux_hidden_apps' && w.method === 'POST')).toBe(true);
+  });
+
+  test('roles: names stay text, switches and members reach the database', async ({ page }) => {
+    const db = await setup(page);
+    await open(page, '#roles');
+    const mount = page.locator('#osRolesMount');
+    await expect(mount.locator('.own-role-item')).toHaveCount(1);
+    await expect(mount.locator('.own-role-member')).toContainText('<img');
+    expect(await page.evaluate(() => (window as unknown as { __pwned?: number }).__pwned)).toBeUndefined();
+    await expect(mount.getByRole('switch', { name: /can see Flux Planner/ })).toHaveCount(0);
+    await expect(mount.getByRole('switch', { name: /can see Flux Owner Controls/ })).toHaveCount(0);
+    await expect(mount.getByRole('switch', { name: /can see Flux Grapher/ })).toHaveAttribute('aria-checked', 'true');
+    await mount.getByRole('switch', { name: /can see Synara/ }).click();
+    await expect.poll(() => db.writes.find((w) => w.table === 'flux_roles' && w.method === 'PATCH')?.body).toEqual({ permissions: ['app:grapher', 'app:synara'] });
+    // Each save redraws the panel from the database; type once that is done.
+    await expect.poll(() => db.calls.filter((c) => c.rpc === 'flux_owner_roles').length).toBe(2);
+    await page.waitForLoadState('networkidle');
+    await mount.getByLabel('Username to add').fill('jo');
+    await mount.getByRole('button', { name: 'Add', exact: true }).click();
+    await expect.poll(() => db.writes.find((w) => w.table === 'flux_role_members' && w.method === 'POST')?.body).toEqual({ role_id: 'role1', user_id: 'u1' });
+    expect(db.calls.some((c) => c.rpc === 'flux_owner_find_user' && c.args.p_username === 'jo')).toBe(true);
   });
 
   test('works on a phone without sideways scrolling', async ({ page }) => {

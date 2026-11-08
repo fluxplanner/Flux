@@ -1,7 +1,10 @@
 /* ============================================================================
    FLUX  ·  flux-app-visibility.js
    Hides the apps the owner has hidden (table flux_hidden_apps, changed from
-   Owner Command Center → Hide apps) from everyone but the owner.
+   Owner Controls → Hide apps) from everyone but the owner and the people the
+   owner has given a role that lets them see it (Owner Controls → Roles,
+   tables flux_roles and flux_role_members). That is how a partner previews
+   their own app before it is public.
 
    Loaded as a plain blocking script at the top of <head> on every page that
    can link to an app, before anything can paint. It depends on nothing,
@@ -25,6 +28,12 @@
    If the list cannot be fetched and this device has never seen it, the page
    opens. A school network blocking Supabase must not take every Flux app down.
 
+   ROLES
+   A signed-in viewer's own permissions come from flux_my_permissions(), sent
+   with their session token, and are cached per account. Each "app:<id>" lets
+   them see that app. A role only ever shows more, so if the answer cannot be
+   fetched, the cached grants for that same account are used.
+
    ONE DELIBERATE EXCEPTION
    A device with Synara medicines or seizures saved on it keeps Synara. That
    person already uses it, so there is no secret to keep from them, and locking
@@ -38,6 +47,7 @@
   var SESSION_KEY = 'sb-lfigdijuqmbensebnevo-auth-token';
   var OWNER_UID = 'eabe2b1f-e428-4181-8530-8e5366eb3975';
   var CACHE_KEY = 'flux_hidden_apps_v1';
+  var GRANTS_KEY = 'flux_my_permissions_v1';
   var HOLD_MS = 1500;
 
   /* Other ways of linking to an app, beyond <id>.html. Synara's welcome page
@@ -52,14 +62,25 @@
   var declaresPage = !!(script && script.hasAttribute('data-app'));
   var pageApp = declaresPage ? script.getAttribute('data-app') : '';
   var ids = [];
+  var grants = [];
 
   function readJSON(key) {
     try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; }
   }
 
-  function isOwner() {
+  function session() {
     var s = readJSON(SESSION_KEY);
-    return !!(s && s.user && s.user.id === OWNER_UID);
+    return s && s.user && s.user.id ? s : null;
+  }
+
+  function isOwner() {
+    var s = session();
+    return !!(s && s.user.id === OWNER_UID);
+  }
+
+  /** Given a role that shows this app? */
+  function hasGrant(id) {
+    return grants.indexOf('app:' + id) >= 0;
   }
 
   function hasOwnRecords(id) {
@@ -70,7 +91,7 @@
 
   /** Hidden from the person looking at this page? */
   function isHidden(id) {
-    return ids.indexOf(id) >= 0 && !isOwner() && !hasOwnRecords(id);
+    return ids.indexOf(id) >= 0 && !isOwner() && !hasGrant(id) && !hasOwnRecords(id);
   }
 
   function selectorsFor(id) {
@@ -106,8 +127,8 @@
     else release();
   }
 
-  function setIds(next, announce) {
-    var changed = next.slice().sort().join() !== ids.slice().sort().join();
+  function setIds(next, announce, alsoChanged) {
+    var changed = alsoChanged || next.slice().sort().join() !== ids.slice().sort().join();
     ids = next;
     applyStyle();
     if (announce && changed) {
@@ -115,7 +136,38 @@
     }
   }
 
-  function refresh() {
+  /* Grants belong to one account: a cached answer for anyone else is ignored. */
+  function cachedGrants() {
+    var s = session();
+    var c = readJSON(GRANTS_KEY);
+    return s && c && c.uid === s.user.id && Array.isArray(c.perms) ? c.perms : [];
+  }
+
+  function refreshGrants() {
+    var s = session();
+    if (!s || !s.access_token || isOwner()) {
+      grants = cachedGrants();
+      return Promise.resolve(grants);
+    }
+    return fetch(SB_URL + '/rest/v1/rpc/flux_my_permissions', {
+      method: 'POST',
+      headers: { apikey: SB_ANON, Authorization: 'Bearer ' + s.access_token, 'Content-Type': 'application/json' },
+      body: '{}',
+      cache: 'no-store',
+    }).then(function (res) {
+      if (!res.ok) throw new Error('flux_my_permissions ' + res.status);
+      return res.json();
+    }).then(function (perms) {
+      grants = Array.isArray(perms) ? perms : [];
+      try { localStorage.setItem(GRANTS_KEY, JSON.stringify({ uid: s.user.id, perms: grants })); } catch (e) { /* storage blocked */ }
+      return grants;
+    }, function () {
+      grants = cachedGrants();
+      return grants;
+    });
+  }
+
+  function refreshList() {
     return fetch(SB_URL + '/rest/v1/flux_hidden_apps?select=app_id', {
       headers: { apikey: SB_ANON, Authorization: 'Bearer ' + SB_ANON },
       cache: 'no-store',
@@ -125,14 +177,26 @@
     }).then(function (rows) {
       var next = rows.map(function (r) { return r.app_id; });
       try { localStorage.setItem(CACHE_KEY, JSON.stringify(next)); } catch (e) { /* storage blocked */ }
-      setIds(next, true);
       return next;
+    });
+  }
+
+  /* Both answers, then one repaint. A failed list keeps what was known. */
+  function refresh() {
+    var before = grants.slice().sort().join();
+    var list = refreshList();
+    return Promise.all([list.catch(function () { return ids; }), refreshGrants()]).then(function (got) {
+      var grantsChanged = grants.slice().sort().join() !== before;
+      setIds(got[0], true, grantsChanged);
+      return list;
     });
   }
 
   window.FluxAppVisibility = {
     isHidden: isHidden,
     isOwner: isOwner,
+    /** Given a role that shows this app, whether or not it is hidden. */
+    hasGrant: hasGrant,
     /** Everything on the list, whoever is looking: for the owner's own view. */
     hiddenIds: function () { return ids.slice(); },
     refresh: refresh,
@@ -146,6 +210,7 @@
 
   var cached = readJSON(CACHE_KEY);
   var known = Array.isArray(cached);
+  grants = cachedGrants();
   setIds(known ? cached : [], false);
 
   /* Wait for the real answer, briefly, only when this page might have to leave:
