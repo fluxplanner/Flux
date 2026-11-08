@@ -637,6 +637,10 @@ Deno.serve(async (req) => {
           email: newEmail,
           password,
           email_confirm,
+          /* Lets the account through while sign-ups are closed or invite-only
+             (flux_enforce_signup_policy). app_metadata, unlike user_metadata,
+             cannot be set by someone signing themselves up. */
+          app_metadata: { flux_owner_created: true },
         });
         if (error) throw error;
         const returnTemp = body.returnTemporaryPassword !== false;

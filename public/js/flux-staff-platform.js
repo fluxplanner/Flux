@@ -1768,7 +1768,10 @@
               <div style="flex:1;min-width:0">
                 <div style="font-weight:800;display:flex;align-items:center;flex-wrap:wrap;gap:4px">${esc(p.title)}${pinned}</div>
                 ${p.body ? `<div style="font-size:.82rem;color:var(--muted2);margin-top:5px;line-height:1.5">${esc(p.body)}</div>` : ''}
-                <div style="font-size:.68rem;color:var(--muted);margin-top:6px">${typeof timeAgo === 'function' ? timeAgo(new Date(p.created_at)) : ''}</div>
+                <div style="font-size:.68rem;color:var(--muted);margin-top:6px;display:flex;align-items:center;gap:10px">
+                  <span>${typeof timeAgo === 'function' ? timeAgo(new Date(p.created_at)) : ''}</span>
+                  ${p.posted_by !== currentUser.id ? `<button type="button" class="sf-report" data-sf-report="${esc(p.id)}" style="background:none;border:none;padding:0;font-size:.68rem;color:var(--muted);text-decoration:underline;cursor:pointer">Report</button>` : ''}
+                </div>
               </div>
             </div>
           </div>`;
@@ -1776,6 +1779,27 @@
         </div>
       </div>`;
     el.querySelector('#sfNew')?.addEventListener('click', openNewFeedPostModal);
+    el.querySelectorAll('[data-sf-report]').forEach((b) => b.addEventListener('click', () => reportFeedPost(b)));
+  }
+
+  /* Reports go to the owner. Enough of them on one post raises an alert in
+     Owner Controls, and can take the post down (flux_report_post). */
+  async function reportFeedPost(btn) {
+    const reason = window.prompt('What is wrong with this post? (optional)\n\nYour report goes to the people who run Flux. The person who posted it is not told who reported it.');
+    if (reason === null) return;
+    const client = sb();
+    if (!client) return;
+    btn.disabled = true;
+    const { error } = await client.rpc('flux_report_post', {
+      p_source: 'school_feed', p_id: btn.getAttribute('data-sf-report'), p_reason: reason.trim() || null,
+    });
+    if (error) {
+      btn.disabled = false;
+      if (typeof showToast === 'function') showToast(error.message || 'Could not send that report. Try again.', 'error');
+      return;
+    }
+    btn.textContent = 'Reported';
+    if (typeof showToast === 'function') showToast('Thanks. Your report was sent.', 'success');
   }
 
   function openNewFeedPostModal() {

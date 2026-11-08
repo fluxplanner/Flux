@@ -21,7 +21,12 @@
   var DURATIONS = [
     ['', 'Until I lift it'], ['1', '1 hour'], ['24', '1 day'], ['168', '1 week'], ['720', '30 days'],
   ];
-  var KIND_NAMES = { user: 'Account ban', ip: 'IP ban', device: 'Device ban', mute: 'Posting off' };
+  var KIND_NAMES = {
+    user: 'Account ban', ip: 'IP ban', device: 'Device ban', mute: 'Posting off',
+    shadow: 'Posts hidden from others', slow: 'Slowed down',
+  };
+  var LIFT_LABELS = { mute: 'Turn posting back on', shadow: 'Show their posts again', slow: 'Stop slowing down' };
+  var WAITS = [['60', '1 minute'], ['300', '5 minutes'], ['900', '15 minutes'], ['3600', '1 hour'], ['86400', '1 day']];
 
   var _view = 'archive';
   var _person = null;
@@ -115,6 +120,20 @@
         });
         box.appendChild(select);
       }
+      var wait = null;
+      if (opts.wait) {
+        wait = document.createElement('select');
+        wait.className = 'own-input';
+        wait.setAttribute('aria-label', 'Wait between posts');
+        WAITS.forEach(function (w) {
+          var o = document.createElement('option');
+          o.value = w[0];
+          o.textContent = 'Wait ' + w[1] + ' between posts';
+          wait.appendChild(o);
+        });
+        wait.value = '300';
+        box.appendChild(wait);
+      }
       var row = document.createElement('div');
       row.className = 'own-actions';
       var ok = document.createElement('button');
@@ -130,7 +149,11 @@
       function done(v) { box.close(); box.remove(); resolve(v); }
       ok.addEventListener('click', function () {
         if (opts.required && !area.value.trim()) { area.focus(); return; }
-        done({ text: area.value.trim(), hours: select && select.value ? Number(select.value) : null });
+        done({
+          text: area.value.trim(),
+          hours: select && select.value ? Number(select.value) : null,
+          wait: wait ? Number(wait.value) : null,
+        });
       });
       no.addEventListener('click', function () { done(null); });
       box.addEventListener('cancel', function (e) { e.preventDefault(); done(null); });
@@ -267,6 +290,12 @@
     var res = await sb().rpc('flux_owner_person', { p_user: _person });
     if (res.error) throw res.error;
     var f = res.data || {};
+    /* Signed-in devices come from the newer database update; the file still
+       opens without it. */
+    var sess = await sb().rpc('flux_owner_sessions', { p_user: _person });
+    var sessions = sess.error ? null : (sess.data || []);
+    var lock = await sb().from('flux_name_locks').select('user_id').eq('user_id', _person).maybeSingle();
+    f.name_locked = !lock.error && !!lock.data;
     var a = f.account || {};
     var pr = f.profile || {};
     var label = a.username || _person;
@@ -287,11 +316,28 @@
           button('Warn', 'warn', { value: _person }) +
           button('Add note', 'note', { value: _person }) +
           button('Turn off posting', 'mute', { value: _person, label: label }) +
+          button('Slow down', 'slow', { value: _person, label: label }) +
+          button('Hide their posts', 'shadow', { value: _person, label: label }) +
           button('Sign out everywhere', 'revoke', { value: _person }) +
           button('Save to report', 'report', { value: _person }) +
           button('Ban account', 'ban-user', { value: _person, label: label, deleted: a.username ? '' : '1' }, 'danger')
+        ) +
+        '<h3 class="own-h3">Account</h3>' +
+        actions(
+          (a.username ? button('Change username', 'rename', { value: _person, label: a.username }) : '') +
+          button('Change display name', 'display-name', { value: _person, label: pr.display_name || '' }) +
+          button(f.name_locked ? 'Unlock name' : 'Lock name', 'name-lock', { value: _person, on: f.name_locked ? '' : '1' }) +
+          button('Download their data', 'export', { value: _person, label: label }) +
+          (a.username ? button('Delete account', 'delete-account', { value: _person, label: a.username }, 'danger') : '')
         )
       ) +
+      '<h3 class="own-h3">Signed in on</h3>' +
+      (sessions === null ? muted('Shown once the newest database update is applied.')
+        : sessions.length ? sessions.map(function (s) {
+          return card('<div class="own-text">' + esc(s.ip || 'no address') + ' · ' + muted('since ' + when(s.created_at) + ' · last used ' + when(s.refreshed_at)) + '</div>' +
+            '<div class="own-muted own-small">' + esc(s.user_agent || '') + '</div>' +
+            actions(button('End this sign-in', 'end-session', { value: _person, session: s.id })));
+        }).join('') : muted('Not signed in anywhere.')) +
       '<h3 class="own-h3">Addresses and devices</h3>' +
       ((f.sightings || []).length ? f.sightings.map(function (s) {
         return card(sightingLine(s) + '<div class="own-muted own-small">' + esc(s.user_agent || '') + '</div>' + actions(sightingButtons(s, a.username, _person)));
@@ -311,7 +357,8 @@
       '<div>' + muted((r.reason || 'No reason given') + ' · ' + when(r.created_at) +
         (r.expires_at ? (expired ? ' · ended ' : ' · ends ') + when(r.expires_at) : '') +
         (!r.active ? ' · lifted' : '')) + '</div>' +
-      (live ? actions(button(r.kind === 'mute' ? 'Turn posting back on' : 'Lift ban', 'lift', { id: r.id, kind: r.kind, value: r.value })) : ''));
+      (r.cooldown_seconds ? '<div>' + muted('Must wait ' + Math.round(r.cooldown_seconds / 60) + ' min between posts') + '</div>' : '') +
+      (live ? actions(button(LIFT_LABELS[r.kind] || 'Lift ban', 'lift', { id: r.id, kind: r.kind, value: r.value })) : ''));
   }
 
   async function renderBans(body) {
@@ -419,9 +466,11 @@
     await window.FluxRelease.invokeOwnerReleaseAdmin({ action: 'auth_ban_user', userId: userId, banned: banned });
   }
 
-  async function addBan(kind, value, label, reason, hours) {
+  async function addBan(kind, value, label, reason, hours, wait) {
     var expires = hours ? new Date(Date.now() + hours * 3600000).toISOString() : null;
-    var res = await sb().rpc('flux_owner_ban', { p_kind: kind, p_value: value, p_label: label || null, p_reason: reason || null, p_expires: expires });
+    var args = { p_kind: kind, p_value: value, p_label: label || null, p_reason: reason || null, p_expires: expires };
+    if (wait) args.p_cooldown = wait;
+    var res = await sb().rpc('flux_owner_ban', args);
     if (res.error && missingDb(res.error) && !hours && kind !== 'mute') {
       // Before the update is applied, a plain ban must still work.
       res = await sb().from('flux_bans').insert({ kind: kind, value: value, label: label || null, reason: reason || null, created_by: me() ? me().id : null });
@@ -439,21 +488,34 @@
         : 'This blocks everyone on ' + value + ', including anyone else on that network. Continue?';
       if (!window.confirm(warning)) return false;
     }
-    var isMute = kind === 'mute';
+    var name = label || value;
+    var copy = {
+      mute: { title: 'Turn off posting for ' + name, confirm: 'Turn off posting', done: 'Posting turned off', log: 'posting off' },
+      shadow: {
+        title: 'Hide ' + name + '’s posts', confirm: 'Hide their posts', done: 'Their posts are hidden', log: 'posts hidden',
+        text: 'They can still post and still see their own posts, so they will not know. Nobody else sees anything they post, old or new, until you lift this.',
+      },
+      slow: {
+        title: 'Slow ' + name + ' down', confirm: 'Slow down', done: 'Slowed down', log: 'slowed down',
+        text: 'They can still post, but only once per wait. A post too soon is refused with “You are posting too quickly”.',
+      },
+    }[kind] || { title: 'Ban ' + name, confirm: 'Ban', done: 'Banned', log: kind + ' ban' };
     var form = await ask({
-      title: isMute ? 'Turn off posting for ' + (label || value) : 'Ban ' + (label || value),
+      title: copy.title,
+      text: copy.text,
       placeholder: 'Reason',
       duration: true,
-      confirm: isMute ? 'Turn off posting' : 'Ban',
+      wait: kind === 'slow',
+      confirm: copy.confirm,
       tone: 'danger',
     });
     if (!form) return false;
-    await addBan(kind, value, label, form.text, form.hours);
+    await addBan(kind, value, label, form.text, form.hours, form.wait);
     if (kind === 'user' && !o.deleted && !form.hours) await setAccountBan(value, true);
-    var who = kind === 'user' || kind === 'mute' ? value : o.user;
-    if (who) await logAction(who, kind === 'mute' ? 'posting off' : kind + ' ban', form.text + (form.hours ? ' (' + form.hours + 'h)' : ''));
-    audit('moderation_ban', { kind: kind, value: value, reason: form.text, hours: form.hours });
-    toast(isMute ? 'Posting turned off' : 'Banned', 'success');
+    var who = kind === 'user' || kind === 'mute' || kind === 'shadow' || kind === 'slow' ? value : o.user;
+    if (who) await logAction(who, copy.log, form.text + (form.hours ? ' (' + form.hours + 'h)' : ''));
+    audit('moderation_ban', { kind: kind, value: value, reason: form.text, hours: form.hours, wait: form.wait });
+    toast(copy.done, 'success');
     return true;
   }
 
@@ -509,10 +571,76 @@
     }
     if (act === 'revoke') {
       if (!window.confirm('Sign this person out on every device?')) return;
-      await window.FluxRelease.invokeOwnerReleaseAdmin({ action: 'auth_revoke_sessions', userId: value });
-      await logAction(value, 'signed out', 'Signed out everywhere');
+      /* The database function also refuses the hour-long token each device
+         already holds. Before it is applied, fall back to ending the sessions. */
+      var out = await sb().rpc('flux_owner_sign_out', { p_user: value, p_session: null });
+      if (out.error && missingDb(out.error)) {
+        await window.FluxRelease.invokeOwnerReleaseAdmin({ action: 'auth_revoke_sessions', userId: value });
+        await logAction(value, 'signed out', 'Signed out everywhere');
+      } else if (out.error) throw out.error;
       audit('moderation_revoke', { userId: value });
-      return toast('Signed out everywhere', 'success');
+      toast('Signed out everywhere', 'success');
+      return _view === 'person' ? paint(mount) : undefined;
+    }
+    if (act === 'end-session') {
+      if (!window.confirm('End this one sign-in? That device can keep working for up to an hour, then has to sign in again. To cut someone off at once, use Sign out everywhere.')) return;
+      var ended = await sb().rpc('flux_owner_sign_out', { p_user: value, p_session: el.getAttribute('data-session') });
+      if (ended.error) throw ended.error;
+      audit('moderation_end_session', { userId: value });
+      return paint(mount);
+    }
+    if (act === 'rename') {
+      var typedNew = window.prompt('New username for @' + label + '. They sign in with this from now on; their password stays the same. ' +
+        'They are signed out everywhere, so tell them the new name.', label);
+      if (typedNew == null || !typedNew.trim() || typedNew.trim() === label) return;
+      /* The same steps as fluxNormalizeUsername in the planner, which is not
+         loaded here: the result has to be the name they would type. */
+      var normal = typedNew.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/\s+/g, '.').replace(/[^a-z0-9._-]/g, '').replace(/\.{2,}/g, '.').replace(/^[.\-_]+|[.\-_]+$/g, '');
+      var renamed = await sb().rpc('flux_owner_rename_username', { p_user: value, p_username: normal });
+      if (renamed.error) throw renamed.error;
+      audit('moderation_rename', { userId: value, to: renamed.data });
+      toast('They now sign in as ' + renamed.data, 'success');
+      return paint(mount);
+    }
+    if (act === 'display-name') {
+      var shown = window.prompt('Display name others see (empty removes it):', label);
+      if (shown == null) return;
+      var named = await sb().rpc('flux_owner_set_profile', { p_user: value, p_display_name: shown.trim(), p_clear: [], p_lock: null, p_reason: null });
+      if (named.error) throw named.error;
+      audit('moderation_display_name', { userId: value });
+      return paint(mount);
+    }
+    if (act === 'name-lock') {
+      var locking = !!el.getAttribute('data-on');
+      var locked2 = await sb().rpc('flux_owner_set_profile', { p_user: value, p_display_name: null, p_clear: [], p_lock: locking, p_reason: null });
+      if (locked2.error) throw locked2.error;
+      audit('moderation_name_lock', { userId: value, on: locking });
+      toast(locking ? 'Locked: their name, bio and picture stay as they are now' : 'Unlocked', 'success');
+      return paint(mount);
+    }
+    if (act === 'export') {
+      var dump = await sb().rpc('flux_owner_export_person', { p_user: value });
+      if (dump.error) throw dump.error;
+      audit('moderation_export', { userId: value });
+      return saveFile('flux-data-' + (label || value) + '.json', JSON.stringify(dump.data, null, 2), 'application/json');
+    }
+    if (act === 'delete-account') {
+      var check = window.prompt('Delete @' + label + ' for good? Their planner, tasks, notes and everything else they saved is ' +
+        'erased and cannot be brought back. A copy of their account, addresses and public posts is kept in Saved for report first.\n\n' +
+        'Type their username to confirm.');
+      if (check == null || check.trim().toLowerCase() !== String(label).toLowerCase()) {
+        if (check != null) toast('That did not match, so nothing was deleted', 'error');
+        return;
+      }
+      var kept = await sb().rpc('flux_owner_save_report', { p_user: value, p_reason: 'Account deleted', p_notes: null });
+      if (kept.error) throw kept.error;
+      await window.FluxRelease.invokeOwnerReleaseAdmin({ action: 'auth_delete_user', userId: value });
+      await logAction(value, 'deleted', 'Account @' + label + ' deleted');
+      audit('moderation_delete_account', { userId: value });
+      toast('Deleted. Their record is in Saved for report.', 'success');
+      _view = 'reports';
+      return paint(mount);
     }
     if (act === 'take-down') {
       var t = await ask({ title: 'Take this down', text: 'It disappears for everyone straight away. The archive keeps a copy.', placeholder: 'Reason (optional)', confirm: 'Take down', tone: 'danger' });
@@ -562,7 +690,7 @@
       value = document.getElementById('fluxModIp').value.trim();
       if (!/^[0-9a-fA-F:.]{3,45}$/.test(value)) return toast('Enter a valid IP address', 'error');
     }
-    var kind = { 'ban-user': 'user', 'ban-device': 'device', mute: 'mute' }[act] || 'ip';
+    var kind = { 'ban-user': 'user', 'ban-device': 'device', mute: 'mute', shadow: 'shadow', slow: 'slow' }[act] || 'ip';
     var done = await doBan(kind, value, label, {
       shared: el.getAttribute('data-shared'),
       deleted: el.getAttribute('data-deleted'),
