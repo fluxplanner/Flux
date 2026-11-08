@@ -45,7 +45,7 @@ async function setup(page: Page, answer: Answer, opts: { uid?: string; cached?: 
 
 test.describe('someone other than the owner', () => {
   test('sees no trace of a hidden app in Flux Suite', async ({ page }) => {
-    // Every partner app hidden, as Aorta is in production, so the Partners tab goes too.
+    // Every partner app hidden, so the Partners tab goes too.
     await setup(page, ['synara', 'aorta']);
     await page.goto('/suite.html#partners');
     await expect(page.locator('.app--grapher')).toBeVisible();

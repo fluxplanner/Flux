@@ -82,7 +82,8 @@ test.describe('Flux Partners', () => {
   test('Flux Suite labels Synara a partner and links to the program', async ({ page }) => {
     await page.goto('/suite.html');
     await expect(page.locator('#apps a.app--synara .app-partner')).toHaveText('Partner');
-    await expect(page.locator('#apps .app-partner')).toHaveCount(1);
+    // Synara and the Aorta Project, the two partner apps.
+    await expect(page.locator('#apps .app-partner')).toHaveCount(2);
     await page.getByRole('tab', { name: /Partners/ }).click();
     await page.locator('.partners-strip a').click();
     await expect(page).toHaveURL(/partners/);

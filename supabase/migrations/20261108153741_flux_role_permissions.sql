@@ -125,6 +125,6 @@ BEGIN
 END;
 $function$;
 
--- The Aorta Project joins the Flux Suite directory in the same release.
+-- The Aorta Project is listed in Flux Suite (flux-hub.js).
 -- Hidden first, so it is never public before the owner chooses.
 INSERT INTO public.flux_hidden_apps (app_id) VALUES ('aorta') ON CONFLICT DO NOTHING;

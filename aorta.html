@@ -2,20 +2,27 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<!-- Hidden from the public (flux_hidden_apps): only the owner and people with a
-     role that can see the Aorta Project open it; anyone else goes to Flux Suite.
-     Kept out of search engines too. -->
+<!-- While the owner has it hidden (Owner Controls → Hide apps), anyone else
+     who opens this URL is sent to Flux Suite instead. -->
 <script src="public/js/flux-app-visibility.js?v=eb28c37b" data-app="aorta"></script>
-<title>Aorta Project — preview</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Aorta Project</title>
+<meta name="description" content="The Aorta Project is a student-led organization bridging the gap between immigrant communities and the American healthcare system: advocacy, heart-health education, and a free medical dictionary for immigrants and seniors.">
+<!-- Kept out of search engines while the owner has it hidden. Remove this
+     line when the Aorta Project launches. -->
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#f5f5f2">
+<meta name="theme-color" content="#ffffff">
 <link rel="icon" type="image/png" href="public/partners/aorta/logo.png">
 
 <!--
-  Aorta Project: a Flux partner app, first draft. The partner has not chosen
-  what the site holds yet, so every block of words below is a placeholder
-  (marked .ph) — only the look and the scroll motion are real so far.
+  The Aorta Project: a Flux partner site, written from the copy the founders
+  sent. Two things still come from them later:
+    - DONATE_URL in the script at the bottom: their GoFundMe link. Until it
+      is set, the Donate button says the link is coming.
+    - public/partners/aorta/dictionary.json: the medical dictionary, made
+      from their spreadsheet. An array of { "term", "meaning" }; until the
+      file exists, the Dictionary section says it is on its way.
+  Events are tentative and marked as such.
 
   How the motion works: each [data-scroll] section is taller than the screen
   and its inner .stage is sticky. On scroll, the script sets --p (0 → 1) on
@@ -25,48 +32,66 @@
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --paper: #f5f5f2;
-    --paper2: #ecebe6;
-    --ink: #24238f;      /* the indigo of "Aorta" in their logo */
-    --coral: #e4776b;    /* the heart's line colour */
-    --text: #1d1d2b;
-    --muted: #6b6b7b;
+    --paper: #ffffff;
+    --paper2: #f3f4fb;
+    --ink: #1c12b0;      /* the blue of "Aorta" in their logo */
+    --ink2: #120a7a;
+    --sky: #e8eaff;
+    --coral: #f0443f;    /* the heart's red line */
+    --text: #17172b;
+    --muted: #5d5d78;
     --serif: 'Cormorant Garamond', Georgia, serif;
     --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   }
   * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 72px; }
   html, body { margin: 0; background: var(--paper); color: var(--text); }
-  body { font-family: var(--sans); line-height: 1.55; overflow-x: clip; }
+  body { font-family: var(--sans); line-height: 1.6; overflow-x: clip; }
   img { display: block; max-width: 100%; }
+  a { color: var(--ink); }
+  :focus-visible { outline: 2px solid var(--coral); outline-offset: 3px; }
 
   /* ---- top bar ---- */
   .bar {
     position: fixed; inset: 0 0 auto; z-index: 10;
-    display: flex; align-items: center; gap: 10px;
-    padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
-    background: color-mix(in srgb, var(--paper) 80%, transparent);
+    display: flex; align-items: center; gap: 14px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+    background: color-mix(in srgb, var(--paper) 82%, transparent);
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(28,18,176,.08);
   }
-  .bar .mini { width: 34px; height: 34px; border-radius: 50%; overflow: hidden; }
+  .brand { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+  .bar .mini { width: 38px; height: 38px; border-radius: 50%; overflow: hidden; flex: none; }
   .bar .mini img { width: 100%; height: 100%; transform: scale(1.08); }
-  .bar strong { font-family: var(--serif); font-style: italic; font-size: 1.3rem; color: var(--ink); font-weight: 500; }
-  .bar .grow { flex: 1; }
-  .draft {
-    font-size: .7rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
-    color: var(--coral); border: 1px dashed var(--coral); border-radius: 999px; padding: 4px 10px;
+  .bar strong { font-family: var(--serif); font-style: italic; font-size: 1.35rem; color: var(--ink); font-weight: 500; }
+  .bar nav { flex: 1; display: flex; justify-content: center; gap: 4px; }
+  .bar nav a { padding: 8px 10px; border-radius: 999px; font-size: .86rem; font-weight: 500; color: var(--text); text-decoration: none; }
+  .bar nav a:hover { background: var(--sky); color: var(--ink); }
+  @media (max-width: 860px) { .bar nav { display: none; } .bar .brand { margin-right: auto; } }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 20px;
+    border-radius: 999px; font: inherit; font-weight: 600; font-size: .94rem; text-decoration: none; cursor: pointer;
+    border: 1.5px solid var(--ink); color: var(--ink); background: transparent;
   }
+  .btn:hover { background: var(--sky); }
+  .btn-solid { color: #fff; background: var(--ink); }
+  .btn-solid:hover { background: var(--ink2); }
+  .btn-red { color: #fff; background: var(--coral); border-color: var(--coral); }
+  .btn-red:hover { background: #d93430; }
+  .btn[aria-disabled="true"] { opacity: .55; cursor: default; }
+  .bar .btn { min-height: 38px; padding: 0 16px; }
 
   /* ---- scroll sections ---- */
   [data-scroll] { position: relative; --p: 0; }
   .stage { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; display: grid; place-items: center; }
 
   /* 1. Hero: the heart draws itself, then becomes their logo. */
-  .hero { height: 320vh; }
+  .hero { height: 300vh; background: radial-gradient(70% 55% at 50% 45%, var(--sky), transparent 70%); }
   .hero .heart { width: min(64vw, 340px); overflow: visible;
-    /* Fades out as the logo takes over (p 0.55 → 0.75). */
     opacity: clamp(0, calc((0.75 - var(--p)) * 5), 1);
     transform: scale(calc(1 + var(--p) * .25)); }
   .hero .heart path {
@@ -75,10 +100,10 @@
     stroke-dashoffset: clamp(0, calc(1 - var(--p) * 1.9), 1);
   }
   .hero .logo {
-    position: absolute; width: min(78vw, 420px); aspect-ratio: 1; border-radius: 50%; overflow: hidden;
-    box-shadow: 0 40px 80px -30px rgba(36,35,143,.35);
+    position: absolute; width: min(70vw, 380px); aspect-ratio: 1; border-radius: 50%; overflow: hidden; background: #fff;
+    box-shadow: 0 40px 90px -30px rgba(28,18,176,.45);
     opacity: clamp(0, calc((var(--p) - 0.55) * 5), 1);
-    transform: scale(calc(0.7 + clamp(0, calc((var(--p) - 0.55) * 2.2), 1) * 0.3));
+    transform: translateY(calc(clamp(0, calc((var(--p) - 0.8) * 5), 1) * -9svh)) scale(calc(0.7 + clamp(0, calc((var(--p) - 0.55) * 2.2), 1) * 0.3));
   }
   .hero .logo img { width: 100%; height: 100%; transform: scale(1.07); }
   .hero .hint {
@@ -87,44 +112,107 @@
     opacity: clamp(0, calc(1 - var(--p) * 6), 1);
   }
   .hero .title {
-    position: absolute; left: 16px; right: 16px; top: calc(50% + min(39vw, 210px) + 18px); text-align: center;
-    font-family: var(--serif); font-size: clamp(1.5rem, 4.5vw, 2.4rem); color: var(--ink); margin: 0;
+    position: absolute; left: 16px; right: 16px; top: calc(50% + min(35vw, 190px) - 6svh); text-align: center;
     opacity: clamp(0, calc((var(--p) - 0.8) * 6), 1);
     transform: translateY(calc((1 - clamp(0, calc((var(--p) - 0.8) * 6), 1)) * 24px));
   }
+  .hero .title p { margin: 0 auto 16px; max-width: 640px; font-family: var(--serif); font-size: clamp(1.45rem, 4.2vw, 2.2rem); line-height: 1.2; color: var(--ink); }
+  .hero .title .ctas { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
 
-  /* 2. Mission: words light up one by one as you scroll. */
-  .words { height: 240vh; }
+  /* ---- plain sections ---- */
+  .sec { padding: clamp(64px, 11vw, 120px) 16px; }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+  .eyebrow { display: inline-block; margin-bottom: 12px; font-size: .74rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--coral); }
+  h2 { margin: 0 0 16px; font-family: var(--serif); font-weight: 500; font-size: clamp(2.3rem, 6vw, 3.6rem); line-height: 1.05; color: var(--ink); }
+  .lede { max-width: 720px; font-size: clamp(1.05rem, 2.1vw, 1.25rem); color: var(--muted); margin: 0; }
+  .lede strong { color: var(--text); }
+  .note { display: inline-block; margin-top: 6px; padding: 3px 10px; border-radius: 999px; font-size: .74rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); background: var(--sky); }
+
+  /* 2. The story: words light up one by one as you scroll. */
+  .words { height: 260vh; background: var(--ink); }
   .words .stage { padding: 0 16px; }
   .words p {
-    max-width: 900px; margin: 0; text-align: center;
-    font-family: var(--serif); font-size: clamp(1.9rem, 5.6vw, 4rem); line-height: 1.12; color: var(--ink);
+    max-width: 920px; margin: 0; text-align: center;
+    font-family: var(--serif); font-size: clamp(1.8rem, 5.2vw, 3.7rem); line-height: 1.14; color: #fff;
   }
-  .words .w { opacity: .13; transition: opacity .25s; }
+  .words .w { opacity: .16; transition: opacity .25s; }
   .words .w.on { opacity: 1; }
-  .words .w.accent { font-style: italic; color: var(--coral); }
+  .words .w.accent { font-style: italic; color: #ff8d88; }
 
-  /* 3. Cards that stack on top of each other. */
-  .cards { height: 360vh; }
-  .cards .stage { padding: 0 16px; }
-  .deck { position: relative; width: min(100%, 560px); height: min(72svh, 460px); }
+  /* 3. The AED initiative: cards that stack on top of each other. */
+  .cards { height: 340vh; background: var(--paper2); }
+  .cards .stage { padding: 76px 16px 16px; grid-template-rows: auto 1fr; gap: 18px; place-items: start center; }
+  .cards .head { text-align: center; }
+  .cards .head h2 { margin-bottom: 4px; }
+  .cards .head p { margin: 0; color: var(--muted); }
+  .deck { position: relative; width: min(100%, 580px); height: min(58svh, 430px); align-self: center; }
   .card {
     position: absolute; inset: 0; border-radius: 28px; padding: clamp(24px, 5vw, 40px);
     display: flex; flex-direction: column; justify-content: flex-end; gap: 10px;
-    background: #fff; border: 1px solid rgba(36,35,143,.08);
-    box-shadow: 0 30px 60px -30px rgba(29,29,43,.35);
+    background: #fff; border: 1px solid rgba(28,18,176,.1);
+    box-shadow: 0 30px 60px -30px rgba(23,23,43,.4);
     --k: clamp(0, calc((var(--p) - var(--at)) * 4), 1);
     transform: translateY(calc((1 - var(--k)) * 110svh)) rotate(calc((1 - var(--k)) * 6deg));
   }
-  .card:nth-child(1) { --at: 0; transform: none; }
-  .card:nth-child(2) { --at: .2; background: var(--ink); color: #fff; }
+  .card:nth-child(1) { --at: 0; transform: none; background: var(--ink); color: #fff; }
+  .card:nth-child(2) { --at: .2; }
   .card:nth-child(3) { --at: .5; background: var(--coral); color: #fff; }
-  .card .num { font-family: var(--serif); font-style: italic; font-size: 4rem; line-height: 1; opacity: .5; margin-bottom: auto; }
-  .card h3 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: clamp(2rem, 6vw, 2.8rem); line-height: 1.05; }
-  .card p { margin: 0; opacity: .8; max-width: 40ch; }
+  .card .num { font-family: var(--serif); font-style: italic; font-size: 4.4rem; line-height: 1; margin-bottom: auto; }
+  .card:nth-child(2) .num, .card:nth-child(2) h3 { color: var(--ink); }
+  .card h3 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: clamp(2.2rem, 6vw, 3rem); line-height: 1.05; }
+  .card p { margin: 0; opacity: .9; max-width: 46ch; }
 
-  /* 4. Their name, sliding sideways with the scroll. */
-  .slide { height: 200vh; }
+  /* 4. Dictionary */
+  .dict { background: var(--paper); }
+  .dict-box { margin-top: 26px; border-radius: 24px; padding: clamp(18px, 4vw, 28px); background: var(--paper2); border: 1px solid rgba(28,18,176,.1); }
+  .dict-box label { display: block; font-weight: 600; margin-bottom: 8px; }
+  .dict-box input {
+    width: 100%; min-height: 50px; padding: 0 18px; border-radius: 14px; font: inherit; font-size: 1.05rem;
+    border: 1.5px solid rgba(28,18,176,.25); background: #fff; color: var(--text);
+  }
+  .dict-box input:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 4px var(--sky); }
+  .dict-count { margin: 10px 0 0; font-size: .86rem; color: var(--muted); }
+  .dict-list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 10px; max-height: 520px; overflow: auto; }
+  .dict-list li { padding: 14px 16px; border-radius: 14px; background: #fff; border: 1px solid rgba(28,18,176,.08); }
+  .dict-list b { display: block; color: var(--ink); }
+  .dict-list span { font-size: .94rem; color: var(--muted); }
+  .dict-empty { margin: 14px 0 0; color: var(--muted); }
+
+  /* 5. Founders */
+  .founders { background: linear-gradient(180deg, var(--sky), var(--paper)); }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; margin-top: 26px; }
+  .person { border-radius: 24px; padding: clamp(22px, 4vw, 32px); background: #fff; border: 1px solid rgba(28,18,176,.1); box-shadow: 0 24px 50px -36px rgba(28,18,176,.6); }
+  .person .initial { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 14px; font-family: var(--serif); font-style: italic; font-size: 1.7rem; color: #fff; background: var(--ink); }
+  .person:nth-child(2) .initial { background: var(--coral); }
+  .person h3 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: 1.9rem; color: var(--ink); }
+  .person .role { margin: 0 0 12px; font-size: .86rem; font-weight: 600; color: var(--coral); }
+  .person p { margin: 0; color: var(--text); }
+
+  /* 6. Events and 7. Volunteer */
+  .events { background: var(--paper); }
+  .event-list { list-style: none; margin: 26px 0 0; padding: 0; display: grid; gap: 12px; }
+  .event { display: grid; grid-template-columns: 92px 1fr; gap: 18px; align-items: center; padding: 18px; border-radius: 20px; background: var(--paper2); border: 1px solid rgba(28,18,176,.08); }
+  .event .when { text-align: center; padding: 12px 6px; border-radius: 14px; background: var(--ink); color: #fff; font-weight: 700; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; line-height: 1.3; }
+  .event h3 { margin: 0 0 2px; font-size: 1.08rem; }
+  .event p { margin: 0; color: var(--muted); font-size: .94rem; }
+  .volunteer { background: var(--ink); color: #fff; }
+  .volunteer h2 { color: #fff; }
+  .volunteer .eyebrow { color: #ff8d88; }
+  .volunteer .lede { color: rgba(255,255,255,.82); }
+  .roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 12px; margin: 26px 0; }
+  .roles div { padding: 18px; border-radius: 18px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16); }
+  .roles b { display: block; margin-bottom: 4px; }
+  .roles span { font-size: .92rem; color: rgba(255,255,255,.78); }
+  .volunteer .btn { color: #fff; border-color: #fff; }
+  .volunteer .btn:hover { background: rgba(255,255,255,.12); }
+
+  /* 8. Donate */
+  .donate { text-align: center; background: radial-gradient(60% 80% at 50% 0%, var(--sky), var(--paper) 70%); }
+  .donate .lede { margin: 0 auto 24px; }
+  .donate .soon { margin: 12px 0 0; font-size: .86rem; color: var(--muted); }
+
+  /* 9. Their name, sliding sideways with the scroll. */
+  .slide { height: 180vh; }
   .slide .line {
     white-space: nowrap; font-family: var(--serif); font-style: italic; color: var(--ink);
     font-size: clamp(5rem, 18vw, 14rem); line-height: 1;
@@ -132,21 +220,22 @@
   }
   .slide .line span { color: var(--coral); }
 
-  /* Placeholder words: easy to spot until the partner sends their own. */
-  .ph { text-decoration: underline dashed rgba(228,119,107,.55); text-underline-offset: .18em; text-decoration-thickness: 1px; }
-
-  footer { padding: 64px 16px calc(48px + env(safe-area-inset-bottom, 0px)); text-align: center; color: var(--muted); font-size: .88rem; background: var(--paper2); }
-  footer a { color: var(--ink); }
+  footer { padding: 56px 16px calc(44px + env(safe-area-inset-bottom, 0px)); text-align: center; color: rgba(255,255,255,.75); font-size: .9rem; background: var(--ink2); }
+  footer a { color: #fff; }
+  footer .social { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 1rem; text-decoration: none; }
+  footer .social svg { width: 22px; height: 22px; }
+  footer p { margin: 8px 0; }
 
   @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
     [data-scroll] { --p: 1 !important; height: auto !important; }
-    .stage { position: relative; height: auto; min-height: 100svh; padding: 96px 16px; }
+    .stage { position: relative; height: auto; min-height: 0; padding: 96px 16px; }
     .hero .heart { display: none; }
-    .hero .logo, .hero .title { position: relative; top: auto; }
-    .hero .stage { display: flex; flex-direction: column; gap: 24px; }
+    .hero .logo, .hero .title { position: relative; top: auto; transform: none; }
+    .hero .stage { display: flex; flex-direction: column; align-items: center; gap: 24px; }
     .words .w { opacity: 1; }
     .deck { height: auto; display: grid; gap: 16px; }
-    .card { position: relative; min-height: 280px; transform: none !important; }
+    .card { position: relative; min-height: 260px; transform: none !important; }
     .slide .line { transform: none; font-size: clamp(3rem, 12vw, 8rem); white-space: normal; text-align: center; }
   }
 </style>
@@ -154,14 +243,23 @@
 <body>
 
 <header class="bar">
-  <span class="mini"><img src="public/partners/aorta/logo.png" alt=""></span>
-  <strong>Aorta</strong>
-  <span class="grow"></span>
-  <span class="draft">Private draft</span>
+  <a class="brand" href="#top" aria-label="The Aorta Project, back to top">
+    <span class="mini"><img src="public/partners/aorta/logo.png" alt=""></span>
+    <strong>Aorta</strong>
+  </a>
+  <nav aria-label="Sections">
+    <a href="#about">About</a>
+    <a href="#aed">AED initiative</a>
+    <a href="#dictionary">Dictionary</a>
+    <a href="#founders">Founders</a>
+    <a href="#events">Events</a>
+    <a href="#volunteer">Volunteer</a>
+  </nav>
+  <a class="btn btn-red" href="#donate">Donate</a>
 </header>
 
-<main>
-  <section class="hero" data-scroll aria-label="Aorta Project">
+<main id="top">
+  <section class="hero" data-scroll aria-label="The Aorta Project">
     <div class="stage">
       <!-- A single drawn line, in the spirit of their logo's heart. -->
       <svg class="heart" viewBox="0 0 200 240" aria-hidden="true">
@@ -169,25 +267,119 @@
         <path pathLength="1" d="M72 80 C 82 92, 100 92, 108 80 C 116 68, 132 72, 146 60"/>
         <path pathLength="1" d="M100 108 C 92 132, 96 160, 112 186"/>
       </svg>
-      <div class="logo"><img src="public/partners/aorta/logo.png" alt="Aorta Project logo"></div>
-      <p class="title ph">A line that starts with the heart.</p>
+      <div class="logo"><img src="public/partners/aorta/logo.png" alt="The Aorta Project logo"></div>
+      <div class="title">
+        <p>Bridging the gap between immigrant communities and the American healthcare system.</p>
+        <div class="ctas">
+          <a class="btn btn-solid" href="#aed">Our AED initiative</a>
+          <a class="btn" href="#dictionary">Medical dictionary</a>
+        </div>
+      </div>
       <div class="hint">Scroll</div>
     </div>
   </section>
 
-  <section class="words" data-scroll aria-label="About">
-    <div class="stage">
-      <p class="ph" data-words>Aorta Project is a place for *students* who care about the *heart* — what it does, how it breaks, and how to keep it beating.</p>
+  <section class="sec" id="about" aria-labelledby="about-h">
+    <div class="wrap">
+      <span class="eyebrow">About us</span>
+      <h2 id="about-h">A student-led organization</h2>
+      <p class="lede">The Aorta Project is dedicated to <strong>bridging the gap between immigrant communities and the American healthcare system</strong>. We strive to deliver essential medical knowledge to the immigrant communities and youth who need it most, through our AED initiative: <strong>Advocate, Educate, Decode</strong>.</p>
     </div>
   </section>
 
-  <section class="cards" data-scroll aria-label="What we do">
+  <section class="words" data-scroll aria-label="Why we started">
     <div class="stage">
-      <div class="deck">
-        <article class="card"><span class="num">01</span><h3 class="ph">Learn</h3><p class="ph">Placeholder — what members learn or do together.</p></article>
-        <article class="card"><span class="num">02</span><h3 class="ph">Connect</h3><p class="ph">Placeholder — events, meetings or people to meet.</p></article>
-        <article class="card"><span class="num">03</span><h3 class="ph">Give back</h3><p class="ph">Placeholder — the cause or community they support.</p></article>
+      <p data-words>We saw families sitting in *waiting* *rooms,* nodding along to words they didn’t fully understand, too intimidated to ask questions in a system that never made space for them. So we created the *space* *ourselves.*</p>
+    </div>
+  </section>
+
+  <section class="cards" id="aed" data-scroll aria-labelledby="aed-h">
+    <div class="stage">
+      <div class="head">
+        <span class="eyebrow">The AED initiative</span>
+        <h2 id="aed-h">Advocate. Educate. Decode.</h2>
       </div>
+      <div class="deck">
+        <article class="card"><span class="num">A</span><h3>Advocate</h3><p>Fighting for immigrant families to be seen and heard in clinical spaces, and teaching families how to advocate for themselves with providers and ask questions.</p></article>
+        <article class="card"><span class="num">E</span><h3>Educate</h3><p>Tutoring youth in heart health, with monthly workshops and lesson plans written by students: the curriculum we wish someone had handed those kids before they needed it.</p></article>
+        <article class="card"><span class="num">D</span><h3>Decode</h3><p>Bilingual resource navigation, clinic connections, prescription assistance and insurance terms, plus a free online dictionary that translates confusing medical terms.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec dict" id="dictionary" aria-labelledby="dict-h">
+    <div class="wrap">
+      <span class="eyebrow">Decode</span>
+      <h2 id="dict-h">Medical dictionary</h2>
+      <p class="lede">Confusing medical words, in plain language. Free, for immigrants, seniors and anyone who has left an appointment unsure what they were told.</p>
+      <div class="dict-box">
+        <label for="dictSearch">Look up a word</label>
+        <input id="dictSearch" type="search" placeholder="e.g. blood pressure" autocomplete="off" disabled>
+        <p class="dict-count" id="dictCount" aria-live="polite"></p>
+        <ul class="dict-list" id="dictList"></ul>
+        <p class="dict-empty" id="dictEmpty" hidden></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec founders" id="founders" aria-labelledby="founders-h">
+    <div class="wrap">
+      <span class="eyebrow">Our founders</span>
+      <h2 id="founders-h">We aren’t special</h2>
+      <p class="lede">Just two motivated teens who kept watching the same thing happen in our own community.</p>
+      <div class="pair">
+        <article class="person">
+          <div class="initial" aria-hidden="true">A</div>
+          <h3>Arav Sheth</h3>
+          <p class="role">Junior · Co-founder</p>
+          <p>Hi, I’m Arav Sheth, a motivated junior and co-founder of The Aorta Project. I am very passionate about healthcare and serving my community in any way I can, and I am also very connected to my heritage. As part of an immigrant community myself, I kept seeing families around me struggle to navigate a healthcare system that was never made for them. So I decided to build something that was.</p>
+        </article>
+        <article class="person">
+          <div class="initial" aria-hidden="true">A</div>
+          <h3>Aryan Khedkar</h3>
+          <p class="role">Junior · Co-founder</p>
+          <p>Hi! I’m Aryan Khedkar, a junior and co-founder of The Aorta Project. As a member of a minority community myself, I have seen firsthand how difficult it is for minority and immigrant families to adapt and find the right support, especially if they have just immigrated to another country. Motivated to change that, we decided to build a system where this wouldn’t happen to them — and we’re just getting started.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec events" id="events" aria-labelledby="events-h">
+    <div class="wrap">
+      <span class="eyebrow">Events</span>
+      <h2 id="events-h">Events</h2>
+      <p class="lede">What we have planned. Dates are tentative and will be announced on <a href="https://www.instagram.com/aorta.project/" rel="noopener">our Instagram</a>.</p>
+      <span class="note">Tentative · will update</span>
+      <ul class="event-list">
+        <li class="event"><div class="when">Monthly</div><div><h3>Heart-health workshop</h3><p>A student-taught lesson for youth on how the heart works and how to keep it healthy.</p></div></li>
+        <li class="event"><div class="when">Date TBA</div><div><h3>Family self-advocacy night</h3><p>How to talk to a doctor, what to ask, and how to make sure you are understood.</p></div></li>
+        <li class="event"><div class="when">Date TBA</div><div><h3>Healthcare navigation help</h3><p>Help with insurance terms, prescriptions and finding the right clinic, in more than one language.</p></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="sec volunteer" id="volunteer" aria-labelledby="vol-h">
+    <div class="wrap">
+      <span class="eyebrow">Get involved</span>
+      <h2 id="vol-h">Volunteer</h2>
+      <p class="lede">We are students building this ourselves, and there is room for you. Send us a message to join.</p>
+      <div class="roles">
+        <div><b>Tutor</b><span>Teach heart health at our monthly workshops.</span></div>
+        <div><b>Write lessons</b><span>Help build the curriculum we wish we had been given.</span></div>
+        <div><b>Translate</b><span>Speak another language? Help families decode their care.</span></div>
+        <div><b>Grow the dictionary</b><span>Add medical terms in plain words.</span></div>
+      </div>
+      <a class="btn" href="https://www.instagram.com/aorta.project/" rel="noopener">Message us on Instagram →</a>
+    </div>
+  </section>
+
+  <section class="sec donate" id="donate" aria-labelledby="donate-h">
+    <div class="wrap">
+      <span class="eyebrow">Support the work</span>
+      <h2 id="donate-h">Donate</h2>
+      <p class="lede">Your gift pays for workshop materials, translated resources and the free medical dictionary, so more families can walk into an appointment ready to be heard.</p>
+      <a class="btn btn-red" id="donateBtn" href="#donate" aria-disabled="true">Donate on GoFundMe</a>
+      <p class="soon" id="donateSoon">Our fundraiser link is coming soon.</p>
     </div>
   </section>
 
@@ -199,18 +391,62 @@
 </main>
 
 <footer>
-  <p><a href="https://www.instagram.com/aorta.project/" rel="noopener">@aorta.project</a></p>
+  <p><a class="social" href="https://www.instagram.com/aorta.project/" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg>@aorta.project</a></p>
+  <p>The Aorta Project · a student-led organization</p>
   <p>Built and hosted by <a href="https://fluxplanner.github.io/Flux/">Flux</a>.</p>
 </footer>
 
 <script>
   (function () {
-    // Split the mission sentence into words; *word* marks an accent word.
+    // Their GoFundMe link, when they send it.
+    var DONATE_URL = '';
+
+    var btn = document.getElementById('donateBtn');
+    if (DONATE_URL) {
+      btn.href = DONATE_URL;
+      btn.rel = 'noopener';
+      btn.removeAttribute('aria-disabled');
+      document.getElementById('donateSoon').hidden = true;
+    } else {
+      btn.addEventListener('click', function (e) { e.preventDefault(); });
+    }
+
+    // Split the story into words; *word* marks an accent word.
     document.querySelectorAll('[data-words]').forEach(function (p) {
       p.innerHTML = p.textContent.trim().split(/\s+/).map(function (w) {
         var accent = /^\*.*\*[^\w]*$/.test(w);
         return '<span class="w' + (accent ? ' accent' : '') + '">' + w.replace(/\*/g, '') + '</span>';
       }).join(' ');
+    });
+
+    // The medical dictionary, from their spreadsheet (see the note at the top).
+    var input = document.getElementById('dictSearch');
+    var list = document.getElementById('dictList');
+    var count = document.getElementById('dictCount');
+    var empty = document.getElementById('dictEmpty');
+    var terms = [];
+    function text(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+    function show() {
+      var q = input.value.trim().toLowerCase();
+      var hits = q ? terms.filter(function (t) { return (t.term + ' ' + t.meaning).toLowerCase().indexOf(q) >= 0; }) : terms;
+      list.innerHTML = hits.slice(0, 200).map(function (t) { return '<li><b>' + text(t.term) + '</b><span>' + text(t.meaning) + '</span></li>'; }).join('');
+      count.textContent = q ? hits.length + ' of ' + terms.length + ' words' : terms.length + ' words';
+      empty.hidden = hits.length > 0;
+      empty.textContent = 'No match yet. Try a shorter word.';
+    }
+    fetch('public/partners/aorta/dictionary.json').then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    }).then(function (rows) {
+      terms = (Array.isArray(rows) ? rows : []).filter(function (t) { return t && t.term; })
+        .sort(function (a, b) { return String(a.term).localeCompare(String(b.term)); });
+      if (!terms.length) throw new Error('empty');
+      input.disabled = false;
+      input.addEventListener('input', show);
+      show();
+    }).catch(function () {
+      empty.hidden = false;
+      empty.textContent = 'The dictionary is on its way. Check back soon.';
     });
 
     var sections = Array.prototype.slice.call(document.querySelectorAll('[data-scroll]'));

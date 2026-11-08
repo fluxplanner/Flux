@@ -279,6 +279,143 @@
   window.checkTesterMode = function () {};
   window.renderTesterBadge = function () {};
 
+  /* ---------- Two-step sign-in ----------
+     The database and release-admin refuse owner actions from a session without
+     an authenticator code from the last 12 hours, and role or password changes
+     without one from the last 15 minutes. This only asks for the code; the
+     server is what enforces it. */
+
+  var MFA_MAX_AGE_S = 12 * 60 * 60;
+  var MFA_REFRESH_BEFORE_S = 30 * 60;
+
+  function el(tag, attrs, text) {
+    var n = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) { n.setAttribute(k, attrs[k]); });
+    if (text) n.textContent = text;
+    return n;
+  }
+
+  function codeForm(onCode) {
+    var form = el('form', { class: 'own-mfa-form' });
+    var input = el('input', {
+      type: 'text', inputmode: 'numeric', autocomplete: 'one-time-code',
+      pattern: '[0-9]{6}', maxlength: '6', required: '', 'aria-label': '6-digit code',
+      placeholder: '123456',
+    });
+    var btn = el('button', { type: 'submit', class: 'own-btn own-btn--primary' }, 'Continue');
+    var err = el('p', { class: 'own-muted', role: 'alert' });
+    form.append(input, btn, err);
+    form.addEventListener('submit', async function (ev) {
+      ev.preventDefault();
+      btn.disabled = true;
+      err.textContent = '';
+      try { await onCode(input.value.replace(/\s+/g, '')); }
+      catch (e) {
+        err.textContent = (e && e.message) || 'That code did not work. Try the newest one.';
+        input.value = '';
+        input.focus();
+      }
+      btn.disabled = false;
+    });
+    setTimeout(function () { input.focus(); }, 0);
+    return form;
+  }
+
+  function mfaAgeSeconds(aal) {
+    var times = ((aal && aal.currentAuthenticationMethods) || [])
+      .filter(function (m) { return m.method === 'totp'; })
+      .map(function (m) { return m.timestamp; });
+    return times.length ? Math.floor(Date.now() / 1000) - Math.max.apply(null, times) : null;
+  }
+
+  async function verifiedTotp(client) {
+    var res = await client.auth.mfa.listFactors();
+    if (res.error) throw res.error;
+    return ((res.data && res.data.totp) || []).filter(function (f) { return f.status === 'verified'; });
+  }
+
+  /* Resolves once the session holds a fresh code. */
+  function askForCode(client, factorId, mount, title, body) {
+    return new Promise(function (resolve) {
+      mount.replaceChildren(el('h1', null, title), el('p', null, body), codeForm(async function (code) {
+        var r = await client.auth.mfa.challengeAndVerify({ factorId: factorId, code: code });
+        if (r.error) throw r.error;
+        resolve();
+      }));
+    });
+  }
+
+  async function enrol(client, mount) {
+    // A half-finished set-up blocks a new one with the same name.
+    var all = await client.auth.mfa.listFactors();
+    var stale = ((all.data && all.data.all) || []).filter(function (f) { return f.status !== 'verified'; });
+    for (var i = 0; i < stale.length; i++) await client.auth.mfa.unenroll({ factorId: stale[i].id });
+
+    var en = await client.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Owner Controls ' + new Date().toISOString().slice(0, 10) });
+    if (en.error) throw en.error;
+    return new Promise(function (resolve) {
+      mount.replaceChildren(
+        el('h1', null, 'Set up two-step sign-in'),
+        el('p', null, 'Owner Controls needs a code from an authenticator app (Google Authenticator, 1Password, Authy…) as well as your password.'),
+        el('p', null, '1. Scan this with the app, or type the key under it.'),
+        el('img', { src: en.data.totp.qr_code, alt: 'QR code for your authenticator app', width: '200', height: '200' }),
+        el('p', { class: 'own-muted' }, 'Key: ' + en.data.totp.secret),
+        el('p', null, '2. Type the 6-digit code the app shows.'),
+        codeForm(async function (code) {
+          var r = await client.auth.mfa.challengeAndVerify({ factorId: en.data.id, code: code });
+          if (r.error) throw r.error;
+          resolve();
+        }));
+    });
+  }
+
+  /* Makes sure the session has a code no older than maxAge seconds. */
+  async function requireMfa(client, mount, maxAge) {
+    var factors = await verifiedTotp(client);
+    if (!factors.length) {
+      await enrol(client, mount);
+      return;
+    }
+    var aal = await client.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal.error) throw aal.error;
+    var age = mfaAgeSeconds(aal.data);
+    if (aal.data.currentLevel === 'aal2' && age !== null && age <= maxAge) return;
+    await askForCode(client, factors[0].id, mount, 'Enter your code',
+      'Open your authenticator app and type the 6-digit code for Flux.');
+  }
+
+  /* For actions the server refused with flux_step_up_required or owner_mfa_required. */
+  window.fluxOwnerStepUp = async function () {
+    var client = window.getSB();
+    var box = el('dialog', { class: 'own-dialog' });
+    document.body.appendChild(box);
+    box.showModal();
+    try {
+      // -1: always ask. The server has just said the last code is too old.
+      await requireMfa(client, box, -1);
+      window.showToast('Code accepted. Try that again.', 'success');
+    } finally {
+      box.close();
+      box.remove();
+    }
+  };
+
+  // Server refusals reach the owner as toasts from many panels; catch them here
+  // rather than in every panel.
+  var plainToast = window.showToast;
+  var stepUpOpen = false;
+  window.showToast = function (msg, kind, ms) {
+    if (/flux_step_up_required|owner_mfa_required/.test(String(msg || ''))) {
+      if (!stepUpOpen) {
+        stepUpOpen = true;
+        plainToast('That needs your authenticator code again.', 'info');
+        window.fluxOwnerStepUp().catch(function () {}).then(function () { stepUpOpen = false; });
+      }
+      return;
+    }
+    return plainToast(msg, kind, ms);
+  };
+
   /* ---------- Boot ---------- */
 
   function showGate(html) {
@@ -306,6 +443,14 @@
         '<a class="own-btn" href="suite.html">Back to Flux Suite</a>');
       return;
     }
+    var gateEl = document.getElementById('ownerGate');
+    try { await requireMfa(client, gateEl, MFA_MAX_AGE_S - MFA_REFRESH_BEFORE_S); }
+    catch (e) {
+      showGate('<h1>Two-step sign-in could not start</h1><p>Reload the page. If that does not help, check your connection.</p>');
+      return;
+    }
+    gateEl.replaceChildren(el('p', { class: 'own-muted' }, 'Loading…'));
+
     window.currentUser = user;
     client.auth.onAuthStateChange(function (event, session) {
       if (event === 'SIGNED_OUT' || (session && session.user.id !== OWNER_UID)) location.reload();
@@ -320,8 +465,30 @@
     window.openOwnerSuite(want || undefined, { mount: app, skipNav: true });
 
     // Back from the planner, or another device changed something.
+    // Owner powers lapse 12 hours after the last code; ask again before they do.
+    var rechecking = false;
+    async function recheckMfa() {
+      if (rechecking) return;
+      rechecking = true;
+      try {
+        var aal = await client.auth.mfa.getAuthenticatorAssuranceLevel();
+        var age = mfaAgeSeconds(aal.data);
+        if (aal.data && aal.data.currentLevel === 'aal2' && age !== null && age <= MFA_MAX_AGE_S - MFA_REFRESH_BEFORE_S) return;
+        app.hidden = true;
+        gateEl.hidden = false;
+        await requireMfa(client, gateEl, MFA_MAX_AGE_S - MFA_REFRESH_BEFORE_S);
+        gateEl.hidden = true;
+        app.hidden = false;
+      } catch (e) {
+        window.showToast('Could not check your sign-in: ' + (e.message || e), 'error', 8000);
+      } finally {
+        rechecking = false;
+      }
+    }
+
     document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState === 'visible') window.fluxOwnerPull().catch(function () {});
+      if (document.visibilityState !== 'visible') return;
+      recheckMfa().then(function () { return window.fluxOwnerPull(); }).catch(function () {});
     });
     window.addEventListener('hashchange', function () {
       var t = (location.hash || '').replace(/^#/, '');
