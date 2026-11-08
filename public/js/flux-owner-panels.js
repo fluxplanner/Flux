@@ -16,11 +16,8 @@
   var SCHOOL_FALLBACK = 'International Academy East';
   /* The planner's sidebar tabs (DEFAULT_TABS in app.js). Dashboard and Settings
      are absent because they cannot be hidden: they are the way back. */
-  var PLANNER_TABS = [
-    ['calendar', 'Calendar'], ['school', 'School Info'], ['canvas', 'Canvas'], ['notes', 'Notebook'],
-    ['timer', 'Time'], ['profile', 'Profile'], ['goals', 'College Prep'], ['mood', 'Mood'],
-    ['toolbox', 'Study tools'], ['readingLog', 'Reading log'], ['schoology', 'Schoology'],
-  ];
+  // One list for Planner tabs and Roles, kept in flux-app-visibility.js.
+  var PLANNER_TABS = (window.FluxAppVisibility && window.FluxAppVisibility.PLANNER_TABS) || [];
 
   function sb() { return window.getSB(); }
   function esc(v) {

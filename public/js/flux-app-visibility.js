@@ -79,6 +79,40 @@
     return !!(s && s.user.id === OWNER_UID);
   }
 
+  /* Planner tabs the owner can hide (Owner Controls › Planner tabs), and so the
+     ones a role can show again. Owner Controls and Settings › Your roles both
+     read this list. */
+  var PLANNER_TABS = [
+    ['calendar', 'Calendar'], ['school', 'School Info'], ['canvas', 'Canvas'], ['notes', 'Notebook'],
+    ['timer', 'Time'], ['profile', 'Profile'], ['goals', 'College Prep'], ['mood', 'Mood'],
+    ['toolbox', 'Study tools'], ['readingLog', 'Reading log'], ['schoology', 'Schoology'],
+  ];
+  var FIXED_PERMISSIONS = {
+    'apps:all': 'See every hidden app',
+    'tabs:all': 'See every hidden planner tab',
+    'site:maintenance': 'Use Flux during maintenance',
+    'site:read_only': 'Keep saving while Flux is read-only',
+    'posting:lockdown': 'Post while posting is paused',
+    'posting:slow': 'Skip slow-downs',
+    'perk:tester': 'Tester mode',
+  };
+
+  /** A permission in plain words, e.g. 'tab:mood' → 'See the Mood tab'. */
+  function describe(key) {
+    if (FIXED_PERMISSIONS[key]) return FIXED_PERMISSIONS[key];
+    var id = String(key).slice(String(key).indexOf(':') + 1);
+    if (key.indexOf('tab:') === 0) {
+      var tab = PLANNER_TABS.filter(function (t) { return t[0] === id; })[0];
+      return 'See the ' + (tab ? tab[1] : id) + ' tab';
+    }
+    if (key.indexOf('app:') === 0) {
+      var products = (window.FluxHub && window.FluxHub.PRODUCTS) || [];
+      var app = products.filter(function (p) { return p.id === id; })[0];
+      return 'See ' + (app ? app.name : id);
+    }
+    return key;
+  }
+
   /** Does this viewer hold a role permission? */
   function can(perm) {
     return grants.indexOf(perm) >= 0;
@@ -205,6 +239,8 @@
     hasGrant: hasGrant,
     /** Any role permission, e.g. can('tab:mood') or can('perk:tester'). */
     can: can,
+    describe: describe,
+    PLANNER_TABS: PLANNER_TABS,
     /** Everything on the list, whoever is looking: for the owner's own view. */
     hiddenIds: function () { return ids.slice(); },
     refresh: refresh,
