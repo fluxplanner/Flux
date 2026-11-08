@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="public/js/flux-app-visibility.js?v=a2373fcc" data-app="suite"></script>
+<script src="public/js/flux-app-visibility.js?v=20011613" data-app="suite"></script>
 <script defer src="public/js/flux-site-notices.js?v=ba87f165"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flux Suite — every Flux app</title>
@@ -22,7 +22,7 @@
 -->
 <link rel="stylesheet" href="public/css/flux-hub.css?v=6a462093">
 <link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
-<link rel="stylesheet" href="public/css/flux-scroll-story.css?v=5d39c890">
+<link rel="stylesheet" href="public/css/flux-scroll-story.css?v=536f6bd6">
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background-color: #070b14; }
@@ -136,6 +136,20 @@
   /* Aorta Project: the indigo and coral of their logo, which is a photo on
      white, so its tile is white and clipped to show only the round artwork. */
   .app--aorta, .fan--aorta { --c1: #e4776b; --c2: #24238f; }
+  /* Aorta Project gets the same partner frame as Synara, in its own coral
+     and indigo. */
+  .app--aorta {
+    border-color: transparent;
+    background: linear-gradient(155deg, rgba(228,119,107,.16), rgba(36,35,143,.06) 55%), var(--card);
+    box-shadow: 0 22px 48px -28px rgba(228,119,107,.75);
+  }
+  .app--aorta::before {
+    content: ''; position: absolute; inset: -1px; padding: 1.5px; border-radius: inherit; pointer-events: none;
+    background: linear-gradient(135deg, #ffc2b8, #e4776b 40%, #5a59d6 75%, #24238f);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+  }
+  .app--aorta:hover { border-color: transparent; box-shadow: 0 26px 56px -22px rgba(228,119,107,.95); }
   .app--aorta .app-icon--logo { overflow: hidden; background: #f5f5f2; box-shadow: 0 10px 26px -12px rgba(228,119,107,.9); }
   .app--aorta .app-icon--logo img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.08); }
   .note { margin: 28px auto 0; text-align: center; font-size: .85rem; color: var(--muted2); }
@@ -150,23 +164,15 @@
   .partners-strip strong { color: var(--text); }
   .partners-strip a { font-weight: 800; font-size: .9rem; color: #c4b5fd; text-decoration: none; white-space: nowrap; }
   .partners-strip a:hover { text-decoration: underline; }
-  /* Instagram: one row under the apps. */
-  .ig { display: flex; align-items: center; gap: 14px; margin: 28px 0 0; padding: 14px 18px; border-radius: 18px; text-decoration: none; color: inherit; background: linear-gradient(120deg, rgba(225,48,108,.12), rgba(131,58,180,.08) 55%, transparent), var(--card); border: 1px solid rgba(225,48,108,.3); transition: transform .15s ease, border-color .15s ease; }
-  .ig:hover { transform: translateY(-2px); border-color: rgba(225,48,108,.6); }
-  .ig:focus-visible { outline: 2px solid #e1306c; outline-offset: 3px; }
   .ig-mark { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; color: #fff; background: linear-gradient(135deg, #feda75, #fa7e1e 25%, #d62976 55%, #962fbf 80%, #4f5bd5); }
-  .ig-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  .ig-t span { font-size: .86rem; color: var(--muted2); }
-  .ig .go { color: #f472b6; }
   /* Scroll story: follows the page's light/dark colours. */
   body { --fs-a: #00c2ff; --fs-b: #7c5cff; --fs-ink: var(--text); --fs-mut: var(--muted2); --fs-card: var(--card); --fs-line: var(--border); }
   /* The hero and apps rise in on load, one after another. */
   @media (prefers-reduced-motion: no-preference) {
-    .hero, .apps > *, .ig, .note { animation: suiteRise .8s cubic-bezier(.2,.7,.2,1) both; }
+    .hero, .apps > *, .note { animation: suiteRise .8s cubic-bezier(.2,.7,.2,1) both; }
     .hero h1 { animation: suiteRise .9s cubic-bezier(.2,.7,.2,1) both; }
     .apps > :nth-child(2) { animation-delay: .12s; }
     .apps > :nth-child(3) { animation-delay: .2s; }
-    .ig { animation-delay: .28s; }
     .note { animation-delay: .34s; }
     .apps-grid > .app { animation: suiteRise .7s cubic-bezier(.2,.7,.2,1) both; }
     .apps-grid > .app:nth-child(2) { animation-delay: .05s; }
@@ -231,13 +237,22 @@
     .suite-fan, .suite-board-wrap { height: auto !important; }
     .fan { height: 360px; }
   }
+  .suite-skip { position: absolute; top: 14px; right: 16px; z-index: 2; padding: 8px 14px; border-radius: 999px; font-size: .8rem; font-weight: 700; text-decoration: none; color: var(--text); background: rgba(255,255,255,.06); border: 1px solid var(--border); }
+  .suite-skip:hover { background: rgba(255,255,255,.12); }
+  html.suite-story-off .suite-fan, html.suite-story-off .suite-board-wrap, html.suite-story-off [data-fs-progress] { display: none; }
   .story-end { text-align: center; padding: 40px 16px calc(72px + env(safe-area-inset-bottom, 0px)); }
   .story-end a { display: inline-flex; align-items: center; gap: 8px; padding: 14px 24px; border-radius: 999px; font-weight: 800; text-decoration: none; color: #061020; background: linear-gradient(135deg, #00c2ff, #7c5cff); box-shadow: 0 16px 40px -16px rgba(0,194,255,.7); }
   /* The same account as a pill in the header's top-right corner. */
-  .top-ig { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px 0 5px; border-radius: 999px; text-decoration: none; font-weight: 700; font-size: .86rem; color: #fff; background: linear-gradient(120deg, rgba(225,48,108,.22), rgba(150,47,191,.18)); border: 1px solid rgba(225,48,108,.55); box-shadow: 0 6px 22px -8px rgba(225,48,108,.7); transition: transform .15s ease, border-color .15s ease; }
-  .top-ig:hover { transform: translateY(-1px); border-color: rgba(225,48,108,.9); }
-  .top-ig:focus-visible { outline: 2px solid #e1306c; outline-offset: 3px; }
-  .top-ig .ig-mark { width: 28px; height: 28px; border-radius: 50%; }
+  /* Instagram lives up here only: a filled, glowing pill. */
+  .top-ig { position: relative; margin-left: auto; display: inline-flex; align-items: center; gap: 9px; height: 40px; padding: 0 16px 0 5px; border-radius: 999px; text-decoration: none; font-weight: 800; font-size: .88rem; color: #fff;
+    background: linear-gradient(120deg, #f58529, #dd2a7b 45%, #8134af 80%, #515bd4); box-shadow: 0 8px 26px -8px rgba(221,42,123,.85); transition: transform .15s ease, box-shadow .15s ease; }
+  .top-ig::after { content: ''; position: absolute; inset: -4px; border-radius: inherit; border: 2px solid rgba(221,42,123,.55); opacity: 0; pointer-events: none; }
+  @media (prefers-reduced-motion: no-preference) { .top-ig::after { animation: igRing 2.8s ease-out infinite; } }
+  @keyframes igRing { 0% { opacity: .9; transform: scale(.96); } 70%, 100% { opacity: 0; transform: scale(1.12); } }
+  .top-ig:hover { transform: translateY(-1px); box-shadow: 0 12px 32px -8px rgba(221,42,123,1); }
+  .top-ig:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+  .top-ig .ig-mark { width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,.18); }
+  @media (max-width: 420px) { .top-ig .ig-follow { display: none; } }
 </style>
 <script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
 <script src="public/js/flux-purple-day.js?v=1966eb3d"></script>
@@ -248,35 +263,28 @@
     <span class="brand">Flux Suite</span>
     <a class="top-ig" href="https://www.instagram.com/fluxplanner/" target="_blank" rel="noopener" aria-label="Follow Flux on Instagram, @fluxplanner">
       <span class="ig-mark" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></span>
-      <span>@fluxplanner</span>
+      <span><span class="ig-follow">Follow </span>@fluxplanner</span>
     </a>
   </header>
-  <main>
-    <section class="hero">
-      <h1>Every Flux app, <span style="white-space:nowrap">one tap away.</span></h1>
-      <p>The planner for your whole school life, and free study tools that open on any computer — no account needed.</p>
-    </section>
-    <!-- Filled by flux-purple-day.js on March 26 only. -->
-    <div class="pd-slot" data-purple-day-slot></div>
-    <div class="apps" id="apps" aria-label="Flux apps"></div>
-    <!-- Moved into the Partners tab by the script below. -->
-    <aside class="partners-strip" id="partnersStrip" aria-label="Flux Partners" data-flux-app="synara">
-      <p><strong>Flux Partners.</strong> Synara is built and hosted by Flux for the team behind it. Want Flux to build your organization’s app?</p>
-      <a href="partners.html">See Flux Partners →</a>
-    </aside>
-    <a class="ig" href="https://www.instagram.com/fluxplanner/" target="_blank" rel="noopener">
-      <span class="ig-mark" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></span>
-      <span class="ig-t"><strong>Follow @fluxplanner</strong><span>New apps and features, first on Instagram.</span></span>
-      <span class="go">Follow →</span>
-    </a>
-    <p class="note">Bookmark this page, or add it to your home screen, to get to every Flux app.</p>
-  </main>
-
+  <script>
+    /* The story plays on every visit when signed out, and once per account
+       when signed in (remembered on this device). A link to a tab
+       (suite.html#partners) goes straight to the apps. */
+    (function () {
+      try {
+        var v = window.FluxAppVisibility;
+        var uid = v && v.userId && v.userId();
+        var seen = uid ? JSON.parse(localStorage.getItem('flux_suite_story_seen') || '[]') : [];
+        if (location.hash || seen.indexOf(uid) >= 0) document.documentElement.classList.add('suite-story-off');
+      } catch (e) { /* storage blocked: just play it */ }
+    })();
+  </script>
   <!-- Scroll story (engine: public/css/flux-scroll-story.css + .js; scenes
        styled above and filled in by the last script on this page). -->
   <div data-fs-progress aria-hidden="true"></div>
   <section class="suite-fan" data-fs aria-labelledby="fanTitle">
     <div class="fs-stage">
+      <a class="suite-skip" href="#suiteApps">Skip to the apps ↓</a>
       <div>
         <p class="suite-kicker">The toolbox</p>
         <h2 id="fanTitle">Pick a tool. <em>Get to work.</em></h2>
@@ -298,7 +306,23 @@
       </div>
     </div>
   </section>
-  <p class="story-end"><a href="#apps">Back to the apps ↑</a></p>
+
+  <main id="suiteApps">
+    <section class="hero">
+      <h1>Every Flux app, <span style="white-space:nowrap">one tap away.</span></h1>
+      <p>The planner for your whole school life, and free study tools that open on any computer — no account needed.</p>
+    </section>
+    <!-- Filled by flux-purple-day.js on March 26 only. -->
+    <div class="pd-slot" data-purple-day-slot></div>
+    <div class="apps" id="apps" aria-label="Flux apps"></div>
+    <!-- Moved into the Partners tab by the script below. -->
+    <aside class="partners-strip" id="partnersStrip" aria-label="Flux Partners" data-flux-app="synara">
+      <p><strong>Flux Partners.</strong> Synara is built and hosted by Flux for the team behind it. Want Flux to build your organization’s app?</p>
+      <a href="partners.html">See Flux Partners →</a>
+    </aside>
+    <p class="note">Bookmark this page, or add it to your home screen, to get to every Flux app.</p>
+  </main>
+
 
   <script src="public/js/flux-hub.js?v=1b749411"></script>
   <script>
@@ -412,7 +436,7 @@
       window.addEventListener('flux-app-visibility', render);
     })();
   </script>
-<script defer src="public/js/flux-scroll-story.js?v=330e6ce3"></script>
+<script defer src="public/js/flux-scroll-story.js?v=afe817fc"></script>
 <script>
   /* Fills the fan and the departures board from the same list as the app
      grid. The board's letters scramble and settle with the scroll: each row
@@ -432,7 +456,8 @@
 
     var rows = document.getElementById('boardRows');
     var upper = function (s) { return String(s || '').toUpperCase(); };
-    var data = list.map(function (p) {
+    // The board lists Flux's own apps: no partner apps, no owner app.
+    var data = list.filter(function (p) { return !p.partner && p.id !== 'owner'; }).map(function (p) {
       return { href: p.href, name: upper(p.name.replace(/^Flux /, '')), dest: upper(p.tagline) };
     });
     rows.innerHTML = data.map(function (d) {
@@ -462,7 +487,20 @@
       });
     }
     paint(0);
-    document.getElementById('boardSec').addEventListener('fs-progress', function (e) { paint(e.detail); });
+    var markSeen = function () {
+      try {
+        var uid = window.FluxAppVisibility && window.FluxAppVisibility.userId();
+        if (!uid) return;
+        var seen = JSON.parse(localStorage.getItem('flux_suite_story_seen') || '[]');
+        if (seen.indexOf(uid) < 0) { seen.push(uid); localStorage.setItem('flux_suite_story_seen', JSON.stringify(seen)); }
+      } catch (e) { /* storage blocked */ }
+    };
+    document.getElementById('boardSec').addEventListener('fs-progress', function (e) {
+      paint(e.detail);
+      if (e.detail >= 0.97) markSeen();
+    });
+    var skip = document.querySelector('.suite-skip');
+    if (skip) skip.addEventListener('click', markSeen);
   })();
 </script>
 </body>
