@@ -131,13 +131,13 @@
       logo: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19h4l2.5-6.5L16.5 23l2.8-7H26"/></svg>',
     },
     {
-      // A Flux Partner still in draft: the Aorta Project is choosing what
-      // their site holds. Kept hidden from everyone but the owner with
-      // Owner Controls → Hide apps (flux-app-visibility.js) until it launches.
+      // A Flux Partner: the Aorta Project's own site. Kept hidden from
+      // everyone but the owner with Owner Controls → Hide apps
+      // (flux-app-visibility.js) until it launches.
       id: 'aorta',
       group: 'partner',
       name: 'Aorta Project',
-      tagline: 'Their own site, built by Flux (draft)',
+      tagline: 'Healthcare help for immigrant families',
       href: 'aorta.html',
       free: true,
       partner: true,
