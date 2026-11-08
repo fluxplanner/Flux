@@ -214,3 +214,71 @@ test('a re-shared copy keeps its creator, and its changes merge back', () => {
   assert.equal(mine.cards[0].s.S, 12, 'progress kept');
   assert.equal(F.relatedDeck(F.newDeck({ title: 'x' }), [mine]), null);
 });
+
+/* ── Quizlet "Send to Flux" bookmark ─────────────────────────────────── */
+
+/** A studiable item the way Quizlet's page data has it. */
+const qzItem = (id, set, rank, term, def) => ({
+  id, studiableContainerId: set, rank,
+  cardSides: [
+    { sideId: 1, label: 'word', media: [{ type: 1, plainText: term }] },
+    { sideId: 2, label: 'definition', media: [{ type: 1, plainText: def }] },
+  ],
+});
+/** __NEXT_DATA__: the set lives in JSON inside a string, beside a suggested set. */
+const qzPage = () => ({
+  props: { pageProps: { dehydratedReduxStateKey: JSON.stringify({
+    studyModesCommon: { studiableData: { studiableItems: [
+      qzItem(2, 341080361, 1, 'eagle', 'el águila'),
+      qzItem(1, 341080361, 0, 'moose', 'el alce'),
+      qzItem(3, 341080361, 2, '', 'picture only'),
+    ] } },
+    suggestions: [qzItem(9, 555, 0, 'other', 'set'), qzItem(10, 555, 1, 'not', 'mine'), qzItem(11, 555, 2, 'nor', 'this')],
+  }) } },
+});
+
+test('Quizlet page data gives the set’s cards in order, without suggested sets', () => {
+  const r = plain(F.quizletCards(qzPage(), '341080361'));
+  assert.deepEqual(r.cards, [['moose', 'el alce'], ['eagle', 'el águila']]);
+  assert.equal(r.skipped, 1, 'a picture-only card is counted, not imported');
+});
+
+test('the bookmark, run on a Quizlet set, opens Flux with that set as a share link', () => {
+  const mark = F.quizletBookmarklet('https://flux.example/flashcards.html');
+  assert.match(mark, /^javascript:/);
+  const src = decodeURIComponent(mark.slice('javascript:'.length));
+  assert.ok(!src.includes('\n'), 'a bookmark has no line breaks');
+  const opened = [], alerts = [];
+  const page = {
+    location: { hostname: 'quizlet.com', pathname: '/341080361/spanish-animales-flash-cards/', href: '' },
+    document: {
+      title: 'Spanish Animales Flashcards | Quizlet',
+      getElementById: (id) => (id === '__NEXT_DATA__' ? { textContent: JSON.stringify(qzPage()) } : null),
+      querySelectorAll: () => [],
+    },
+    window: { open: (u) => { opened.push(u); return {}; } },
+    alert: (m) => alerts.push(m),
+    btoa, unescape, encodeURIComponent, JSON,
+  };
+  vm.runInNewContext(src, page);
+  assert.equal(opened.length, 1);
+  const [base, code] = opened[0].split('#share=');
+  assert.equal(base, 'https://flux.example/flashcards.html');
+  const deck = F.decodeShare(code);
+  assert.equal(deck.title, 'Spanish Animales');
+  assert.deepEqual(plain(deck.cards.map((c) => [c.term, c.def])), [['moose', 'el alce'], ['eagle', 'el águila']]);
+  assert.equal(deck.desc, 'From Quizlet: quizlet.com/341080361/spanish-animales-flash-cards/');
+  assert.equal(deck.origin.id, 'quizlet-341080361', 'sending the same set again offers to merge new cards');
+  assert.equal(alerts.length, 1, 'tells the student a picture-only card was left out');
+});
+
+test('the bookmark on any other site says to open a Quizlet set', () => {
+  const src = decodeURIComponent(F.quizletBookmarklet('https://flux.example/flashcards.html').slice(11));
+  const alerts = [], opened = [];
+  vm.runInNewContext(src, {
+    location: { hostname: 'example.com', pathname: '/' }, document: {},
+    window: { open: (u) => opened.push(u) }, alert: (m) => alerts.push(m),
+  });
+  assert.equal(opened.length, 0);
+  assert.match(alerts[0], /Quizlet set/);
+});

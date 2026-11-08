@@ -228,6 +228,14 @@ select.ff-input { cursor: pointer; }
 .ff-drop { display: grid; place-items: center; min-height: 140px; border: 2px dashed var(--border2); border-radius: var(--ff-radius); color: var(--muted2); font-weight: 700; cursor: pointer; }
 .ff-drop span { display: inline-flex; align-items: center; gap: 8px; }
 .ff-drop:hover { border-color: var(--accent); color: var(--text); }
+.ff-qz { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.ff-qz section { padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--ff-radius); background: rgba(255,255,255,.03); }
+.ff-qz h3 { margin: 0 0 6px; font-size: 1rem; }
+.ff-qz p, .ff-qz ol { margin: 0 0 8px; color: var(--muted2); line-height: 1.5; }
+.ff-qz ol { padding-left: 20px; }
+.ff-qz li + li { margin-top: 6px; }
+.ff-qz kbd { padding: 1px 5px; border: 1px solid var(--border2); border-radius: 5px; font: inherit; font-size: .82em; }
+.ff-qz-mark { cursor: grab; }
 .ff-preview { margin-top: 18px; }
 .ff-prev-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
 .ff-prev-head .ff-input { flex: 1 1 220px; max-width: 360px; }

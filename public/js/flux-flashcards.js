@@ -346,6 +346,7 @@
         + '<div class="ff-actions">'
         + '<a class="ff-btn ff-btn--primary" href="#/new">' + ICON.plus + 'New deck</a>'
         + '<a class="ff-btn" href="#/import" data-tab="paste">' + ICON.download + 'Import</a>'
+        + '<a class="ff-btn" href="#/import" data-tab="quizlet">' + ICON.download + 'From Quizlet</a>'
         + '<a class="ff-btn" href="#/import" data-tab="ai">' + ICON.sparkle + 'Make from notes</a>'
         + (all.length > 4 ? '<input class="ff-search" type="search" placeholder="Search decks" aria-label="Search decks" value="' + esc(q) + '">' : '')
         + '</div>'
@@ -787,7 +788,7 @@
     function viewImport(intoId) {
       var into = intoId ? F.getDeck(decodeURIComponent(intoId)) : null;
       var tab = prefs().importTab || 'paste';
-      if (!/^(paste|ai|file)$/.test(tab)) tab = 'paste';
+      if (!/^(paste|ai|file|quizlet)$/.test(tab)) tab = 'paste';
       var signedIn = AI_ENABLED && !!plannerSession();
       var found = [];
       var aiTitle = '';
@@ -795,7 +796,7 @@
       host.innerHTML = backBar(into ? '#/deck/' + encodeURIComponent(into.id) + '/edit' : '#/', into ? 'Back to editor' : 'All decks')
         + '<h1 class="ff-page-title">' + (into ? 'Add cards to “' + esc(into.title) + '”' : 'Import cards') + '</h1>'
         + '<div class="ff-tabs" role="tablist">'
-        + [['paste', 'Paste a list'], ['ai', 'From notes'], ['file', 'Open a file']].map(function (t) {
+        + [['paste', 'Paste a list'], ['quizlet', 'From Quizlet'], ['ai', 'From notes'], ['file', 'Open a file']].map(function (t) {
           return '<button type="button" role="tab" class="ff-tab' + (t[0] === tab ? ' is-on' : '') + '" data-tab="' + t[0] + '" aria-selected="' + (t[0] === tab) + '">' + t[1] + '</button>';
         }).join('') + '</div>'
         + '<div class="ff-import" id="ffImp"></div>'
@@ -835,6 +836,22 @@
           // then would swap the Create button out from under the click.
           box.oninput = run; box.onchange = null;
           setTimeout(function () { var t = $('.ff-paste', box); if (t) t.focus(); }, 0);
+        } else if (tab === 'quizlet') {
+          // Quizlet blocks other sites from reading a set by its link, so this
+          // is a bookmark the student taps on the set itself (FluxFlash.quizletBookmarklet).
+          var mark = F.quizletBookmarklet(location.origin + location.pathname);
+          box.innerHTML = '<p class="ff-muted">Add the <b>Send to Flux</b> bookmark once. After that, open any Quizlet set, tap the bookmark, and the whole set opens here ready to save.</p>'
+            + '<div class="ff-qz">'
+            + '<section><h3>On a computer</h3><p>Show your bookmarks bar (<kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd>), then drag this button onto it:</p>'
+            + '<p><a class="ff-btn ff-btn--primary ff-qz-mark" href="' + esc(mark) + '" data-qzmark draggable="true">' + ICON.download + 'Send to Flux</a></p></section>'
+            + '<section><h3>On a phone or iPad</h3><ol>'
+            + '<li><button type="button" class="ff-btn" data-qzcopy>Copy the bookmark code</button></li>'
+            + '<li>Bookmark this page: in Safari tap <b>Share</b> → <b>Add Bookmark</b>; in Chrome tap <b>☆</b>.</li>'
+            + '<li>Open your bookmarks, edit the one you just made, name it <b>Send to Flux</b>, and replace its address with the code you copied.</li>'
+            + '<li>On a Quizlet set, tap the address bar, type <b>Send to Flux</b> and tap the bookmark.</li>'
+            + '</ol></section></div>'
+            + '<p class="ff-muted">It reads the set on your screen, so it works for any set you can open, including your class’s private ones. Cards that are only a picture are left out.</p>';
+          box.oninput = null; box.onchange = null;
         } else if (tab === 'ai') {
           box.innerHTML = '<p class="ff-muted">Paste your notes, a chapter or a study guide' + (signedIn ? ' and Flux AI turns it into cards.' : !AI_ENABLED ? '. Flux picks out lines like “X is Y” and “term: definition” and makes each one a card.' : '. <b>Sign in to the Flux Planner</b> to have AI write the cards; without it, Flux picks out lines like “X is Y” and “term: definition”.') + '</p>'
             + '<textarea class="ff-input ff-paste" rows="12" placeholder="Photosynthesis is the process by which plants make glucose from carbon dioxide and water using light energy…"></textarea>'
@@ -866,8 +883,10 @@
       drawTab();
 
       host.onclick = function (e) {
-        var t = e.target.closest('[data-tab],[data-make],[data-create]');
+        var t = e.target.closest('[data-tab],[data-make],[data-create],[data-qzmark],[data-qzcopy]');
         if (!t) return;
+        if (t.hasAttribute('data-qzmark')) { e.preventDefault(); toast('Drag it to your bookmarks bar, then tap it on a Quizlet set'); return; }
+        if (t.hasAttribute('data-qzcopy')) { copyText(F.quizletBookmarklet(location.origin + location.pathname), 'Copied: now make the bookmark'); return; }
         if (t.dataset.tab) { tab = t.dataset.tab; setPref('importTab', tab); drawTab(); return; }
         if (t.hasAttribute('data-make')) {
           var text = $('.ff-paste', box).value.trim();
