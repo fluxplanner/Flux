@@ -149,6 +149,14 @@
   .partners-strip strong { color: var(--text); }
   .partners-strip a { font-weight: 800; font-size: .9rem; color: #c4b5fd; text-decoration: none; white-space: nowrap; }
   .partners-strip a:hover { text-decoration: underline; }
+  /* Instagram: one row under the apps. */
+  .ig { display: flex; align-items: center; gap: 14px; margin: 28px 0 0; padding: 14px 18px; border-radius: 18px; text-decoration: none; color: inherit; background: linear-gradient(120deg, rgba(225,48,108,.12), rgba(131,58,180,.08) 55%, transparent), var(--card); border: 1px solid rgba(225,48,108,.3); transition: transform .15s ease, border-color .15s ease; }
+  .ig:hover { transform: translateY(-2px); border-color: rgba(225,48,108,.6); }
+  .ig:focus-visible { outline: 2px solid #e1306c; outline-offset: 3px; }
+  .ig-mark { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; color: #fff; background: linear-gradient(135deg, #feda75, #fa7e1e 25%, #d62976 55%, #962fbf 80%, #4f5bd5); }
+  .ig-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .ig-t span { font-size: .86rem; color: var(--muted2); }
+  .ig .go { color: #f472b6; }
 </style>
 <script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
 <script src="public/js/flux-purple-day.js?v=1966eb3d"></script>
@@ -171,6 +179,11 @@
       <p><strong>Flux Partners.</strong> Synara is built and hosted by Flux for the team behind it. Want Flux to build your organization’s app?</p>
       <a href="partners.html">See Flux Partners →</a>
     </aside>
+    <a class="ig" href="https://www.instagram.com/fluxplanner/" target="_blank" rel="noopener">
+      <span class="ig-mark" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></span>
+      <span class="ig-t"><strong>Follow @fluxplanner</strong><span>New apps and features, first on Instagram.</span></span>
+      <span class="go">Follow →</span>
+    </a>
     <p class="note">Bookmark this page, or add it to your home screen, to get to every Flux app.</p>
   </main>
 
