@@ -132,6 +132,11 @@
   .app--synara:hover { border-color: transparent; box-shadow: 0 26px 56px -22px rgba(124,77,255,.95); }
   .app-icon--logo { color: #fff; background: linear-gradient(135deg, #9c7aff, #5926d4); box-shadow: 0 10px 26px -10px rgba(124,77,255,.95), inset 0 1px 0 rgba(255,255,255,.25); }
   .app-icon--logo svg { width: 100%; height: 100%; }
+  /* Aorta Project: the indigo and coral of their logo, which is a photo on
+     white, so its tile is white and clipped to show only the round artwork. */
+  .app--aorta { --c1: #e4776b; --c2: #24238f; }
+  .app--aorta .app-icon--logo { overflow: hidden; background: #f5f5f2; box-shadow: 0 10px 26px -12px rgba(228,119,107,.9); }
+  .app--aorta .app-icon--logo img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.08); }
   .note { margin: 28px auto 0; text-align: center; font-size: .85rem; color: var(--muted2); }
   .note a { color: #7fe3ff; }
   .pd-slot:not(:empty) { margin: 0 0 18px; }
@@ -169,7 +174,7 @@
     <p class="note">Bookmark this page, or add it to your home screen, to get to every Flux app.</p>
   </main>
 
-  <script src="public/js/flux-hub.js?v=cfbb1836"></script>
+  <script src="public/js/flux-hub.js?v=1b749411"></script>
   <script>
     (function () {
       /* A sentence each, longer than the switcher's one-line tagline. A
@@ -186,6 +191,7 @@
         translate: 'Every tense of every Spanish and French verb, irregular forms highlighted. Type any form (tuvimos, eûmes) to find the verb, hear it read aloud, and practise against the clock. Plus translation between 35 languages.',
         owner: 'Your own app for running Flux: moderation, bans, people, the public archive, releases and every switch that used to live in the planner.',
         synara: 'For students with epilepsy: dose reminders and a medication calendar, a seizure log that spots patterns with missed doses, sleep and stress, and an emergency card a teacher can follow, one tap away. Stays on this device.',
+        aorta: 'A student-led organization bridging the gap between immigrant communities and American healthcare: advocacy for families, heart-health tutoring for youth, and a free medical dictionary for immigrants and seniors.',
       };
       var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
       var host = document.getElementById('apps');
