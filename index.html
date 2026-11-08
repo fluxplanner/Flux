@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<script src="public/js/flux-app-visibility.js?v=a2373fcc"></script>
+<script src="public/js/flux-app-visibility.js?v=20011613"></script>
 <script defer src="public/js/flux-site-notices.js?v=ba87f165"></script>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: data:; worker-src 'self' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://api.anthropic.com https://api.openai.com https://api.groq.com https://api.mistral.ai https://api.deepseek.com https://en.wikipedia.org https://api.duckduckgo.com https://html.duckduckgo.com https://corsproxy.io https://api.allorigins.win https://tessdata.projectnaptha.com https://api.open-meteo.com https://nominatim.openstreetmap.org https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com">
 <script>/* Flux Pulse layout — REMOVED. The experimental "Pulse" reskin caused lag and is
@@ -119,9 +119,9 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.1cd080c0.css">
+<link rel="stylesheet" href="public/bundles/flux.2f1ee302.css">
 <!-- Scroll story on the sign-in screen (kept out of the bundle: landing pages load it too). -->
-<link rel="stylesheet" href="public/css/flux-scroll-story.css?v=5d39c890">
+<link rel="stylesheet" href="public/css/flux-scroll-story.css?v=536f6bd6">
 </head>
 <body>
 <noscript>
@@ -211,7 +211,9 @@
       <g transform="translate(392,340)">
         <path class="lx-lemni-path" d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"
           fill="none" stroke="url(#lxMarkBig)" stroke-width="13" stroke-linecap="round"/>
+        <path class="fs-logo-halo" pathLength="1" d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z" stroke="url(#lxMarkBig)"/>
         <path class="fs-logo-trace" pathLength="1" d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z" stroke="url(#lxMarkBig)"/>
+        <path class="fs-logo-comet-halo" pathLength="1" d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"/>
         <path class="fs-logo-comet" pathLength="1" d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"/>
         <g class="fs-pins" data-fs-pins="Canvas@.07@#E72429|Calendar@.25@#58a6ff|Study tools@.43@#3fb950|Grades@.56@#e3b341|Focus timer@.76@#f78166|Reading log@.9@#a371f7"></g>
       </g>
@@ -258,50 +260,9 @@
 
     <!-- ── Hero ── -->
     <section class="login-scroll-section login-scroll-hero lx-hero" id="top">
-      <div class="lx-hero-copy">
-        <span class="lx-badge"><span class="lx-badge-dot" aria-hidden="true"></span>The school planner — for students &amp; schools</span>
-
-        <div class="lx-aud-toggle" role="tablist" aria-label="Who is Flux for">
-          <button type="button" class="lx-aud-tab is-on" id="lxAudStudent" role="tab" aria-selected="true" data-aud="student">For students</button>
-          <button type="button" class="lx-aud-tab" id="lxAudTeacher" role="tab" aria-selected="false" data-aud="teacher">For teachers &amp; staff</button>
-        </div>
-
-        <h1 class="lx-headline" id="lxHeadline" style="text-wrap:balance">Your whole school life,<br><span class="grad">in flow.</span></h1>
-        <p class="lx-sub" id="lxSub">Flux keeps tasks, classes, study tools, grades and focus in one calm place — and brings in your assignments from Canvas.</p>
-
-        <div class="lx-demo" aria-live="polite">
-          <div class="lx-demo-label"><span class="lx-demo-pulse" aria-hidden="true"></span>Try it in Flux</div>
-          <p class="lx-demo-line" id="loginDemoLineLeft">Count down to the SAT from any day on your calendar.</p>
-          <p class="lx-demo-line" id="loginDemoLineCard" hidden aria-hidden="true"></p>
-        </div>
-
-        <div class="lx-highlights" aria-label="Highlights" data-aud-show="student">
-          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#7fdcff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg>Countdowns</span>
-          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#8ab4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Smart calendar</span>
-          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#ffd66b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16M8 17v-5M12 17V9M16 17v-8"/></svg>College prep</span>
-          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#b7a4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6.5L4.8 18a2 2 0 0 0 1.7 3h11a2 2 0 0 0 1.7-3L14 9.5V3"/><path d="M7.5 14h9"/></svg>Study tools</span>
-          <a class="lx-chip lx-chip--link" href="graph/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg>Free grapher <span aria-hidden="true">↗</span></a>
-        </div>
-
-        <div class="lx-highlights lx-aud-hidden" aria-label="Highlights for staff" data-aud-show="staff">
-          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#7fdcff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Lesson Hub</span>
-          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#8ab4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg>Classroom timer</span>
-          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#ffd66b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.4 3.6a2 2 0 0 1 2.8 2.8L7.5 18.1 3 19.5l1.4-4.5Z"/></svg>Meeting notes</span>
-          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#b7a4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Staff messages</span>
-        </div>
-
-        <div class="lx-integrations">
-          <div class="lx-integrations-label">Brings in your assignments from Canvas</div>
-          <div class="lx-logos">
-            <span class="lx-logo is-google" title="Google"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg></span>
-            <span class="lx-logo is-google" title="Google Calendar"><svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M390.736 121.264H121.264V390.736H390.736V121.264Z" fill="#fff"/><path d="M390.736 512 512 390.736l-60.632-10.344-60.632 10.344-11.066 55.46z" fill="#EA4335"/><path d="M0 390.736v80.842C0 493.912 18.088 512 40.42 512h80.844l12.45-60.632-12.45-60.632-66.066-10.344z" fill="#188038"/><path d="M512 121.264V40.42C512 18.088 493.912 0 471.58 0H390.736c-7.376 30.072-11.065 52.203-11.066 66.392 0 14.188 3.689 32.479 11.066 54.872 26.82 7.68 47.031 11.52 60.632 11.52s33.812-3.839 60.632-11.52z" fill="#1967D2"/><path d="M512 121.264H390.736V390.736H512V121.264Z" fill="#FBBC04"/><path d="M390.736 390.736H121.264V512H390.736V390.736Z" fill="#34A853"/><path d="M390.736 0H40.422C18.088 0 0 18.088 0 40.42V390.736H121.264V121.264H390.736V0Z" fill="#4285F4"/><path d="M176.54 330.308c-10.072-6.804-17.046-16.74-20.852-29.88l23.378-9.632c2.12 8.084 5.825 14.349 11.116 18.796 5.254 4.446 11.654 6.636 19.132 6.636 7.645 0 14.213-2.325 19.704-6.974 5.492-4.648 8.254-10.576 8.254-17.75 0-7.344-2.897-13.34-8.69-17.988-5.794-4.648-13.07-6.972-21.76-6.972h-13.508v-23.14h12.126c7.477 0 13.776-2.022 18.896-6.066 5.12-4.04 7.68-9.566 7.68-16.606 0-6.264-2.29-11.25-6.87-14.988-4.58-3.74-10.376-5.626-17.416-5.626-6.872 0-12.328 1.82-16.37 5.49-4.041 3.681-6.834 8.329-8.582 13.508l-23.14-9.634c3.064-8.69 8.69-16.37 16.942-23.006 8.252-6.636 18.796-9.97 31.596-9.97 9.466 0 17.988 1.82 25.534 5.49 7.544 3.672 13.472 8.758 17.75 15.226 4.28 6.5 6.4 13.776 6.4 21.86 0 8.252-1.986 15.226-5.96 20.952-3.974 5.726-8.86 10.104-14.654 13.17v1.38c7.481 3.085 13.98 8.151 18.796 14.654 4.884 6.568 7.344 14.416 7.344 23.58 0 9.16-2.326 17.346-6.974 24.52-4.648 7.176-11.08 12.834-19.234 16.944-8.184 4.11-17.38 6.2-27.586 6.2-11.824.032-22.736-3.37-32.808-10.174zM320.132 214.298l-25.666 18.56-12.834-19.468 46.046-33.214h17.65v156.666h-25.196z" fill="#4285F4"/></svg></span>
-            <span class="lx-logo is-google" title="Gmail"><svg viewBox="0 49.4 512 399.42" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#4285f4" d="M34.91 448.818h81.454V251L0 163.727V413.91c0 19.287 15.622 34.91 34.91 34.91z"/><path fill="#34a853" d="M395.636 448.818h81.455c19.287 0 34.909-15.622 34.909-34.909V163.727L395.636 251z"/><path fill="#fbbc04" d="M395.636 99.727V251L512 163.727v-46.545c0-43.142-49.25-67.782-83.782-41.891z"/><path fill="#ea4335" d="M116.364 251V99.727L256 204.455 395.636 99.727V251L256 355.727z"/><path fill="#c5221f" d="M0 117.182v46.545L116.364 251V99.727L83.782 75.291C49.25 49.4 0 74.04 0 117.18z"/></svg></span>
-            <span class="lx-logo is-google" title="Google Drive"><svg viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#0066da" d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5z"/><path fill="#00ac47" d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z"/><path fill="#ea4335" d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75L86.1 57.5c.8-1.4 1.2-2.95 1.2-4.5H59.798l5.852 11.5z"/><path fill="#00832d" d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"/><path fill="#2684fc" d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z"/><path fill="#ffba00" d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z"/></svg></span>
-            <span class="lx-logo is-google" title="Google Classroom"><svg viewBox="0 0 578.9 500" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#0F9D58" d="M52.6 52.6h473.7v394.7H52.6z"/><path fill="#57BB8A" d="M394.7 263.2a29.6 29.6 0 1 0 0-59.2 29.6 29.6 0 0 0 0 59.2zm0 19.7c-31.7 0-65.8 16.8-65.8 37.6v21.6h131.6v-21.6c0-20.8-34.1-37.6-65.8-37.6zm-210.5-19.7a29.6 29.6 0 1 0 0-59.2 29.6 29.6 0 0 0 0 59.2zm0 19.7c-31.7 0-65.8 16.8-65.8 37.6v21.6H250v-21.6c0-20.8-34.1-37.6-65.8-37.6z"/><path fill="#F7F7F7" d="M289.5 236.8a39.5 39.5 0 1 0 0-79 39.5 39.5 0 0 0 0 79zm0 26.4c-44.4 0-92.1 23.6-92.1 52.6v26.3h184.2v-26.3c0-29.1-47.7-52.6-92.1-52.6z"/><path fill="#F1F1F1" d="M342.1 421.1h118.4v26.3H342.1z"/><path fill="#F4B400" d="M539.5 0h-500A39.5 39.5 0 0 0 0 39.5v421.1A39.5 39.5 0 0 0 39.5 500h500a39.5 39.5 0 0 0 39.5-39.5v-421A39.5 39.5 0 0 0 539.5 0zm-13.2 447.4H52.6V52.6h473.7z"/></svg></span>
-            <span class="lx-logo" title="Canvas"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="12" cy="12" r="3.1" fill="#E72429"/><circle cx="12" cy="4.1" r="1.5" fill="#E72429"/><circle cx="12" cy="19.9" r="1.5" fill="#E72429"/><circle cx="4.1" cy="12" r="1.5" fill="#E72429"/><circle cx="19.9" cy="12" r="1.5" fill="#E72429"/><circle cx="6.4" cy="6.4" r="1.5" fill="#E72429"/><circle cx="17.6" cy="17.6" r="1.5" fill="#E72429"/><circle cx="17.6" cy="6.4" r="1.5" fill="#E72429"/><circle cx="6.4" cy="17.6" r="1.5" fill="#E72429"/></svg></span>
-          </div>
-        </div>
-
+      <!-- Just the name: the scroll story below does the talking. -->
+      <div class="lx-hero-copy lx-hero-name">
+        <h1 class="lx-name">Flux<span class="lx-sr"> Planner, the smart school planner</span></h1>
         <div class="feat-pills-wrap" aria-hidden="true"><div class="feat-pills" id="featPills"></div></div>
       </div>
 
@@ -414,7 +375,7 @@
         </div>
         <div class="feat-pills-wrap" aria-hidden="true"><div class="feat-pills" id="featPillsLoginCard"></div></div>
       </aside>
-      <a class="lx-cue" href="#fsLogoStory"><span class="lx-cue-line" aria-hidden="true"></span>Scroll to see it come together</a>
+      <a class="lx-cue" href="#fsLogoStory"><span class="lx-cue-line" aria-hidden="true"></span>Scroll to meet Flux</a>
     </section>
 
     <!-- ── Scroll story (shown to every audience) ── -->
@@ -425,7 +386,7 @@
          planned, then the rest of Flux locks into place. -->
     <section class="fs-lift" id="fsLogoStory" data-fs data-fs-lift aria-labelledby="fsLiftTitle">
       <div class="fs-stage">
-        <p class="fs-eyebrow fs-k" style="--from:.04;--to:.14">One line through all of it</p>
+        <p class="fs-lift-top fs-k" style="--from:.02;--to:.12">Your whole school life, <span class="fs-serif fs-grad-txt">in flow.</span></p>
         <ul class="fs-lift-list">
           <li>Canvas assignments</li><li>Smart calendar</li><li>Study tools</li><li>Grades &amp; GPA</li><li>Focus timer</li><li>Reading log</li>
         </ul>
@@ -3207,6 +3168,6 @@
   </div>
 </div>
 
-<script defer src="public/js/flux-scroll-story.js?v=330e6ce3"></script>
+<script defer src="public/js/flux-scroll-story.js?v=afe817fc"></script>
 </body>
 </html>

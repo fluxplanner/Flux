@@ -148,15 +148,9 @@ test.describe('login page', () => {
     await expect(login).toContainText('study subjects');
   });
 
-  test('the teachers tab rotates staff lines, not student ones', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('#loginScreen')).toBeVisible({ timeout: 15000 });
-    await page.locator('#lxAudTeacher').click();
-    const line = page.locator('#loginDemoLineLeft');
-    await expect(line).toContainText('bell by bell');
-    await expect(line).not.toContainText('bell by bell', { timeout: 7000 });
-    await expect(line).not.toContainText(/SAT|Pomodoro|superscores/);
-  });
+  // The students / teachers tab and its rotating demo line left the sign-in
+  // screen in November 2026: it shows just the name and the sign-in card,
+  // and the scroll story below tells the rest.
 });
 
 test.describe('staff workspace', () => {

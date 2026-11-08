@@ -89,7 +89,8 @@ body:has(.fs-bleed) { overflow-x: clip; }
  *   [data-fs-logo]   the real Flux mark, fixed in the background. While a
  *                    [data-fs-lift] section scrolls by, the script sets
  *                    --fs-lift (0 → 1 → 0) and --fs-comet (0 → 1) on
- *                    <html>: the mark rises to the middle, a light runs
+ *                    the mark itself (on <html> they made the browser
+ *                    re-style the whole page every frame): the mark rises to the middle, a light runs
  *                    once around its loop and retraces it, feature pins
  *                    light up where it passes, then it sinks back.
  *   .fs-week         one assignment splits into a session a day
@@ -104,8 +105,11 @@ body:has(.fs-bleed) { overflow-x: clip; }
   opacity: calc(.28 + var(--fs-lift, 0) * .72);
 }
 .fs-ghost svg { width: min(1100px, 140vw); height: auto; max-height: 46vh; margin-top: 4vh; }
+/* No CSS filters anywhere in the mark: blurred drop-shadows were redrawn
+   every frame while it moved and made the scroll lag. Glows are wide,
+   faint strokes instead (.fs-logo-halo, .fs-logo-comet-halo). */
 [data-fs-logo] svg {
-  overflow: visible; transform-origin: 50% 50%;
+  overflow: visible; transform-origin: 50% 50%; will-change: transform;
   transform: translateY(calc(var(--fs-lift, 0) * var(--fs-lift-y, 22vh))) scale(calc(1 + var(--fs-lift, 0) * var(--fs-lift-s, 1)));
 }
 @media (max-width: 600px) { :root { --fs-lift-s: .5; --fs-lift-y: 23vh; } }
@@ -113,21 +117,28 @@ body:has(.fs-bleed) { overflow-x: clip; }
   fill: none; stroke-width: 15; stroke-linecap: round;
   stroke-dasharray: 1; stroke-dashoffset: calc(1 - var(--fs-comet, 0));
   opacity: var(--fs-lift, 0);
-  filter: drop-shadow(0 0 14px rgba(0, 194, 255, .7));
+}
+[data-fs-logo] .fs-logo-halo {
+  fill: none; stroke-width: 40; stroke-linecap: round;
+  stroke-dasharray: 1; stroke-dashoffset: calc(1 - var(--fs-comet, 0));
+  opacity: calc(var(--fs-lift, 0) * .2);
+}
+[data-fs-logo] .fs-logo-comet-halo {
+  fill: none; stroke: #00c2ff; stroke-width: 46; stroke-linecap: round;
+  stroke-dasharray: .05 .95; stroke-dashoffset: calc(var(--fs-comet, 0) * -1 + .04);
+  opacity: calc(var(--fs-lift, 0) * .35 * clamp(0, calc((1 - var(--fs-comet, 0)) * 12), 1));
 }
 [data-fs-logo] .fs-logo-comet {
   fill: none; stroke: #fff; stroke-width: 20; stroke-linecap: round;
   stroke-dasharray: .03 .97; stroke-dashoffset: calc(var(--fs-comet, 0) * -1 + .03);
   opacity: calc(var(--fs-lift, 0) * clamp(0, calc((1 - var(--fs-comet, 0)) * 12), 1));
-  filter: drop-shadow(0 0 10px #9ee3ff) drop-shadow(0 0 24px #00c2ff);
 }
-[data-fs-logo] .fs-logo-dot { opacity: var(--fs-lift, 0); filter: drop-shadow(0 0 12px #00c2ff); }
+[data-fs-logo] .fs-logo-dot { opacity: var(--fs-lift, 0); }
 [data-fs-logo] .fs-pins { opacity: var(--fs-lift, 0); }
 .fs-pin { opacity: 0; transform: translateY(10px); transition: opacity .45s ease, transform .45s cubic-bezier(.2, .7, .2, 1); }
 .fs-pin.on { opacity: 1; transform: none; }
 .fs-pin rect { fill: rgba(9, 13, 24, .88); stroke: rgba(255, 255, 255, .14); stroke-width: 1.5; }
 .fs-pin text { fill: #eaf1ff; font: 700 15px 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif; }
-.fs-pin circle { filter: drop-shadow(0 0 6px currentColor); }
 
 /* The section that drives the lift has nothing of its own in the middle:
    the mark behind it is the show. */
@@ -271,3 +282,11 @@ body:has(.fs-bleed) { overflow-x: clip; }
   .fs-lift .fs-lift-list { position: static; width: auto; height: auto; clip: auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; list-style: none; padding: 0; }
   .fs-blk, .fs-tile { transform: none !important; opacity: 1 !important; }
 }
+
+/* The sign-in page has no headline of its own any more; the lift section
+   opens with it instead. */
+.fs-lift .fs-lift-top {
+  grid-row: 1; margin: 0; text-align: center; color: var(--fs-ink); text-wrap: balance;
+  font-size: clamp(1.6rem, 4vw, 2.8rem); font-weight: 850; letter-spacing: -.04em; line-height: 1.06;
+}
+.fs-lift .fs-lift-top .fs-serif { font-weight: 500; letter-spacing: -.02em; }

@@ -93,11 +93,14 @@
      browser tabs (the lemniscate is ~2:1, so cap height too) and sits a touch
      higher than before. */
   width:min(1100px,140vw);height:auto;max-height:46vh;margin-top:2vh;
-  filter:drop-shadow(0 0 50px rgba(0,194,255,.22));
+  /* No drop-shadow filter: the scroll story moves this mark, and a 50px
+     blur redrawn every frame made scrolling lag. */
 }
 #loginScreen .lx-lemni .lx-lemni-path{
   stroke-dasharray:1900;stroke-dashoffset:1900;
-  animation:lxDraw 2.8s cubic-bezier(.22,1,.36,1) .15s forwards,lxBreathe 9s ease-in-out 3s infinite;
+  /* Draws once. The endless "breathe" fade repainted the mark on every
+     frame, scrolling or not, so it is gone. */
+  animation:lxDraw 2.8s cubic-bezier(.22,1,.36,1) .15s forwards;
 }
 @keyframes lxDraw{to{stroke-dashoffset:0}}
 @keyframes lxBreathe{0%,100%{opacity:.85}50%{opacity:.45}}
