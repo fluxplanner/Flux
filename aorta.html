@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Aorta Project — preview</title>
+<!-- Hidden draft: not linked from suite.html or partners.html, and kept out
+     of search engines. Only people who have the URL can open it. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#f5f5f2">
+<link rel="icon" type="image/png" href="public/partners/aorta/logo.png">
+
+<!--
+  Aorta Project: a Flux partner app, first draft. The partner has not chosen
+  what the site holds yet, so every block of words below is a placeholder
+  (marked .ph) — only the look and the scroll motion are real so far.
+
+  How the motion works: each [data-scroll] section is taller than the screen
+  and its inner .stage is sticky. On scroll, the script sets --p (0 → 1) on
+  the section for how far through it the reader is, and CSS reads --p to draw
+  the heart, scale the logo, light up words and slide cards. No library.
+  With reduced motion on, every section shows its finished state.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f5f2;
+    --paper2: #ecebe6;
+    --ink: #24238f;      /* the indigo of "Aorta" in their logo */
+    --coral: #e4776b;    /* the heart's line colour */
+    --text: #1d1d2b;
+    --muted: #6b6b7b;
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--paper); color: var(--text); }
+  body { font-family: var(--sans); line-height: 1.55; overflow-x: clip; }
+  img { display: block; max-width: 100%; }
+
+  /* ---- top bar ---- */
+  .bar {
+    position: fixed; inset: 0 0 auto; z-index: 10;
+    display: flex; align-items: center; gap: 10px;
+    padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+    background: color-mix(in srgb, var(--paper) 80%, transparent);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  }
+  .bar .mini { width: 34px; height: 34px; border-radius: 50%; overflow: hidden; }
+  .bar .mini img { width: 100%; height: 100%; transform: scale(1.08); }
+  .bar strong { font-family: var(--serif); font-style: italic; font-size: 1.3rem; color: var(--ink); font-weight: 500; }
+  .bar .grow { flex: 1; }
+  .draft {
+    font-size: .7rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--coral); border: 1px dashed var(--coral); border-radius: 999px; padding: 4px 10px;
+  }
+
+  /* ---- scroll sections ---- */
+  [data-scroll] { position: relative; --p: 0; }
+  .stage { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; display: grid; place-items: center; }
+
+  /* 1. Hero: the heart draws itself, then becomes their logo. */
+  .hero { height: 320vh; }
+  .hero .heart { width: min(64vw, 340px); overflow: visible;
+    /* Fades out as the logo takes over (p 0.55 → 0.75). */
+    opacity: clamp(0, calc((0.75 - var(--p)) * 5), 1);
+    transform: scale(calc(1 + var(--p) * .25)); }
+  .hero .heart path {
+    fill: none; stroke: var(--coral); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+    stroke-dasharray: 1; /* pathLength="1" on each path */
+    stroke-dashoffset: clamp(0, calc(1 - var(--p) * 1.9), 1);
+  }
+  .hero .logo {
+    position: absolute; width: min(78vw, 420px); aspect-ratio: 1; border-radius: 50%; overflow: hidden;
+    box-shadow: 0 40px 80px -30px rgba(36,35,143,.35);
+    opacity: clamp(0, calc((var(--p) - 0.55) * 5), 1);
+    transform: scale(calc(0.7 + clamp(0, calc((var(--p) - 0.55) * 2.2), 1) * 0.3));
+  }
+  .hero .logo img { width: 100%; height: 100%; transform: scale(1.07); }
+  .hero .hint {
+    position: absolute; bottom: calc(28px + env(safe-area-inset-bottom, 0px)); left: 0; right: 0; text-align: center;
+    font-size: .78rem; letter-spacing: .2em; text-transform: uppercase; color: var(--muted);
+    opacity: clamp(0, calc(1 - var(--p) * 6), 1);
+  }
+  .hero .title {
+    position: absolute; left: 16px; right: 16px; top: calc(50% + min(39vw, 210px) + 18px); text-align: center;
+    font-family: var(--serif); font-size: clamp(1.5rem, 4.5vw, 2.4rem); color: var(--ink); margin: 0;
+    opacity: clamp(0, calc((var(--p) - 0.8) * 6), 1);
+    transform: translateY(calc((1 - clamp(0, calc((var(--p) - 0.8) * 6), 1)) * 24px));
+  }
+
+  /* 2. Mission: words light up one by one as you scroll. */
+  .words { height: 240vh; }
+  .words .stage { padding: 0 16px; }
+  .words p {
+    max-width: 900px; margin: 0; text-align: center;
+    font-family: var(--serif); font-size: clamp(1.9rem, 5.6vw, 4rem); line-height: 1.12; color: var(--ink);
+  }
+  .words .w { opacity: .13; transition: opacity .25s; }
+  .words .w.on { opacity: 1; }
+  .words .w.accent { font-style: italic; color: var(--coral); }
+
+  /* 3. Cards that stack on top of each other. */
+  .cards { height: 360vh; }
+  .cards .stage { padding: 0 16px; }
+  .deck { position: relative; width: min(100%, 560px); height: min(72svh, 460px); }
+  .card {
+    position: absolute; inset: 0; border-radius: 28px; padding: clamp(24px, 5vw, 40px);
+    display: flex; flex-direction: column; justify-content: flex-end; gap: 10px;
+    background: #fff; border: 1px solid rgba(36,35,143,.08);
+    box-shadow: 0 30px 60px -30px rgba(29,29,43,.35);
+    --k: clamp(0, calc((var(--p) - var(--at)) * 4), 1);
+    transform: translateY(calc((1 - var(--k)) * 110svh)) rotate(calc((1 - var(--k)) * 6deg));
+  }
+  .card:nth-child(1) { --at: 0; transform: none; }
+  .card:nth-child(2) { --at: .2; background: var(--ink); color: #fff; }
+  .card:nth-child(3) { --at: .5; background: var(--coral); color: #fff; }
+  .card .num { font-family: var(--serif); font-style: italic; font-size: 4rem; line-height: 1; opacity: .5; margin-bottom: auto; }
+  .card h3 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: clamp(2rem, 6vw, 2.8rem); line-height: 1.05; }
+  .card p { margin: 0; opacity: .8; max-width: 40ch; }
+
+  /* 4. Their name, sliding sideways with the scroll. */
+  .slide { height: 200vh; }
+  .slide .line {
+    white-space: nowrap; font-family: var(--serif); font-style: italic; color: var(--ink);
+    font-size: clamp(5rem, 18vw, 14rem); line-height: 1;
+    transform: translateX(calc(30vw - var(--p) * 160vw));
+  }
+  .slide .line span { color: var(--coral); }
+
+  /* Placeholder words: easy to spot until the partner sends their own. */
+  .ph { text-decoration: underline dashed rgba(228,119,107,.55); text-underline-offset: .18em; text-decoration-thickness: 1px; }
+
+  footer { padding: 64px 16px calc(48px + env(safe-area-inset-bottom, 0px)); text-align: center; color: var(--muted); font-size: .88rem; background: var(--paper2); }
+  footer a { color: var(--ink); }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-scroll] { --p: 1 !important; height: auto !important; }
+    .stage { position: relative; height: auto; min-height: 100svh; padding: 96px 16px; }
+    .hero .heart { display: none; }
+    .hero .logo, .hero .title { position: relative; top: auto; }
+    .hero .stage { display: flex; flex-direction: column; gap: 24px; }
+    .words .w { opacity: 1; }
+    .deck { height: auto; display: grid; gap: 16px; }
+    .card { position: relative; min-height: 280px; transform: none !important; }
+    .slide .line { transform: none; font-size: clamp(3rem, 12vw, 8rem); white-space: normal; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="mini"><img src="public/partners/aorta/logo.png" alt=""></span>
+  <strong>Aorta</strong>
+  <span class="grow"></span>
+  <span class="draft">Private draft</span>
+</header>
+
+<main>
+  <section class="hero" data-scroll aria-label="Aorta Project">
+    <div class="stage">
+      <!-- A single drawn line, in the spirit of their logo's heart. -->
+      <svg class="heart" viewBox="0 0 200 240" aria-hidden="true">
+        <path pathLength="1" d="M100 226 C 74 200, 36 166, 34 122 C 32 92, 50 74, 72 80 C 60 62, 66 42, 84 46 C 78 30, 86 16, 98 22 C 104 30, 96 40, 90 34 C 96 22, 112 14, 118 28 C 122 16, 140 14, 140 30 C 140 42, 126 40, 130 30 C 148 30, 160 46, 146 60 C 168 64, 174 92, 152 102 C 172 116, 168 152, 142 180 C 128 196, 112 212, 100 226"/>
+        <path pathLength="1" d="M72 80 C 82 92, 100 92, 108 80 C 116 68, 132 72, 146 60"/>
+        <path pathLength="1" d="M100 108 C 92 132, 96 160, 112 186"/>
+      </svg>
+      <div class="logo"><img src="public/partners/aorta/logo.png" alt="Aorta Project logo"></div>
+      <p class="title ph">A line that starts with the heart.</p>
+      <div class="hint">Scroll</div>
+    </div>
+  </section>
+
+  <section class="words" data-scroll aria-label="About">
+    <div class="stage">
+      <p class="ph" data-words>Aorta Project is a place for *students* who care about the *heart* — what it does, how it breaks, and how to keep it beating.</p>
+    </div>
+  </section>
+
+  <section class="cards" data-scroll aria-label="What we do">
+    <div class="stage">
+      <div class="deck">
+        <article class="card"><span class="num">01</span><h3 class="ph">Learn</h3><p class="ph">Placeholder — what members learn or do together.</p></article>
+        <article class="card"><span class="num">02</span><h3 class="ph">Connect</h3><p class="ph">Placeholder — events, meetings or people to meet.</p></article>
+        <article class="card"><span class="num">03</span><h3 class="ph">Give back</h3><p class="ph">Placeholder — the cause or community they support.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-scroll aria-hidden="true">
+    <div class="stage">
+      <div class="line">Aorta <span>Project</span> · Aorta <span>Project</span></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p><a href="https://www.instagram.com/aorta.project/" rel="noopener">@aorta.project</a></p>
+  <p>Built and hosted by <a href="https://fluxplanner.github.io/Flux/">Flux</a>.</p>
+</footer>
+
+<script>
+  (function () {
+    // Split the mission sentence into words; *word* marks an accent word.
+    document.querySelectorAll('[data-words]').forEach(function (p) {
+      p.innerHTML = p.textContent.trim().split(/\s+/).map(function (w) {
+        var accent = /^\*.*\*[^\w]*$/.test(w);
+        return '<span class="w' + (accent ? ' accent' : '') + '">' + w.replace(/\*/g, '') + '</span>';
+      }).join(' ');
+    });
+
+    var sections = Array.prototype.slice.call(document.querySelectorAll('[data-scroll]'));
+    function update() {
+      var vh = window.innerHeight;
+      sections.forEach(function (s) {
+        var r = s.getBoundingClientRect();
+        var span = r.height - vh;
+        var p = span > 0 ? Math.min(1, Math.max(0, -r.top / span)) : 1;
+        s.style.setProperty('--p', p.toFixed(4));
+        var words = s.querySelectorAll('.w');
+        if (words.length) {
+          var lit = Math.round(p * 1.15 * words.length);
+          for (var i = 0; i < words.length; i++) words[i].classList.toggle('on', i < lit);
+        }
+      });
+    }
+    // Straight from the scroll event, not requestAnimationFrame: the work is
+    // tiny, and rAF is paused in background or preview tabs.
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+  })();
+</script>
+</body>
+</html>
