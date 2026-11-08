@@ -21,6 +21,7 @@
 -->
 <link rel="stylesheet" href="public/css/flux-hub.css?v=6a462093">
 <link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
+<link rel="stylesheet" href="public/css/flux-scroll-story.css?v=1478ba16">
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background-color: #070b14; }
@@ -76,6 +77,16 @@
   .sub { margin: 0 0 20px; color: var(--muted2); }
   h3 { margin: 0 0 6px; font-size: 1.05rem; letter-spacing: -.01em; }
 
+  /* Scroll story: follows the page's light/dark colours. */
+  body { --fs-a: #00c2ff; --fs-b: #9c7aff; --fs-ink: var(--text); --fs-mut: var(--muted2); --fs-card: var(--card); --fs-line: var(--border); }
+  .fs-deck .fs-head .sub { margin: 10px auto 0; color: var(--muted2); }
+  @media (prefers-reduced-motion: no-preference) {
+    .hero > * { animation: partnersRise .9s cubic-bezier(.2,.7,.2,1) both; }
+    .hero > :nth-child(2) { animation-delay: .08s; }
+    .hero > :nth-child(3) { animation-delay: .16s; }
+    .hero > :nth-child(4) { animation-delay: .24s; }
+  }
+  @keyframes partnersRise { from { opacity: 0; transform: translateY(26px); } }
   .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px; }
   .card { padding: 20px; border-radius: 18px; background: var(--card); border: 1px solid var(--border); }
   .card p { margin: 0; color: #cbd6ea; font-size: .94rem; }
@@ -137,6 +148,7 @@
 <script src="public/js/flux-purple-day.js?v=1966eb3d"></script>
 </head>
 <body>
+<div data-fs-progress aria-hidden="true"></div>
   <header class="top">
     <a class="brand" href="suite.html" aria-label="All Flux apps">
       <img class="brand-mark" src="public/flux-planner-logo.png" alt="" width="32" height="32">
@@ -159,17 +171,36 @@
       </div>
     </section>
 
-    <section class="block" aria-labelledby="how-h">
-      <h2 id="how-h">How it works</h2>
-      <p class="sub">A simple trade, written down so both sides know what they get.</p>
-      <div class="grid3">
-        <div class="card"><div class="step-n">1</div><h3>We build it</h3><p>A real app made for your mission, built and hosted on Flux at no cost. No ads, no account needed, and your users’ data stays theirs.</p></div>
-        <div class="card"><div class="step-n">2</div><h3>It stays yours</h3><p>Your name, your colours, your logo. Flux lists it in Flux Suite with a Partner label, and a small “Powered by Flux” credit is the only Flux branding inside.</p></div>
-        <div class="card"><div class="step-n">3</div><h3>You spread the word</h3><p>Share Flux with your community: a post, a newsletter mention, a link on your site. The kit below has the words, logos and posts ready to go.</p></div>
+    <!-- How it works, as cards that stack while you scroll
+         (public/css/flux-scroll-story.css + public/js/flux-scroll-story.js). -->
+    <section class="fs-deck fs-bleed" data-fs aria-labelledby="how-h">
+      <div class="fs-stage">
+        <div class="fs-head">
+          <p class="fs-eyebrow">The deal</p>
+          <h2 id="how-h">How it works</h2>
+          <p class="sub">A simple trade, written down so both sides know what they get.</p>
+        </div>
+        <div class="fs-cards">
+          <article class="fs-card" style="--at:0">
+            <span class="fs-num">01</span>
+            <h3>We build it</h3>
+            <p>A real app made for your mission, built and hosted on Flux at no cost. No ads, no account needed, and your users’ data stays theirs.</p>
+          </article>
+          <article class="fs-card fs-tone-a" style="--at:.3">
+            <span class="fs-num">02</span>
+            <h3>It stays yours</h3>
+            <p>Your name, your colours, your logo. Flux lists it in Flux Suite with a Partner label, and a small “Powered by Flux” credit is the only Flux branding inside.</p>
+          </article>
+          <article class="fs-card fs-tone-c" style="--at:.62">
+            <span class="fs-num">03</span>
+            <h3>You spread the word</h3>
+            <p>Share Flux with your community: a post, a newsletter mention, a link on your site. The kit below has the words, logos and posts ready to go.</p>
+          </article>
+        </div>
       </div>
     </section>
 
-    <section class="block" aria-labelledby="partners-h">
+    <section class="block" aria-labelledby="partners-h" data-fs-reveal>
       <h2 id="partners-h">Our partners</h2>
       <p class="sub">Every partner app is in Flux Suite, next to Flux’s own.</p>
       <article class="partner">
@@ -187,7 +218,7 @@
       <h2 id="kit-h">Partner kit</h2>
       <p class="sub">Everything you need to tell people about Flux. Copy anything on this page, as is.</p>
 
-      <div class="kit-grid">
+      <div class="kit-grid" data-fs-stagger>
         <div class="card">
           <div class="logo-tile"><img src="public/flux-planner-logo.png" alt="The Flux logo"></div>
           <div class="copy-row"><h3>Flux logo</h3><a class="copy" href="public/flux-planner-logo.png" download="flux-logo.png">Download PNG</a></div>
@@ -278,7 +309,14 @@ https://fluxplanner.github.io/Flux/synara.html
       </div>
     </section>
 
-    <section class="block card join" aria-labelledby="join-h">
+    <section class="fs-words fs-bleed" data-fs aria-label="Your app, built by Flux">
+      <div class="fs-stage">
+        <p class="fs-eyebrow">Built for your mission</p>
+        <p data-fs-words>Your *mission,* your *name,* your *colours.* Flux builds it, hosts it and keeps it running, *free.*</p>
+      </div>
+    </section>
+
+    <section class="block card join" aria-labelledby="join-h" data-fs-reveal="zoom">
       <h2 id="join-h">Have an idea for an app?</h2>
       <p>If you run a student club, a nonprofit or a school group and there’s an app that would help the people you serve, tell us about it.</p>
       <a class="btn btn-pri" href="mailto:azfermohammed21@gmail.com?subject=Flux%20Partners">Email Flux about partnering</a>
@@ -326,5 +364,6 @@ https://fluxplanner.github.io/Flux/synara.html
       });
     })();
   </script>
+<script defer src="public/js/flux-scroll-story.js?v=6962b561"></script>
 </body>
 </html>
