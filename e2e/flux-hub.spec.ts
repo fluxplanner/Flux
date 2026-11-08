@@ -16,7 +16,7 @@ test.describe('Flux Suite link', () => {
 
     await link.click();
     await expect(page).toHaveURL(HUB_URL);
-    await expect(page.locator('#apps .app')).toHaveCount(10);
+    await expect(page.locator('#apps .app')).toHaveCount(11);
   });
 
   test('the planner link opens Flux Suite on desktop', async ({ page }) => {
