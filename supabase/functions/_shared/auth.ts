@@ -9,6 +9,41 @@ const OWNER_UID = (Deno.env.get("FLUX_OWNER_UID") ||
 export interface AuthResult {
   userId: string;
   email: string;
+  /** "aal2" once this session has entered an authenticator code. */
+  aal: string;
+  /** Seconds since the session last entered a code; null if it never did. */
+  mfaAgeSeconds: number | null;
+  /** The account has a verified authenticator. */
+  hasMfa: boolean;
+}
+
+/** Reads aal and amr from a token getUser has already accepted as genuine. */
+function sessionAssurance(token: string) {
+  try {
+    const part = token.split(".")[1] ?? "";
+    const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const claims = JSON.parse(atob(b64.padEnd(b64.length + (4 - b64.length % 4) % 4, "=")));
+    const amr = Array.isArray(claims.amr) ? claims.amr : [];
+    const totp = amr
+      .filter((a: { method?: string; timestamp?: number }) => a?.method === "totp" && Number.isFinite(a.timestamp))
+      .map((a: { timestamp: number }) => a.timestamp);
+    const latest = totp.length ? Math.max(...totp) : null;
+    return {
+      aal: String(claims.aal || "aal1"),
+      mfaAgeSeconds: latest === null ? null : Math.floor(Date.now() / 1000) - latest,
+    };
+  } catch {
+    return { aal: "aal1", mfaAgeSeconds: null };
+  }
+}
+
+/**
+ * Owner powers need a code entered within maxAgeSeconds once the owner has an
+ * authenticator. Same rule as flux_is_platform_admin() in the database.
+ */
+export function hasRecentMfa(auth: AuthResult, maxAgeSeconds: number) {
+  return auth.aal === "aal2" && auth.mfaAgeSeconds !== null &&
+    auth.mfaAgeSeconds <= maxAgeSeconds;
 }
 export interface AuthError {
   error: string;
@@ -52,14 +87,18 @@ export async function verifyUserJWT(
   if (bans?.length && user.id !== OWNER_UID) {
     return { error: "flux_banned", status: 403 };
   }
-  return { userId: user.id, email: user.email ?? "" };
+  const hasMfa = (user.factors ?? []).some((f) => f.status === "verified");
+  return { userId: user.id, email: user.email ?? "", hasMfa, ...sessionAssurance(token) };
 }
 
-export function serviceClient() {
+export function serviceClient(headers?: Record<string, string>) {
   return createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    { auth: { autoRefreshToken: false, persistSession: false } },
+    {
+      auth: { autoRefreshToken: false, persistSession: false },
+      ...(headers ? { global: { headers } } : {}),
+    },
   );
 }
 
@@ -74,6 +113,18 @@ const ALLOWED_ORIGINS = new Set([
     .map((s) => s.trim())
     .filter(Boolean),
 ]);
+
+/**
+ * A service client whose writes flux_admin_action_log credits to the signed-in
+ * caller. The database believes these headers only from the service role.
+ */
+export function serviceClientActingFor(req: Request, userId: string) {
+  return serviceClient({
+    "x-flux-actor": userId,
+    "x-flux-ip": (req.headers.get("cf-connecting-ip") ?? "").trim().slice(0, 100),
+    "x-flux-ua": (req.headers.get("user-agent") ?? "").slice(0, 400),
+  });
+}
 
 /**
  * Echo the Origin only for Flux's own sites, local development and the browser
