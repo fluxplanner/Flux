@@ -30,9 +30,10 @@
 
    ROLES
    A signed-in viewer's own permissions come from flux_my_permissions(), sent
-   with their session token, and are cached per account. Each "app:<id>" lets
-   them see that app. A role only ever shows more, so if the answer cannot be
-   fetched, the cached grants for that same account are used.
+   with their session token, and are cached per account. "app:<id>" lets them
+   see that app and "apps:all" every hidden app. Other pages ask can() for the
+   rest of the role permissions (planner tabs, site mode, tester mode). If the
+   answer cannot be fetched, the cached grants for that same account are used.
 
    ONE DELIBERATE EXCEPTION
    A device with Synara medicines or seizures saved on it keeps Synara. That
@@ -78,9 +79,14 @@
     return !!(s && s.user.id === OWNER_UID);
   }
 
+  /** Does this viewer hold a role permission? */
+  function can(perm) {
+    return grants.indexOf(perm) >= 0;
+  }
+
   /** Given a role that shows this app? */
   function hasGrant(id) {
-    return grants.indexOf('app:' + id) >= 0;
+    return can('apps:all') || can('app:' + id);
   }
 
   function hasOwnRecords(id) {
@@ -197,6 +203,8 @@
     isOwner: isOwner,
     /** Given a role that shows this app, whether or not it is hidden. */
     hasGrant: hasGrant,
+    /** Any role permission, e.g. can('tab:mood') or can('perk:tester'). */
+    can: can,
     /** Everything on the list, whoever is looking: for the owner's own view. */
     hiddenIds: function () { return ids.slice(); },
     refresh: refresh,

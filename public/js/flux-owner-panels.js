@@ -317,5 +317,7 @@
     renderHealth: renderHealth,
     renderBacklog: renderBacklog,
     refreshBadges: refreshBadges,
+    /** [id, label] of every planner tab that can be hidden; Roles lists them too. */
+    PLANNER_TABS: PLANNER_TABS,
   };
 })();
