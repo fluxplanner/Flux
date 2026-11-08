@@ -84,18 +84,35 @@
     return true;
   }
 
+  /* Which build this browser is running: the hashed core bundle's name. */
+  function version() {
+    try {
+      const s = document.querySelector('script[src*="bundles/flux-core."]');
+      return s ? (s.getAttribute('src').match(/flux-core\.([0-9a-f]+)/) || [])[1] || '' : '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  /* To Owner Controls › Errors, through flux_report_client_error, which also
+     caps each account or address at 30 an hour. Only the page's path goes up,
+     never its query string or hash, which can carry tokens. */
   function persistServer(payload) {
     try {
-      if (!window.FluxFeatureFlags?.isEnabled('enable_event_bus', false)) return;
       if (!canSendServer()) return;
-      if (window.FluxEventBus && typeof FluxEventBus.record === 'function') {
-        FluxEventBus.record('client_error', payload, { source: 'error_reporter' });
-      }
+      const client = typeof window.getSB === 'function' ? window.getSB() : null;
+      if (!client) return;
+      client.rpc('flux_report_client_error', {
+        p_message: payload.message,
+        p_source: payload.source + (payload.kind === 'error' ? '' : ' (' + payload.kind + ')'),
+        p_line: payload.line,
+        p_page: trunc(location.pathname, 120),
+        p_version: version(),
+      }).then(function () {}, function () {});
     } catch (_) {}
   }
 
   function capture(kind, detail) {
-    if (!enabled()) return;
     const entry = {
       at: Date.now(),
       kind: trunc(kind, 32),
@@ -104,7 +121,8 @@
       line: detail.line != null ? Number(detail.line) : null,
       col: detail.col != null ? Number(detail.col) : null,
     };
-    pushRing(entry);
+    /* The on-device list stays behind its flag; the owner's copy does not. */
+    if (enabled()) pushRing(entry);
     persistServer(entry);
     try {
       if (window.FluxDebug?.on?.('ERR') || window.FluxDebug?.on?.()) {
@@ -127,7 +145,7 @@
   }
 
   function install() {
-    if (_installed || !enabled()) return false;
+    if (_installed) return false;
     window.addEventListener('error', (ev) => {
       if (ev.defaultPrevented) return;
       onError(ev.message, ev.filename, ev.lineno, ev.colno);

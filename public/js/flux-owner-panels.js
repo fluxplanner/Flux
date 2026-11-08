@@ -76,7 +76,10 @@
     mount.innerHTML =
       '<h2 class="own-h2">Today</h2>' +
       '<div class="own-tiles">' +
+        tile('Alerts', s.alerts, 'alerts', s.alerts ? 'danger' : '') +
         tile('Password help waiting', s.password_help, 'pwhelp', s.password_help ? 'warn' : '') +
+        tile('Posts reported this week', s.reported_posts, 'reported', s.reported_posts ? 'warn' : '') +
+        tile('Errors today', s.errors_24h, 'errors', s.errors_24h > 20 ? 'warn' : '') +
         tile('Teachers to verify', s.staff_waiting, 'staffverify', s.staff_waiting ? 'warn' : '') +
         tile('Watch-word matches', flagged, 'moderation', flagged ? 'danger' : '', 'archive') +
         tile('Feedback today', feedback24, 'feedback') +
@@ -91,6 +94,10 @@
       '</div>' +
       (sum.error ? '<p class="own-intro">Some numbers are missing until the database update that ships with Owner Controls is applied.</p>' : '') +
       '<h3 class="own-h3">Switches</h3><div class="own-statuses">' +
+        status('Site mode', !!s.site_mode && s.site_mode !== 'normal',
+          s.site_mode === 'read_only' ? 'Read-only: nothing is being saved' : 'Maintenance is set', 'Normal', 'sitemode', true) +
+        status('Sign-ups', !!s.signup_mode && s.signup_mode !== 'open',
+          s.signup_mode === 'closed' ? 'Closed' : 'Invite code only', 'Open to anyone', 'signups') +
         status('Posting lockdown', !!s.lockdown, 'Posting is paused for everyone', 'Posting is on', 'moderation', true) +
         status('Maintenance screen', !!pc.maintenanceMode, 'Everyone sees the update screen', 'Off', 'nuke', true) +
         status('Release gate', !!gate.stagingEnabled, 'New builds wait for you', 'New builds go straight out', 'release') +
@@ -300,6 +307,7 @@
     count('flux_password_help', function (q) { return q.eq('handled', false); }).then(function (n) { setBadge('osBadge-pwhelp', n); });
     var inbox = window.load('flux_feedback_inbox', []) || [];
     setBadge('osBadge-feedback', inbox.filter(function (e) { return e && Date.now() - Number(e.t || 0) < 864e5; }).length);
+    count('flux_owner_alerts', function (q) { return q.is('seen_at', null); }).then(function (n) { setBadge('osBadge-alerts', n); });
   }
 
   window.FluxOwnerPanels = {
