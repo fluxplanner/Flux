@@ -100,6 +100,9 @@ test.describe('Flux Partners', () => {
       const res = await request.get('/' + href);
       expect(res.status(), `${href} is missing`).toBe(200);
     }
+    // The screenshots load lazily and sit below the tall scroll-story cards,
+    // so bring them on screen first or decode() waits forever.
+    await page.locator('.shots').scrollIntoViewIfNeeded();
     const broken = await page.locator('.shot img').evaluateAll(async (imgs) => {
       await Promise.all(imgs.map((i) => (i as HTMLImageElement).decode().catch(() => null)));
       return imgs.filter((i) => !(i as HTMLImageElement).naturalWidth).length;
