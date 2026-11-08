@@ -9,8 +9,9 @@
  * hears every scroller. Positions come from getBoundingClientRect, which
  * is the same whichever element scrolls.
  *
- * Updates run straight from the scroll event, not requestAnimationFrame:
- * the work is small, and rAF is paused in background and preview tabs.
+ * Scroll events can fire several times a frame, so updates are batched
+ * into one per frame with requestAnimationFrame. rAF is paused in tabs
+ * that are not being painted, so there it runs straight away instead.
  */
 (function () {
   'use strict';
@@ -68,7 +69,6 @@
   // ── The Flux mark: rise, one lap of light, sink back ───────────────────
   var logo = null;
   var pins = null;
-  var root = document.documentElement;
   function smooth(x) { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); }
 
   // Pins sit on the mark's own path, so they are built from it: each
@@ -119,8 +119,9 @@
     if (!pins) pins = buildPins();
     var up = smooth(p / 0.16) * smooth((1 - p) / 0.2);
     var lap = Math.min(1, Math.max(0, (p - 0.14) / 0.58));
-    root.style.setProperty('--fs-lift', up.toFixed(3));
-    root.style.setProperty('--fs-comet', lap.toFixed(4));
+    // Set on the mark itself: on <html> every element would be re-styled.
+    logo.style.setProperty('--fs-lift', up.toFixed(3));
+    logo.style.setProperty('--fs-comet', lap.toFixed(4));
     for (var i = 0; i < pins.length; i++) pins[i].el.classList.toggle('on', lap > 0 && lap >= pins[i].f);
   }
 
@@ -156,7 +157,18 @@
     update();
   }
 
-  document.addEventListener('scroll', update, { capture: true, passive: true });
+  var queued = false;
+  function onScroll() {
+    if (document.hidden || typeof requestAnimationFrame !== 'function') { update(); return; }
+    if (queued) return;
+    queued = true;
+    // Some embedded browsers report a visible page but never fire rAF; the
+    // timer makes sure the frame still happens.
+    var run = function () { if (!queued) return; queued = false; update(); };
+    requestAnimationFrame(run);
+    setTimeout(run, 100);
+  }
+  document.addEventListener('scroll', onScroll, { capture: true, passive: true });
   window.addEventListener('resize', update);
   // The sign-in screen is display:none until the app decides to show it;
   // re-measure once the page has settled.

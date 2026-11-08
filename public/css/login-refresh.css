@@ -239,3 +239,22 @@
 }
 html[data-flux-perf="on"] #loginScreen .lx-auth-card,
 html[data-flux-perf="on"] #loginScreen .lx-cue-line::after{animation:none!important}
+
+/* ══ Name and sign-in only, November 2026 ═════════════════════════════════
+   The hero is the Flux name with the sign-in card under it; everything
+   else is told by the scroll story. */
+#loginScreen .lx-hero{grid-template-columns:minmax(0,1fr);justify-items:center;align-content:center;
+  gap:clamp(18px,3vh,30px);text-align:center;padding:clamp(20px,4vh,48px) 0 clamp(80px,12vh,120px)}
+#loginScreen .lx-hero-name{max-width:none;width:auto}
+#loginScreen .lx-name{margin:0;font-size:clamp(3.6rem,10vw,6.6rem);font-weight:850;letter-spacing:-.06em;line-height:.9;
+  background:linear-gradient(120deg,#e6f6ff 10%,#00C2FF 45%,#7C5CFF 85%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:lxRise .9s cubic-bezier(.2,.7,.2,1) both}
+#loginScreen .lx-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#loginScreen .lx-hero-name .feat-pills-wrap{display:none}
+#loginScreen .lx-auth{order:0;width:100%;justify-content:center}
+#loginScreen .lx-auth-card{text-align:left}
+@media (max-width:980px){
+  #loginScreen .lx-auth{order:0}
+  #loginScreen .lx-hero{padding-bottom:24px}
+}
+@media (prefers-reduced-motion:reduce){#loginScreen .lx-name{animation:none}}
