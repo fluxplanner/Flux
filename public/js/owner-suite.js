@@ -532,18 +532,25 @@
   /** Tab id → { label, icon, group }.  Order here drives the sidebar nav order. */
   const OS_TAB_DEFS={
     today:       {label:'Today',            icon:'📊', group:'home'},
+    alerts:      {label:'Alerts',           icon:'🔔', group:'home'},
     overview:    {label:'Overview',         icon:'📈', group:'home'},
     preview:     {label:'Switch to staff',  icon:'🧪', group:'home'},
     nuke:        {label:'Nuke Controls',    icon:'☢️', group:'home'},
     release:     {label:'Release & push',   icon:'🚀', group:'home'},
+    announce:    {label:'Announcements',    icon:'📣', group:'home'},
     team:        {label:'Team & roles',     icon:'👥', group:'people'},
     testers:     {label:'Testers',          icon:'🧪', group:'people'},
     auth:        {label:'Users & roster',   icon:'🔐', group:'people'},
     staffverify: {label:'Staff verify',     icon:'✅', group:'people'},
     pwhelp:      {label:'Password help',    icon:'🔐', group:'people'},
+    signups:     {label:'Sign-ups',         icon:'🎟', group:'people'},
+    sessions:    {label:'Sign-ins',         icon:'🚪', group:'people'},
+    profiles:    {label:'Profile review',   icon:'🪪', group:'people'},
     analytics:   {label:'My analytics',     icon:'📈', group:'insights'},
     usage:       {label:'Platform usage',   icon:'🌐', group:'insights'},
     feedback:    {label:'Feedback inbox',   icon:'💬', group:'insights'},
+    errors:      {label:'Errors',           icon:'🐞', group:'insights'},
+    uptime:      {label:'Uptime',           icon:'📶', group:'insights'},
     config:      {label:'Platform config',  icon:'⚙️', group:'build'},
     hideapps:    {label:'Hide apps',        icon:'🙈', group:'build'},
     plannertabs: {label:'Planner tabs',     icon:'📌', group:'build'},
@@ -551,7 +558,11 @@
     megamap:     {label:'Mega map',         icon:'🗺',  group:'build'},
     ideas:       {label:'Product ideas',    icon:'💡', group:'build'},
     backlog:     {label:'Master backlog',   icon:'📋', group:'build'},
+    versions:    {label:'Versions',         icon:'🏷', group:'build'},
     moderation:  {label:'Moderation',       icon:'🛡', group:'safety'},
+    reported:    {label:'Reported posts',   icon:'🚩', group:'safety'},
+    sitemode:    {label:'Site mode',        icon:'🚧', group:'safety'},
+    database:    {label:'Database',         icon:'🗄', group:'safety'},
     audit:       {label:'Audit log',        icon:'📜', group:'safety'},
     health:      {label:'System health',    icon:'🚦', group:'safety'},
     data:        {label:'Data & backup',    icon:'💾', group:'safety'},
@@ -1207,6 +1218,7 @@
         <div id="osUsageMount">${typeof window.__ownerUsageHtml==='string'&&window.__ownerUsageHtml?window.__ownerUsageHtml:'<div style="color:var(--muted);font-size:.82rem">Click <b>Refresh from cloud</b> to load cross-account aggregates (requires Supabase to return multiple <code style="font-size:.65rem">user_data</code> rows — see RLS note after load).</div>'}</div>`;
 
       if(tab==='moderation')return`<div id="osModerationMount">Loading…</div>`;
+      if(window.FluxOwnerSecurityPanel&&window.FluxOwnerSecurityPanel.views.indexOf(tab)>=0)return`<div id="osSecurityMount"></div>`;
       if(tab==='today'||tab==='pwhelp'||tab==='plannertabs'||tab==='health'||tab==='backlog')return`<div id="osPanelMount"></div>`;
       if(tab==='audit')return`
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
@@ -1331,6 +1343,8 @@
       }
       if(tab==='hideapps')paintHiddenApps(root);
       if(tab==='moderation')window.FluxOwnerModerationPanel.render(root.querySelector('#osModerationMount'));
+      const secMount=root.querySelector('#osSecurityMount');
+      if(secMount)window.FluxOwnerSecurityPanel.render(tab,secMount);
       const panelMount=root.querySelector('#osPanelMount');
       if(panelMount){
         const P=window.FluxOwnerPanels;

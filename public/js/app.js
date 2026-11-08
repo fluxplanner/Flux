@@ -12336,6 +12336,10 @@ function toggleAuthMode(){
   const sub=document.getElementById('loginAuthSub');
   if(_authMode==='signup'){
     if(nameRow)nameRow.style.display='block';
+    fluxSignupPolicy().then(mode=>{
+      const row=document.getElementById('loginInviteRow');
+      if(row)row.style.display=mode==='invite'&&_authMode==='signup'?'':'none';
+    });
     _setLoginEmailBtnText(btn,'Create account');
     if(toggleText)toggleText.textContent='Already have an account?';
     if(toggleAction)toggleAction.textContent='Sign in';
@@ -12472,6 +12476,11 @@ window.fluxWeakPasswordReason=fluxWeakPasswordReason;
 /** Turn an auth error into something a student can act on. */
 function fluxAuthErrorText(e,mode,name){
   const m=String(e&&e.message||'').toLowerCase();
+  /* What a sign-up refused by the owner's sign-up setting comes back as. */
+  if(mode==='signup'&&m.includes('database error saving new user')){
+    if(_fluxSignupPolicy==='invite')return'That invite code did not work. Check it, or ask for a new one.';
+    if(_fluxSignupPolicy==='closed')return'New accounts are not being made right now. Ask your teacher or school.';
+  }
   if(m.includes('already registered')||m.includes('already been registered')){
     return'"'+(name||'That name')+'" is taken. Try adding your last initial, or sign in if it\'s yours.';
   }
@@ -12569,8 +12578,30 @@ async function fluxChangePassword(){
 }
 window.fluxChangePassword=fluxChangePassword;
 
+/* Who may make an account, set by the owner in Owner Controls › Sign-ups:
+   'open', 'invite' or 'closed'. The database enforces it
+   (flux_enforce_signup_policy); this only lets the form ask for a code and
+   say why, since a refused sign-up comes back as "Database error saving new
+   user". Unknown counts as open: the database still has the last word. */
+let _fluxSignupPolicy=null;
+async function fluxSignupPolicy(){
+  if(_fluxSignupPolicy)return _fluxSignupPolicy;
+  try{
+    const sb=getSB();
+    const {data}=await sb.from('platform_settings').select('value').eq('key','signup_policy').maybeSingle();
+    _fluxSignupPolicy=(data&&data.value&&data.value.mode)||'open';
+  }catch(_){return'open';}
+  return _fluxSignupPolicy;
+}
+
+/** True when the hidden bot-trap field has been filled: a form-filling script. */
+function fluxLoginTrapped(){
+  return !!(document.getElementById('loginWebsite')?.value||'').trim();
+}
+
 /** Send the owner a note that someone is locked out. Works signed out. */
 async function fluxRequestPasswordHelp(){
+  if(fluxLoginTrapped()){showAuthError('Request sent. We\'ll get you back in as soon as we can.','ok');return;}
   const raw=document.getElementById('loginUsername')?.value.trim()||'';
   const username=fluxNormalizeUsername(raw);
   if(!username){showAuthError('Type your name above first, then ask for help.');return;}
@@ -12618,6 +12649,20 @@ async function handleEmailAuth(){
     const weak=typeof window.fluxWeakPasswordReason==='function'
       ?window.fluxWeakPasswordReason(password,rawName):'';
     if(weak){showAuthError(weak);return;}
+    /* A bot gets the same silence a refused sign-up would, and no account. */
+    if(fluxLoginTrapped()){showAuthError('Could not create that account. Please try again later.');return;}
+    _fluxSignupPolicy=null;
+    const policy=await fluxSignupPolicy();
+    if(policy==='closed'){showAuthError('New accounts are not being made right now. Ask your teacher or school.');return;}
+    if(policy==='invite'){
+      const row=document.getElementById('loginInviteRow');
+      if(row)row.style.display='';
+      if(!(document.getElementById('loginInvite')?.value||'').trim()){
+        showAuthError('Type the invite code your teacher or school gave you.');
+        document.getElementById('loginInvite')?.focus();
+        return;
+      }
+    }
   }
   /* Sign-in is deliberately not gated on strength: an existing weak password
      must still get you in, or the person it belongs to can never change it. */
@@ -12634,7 +12679,10 @@ async function handleEmailAuth(){
            nothing can arrive at users.fluxplanner.app — the domain takes no
            mail. Email confirmation is off for this project, so signUp returns
            a session directly. */
-        options:{data:{full_name:rawName||username}}
+        options:{data:{
+          full_name:rawName||username,
+          invite_code:(document.getElementById('loginInvite')?.value||'').trim().toUpperCase()||undefined
+        }}
       });
       if(result.error)throw result.error;
       if(result.data?.user&&!result.data.session){
