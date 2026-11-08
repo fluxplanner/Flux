@@ -16,12 +16,15 @@
 
 <!--
   The Aorta Project: a Flux partner site, written from the copy the founders
-  sent. Two things still come from them later:
+  sent. One thing still comes from them later:
     - DONATE_URL in the script at the bottom: their GoFundMe link. Until it
       is set, the Donate button says the link is coming.
-    - public/partners/aorta/dictionary.json: the medical dictionary, made
-      from their spreadsheet. An array of { "term", "meaning" }; until the
-      file exists, the Dictionary section says it is on its way.
+  The medical dictionary has two layers:
+    - public/partners/aorta/dictionary.json: everyday words with our own
+      plain-language meanings, an array of { "term", "meaning" }.
+    - Any other word (their Taber's word list included) is looked up live
+      from Wiktionary, which allows reuse with credit, with a link to the
+      Merriam-Webster medical dictionary next to it.
   Events are tentative and marked as such.
 
   How the motion works: each [data-scroll] section is taller than the screen
@@ -177,6 +180,12 @@
   .dict-list b { display: block; color: var(--ink); }
   .dict-list span { font-size: .94rem; color: var(--muted); }
   .dict-empty { margin: 14px 0 0; color: var(--muted); }
+  .dict-online { margin: 14px 0 0; padding: 16px 18px; border-radius: 14px; background: #fff; border: 1.5px dashed rgba(28,18,176,.25); }
+  .dict-online b { color: var(--ink); font-size: 1.05rem; }
+  .dict-online ol { margin: 8px 0 0; padding-left: 1.3em; }
+  .dict-online li { margin: 4px 0; }
+  .dict-online small { display: block; margin-top: 10px; color: var(--muted); }
+  .dict-online a { color: var(--ink); font-weight: 600; }
 
   /* 5. Founders */
   .founders { background: linear-gradient(180deg, var(--sky), var(--paper)); }
@@ -318,6 +327,7 @@
         <p class="dict-count" id="dictCount" aria-live="polite"></p>
         <ul class="dict-list" id="dictList"></ul>
         <p class="dict-empty" id="dictEmpty" hidden></p>
+        <div class="dict-online" id="dictOnline" aria-live="polite" hidden></div>
       </div>
     </div>
   </section>
@@ -424,15 +434,65 @@
     var list = document.getElementById('dictList');
     var count = document.getElementById('dictCount');
     var empty = document.getElementById('dictEmpty');
+    var online = document.getElementById('dictOnline');
     var terms = [];
     function text(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
     function show() {
       var q = input.value.trim().toLowerCase();
       var hits = q ? terms.filter(function (t) { return (t.term + ' ' + t.meaning).toLowerCase().indexOf(q) >= 0; }) : terms;
       list.innerHTML = hits.slice(0, 200).map(function (t) { return '<li><b>' + text(t.term) + '</b><span>' + text(t.meaning) + '</span></li>'; }).join('');
-      count.textContent = q ? hits.length + ' of ' + terms.length + ' words' : terms.length + ' words';
-      empty.hidden = hits.length > 0;
+      count.textContent = !q ? terms.length + ' words in plain language' : hits.length ? hits.length + ' of ' + terms.length + ' words' : q.length >= 3 ? 'Not in our plain-language list yet. Here is what we found online:' : '';
+      empty.hidden = hits.length > 0 || q.length >= 3;
       empty.textContent = 'No match yet. Try a shorter word.';
+      var exact = terms.some(function (t) { return t.term.toLowerCase() === q; });
+      lookUp(q.length >= 3 && !exact ? input.value.trim() : '');
+    }
+
+    // Words we have not written up ourselves (most of the Taber's list) are
+    // looked up live: Wiktionary for the meaning, Merriam-Webster as a link.
+    var lookTimer = 0, lookSeq = 0;
+    function mwLink(word) {
+      return '<a href="https://www.merriam-webster.com/medical/' + encodeURIComponent(word) + '" target="_blank" rel="noopener">look it up in Merriam-Webster</a>';
+    }
+    function plain(html) {
+      // DOMParser makes an inert document: nothing in it runs or loads.
+      var body = new DOMParser().parseFromString(html || '', 'text/html').body;
+      // Wiktionary sometimes embeds <style> blocks; drop them before reading text.
+      body.querySelectorAll('style, script, sup').forEach(function (n) { n.remove(); });
+      return body.textContent.replace(/\s+/g, ' ').replace(/\.\.$/, '.').trim();
+    }
+    function lookUp(word) {
+      clearTimeout(lookTimer);
+      var seq = ++lookSeq;
+      if (!word) { online.hidden = true; online.innerHTML = ''; return; }
+      lookTimer = setTimeout(function () {
+        online.hidden = false;
+        online.innerHTML = '<b>' + text(word) + '</b><small>Looking it up…</small>';
+        var tries = [word, word.toLowerCase()].filter(function (w, i, a) { return a.indexOf(w) === i; });
+        (function next(i) {
+          if (i >= tries.length) return Promise.resolve(null);
+          return fetch('https://en.wiktionary.org/api/rest_v1/page/definition/' + encodeURIComponent(tries[i]))
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .catch(function () { return null; })
+            .then(function (d) {
+              var defs = [];
+              ((d && d.en) || []).forEach(function (sense) {
+                (sense.definitions || []).forEach(function (x) {
+                  var t = plain(x.definition);
+                  if (t && defs.length < 3) defs.push(t);
+                });
+              });
+              return defs.length ? defs : next(i + 1);
+            });
+        })(0).then(function (defs) {
+          if (seq !== lookSeq) return;
+          online.innerHTML = defs
+            ? '<b>' + text(word) + '</b><ol>' + defs.map(function (t) { return '<li>' + text(t) + '</li>'; }).join('') +
+              '</ol><small>Definition from <a href="https://en.wiktionary.org/wiki/' + encodeURIComponent(word.toLowerCase()) +
+              '" target="_blank" rel="noopener">Wiktionary</a> (CC BY-SA). Or ' + mwLink(word) + '.</small>'
+            : '<b>' + text(word) + '</b><small>We could not find this word online. Check the spelling, or ' + mwLink(word) + '.</small>';
+        });
+      }, 450);
     }
     fetch('public/partners/aorta/dictionary.json').then(function (r) {
       if (!r.ok) throw new Error(r.status);
