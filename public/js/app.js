@@ -786,14 +786,20 @@ function checkTesterMode(){
   FLUX_FLAGS.TESTER_MODE=false;
   if(!currentUser||!currentUser.email)return;
   const list=load('flux_tester_emails',[]);
-  if(!Array.isArray(list)||!list.length)return;
   const email=String(currentUser.email).toLowerCase().trim();
-  if(list.some(e=>String(e||'').toLowerCase().trim()===email)){
+  // A role with "Tester mode" (Owner Controls › Roles) counts the same as the list.
+  const byRole=!!(window.FluxAppVisibility&&window.FluxAppVisibility.can&&window.FluxAppVisibility.can('perk:tester'));
+  if(byRole||(Array.isArray(list)&&list.some(e=>String(e||'').toLowerCase().trim()===email))){
     FLUX_FLAGS.TESTER_MODE=true;
     _entitlement.plan='pro';
     try{console.log('[Flux] Tester mode active for',currentUser.email);}catch(_){}
   }
 }
+
+// Role permissions arrive after sign-in, so tester mode is checked again then.
+window.addEventListener('flux-app-visibility',()=>{
+  try{if(currentUser){checkTesterMode();renderTesterBadge();}}catch(_){/* the next sign-in check picks it up */}
+});
 
 function renderTesterBadge(){
   document.querySelectorAll('.flux-tester-badge').forEach(el => el.remove());
