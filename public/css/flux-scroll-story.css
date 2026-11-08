@@ -1,0 +1,234 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * Flux scroll story — the scroll motion first made for the Aorta Project
+ * page, shared by every Flux landing page (planner, landing, Suite,
+ * Partners, Synara welcome). Paired with public/js/flux-scroll-story.js.
+ *
+ * How it works: a [data-fs] section is taller than the screen and its
+ * .fs-stage is sticky. The script sets --p (0 → 1) on the section for how
+ * far through it the reader is; everything below reads --p. No library.
+ *
+ * Pieces, each a [data-fs] section:
+ *   .fs-draw   a line drawing (SVG paths with pathLength="1") draws itself,
+ *              .fs-orbit chips fly in around it, then .fs-k text fades in
+ *   .fs-words  a sentence lights up word by word ([data-fs-words];
+ *              *word* marks an accent word)
+ *   .fs-deck   cards slide up and stack on top of each other
+ *   .fs-slide  one huge line slides sideways
+ * Plus, for ordinary sections: [data-fs-reveal] fades in once on screen
+ * (values: up · left · right · zoom), and [data-fs-stagger] staggers its
+ * children. [data-fs-progress] is a reading-progress bar.
+ *
+ * Colours come from the page: set --fs-a / --fs-b (accent pair), --fs-ink,
+ * --fs-mut, --fs-card and --fs-line on :root or any parent. With reduced
+ * motion on, every piece shows its finished state, laid out normally.
+ * ────────────────────────────────────────────────────────────────────────*/
+
+:root {
+  --fs-a: #58a6ff;
+  --fs-b: #5865F2;
+  --fs-ink: #e8eef6;
+  --fs-mut: #94a0b0;
+  --fs-card: #141a24;
+  --fs-line: rgba(255, 255, 255, .09);
+  --fs-serif: ui-serif, 'New York', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  --fs-grad: linear-gradient(100deg, var(--fs-a), var(--fs-b));
+}
+
+[data-fs] { position: relative; --p: 0; }
+.fs-stage {
+  position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden;
+  display: grid; place-items: center; padding: 0 16px;
+}
+
+/* A step inside a section: --k runs 0 → 1 while --p goes from --from to
+   --to. Use it for anything that should arrive part-way through. */
+.fs-k {
+  --k: clamp(0, calc((var(--p) - var(--from, 0)) / (var(--to, 1) - var(--from, 0))), 1);
+  opacity: var(--k);
+  transform: translateY(calc((1 - var(--k)) * 28px));
+}
+
+.fs-serif { font-family: var(--fs-serif); font-style: italic; font-weight: 500; letter-spacing: -.01em; }
+.fs-grad-txt { background: var(--fs-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.fs-eyebrow {
+  font-size: .76rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: var(--fs-a);
+}
+
+/* ── 1. Draw ─────────────────────────────────────────────────────────── */
+.fs-draw { height: 300vh; }
+/* Stroke widths are in the drawing's own units (its viewBox is ~36 wide).
+   No vector-effect="non-scaling-stroke": with it, Chrome measures the dash
+   in screen pixels and ignores pathLength, so the line draws as dashes. */
+.fs-draw .fs-art {
+  width: min(64vw, 520px, 80vh); overflow: visible;
+  transform: translateY(calc(var(--p) * -6vh)) scale(calc(.9 + var(--p) * .2));
+}
+.fs-draw .fs-art path {
+  fill: none; stroke-width: .42; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 1; /* pathLength="1" on each path */
+  stroke-dashoffset: clamp(0, calc(1 - var(--p) * 2.2), 1);
+}
+.fs-draw .fs-art .fs-glow {
+  stroke-width: 1.4; opacity: calc(clamp(0, calc((var(--p) - .4) * 3), 1) * .45); filter: blur(.7px);
+}
+.fs-draw .fs-art .fs-dot { opacity: clamp(0, calc((var(--p) - .42) * 6), 1); }
+.fs-draw .fs-hint {
+  position: absolute; bottom: calc(28px + env(safe-area-inset-bottom, 0px)); left: 0; right: 0; text-align: center;
+  font-size: .74rem; font-weight: 700; letter-spacing: .24em; text-transform: uppercase; color: var(--fs-mut);
+  opacity: clamp(0, calc(1 - var(--p) * 8), 1);
+}
+.fs-draw .fs-hint::after {
+  content: ''; display: block; width: 1px; height: 28px; margin: 10px auto 0;
+  background: linear-gradient(var(--fs-mut), transparent);
+}
+.fs-draw .fs-caption {
+  position: absolute; left: 16px; right: 16px; bottom: clamp(56px, 13vh, 130px); margin: 0; text-align: center;
+  color: var(--fs-ink); font-size: clamp(1.9rem, 5.2vw, 3.6rem); font-weight: 850; letter-spacing: -.04em; line-height: 1.05;
+  text-wrap: balance;
+}
+.fs-draw .fs-caption .fs-serif { font-weight: 500; letter-spacing: -.02em; }
+.fs-draw .fs-top {
+  position: absolute; left: 16px; right: 16px; top: clamp(76px, 14vh, 140px); text-align: center; margin: 0;
+}
+
+/* Chips that fly in and settle around the drawing. --x / --y are where it
+   settles, as a share of the orbit (−1 … 1). */
+.fs-orbit { position: absolute; inset: 0; pointer-events: none; --rx: min(34vw, 380px); --ry: min(25vh, 210px); }
+.fs-orbit > span {
+  --k: clamp(0, calc((var(--p) - var(--from, .3)) * 4), 1);
+  position: absolute; left: 50%; top: 50%;
+  display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+  padding: 8px 14px; border-radius: 999px; font-size: .85rem; font-weight: 700; color: var(--fs-ink);
+  background: color-mix(in srgb, var(--fs-card) 82%, transparent);
+  border: 1px solid var(--fs-line);
+  box-shadow: 0 14px 34px -14px rgba(0, 0, 0, .7);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  opacity: var(--k);
+  transform: translate(-50%, -50%)
+    translate(calc(var(--x) * var(--rx) * (1 + (1 - var(--k)) * 1.8)),
+              calc(var(--y) * var(--ry) * (1 + (1 - var(--k)) * 1.8)))
+    scale(calc(.7 + var(--k) * .3));
+}
+.fs-orbit > span i { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--fs-a)); box-shadow: 0 0 10px var(--c, var(--fs-a)); }
+@media (max-width: 600px) {
+  .fs-orbit { --rx: 31vw; --ry: 27vh; }
+  .fs-orbit > span { font-size: .74rem; padding: 6px 10px; }
+}
+
+/* ── 2. Words ────────────────────────────────────────────────────────── */
+.fs-words { height: 230vh; }
+.fs-words [data-fs-words] {
+  max-width: 980px; margin: 0; text-align: center; color: var(--fs-ink);
+  font-size: clamp(1.9rem, 5.4vw, 4.1rem); font-weight: 800; letter-spacing: -.035em; line-height: 1.12;
+}
+.fs-words .w { opacity: .14; transition: opacity .3s ease; }
+.fs-words .w.on { opacity: 1; }
+.fs-words .w.accent {
+  font-family: var(--fs-serif); font-style: italic; font-weight: 500; letter-spacing: -.01em;
+  background: var(--fs-grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.fs-words .fs-eyebrow { position: absolute; top: clamp(80px, 16vh, 150px); left: 0; right: 0; text-align: center; }
+
+/* ── 3. Deck ─────────────────────────────────────────────────────────── */
+.fs-deck { height: 400vh; }
+.fs-deck .fs-stage { grid-template-rows: auto 1fr; padding-top: clamp(76px, 12vh, 120px); padding-bottom: 24px; gap: 20px; place-items: start center; }
+.fs-deck .fs-head { text-align: center; max-width: 760px; }
+.fs-deck .fs-head h2 {
+  margin: 8px 0 0; color: var(--fs-ink); font-size: clamp(1.7rem, 4vw, 2.8rem); font-weight: 850; letter-spacing: -.035em; line-height: 1.08;
+}
+.fs-cards { position: relative; width: min(100%, 640px); height: min(60svh, 470px); align-self: center; }
+.fs-card {
+  --k: clamp(0, calc((var(--p) - var(--at)) * 5), 1);
+  --past: clamp(0, calc((var(--p) - var(--at) - .2) * 2.5), 1);
+  position: absolute; inset: 0; overflow: hidden;
+  display: flex; flex-direction: column; gap: 10px;
+  padding: clamp(22px, 4.5vw, 38px); border-radius: 28px;
+  color: var(--fs-ink); background: var(--fs-card); border: 1px solid var(--fs-line);
+  box-shadow: 0 40px 80px -36px rgba(0, 0, 0, .85);
+  transform-origin: 50% 0;
+  transform: translateY(calc((1 - var(--k)) * 105svh + var(--past) * -26px))
+             rotate(calc((1 - var(--k)) * 5deg))
+             scale(calc(1 - var(--past) * .06));
+  filter: brightness(calc(1 - var(--past) * .35));
+}
+.fs-card:first-child { --k: 1; }
+.fs-card:last-child { --past: 0; }
+.fs-card .fs-num { font-family: var(--fs-serif); font-style: italic; font-size: clamp(3rem, 8vw, 4.6rem); line-height: 1; opacity: .55; }
+.fs-card h3 { margin: auto 0 0; font-size: clamp(1.7rem, 5vw, 2.6rem); font-weight: 850; letter-spacing: -.035em; line-height: 1.04; }
+.fs-card p { margin: 0; max-width: 44ch; opacity: .82; font-size: clamp(.95rem, 2.2vw, 1.06rem); line-height: 1.55; }
+.fs-card .fs-art-sm { position: absolute; right: clamp(18px, 4vw, 36px); top: clamp(18px, 4vw, 36px); }
+.fs-card.fs-tone-a { background: linear-gradient(150deg, var(--fs-a), var(--fs-b)); color: #fff; border-color: transparent; }
+.fs-card.fs-tone-b { background: linear-gradient(150deg, #1f2b22, #13241a); border-color: rgba(63, 185, 80, .35); }
+.fs-card.fs-tone-c { background: linear-gradient(150deg, #2a1f45, #1a1430); border-color: rgba(163, 113, 247, .35); }
+.fs-card.fs-tone-light { background: #fff; color: #1b1730; border-color: rgba(0, 0, 0, .06); }
+
+/* Little drawings for the cards. */
+.fs-bars { display: flex; gap: 6px; align-items: flex-end; height: 64px; width: min(42vw, 220px); }
+.fs-bars i {
+  flex: 1; border-radius: 6px 6px 3px 3px; background: currentColor; opacity: .85;
+  height: calc(var(--h) * clamp(0, calc((var(--p) - var(--at, 0)) * 6), 1));
+}
+.fs-bars i:last-child { background: #f78166; opacity: 1; }
+.fs-pills { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: min(46vw, 260px); }
+.fs-pills b {
+  font-size: .72rem; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+  background: color-mix(in srgb, var(--c, #fff) 18%, transparent); color: var(--c, #fff);
+  border: 1px solid color-mix(in srgb, var(--c, #fff) 40%, transparent);
+}
+
+/* ── 4. Slide ────────────────────────────────────────────────────────── */
+.fs-slide { height: 190vh; }
+.fs-slide .fs-stage { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 0; }
+.fs-slide .fs-line {
+  white-space: nowrap; color: var(--fs-ink); line-height: 1.02;
+  font-size: clamp(4.5rem, 17vw, 13rem); font-weight: 900; letter-spacing: -.05em;
+  transform: translateX(calc(25vw - var(--p) * 150vw));
+}
+.fs-slide .fs-line + .fs-line {
+  margin-top: .06em; color: transparent; -webkit-text-stroke: 1.5px color-mix(in srgb, var(--fs-ink) 35%, transparent);
+  transform: translateX(calc(-125vw + var(--p) * 150vw));
+}
+.fs-slide .fs-line em { font-family: var(--fs-serif); font-weight: 500; letter-spacing: -.02em; }
+.fs-slide .fs-line .fs-grad-txt { -webkit-text-stroke: 0; }
+
+/* ── Reveal on scroll (ordinary sections) ────────────────────────────── */
+[data-fs-reveal] {
+  opacity: 0; transform: translateY(34px);
+  transition: opacity .8s cubic-bezier(.2, .7, .2, 1), transform .8s cubic-bezier(.2, .7, .2, 1);
+  transition-delay: calc(var(--i, 0) * 80ms);
+}
+[data-fs-reveal="left"] { transform: translateX(-48px); }
+[data-fs-reveal="right"] { transform: translateX(48px); }
+[data-fs-reveal="zoom"] { transform: scale(.92); }
+[data-fs-reveal].fs-on { opacity: 1; transform: none; }
+
+/* ── Reading progress ────────────────────────────────────────────────── */
+[data-fs-progress] {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 9999; pointer-events: none;
+  background: var(--fs-grad); transform-origin: 0 50%; transform: scaleX(var(--fs-page, 0));
+}
+
+/* ── Reduced motion: finished state, normal layout ───────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  [data-fs] { --p: 1 !important; height: auto !important; }
+  .fs-stage { position: relative; height: auto; min-height: 0; padding: 72px 16px; }
+  .fs-draw .fs-stage { display: flex; flex-direction: column; gap: 22px; }
+  .fs-draw .fs-caption, .fs-draw .fs-top, .fs-orbit { position: static; }
+  .fs-orbit { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .fs-orbit > span { position: static; transform: none; }
+  .fs-draw .fs-hint { display: none; }
+  .fs-words .fs-eyebrow { position: static; margin-bottom: 18px; }
+  .fs-words .w { opacity: 1; }
+  .fs-cards { height: auto; display: grid; gap: 16px; }
+  .fs-card { position: relative; min-height: 300px; transform: none !important; filter: none !important; }
+  .fs-slide .fs-stage { align-items: center; }
+  .fs-slide .fs-line { transform: none !important; white-space: normal; text-align: center; font-size: clamp(3rem, 11vw, 7rem); }
+  .fs-k { opacity: 1; transform: none; }
+  [data-fs-reveal] { opacity: 1; transform: none; transition: none; }
+  [data-fs-progress] { display: none; }
+}
+
+/* A story section inside a centred, padded <main>: break out to full width.
+   overflow-x: clip (not hidden) keeps the sticky stages working. */
+.fs-bleed { width: 100vw; margin-left: calc(50% - 50vw); }
+body:has(.fs-bleed) { overflow-x: clip; }

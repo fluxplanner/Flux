@@ -151,7 +151,12 @@ footer{padding:48px 0 40px;margin-top:56px;border-top:1px solid var(--line);colo
   .btn,.card{transition:none}
   .btn-pri:hover,.card:hover{transform:none}
 }
+  /* Scroll story: Synara's violet, light and dark. Kept calm: one line
+     drawing and words lighting up, no sideways motion. */
+  body{--fs-a:var(--v);--fs-b:#2f80ed;--fs-ink:var(--ink);--fs-mut:var(--ink3);--fs-card:var(--panel);--fs-line:var(--line)}
+  .fs-draw .fs-orbit>span{box-shadow:var(--shadow)}
 </style>
+<link rel="stylesheet" href="public/css/flux-scroll-story.css?v=1478ba16">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -196,6 +201,38 @@ footer{padding:48px 0 40px;margin-top:56px;border-top:1px solid var(--line);colo
         <div class="ph-row"><span class="dot" style="background:#2f80ed"></span>14 days since last seizure</div>
       </div>
       <div class="ph-sos">Emergency card</div>
+    </div>
+  </section>
+
+  <!-- Scroll story (public/css/flux-scroll-story.css + public/js/flux-scroll-story.js). -->
+  <section class="fs-draw fs-bleed" data-fs aria-label="Medication, seizure log and safety card, together">
+    <div class="fs-stage">
+      <p class="fs-top fs-eyebrow">Synara</p>
+      <svg class="fs-art" viewBox="0 6 36 22" aria-hidden="true">
+        <defs>
+          <linearGradient id="fsSynGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" style="stop-color:var(--fs-a)"/>
+            <stop offset="1" style="stop-color:var(--fs-b)"/>
+          </linearGradient>
+        </defs>
+        <path class="fs-glow" pathLength="1" stroke="url(#fsSynGrad)" d="M2 18 H9 L12 10 L17 24 L20.5 15 H34"/>
+        <path pathLength="1" stroke="url(#fsSynGrad)" d="M2 18 H9 L12 10 L17 24 L20.5 15 H34"/>
+      </svg>
+      <div class="fs-orbit" aria-hidden="true">
+        <span style="--x:-.95;--y:-.95;--from:.26;--c:#0fb981"><i></i>Dose reminders</span>
+        <span style="--x:.95;--y:-.95;--from:.32;--c:#9c7aff"><i></i>Seizure log</span>
+        <span style="--x:-.95;--y:.6;--from:.38;--c:#2f80ed"><i></i>Patterns</span>
+        <span style="--x:.95;--y:.6;--from:.44;--c:#e5484d"><i></i>Safety card</span>
+      </div>
+      <p class="fs-caption fs-k" style="--from:.6;--to:.82">Everything your day needs, <span class="fs-serif fs-grad-txt">in one calm place.</span></p>
+      <div class="fs-hint">Scroll</div>
+    </div>
+  </section>
+
+  <section class="fs-words fs-bleed" data-fs aria-label="Why Synara">
+    <div class="fs-stage">
+      <p class="fs-eyebrow">Why Synara</p>
+      <p data-fs-words>So the dose gets *taken,* the pattern gets *noticed,* and the person beside you knows *exactly* *what* *to* *do.*</p>
     </div>
   </section>
 
@@ -286,5 +323,6 @@ footer{padding:48px 0 40px;margin-top:56px;border-top:1px solid var(--line);colo
     els.forEach(function (e) { io.observe(e); });
   })();
 </script>
+<script defer src="public/js/flux-scroll-story.js?v=6962b561"></script>
 </body>
 </html>
