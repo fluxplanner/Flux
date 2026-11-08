@@ -119,9 +119,9 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.40f4bf99.css">
+<link rel="stylesheet" href="public/bundles/flux.1cd080c0.css">
 <!-- Scroll story on the sign-in screen (kept out of the bundle: landing pages load it too). -->
-<link rel="stylesheet" href="public/css/flux-scroll-story.css?v=1478ba16">
+<link rel="stylesheet" href="public/css/flux-scroll-story.css?v=5d39c890">
 </head>
 <body>
 <noscript>
@@ -198,7 +198,7 @@
     <span class="lx-blob lx-blob-3"></span>
   </div>
   <div class="lx-grid" aria-hidden="true"></div>
-  <div class="lx-lemni" aria-hidden="true">
+  <div class="lx-lemni" data-fs-logo aria-hidden="true">
     <svg viewBox="0 0 680 680" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="lxMarkBig" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -211,7 +211,12 @@
       <g transform="translate(392,340)">
         <path class="lx-lemni-path" d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"
           fill="none" stroke="url(#lxMarkBig)" stroke-width="13" stroke-linecap="round"/>
+        <path class="fs-logo-trace" pathLength="1" d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z" stroke="url(#lxMarkBig)"/>
+        <path class="fs-logo-comet" pathLength="1" d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"/>
+        <g class="fs-pins" data-fs-pins="Canvas@.07@#E72429|Calendar@.25@#58a6ff|Study tools@.43@#3fb950|Grades@.56@#e3b341|Focus timer@.76@#f78166|Reading log@.9@#a371f7"></g>
       </g>
+      <circle class="fs-logo-dot" cx="392" cy="340" r="15" fill="#00C2FF"/>
+      <circle class="fs-logo-dot" cx="612" cy="300" r="13" fill="#00C2FF"/>
     </svg>
   </div>
   <div class="lx-vignette" aria-hidden="true"></div>
@@ -409,76 +414,78 @@
         </div>
         <div class="feat-pills-wrap" aria-hidden="true"><div class="feat-pills" id="featPillsLoginCard"></div></div>
       </aside>
+      <a class="lx-cue" href="#fsLogoStory"><span class="lx-cue-line" aria-hidden="true"></span>Scroll to see it come together</a>
     </section>
 
     <!-- ── Scroll story (shown to every audience) ── -->
     <div class="lx-story" style="--fs-a:#00C2FF;--fs-b:#7C5CFF;--fs-card:#111827;--fs-ink:#eaf1ff;--fs-mut:#9fb0cc;margin-inline:calc(-1 * clamp(16px,4vw,40px))">
-    <!-- Scroll story: the Aorta page's scroll motion, in Flux's colours.
-         Driven by public/css/flux-scroll-story.css + public/js/flux-scroll-story.js. -->
-    <section class="fs-draw" data-fs aria-label="Everything school throws at you, in one place">
+    <!-- Scroll story (public/css/flux-scroll-story.css + public/js/flux-scroll-story.js):
+         the Flux mark in the background rises, a light runs once round its loop
+         and pins light up where it passes, then it sinks back; then a week gets
+         planned, then the rest of Flux locks into place. -->
+    <section class="fs-lift" id="fsLogoStory" data-fs data-fs-lift aria-labelledby="fsLiftTitle">
       <div class="fs-stage">
-        <p class="fs-top fs-eyebrow">One planner for all of it</p>
-        <svg class="fs-art" viewBox="12 6 36 20" aria-hidden="true">
-          <defs>
-            <linearGradient id="fsInfGradLx" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" style="stop-color:var(--fs-a)"/>
-              <stop offset="1" style="stop-color:var(--fs-b)"/>
-            </linearGradient>
-          </defs>
-          <path class="fs-glow" pathLength="1" stroke="url(#fsInfGradLx)" d="M30,16 C32,5 46,5 46,16 C46,27 32,27 30,16 C28,27 14,27 14,16 C14,5 28,5 30,16 Z"/>
-          <path pathLength="1" stroke="url(#fsInfGradLx)" d="M30,16 C32,5 46,5 46,16 C46,27 32,27 30,16 C28,27 14,27 14,16 C14,5 28,5 30,16 Z"/>
-          <circle class="fs-dot" cx="30" cy="16" r=".75" fill="url(#fsInfGradLx)"/>
-        </svg>
-        <div class="fs-orbit" aria-hidden="true">
-          <span style="--x:-1;--y:-.95;--from:.26;--c:#E72429"><i></i>Canvas</span>
-          <span style="--x:1;--y:-.95;--from:.3;--c:#58a6ff"><i></i>Calendar</span>
-          <span style="--x:-1.12;--y:0;--from:.34;--c:#3fb950"><i></i>Study tools</span>
-          <span style="--x:1.12;--y:0;--from:.38;--c:#e3b341"><i></i>Grades</span>
-          <span style="--x:-.92;--y:.6;--from:.42;--c:#f78166"><i></i>Focus timer</span>
-          <span style="--x:.92;--y:.6;--from:.46;--c:#a371f7"><i></i>Reading log</span>
-        </div>
-        <p class="fs-caption fs-k" style="--from:.6;--to:.82">Every class, every deadline, every test. <span class="fs-serif fs-grad-txt">One calm place.</span></p>
-        <div class="fs-hint">Scroll</div>
+        <p class="fs-eyebrow fs-k" style="--from:.04;--to:.14">One line through all of it</p>
+        <ul class="fs-lift-list">
+          <li>Canvas assignments</li><li>Smart calendar</li><li>Study tools</li><li>Grades &amp; GPA</li><li>Focus timer</li><li>Reading log</li>
+        </ul>
+        <h2 class="fs-k" id="fsLiftTitle" style="--from:.66;--to:.78">Every class, every deadline, every test. <span class="fs-serif fs-grad-txt">One calm loop.</span></h2>
       </div>
     </section>
 
-    <section class="fs-words" data-fs aria-label="Why Flux">
-      <div class="fs-stage">
-        <p class="fs-eyebrow">Why Flux</p>
-        <p data-fs-words>School throws a hundred *small* things at you. Flux catches every one, plans the big ones *a* *little* *each* *day,* and leaves you free for the *real* *work.*</p>
-      </div>
-    </section>
-
-    <section class="fs-deck" data-fs aria-label="What Flux does">
+    <section class="fs-week" data-fs aria-labelledby="fsWeekTitle">
       <div class="fs-stage">
         <div class="fs-head">
-          <p class="fs-eyebrow">What it does</p>
-          <h2>Four things Flux takes off your plate</h2>
+          <p class="fs-eyebrow">Plan it out</p>
+          <h2 id="fsWeekTitle">One big essay becomes <span class="fs-serif fs-grad-txt">a little each day.</span></h2>
+          <p>Tell Flux how long it takes. It spreads the work across the days before it's due, so you finish a day early.</p>
         </div>
-        <div class="fs-cards">
-          <article class="fs-card" style="--at:0">
-            <div class="fs-art-sm fs-bars" aria-hidden="true" style="color:var(--fs-a)"><i style="--h:45%"></i><i style="--h:72%"></i><i style="--h:55%"></i><i style="--h:88%"></i><i style="--h:62%"></i><i style="--h:24%"></i></div>
-            <span class="fs-num">01</span>
-            <h3>Plan it out</h3>
-            <p>Tell Flux how long a big assignment takes. It spreads the work across the days before it's due, so you finish the day before.</p>
+        <div class="fs-board">
+          <div class="fs-day fs-src">New<b>Task</b></div>
+          <div class="fs-day">Mon<b>9</b></div>
+          <div class="fs-day">Tue<b>10</b></div>
+          <div class="fs-day">Wed<b>11</b></div>
+          <div class="fs-day">Thu<b>12</b></div>
+          <div class="fs-day">Fri<b>13</b></div>
+          <div class="fs-task"><b>History essay</b><small>4 hours · due Friday</small></div>
+          <div class="fs-blk" style="--n:1;--from:.12">Research<small>1 hour</small></div>
+          <div class="fs-blk" style="--n:2;--from:.28">Outline<small>45 min</small></div>
+          <div class="fs-blk" style="--n:3;--from:.44">Draft<small>1½ hours</small></div>
+          <div class="fs-blk" style="--n:4;--from:.6">Edit<small>45 min</small></div>
+          <div class="fs-due">Due<span class="fs-done">✓ Finished Thursday</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="fs-bento" data-fs aria-labelledby="fsBentoTitle">
+      <div class="fs-stage">
+        <div class="fs-head">
+          <p class="fs-eyebrow">And the rest</p>
+          <h2 id="fsBentoTitle">Everything else, <span class="fs-serif fs-grad-txt">already in place.</span></h2>
+        </div>
+        <div class="fs-tiles">
+          <article class="fs-tile wide" style="--from:.04;--sx:-60vw;--sy:-10vh;--r:-8deg">
+            <div class="fs-canvas" aria-hidden="true"><span>Problem set 4.2</span><span>Lab report</span></div>
+            <h3>Canvas, built in</h3><p>Connect once. Assignments, due dates and classes come straight in.</p>
           </article>
-          <article class="fs-card fs-tone-a" style="--at:.22">
-            <div class="fs-art-sm fs-pills" aria-hidden="true"><b>Problem set 4.2</b><b>Lab report</b><b>Essay draft</b></div>
-            <span class="fs-num">02</span>
-            <h3>Canvas, built in</h3>
-            <p>Connect your school's Canvas once. Your assignments, due dates and classes come straight in and stay up to date.</p>
+          <article class="fs-tile" style="--from:.1;--sx:30vw;--sy:-40vh;--r:10deg">
+            <span class="fs-big" data-fs-count="118" data-from=".1">118</span>
+            <h3>Study tools</h3><p>Across 16 subjects, sorted into the units you're taught.</p>
           </article>
-          <article class="fs-card fs-tone-b" style="--at:.47">
-            <div class="fs-art-sm fs-pills" aria-hidden="true"><b style="--c:#3fb950">Chemistry</b><b style="--c:#58a6ff">Physics</b><b style="--c:#a371f7">English</b><b style="--c:#e3b341">History</b><b style="--c:#ffa657">Spanish</b></div>
-            <span class="fs-num">03</span>
-            <h3>A real study lab</h3>
-            <p>118 interactive tools across 16 subjects, sorted into the units you're taught. Graph it, balance it, practise it, review it.</p>
+          <article class="fs-tile" style="--from:.16;--sx:60vw;--sy:10vh;--r:12deg">
+            <span class="fs-ring" aria-hidden="true"></span>
+            <h3>Focus timer</h3><p>Pomodoro sessions, countdowns and a full-screen mode.</p>
           </article>
-          <article class="fs-card fs-tone-c" style="--at:.72">
-            <div class="fs-art-sm fs-pills" aria-hidden="true"><b style="--c:#c9a7ff">Lesson Hub</b><b style="--c:#c9a7ff">Messages</b><b style="--c:#8ddb98">Personal</b></div>
-            <span class="fs-num">04</span>
-            <h3>For teachers, too</h3>
-            <p>Lesson Hub, classroom tools, messages and counselor caseload, with a separate personal side so work stays at work.</p>
+          <article class="fs-tile" style="--from:.22;--sx:-50vw;--sy:40vh;--r:-12deg">
+            <div class="fs-month" aria-hidden="true"><i></i><i class="d"></i><i></i><i></i><i class="d" style="--c:#e3b341"></i><i></i><i></i><i></i><i></i><i class="d" style="--c:#3fb950"></i><i></i><i></i><i class="d" style="--c:#f78166"></i><i></i></div>
+            <h3>Smart calendar</h3><p>Tasks, classes and tests on one month, no-school days built in.</p>
+          </article>
+          <article class="fs-tile" style="--from:.28;--sx:-10vw;--sy:60vh;--r:6deg">
+            <h3>College prep</h3><p>Your college list with deadlines, GPA, SAT, ACT and AP/IB scores.</p>
+          </article>
+          <article class="fs-tile wide" style="--from:.34;--sx:50vw;--sy:50vh;--r:-6deg">
+            <div class="fs-modes" aria-hidden="true"><span>Work</span><span>Personal</span></div>
+            <h3>For teachers, too</h3><p>Lesson Hub, classroom tools and staff messages in Work mode, and a private planner for after the last bell.</p>
           </article>
         </div>
       </div>
@@ -710,16 +717,6 @@
         </div>
       </div>
     </section>
-
-    <div class="lx-story" style="--fs-a:#00C2FF;--fs-b:#7C5CFF;--fs-ink:#eaf1ff;margin-inline:calc(-1 * clamp(16px,4vw,40px))">
-    <section class="fs-slide" data-fs aria-hidden="true">
-      <div class="fs-stage">
-        <div class="fs-line">Your whole school life · Your whole school life</div>
-        <div class="fs-line"><em class="fs-grad-txt">in flow.</em> Flux Planner · <em class="fs-grad-txt">in flow.</em> Flux Planner</div>
-      </div>
-    </section>
-
-    </div>
 
     <!-- ── Final CTA ── -->
     <section class="login-scroll-section lx-section" aria-label="Get started">
@@ -3210,6 +3207,6 @@
   </div>
 </div>
 
-<script defer src="public/js/flux-scroll-story.js?v=6962b561"></script>
+<script defer src="public/js/flux-scroll-story.js?v=330e6ce3"></script>
 </body>
 </html>

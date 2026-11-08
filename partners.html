@@ -21,7 +21,7 @@
 -->
 <link rel="stylesheet" href="public/css/flux-hub.css?v=6a462093">
 <link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
-<link rel="stylesheet" href="public/css/flux-scroll-story.css?v=1478ba16">
+<link rel="stylesheet" href="public/css/flux-scroll-story.css?v=5d39c890">
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background-color: #070b14; }
@@ -79,7 +79,88 @@
 
   /* Scroll story: follows the page's light/dark colours. */
   body { --fs-a: #00c2ff; --fs-b: #9c7aff; --fs-ink: var(--text); --fs-mut: var(--muted2); --fs-card: var(--card); --fs-line: var(--border); }
-  .fs-deck .fs-head .sub { margin: 10px auto 0; color: var(--muted2); }
+  /* ── "How it works": a blueprint becomes a partner's live app while the
+     three steps light up beside it. ── */
+  .pt-build { height: 380vh; }
+  .pt-build .fs-stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(24px, 6vw, 80px); place-items: center; padding: 72px clamp(16px, 5vw, 64px) 24px; }
+  .pt-steps { max-width: 460px; justify-self: end; }
+  .pt-kicker { margin: 0; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: .7rem; letter-spacing: .22em; text-transform: uppercase; color: #9c7aff; }
+  .pt-build h2, .pt-deal h2 { margin: 10px 0 0; font-size: clamp(1.9rem, 4.2vw, 3.1rem); font-weight: 850; letter-spacing: -.04em; line-height: 1.04; }
+  .pt-build h2 em, .pt-deal h2 em { font-family: var(--fs-serif); font-weight: 500; letter-spacing: -.02em; color: #c9b6ff; }
+  .pt-step { position: relative; margin-top: 22px; padding-left: 26px; opacity: .32; transition: opacity .4s ease; }
+  .pt-step::before { content: ''; position: absolute; left: 0; top: .35em; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #9c7aff; transition: background .4s ease, box-shadow .4s ease; }
+  .pt-step.on { opacity: 1; }
+  .pt-step.on::before { background: #9c7aff; box-shadow: 0 0 14px #9c7aff; }
+  .pt-step h3 { font-size: 1.2rem; margin: 0 0 4px; }
+  .pt-step p { margin: 0; color: var(--muted2); font-size: .95rem; }
+  /* The phone: blueprint → painted in the partner's colours → live and shared. */
+  .pt-phone {
+    --paint: clamp(0, calc((var(--p) - .33) * 4), 1);
+    --live: clamp(0, calc((var(--p) - .66) * 4), 1);
+    position: relative; justify-self: start; width: min(280px, 62vw); aspect-ratio: 9 / 18; border-radius: 38px; padding: 14px;
+    background: #0d1220; border: 1px solid #263048; box-shadow: 0 40px 80px -40px rgba(0,0,0,.95);
+    transform: rotate(calc(var(--live) * -4deg));
+  }
+  .pt-screen {
+    position: relative; height: 100%; border-radius: 26px; overflow: hidden; padding: 18px 14px; display: flex; flex-direction: column; gap: 10px;
+    background:
+      linear-gradient(rgba(255,255,255,.07) 1px, transparent 1px) 0 0 / 16px 16px,
+      linear-gradient(90deg, rgba(255,255,255,.07) 1px, transparent 1px) 0 0 / 16px 16px,
+      #0b3a6e;
+  }
+  .pt-screen::after { content: ''; position: absolute; inset: 0; background: linear-gradient(170deg, #fff6f0, #ffe7dc); opacity: var(--paint); z-index: 0; }
+  .pt-screen > * { position: relative; z-index: 1; }
+  .pt-blk { border-radius: 12px; border: 1.5px dashed rgba(255,255,255,.75); border-color: color-mix(in srgb, #ffffff calc((1 - var(--paint)) * 100%), transparent);
+    background: color-mix(in srgb, var(--c, #ff7a59) calc(var(--paint) * 100%), transparent); }
+  .pt-logo { width: 56px; height: 56px; border-radius: 50%; align-self: center; --c: #ff7a59; }
+  .pt-logo::after { content: 'Your logo'; position: absolute; inset: 0; display: grid; place-items: center; font: 600 .5rem 'JetBrains Mono', monospace; color: rgba(255,255,255,.8); opacity: calc(1 - var(--paint)); }
+  .pt-title { height: 18px; width: 70%; align-self: center; --c: #2b2d6e; }
+  .pt-card { flex: 1; --c: #ffd2c2; }
+  .pt-btn { height: 40px; border-radius: 999px; --c: #ff7a59; }
+  .pt-credit { align-self: center; font-size: .58rem; font-weight: 700; color: #6b5d58; opacity: var(--paint); }
+  .pt-live { position: absolute; top: -12px; right: -12px; z-index: 3; padding: 6px 12px; border-radius: 999px; font-size: .7rem; font-weight: 800; letter-spacing: .1em; color: #04140a; background: #3fb950; box-shadow: 0 0 24px rgba(63,185,80,.7); opacity: var(--live); transform: scale(calc(.6 + var(--live) * .4)); }
+  .pt-share { position: absolute; z-index: 3; white-space: nowrap; padding: 8px 12px; border-radius: 12px; font-size: .78rem; font-weight: 700; color: var(--text); background: var(--card); border: 1px solid var(--border); box-shadow: 0 16px 34px -16px rgba(0,0,0,.9);
+    --k: clamp(0, calc((var(--p) - var(--at)) * 6), 1); opacity: var(--k); transform: translateY(calc((1 - var(--k)) * 30px)) rotate(calc(var(--live) * 4deg)); }
+  @media (max-width: 760px) {
+    .pt-build .fs-stage { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto; place-items: center; padding-top: 64px; gap: 18px; }
+    /* Steps share one grid cell under the heading; only the active one shows. */
+    .pt-steps { justify-self: center; display: grid; grid-template-areas: "k" "h" "s"; }
+    .pt-kicker { grid-area: k; }
+    .pt-build h2 { grid-area: h; }
+    .pt-step { grid-area: s; margin-top: 14px; opacity: 0; }
+    .pt-step.on { opacity: 1; }
+    .pt-build h2 { font-size: 1.7rem; }
+    .pt-phone { justify-self: center; width: min(190px, 52vw); border-radius: 28px; padding: 10px; }
+    .pt-share { font-size: .66rem; padding: 6px 9px; }
+  }
+
+  /* ── The deal: what you get and what we ask slide in and meet. ── */
+  .pt-deal { height: 240vh; }
+  .pt-deal .fs-stage { grid-template-rows: auto 1fr; place-items: center; padding: 76px 16px 24px; }
+  .pt-deal header { text-align: center; }
+  .pt-ledger { position: relative; width: min(100%, 940px); display: grid; grid-template-columns: 1fr 1fr; gap: 132px; align-self: center; --meet: clamp(0, calc((var(--p) - .1) * 2.2), 1); }
+  .pt-col { padding: 26px; border-radius: 24px; background: var(--card); border: 1px solid var(--border); }
+  .pt-col:first-child { transform: translateX(calc((1 - var(--meet)) * -60vw)); border-color: rgba(0,194,255,.35); }
+  .pt-col:last-child { transform: translateX(calc((1 - var(--meet)) * 60vw)); border-color: rgba(156,122,255,.4); }
+  .pt-col h3 { margin: 0 0 14px; font-size: .74rem; letter-spacing: .2em; text-transform: uppercase; color: #7fe3ff; }
+  .pt-col:last-child h3 { color: #c9b6ff; }
+  .pt-col ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; }
+  .pt-col li { display: flex; gap: 10px; font-size: .96rem; line-height: 1.45; }
+  .pt-col li::before { content: '✓'; flex: none; font-weight: 900; color: #3fb950; }
+  .pt-seal { position: absolute; left: 50%; top: 50%; z-index: 2; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; display: grid; place-items: center; text-align: center;
+    font-family: var(--fs-serif); font-style: italic; font-size: 1.6rem; color: #fff; background: radial-gradient(circle at 35% 30%, #b49bff, #5926d4); box-shadow: 0 0 0 6px rgba(156,122,255,.18), 0 20px 50px -10px rgba(89,38,212,.9);
+    --s: clamp(0, calc((var(--p) - .62) * 6), 1); opacity: var(--s); transform: scale(calc(1.8 - var(--s) * .8)) rotate(calc((1 - var(--s)) * -20deg)); }
+  @media (max-width: 760px) {
+    .pt-ledger { grid-template-columns: 1fr; gap: 96px; }
+    .pt-col { padding: 18px; }
+    .pt-col li { font-size: .86rem; }
+    .pt-seal { width: 84px; height: 84px; margin: -42px 0 0 -42px; font-size: 1.25rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pt-build, .pt-deal { height: auto !important; }
+    .pt-step { opacity: 1 !important; position: static !important; margin-top: 16px !important; }
+    .pt-col { transform: none !important; }
+  }
   @media (prefers-reduced-motion: no-preference) {
     .hero > * { animation: partnersRise .9s cubic-bezier(.2,.7,.2,1) both; }
     .hero > :nth-child(2) { animation-delay: .08s; }
@@ -171,31 +252,30 @@
       </div>
     </section>
 
-    <!-- How it works, as cards that stack while you scroll
-         (public/css/flux-scroll-story.css + public/js/flux-scroll-story.js). -->
-    <section class="fs-deck fs-bleed" data-fs aria-labelledby="how-h">
+    <!-- How it works: a blueprint becomes a partner's live app while the steps
+         light up beside it (engine: flux-scroll-story.css/.js; styles above). -->
+    <section class="pt-build fs-bleed" data-fs id="ptBuild" aria-labelledby="how-h">
       <div class="fs-stage">
-        <div class="fs-head">
-          <p class="fs-eyebrow">The deal</p>
-          <h2 id="how-h">How it works</h2>
-          <p class="sub">A simple trade, written down so both sides know what they get.</p>
+        <div class="pt-steps">
+          <p class="pt-kicker">How it works</p>
+          <h2 id="how-h">You bring the mission. <em>We bring the build.</em></h2>
+          <div class="pt-step on"><h3>1 · We build it</h3><p>A real app made for your mission, built and hosted on Flux at no cost. No ads, no account needed, and your users’ data stays theirs.</p></div>
+          <div class="pt-step"><h3>2 · It stays yours</h3><p>Your name, your colours, your logo. Flux lists it in Flux Suite with a Partner label, and a small “Powered by Flux” credit is the only Flux branding inside.</p></div>
+          <div class="pt-step"><h3>3 · You spread the word</h3><p>Share Flux with your community: a post, a newsletter mention, a link on your site. The kit below has the words, logos and posts ready to go.</p></div>
         </div>
-        <div class="fs-cards">
-          <article class="fs-card" style="--at:0">
-            <span class="fs-num">01</span>
-            <h3>We build it</h3>
-            <p>A real app made for your mission, built and hosted on Flux at no cost. No ads, no account needed, and your users’ data stays theirs.</p>
-          </article>
-          <article class="fs-card fs-tone-a" style="--at:.3">
-            <span class="fs-num">02</span>
-            <h3>It stays yours</h3>
-            <p>Your name, your colours, your logo. Flux lists it in Flux Suite with a Partner label, and a small “Powered by Flux” credit is the only Flux branding inside.</p>
-          </article>
-          <article class="fs-card fs-tone-c" style="--at:.62">
-            <span class="fs-num">03</span>
-            <h3>You spread the word</h3>
-            <p>Share Flux with your community: a post, a newsletter mention, a link on your site. The kit below has the words, logos and posts ready to go.</p>
-          </article>
+        <div class="pt-phone" aria-hidden="true">
+          <div class="pt-screen">
+            <div class="pt-blk pt-logo"></div>
+            <div class="pt-blk pt-title"></div>
+            <div class="pt-blk pt-card"></div>
+            <div class="pt-blk pt-card" style="flex:.6"></div>
+            <div class="pt-blk pt-btn"></div>
+            <div class="pt-credit">Powered by Flux</div>
+          </div>
+          <span class="pt-live">LIVE</span>
+          <span class="pt-share" style="--at:.7;left:-34%;top:18%">📣 Shared on Instagram</span>
+          <span class="pt-share" style="--at:.78;right:-30%;top:46%">✉️ In the newsletter</span>
+          <span class="pt-share" style="--at:.86;left:-26%;bottom:14%">🔗 On your website</span>
         </div>
       </div>
     </section>
@@ -309,10 +389,33 @@ https://fluxplanner.github.io/Flux/synara.html
       </div>
     </section>
 
-    <section class="fs-words fs-bleed" data-fs aria-label="Your app, built by Flux">
+    <!-- The deal: both sides slide in and meet. -->
+    <section class="pt-deal fs-bleed" data-fs aria-labelledby="dealTitle">
       <div class="fs-stage">
-        <p class="fs-eyebrow">Built for your mission</p>
-        <p data-fs-words>Your *mission,* your *name,* your *colours.* Flux builds it, hosts it and keeps it running, *free.*</p>
+        <header>
+          <p class="pt-kicker">The deal</p>
+          <h2 id="dealTitle">A fair trade, <em>written down.</em></h2>
+        </header>
+        <div class="pt-ledger">
+          <div class="pt-col">
+            <h3>What you get</h3>
+            <ul>
+              <li>A real app for your mission, built and hosted at no cost</li>
+              <li>Your name, your colours, your logo</li>
+              <li>A place in Flux Suite, with a Partner label</li>
+              <li>No ads, no accounts, and your users’ data stays theirs</li>
+            </ul>
+          </div>
+          <div class="pt-col">
+            <h3>What we ask</h3>
+            <ul>
+              <li>Tell your community about Flux</li>
+              <li>A post, a newsletter mention or a link on your site</li>
+              <li>A small “Powered by Flux” credit inside the app</li>
+            </ul>
+          </div>
+          <span class="pt-seal" aria-hidden="true">Deal.</span>
+        </div>
       </div>
     </section>
 
@@ -364,6 +467,17 @@ https://fluxplanner.github.io/Flux/synara.html
       });
     })();
   </script>
-<script defer src="public/js/flux-scroll-story.js?v=6962b561"></script>
+<script defer src="public/js/flux-scroll-story.js?v=330e6ce3"></script>
+<script>
+  /* Lights the "How it works" step the blueprint is showing. */
+  (function () {
+    var sec = document.getElementById('ptBuild');
+    var steps = [].slice.call(sec.querySelectorAll('.pt-step'));
+    sec.addEventListener('fs-progress', function (e) {
+      var at = Math.min(steps.length - 1, Math.floor(e.detail * steps.length * 0.999));
+      steps.forEach(function (s, i) { s.classList.toggle('on', i === at); });
+    });
+  })();
+</script>
 </body>
 </html>
