@@ -20,7 +20,9 @@
     - DONATE_URL in the script at the bottom: their GoFundMe link. Until it
       is set, the Donate button says the link is coming.
   The blood pressure tracker is its own page, aorta-tracker.html, linked
-  from the nav, the hero and the #tracker section.
+  from the nav, the hero and the #tracker section. "Sign in" uses the Flux
+  login (index.html sends people on to the tracker); once signed in, the
+  button becomes "My tracker" (window.FluxAortaVault, bundled below).
   The medical dictionary has two layers:
     - public/partners/aorta/dictionary.json: an array of { "term", "meaning" }.
       About 800 words have our own plain-language meanings; the rest are the
@@ -91,7 +93,9 @@
   .btn-red { color: #fff; background: var(--coral); border-color: var(--coral); }
   .btn-red:hover { background: #d93430; }
   .btn[aria-disabled="true"] { opacity: .55; cursor: default; }
+  .btn[hidden] { display: none; }
   .bar .btn { min-height: 38px; padding: 0 16px; }
+  @media (max-width: 420px) { .bar .btn { padding: 0 12px; font-size: .86rem; } .bar strong { font-size: 1.15rem; } }
 
   /* ---- scroll sections ---- */
   [data-scroll] { position: relative; --p: 0; }
@@ -200,6 +204,8 @@
   .tracker-points li { padding: 18px; border-radius: 18px; background: #fff; border: 1px solid rgba(28,18,176,.1); }
   .tracker-points b { display: block; margin-bottom: 4px; color: var(--ink); }
   .tracker-points span { font-size: .94rem; color: var(--muted); }
+  .ctas-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .signin-note { margin: 12px 0 0; font-size: .9rem; color: var(--muted); max-width: 640px; }
 
   /* 5. Founders */
   .founders { background: linear-gradient(180deg, var(--sky), var(--paper)); }
@@ -281,6 +287,7 @@
     <a href="#events">Events</a>
     <a href="#volunteer">Volunteer</a>
   </nav>
+  <a class="btn" id="acctBtn" href="index.html" data-flux-signin>Sign in</a>
   <a class="btn btn-red" href="#donate">Donate</a>
 </header>
 
@@ -362,7 +369,11 @@
         <li><b>The whole family</b><span>Track grandparents and parents in one place, and share a backup file between phones.</span></li>
         <li><b>Offline and private</b><span>No account. Nothing leaves the device. Print a log for the doctor.</span></li>
       </ul>
-      <a class="btn btn-solid" href="aorta-tracker.html">Open the tracker</a>
+      <div class="ctas-row">
+        <a class="btn btn-solid" href="aorta-tracker.html">Open the tracker</a>
+        <a class="btn" id="trackerSignIn" href="index.html" data-flux-signin>Sign in with Flux</a>
+      </div>
+      <p class="signin-note" id="trackerSignInNote">Sign in with a free Flux account to keep readings safe and see your family on every phone. Medicine reminders also show in your Flux Planner calendar.</p>
     </div>
   </section>
 
@@ -440,6 +451,29 @@
   <p><a class="powered" href="https://fluxplanner.github.io/Flux/"><img src="icons/icon-192.png" alt="" width="26" height="26">Powered by Flux</a></p>
 </footer>
 
+<script defer src="public/bundles/flux-aorta_vault.b9e1f1d0.js"></script>
+<script>
+  /* Sign in with Flux: the planner's login sends people on to the tracker. */
+  (function () {
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('[data-flux-signin]')) return;
+      try { sessionStorage.setItem('flux_return_to', 'aorta-tracker.html'); } catch (err) { /* blocked */ }
+    });
+    function show() {
+      window.FluxAortaVault.account().then(function (who) {
+        if (!who) return;
+        var btn = document.getElementById('acctBtn');
+        btn.textContent = 'My tracker';
+        btn.href = 'aorta-tracker.html';
+        btn.title = 'Signed in with Flux as ' + who.name;
+        btn.removeAttribute('data-flux-signin');
+        document.getElementById('trackerSignIn').hidden = true;
+        document.getElementById('trackerSignInNote').textContent = 'Signed in with Flux as ' + who.name + '. Your readings save to your account, and medicine reminders show in your Flux Planner calendar.';
+      }).catch(function () { /* offline: keep "Sign in" */ });
+    }
+    if (window.FluxAortaVault) show(); else window.addEventListener('flux-aorta-vault', show, { once: true });
+  })();
+</script>
 <script>
   (function () {
     // Their GoFundMe link, when they send it.

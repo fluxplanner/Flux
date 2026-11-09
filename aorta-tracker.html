@@ -280,11 +280,12 @@
               <input type="text" id="medDose" maxlength="30" autocomplete="off" placeholder="5 mg">
             </div>
             <div>
-              <label for="medTime">Time <small>(optional)</small></label>
+              <label for="medTime">Reminder time <small>(optional)</small></label>
               <input type="time" id="medTime">
             </div>
           </div>
           <div class="row"><button class="btn" type="submit">Add medicine</button></div>
+          <p class="muted small">Signed in with Flux? Medicines with a reminder time also show in your Flux Planner calendar, with a reminder when it is time.</p>
         </form>
       </section>
 
@@ -405,7 +406,7 @@
         name: String(p.name || 'Someone').slice(0, 40),
         nameAt: Number(p.nameAt) || 0,
         meds: (Array.isArray(p.meds) ? p.meds : []).filter(function (m) { return m && typeof m.id === 'string'; }).map(function (m) {
-          return { id: m.id, name: String(m.name || '').slice(0, 60), dose: String(m.dose || '').slice(0, 30), time: /^\d\d:\d\d$/.test(m.time) ? m.time : '' };
+          return { id: m.id, name: String(m.name || '').slice(0, 60), dose: String(m.dose || '').slice(0, 30), time: /^\d\d:\d\d$/.test(m.time) ? m.time : '', added: /^\d{4}-\d\d-\d\d$/.test(m.added) ? m.added : '' };
         }),
         doses: (Array.isArray(p.doses) ? p.doses : []).filter(function (x) { return x && typeof x.id === 'string' && validDate(x.at); }).map(function (x) {
           return { id: x.id, medId: String(x.medId), at: x.at };
@@ -674,7 +675,7 @@
     e.preventDefault();
     var p = person(); var n = $('medName').value.trim().slice(0, 60);
     if (!p || !n) return;
-    p.meds.push({ id: uid(), name: n, dose: $('medDose').value.trim().slice(0, 30), time: $('medTime').value || '' });
+    p.meds.push({ id: uid(), name: n, dose: $('medDose').value.trim().slice(0, 30), time: $('medTime').value || '', added: today() });
     save(); this.reset(); render(); $('medName').focus();
   });
 

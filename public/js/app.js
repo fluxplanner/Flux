@@ -5898,8 +5898,9 @@ function renderCalendar(){
     const ds=fluxLocalYMD(new Date(calYear,calMonth,d));
     const wk=weeklyVirtualEventsForDate(ds);
     if(wk.length){if(!evMap[d])evMap[d]=[];evMap[d].push(...wk);}
-    // Synara dose times, only while the student has linked Synara (flux-synara-link.js).
-    const sy=window.FluxSynara?window.FluxSynara.dosesForDate(ds):[];
+    // Synara dose times, only while the student has linked Synara (flux-synara-link.js),
+    // and Aorta tracker reminder times (flux-aorta-link.js).
+    const sy=(window.FluxSynara?window.FluxSynara.dosesForDate(ds):[]).concat(window.FluxAorta?window.FluxAorta.dosesForDate(ds):[]);
     if(sy.length){if(!evMap[d])evMap[d]=[];evMap[d].push(...sy);}
   }
   let html=['S','M','T','W','T','F','S'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
@@ -5955,7 +5956,7 @@ function renderCalDay(){
   const day=tasks.filter(t=>{if(!t.date)return false;const d=new Date(t.date+'T00:00:00');return d.getFullYear()===calYear&&d.getMonth()===calMonth&&d.getDate()===calSelected;});
   const events=(load('flux_events',[])).filter(e=>{if(!e.date)return false;const d=new Date(e.date+'T12:00:00');return d.getFullYear()===calYear&&d.getMonth()===calMonth&&d.getDate()===calSelected;});
   const weekly=weeklyVirtualEventsForDate(ds);
-  const synara=window.FluxSynara?window.FluxSynara.dosesForDate(ds):[];
+  const synara=(window.FluxSynara?window.FluxSynara.dosesForDate(ds):[]).concat(window.FluxAorta?window.FluxAorta.dosesForDate(ds):[]);
   const el=document.getElementById('calDayTasks');
   let conflictHint='';
   try{if(window.FluxSyllabusConflict?.renderDayHint)conflictHint=FluxSyllabusConflict.renderDayHint(ds)||'';}catch(_){}
@@ -5976,8 +5977,9 @@ function renderCalDay(){
   blocks.sort((a,b)=>{const s=fluxScopeSortKey(a.o)-fluxScopeSortKey(b.o);if(s!==0)return s;const ta=fluxTimeSortMinutes(a.o.time),tb=fluxTimeSortMinutes(b.o.time);if(ta!==tb)return ta-tb;return ord[a.k]-ord[b.k];});
   el.innerHTML=dayHints+blocks.map(({k,o})=>{
     if(k==='s'){
-      // A Synara dose: read-only here; it is logged in Synara.
-      return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(156,122,255,.1);border:1px solid rgba(156,122,255,.35);border-radius:10px;margin-bottom:6px"><span style="font-size:.85rem">💊</span><div style="flex:1;min-width:0"><div style="font-size:.72rem;font-weight:700;color:#a78bfa">Synara · medication</div><div style="font-size:.85rem;font-weight:600">${esc(o.title)}</div>${o.time?`<div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${esc(formatCalTimeShort(o.time))}</div>`:''}</div><a href="synara.html#/meds" style="font-size:.78rem;font-weight:700;color:#a78bfa;text-decoration:none;padding:4px 6px" title="Log this dose in Synara">Log →</a></div>`;
+      // A Synara or Aorta dose: read-only here; it is logged in that app.
+      const ao=o._src==='aorta';
+      return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(156,122,255,.1);border:1px solid rgba(156,122,255,.35);border-radius:10px;margin-bottom:6px"><span style="font-size:.85rem">💊</span><div style="flex:1;min-width:0"><div style="font-size:.72rem;font-weight:700;color:#a78bfa">${ao?(o._taken?'Aorta · medicine · taken':'Aorta · medicine'):'Synara · medication'}</div><div style="font-size:.85rem;font-weight:600">${esc(o.title)}</div>${o.time?`<div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${esc(formatCalTimeShort(o.time))}</div>`:''}</div><a href="${ao?'aorta-tracker.html':'synara.html#/meds'}" style="font-size:.78rem;font-weight:700;color:#a78bfa;text-decoration:none;padding:4px 6px" title="${ao?'Mark it taken in the Aorta tracker':'Log this dose in Synara'}">Log →</a></div>`;
     }
     if(k==='w'){
       const sch=fluxEventScope(o)==='school';
