@@ -19,11 +19,18 @@
   given a backup file) can see at a glance who has logged today, who has
   taken their medicines, and whose numbers are out of range.
 
-  Offline and private by design: there is no account and no server. All
-  data lives in localStorage under STORE_KEY on this device. Families share
-  by saving a backup file and opening it on another device; opening one
-  MERGES (union by id), and deletions travel as ids in `gone` so a deleted
-  reading does not come back from an older backup.
+  Offline first: everything lives in localStorage under STORE_KEY on this
+  device and works with no connection. Signing in with a Flux account
+  (optional) also keeps it in public.aorta_bp_records through
+  window.FluxAortaVault (public/js/flux-aorta-vault.mjs), so every phone
+  signed in to that account sees the same family. Sign-in itself happens on
+  the planner's login (index.html), which sends people back here.
+  Sync and backup files use the same MERGE: union by id, deletions travel
+  as ids in `gone` so a deleted reading never comes back, and a rename wins
+  by its time (nameAt). So there is never a "which copy?" question.
+  SYNC_KEY remembers which account this device last saved to: when a
+  different account signs in, the device takes that account's copy instead
+  of mixing two families together.
 
   The categories follow the American Heart Association's adult chart
   (2017 guideline), plus "low" below 90/60. This page informs; it does not
@@ -96,6 +103,11 @@
   .eyebrow { display: inline-block; margin-bottom: 8px; font-size: .74rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--coral); }
   .lede { margin: 0 0 6px; max-width: 680px; color: var(--muted); font-size: 1.08rem; }
   .private { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 6px 12px; border-radius: 999px; background: var(--sky); color: var(--ink); font-size: .84rem; font-weight: 600; }
+
+  .account { display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; margin-top: 20px; padding: 16px 18px; border-radius: 20px; background: #fff; border: 1px solid var(--line); }
+  .account p { flex: 1 1 260px; margin: 0; }
+  .account .status { display: block; font-size: .86rem; color: var(--muted); }
+  .account .status.bad { color: var(--bad); font-weight: 600; }
 
   .panel { margin-top: 20px; padding: clamp(18px, 4vw, 26px); border-radius: 24px; background: #fff; border: 1px solid var(--line); }
   .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -193,7 +205,7 @@
   .print-only { display: none; }
   @media print {
     body { font-size: 12pt; background: #fff; }
-    .bar, footer, .no-print, form, .btn, .who.add, .toast { display: none !important; }
+    .bar, footer, .no-print, form, .btn, .who.add, .toast, .account { display: none !important; }
     .panel { border: none; padding: 0; margin-top: 14px; }
     .print-only { display: block; }
     main { padding: 0; }
@@ -214,7 +226,8 @@
   <span class="eyebrow">Heart health at home</span>
   <h1>Blood pressure tracker</h1>
   <p class="lede">Take your medicines, then log your blood pressure. Keep track for everyone in your family, and see right away if a number needs attention.</p>
-  <span class="private">🔒 Saved only on this device. Works with no internet.</span>
+  <span class="private">🔒 Saved on this device, and works with no internet.</span>
+  <div class="account no-print" id="account" aria-live="polite" hidden></div>
   <div class="banner" id="storeBanner" hidden>This browser is not letting the tracker save. Anything you add will be lost when you close the page. Try a normal (not private) window.</div>
 
   <p class="print-only" id="printHead"></p>
@@ -330,7 +343,8 @@
 
   <section class="panel no-print" aria-labelledby="share-h">
     <h2 id="share-h">Share with family</h2>
-    <p class="muted">There is no account, so nothing is uploaded. To share, save a backup file and send it to a family member (text, email, AirDrop). When they open it here, it adds to what they already have.</p>
+    <p class="muted"><b>Easiest:</b> sign in with the same Flux account on each family member’s phone. Everyone sees the same family, and it updates by itself.</p>
+    <p class="muted">No account? Save a backup file and send it to a family member (text, email, AirDrop). When they open it here, it adds to what they already have.</p>
     <div class="row">
       <button class="btn" type="button" data-act="export">Save backup file</button>
       <button class="btn" type="button" data-act="import">Open backup file</button>
@@ -365,6 +379,9 @@
 
 <div class="toast" id="toast" role="status" hidden></div>
 
+<!-- Flux account sync (public/js/flux-aorta-vault.mjs). Deferred; the page
+     works without it, e.g. offline on a first visit. -->
+<script defer src="public/bundles/flux-aorta_vault.b9e1f1d0.js"></script>
 <script>
 (function () {
   'use strict';
@@ -386,6 +403,7 @@
       return {
         id: p.id,
         name: String(p.name || 'Someone').slice(0, 40),
+        nameAt: Number(p.nameAt) || 0,
         meds: (Array.isArray(p.meds) ? p.meds : []).filter(function (m) { return m && typeof m.id === 'string'; }).map(function (m) {
           return { id: m.id, name: String(m.name || '').slice(0, 60), dose: String(m.dose || '').slice(0, 30), time: /^\d\d:\d\d$/.test(m.time) ? m.time : '' };
         }),
@@ -402,11 +420,13 @@
     return out;
   }
   var saveWorks = true;
-  function save() {
+  function saveLocal() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); saveWorks = true; }
     catch (e) { saveWorks = false; }
     $('storeBanner').hidden = saveWorks;
   }
+  /* Every change: keep it here, then send it to the account a moment later. */
+  function save() { saveLocal(); schedulePush(); }
   function validDate(s) { return typeof s === 'string' && !isNaN(new Date(s).getTime()); }
   function okNum(n, lo, hi) { n = Number(n); return isFinite(n) && n >= lo && n <= hi; }
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
@@ -586,7 +606,7 @@
     'rename-person': function () {
       var p = person(); if (!p) return;
       var n = (prompt('New name', p.name) || '').trim().slice(0, 40);
-      if (n) { p.name = n; save(); render(); }
+      if (n) { p.name = n; p.nameAt = Date.now(); save(); render(); }
     },
     'remove-person': function () {
       var p = person(); if (!p) return;
@@ -699,7 +719,8 @@
     inc.people.forEach(function (ip) {
       if (gone.has(ip.id)) return;
       var p = state.people.find(function (x) { return x.id === ip.id; });
-      if (!p) { p = { id: ip.id, name: ip.name, meds: [], doses: [], readings: [] }; state.people.push(p); added++; }
+      if (!p) { p = { id: ip.id, name: ip.name, nameAt: ip.nameAt, meds: [], doses: [], readings: [] }; state.people.push(p); added++; }
+      else if (ip.nameAt > (p.nameAt || 0)) { p.name = ip.name; p.nameAt = ip.nameAt; }
       ['meds', 'doses', 'readings'].forEach(function (k) {
         var have = new Set(p[k].map(function (x) { return x.id; }));
         ip[k].forEach(function (x) { if (!have.has(x.id) && !gone.has(x.id)) { p[k].push(x); added++; } });
@@ -712,6 +733,102 @@
     if (!person()) state.selected = state.people[0] ? state.people[0].id : null;
     return added;
   }
+
+  /* ---------- Flux account ---------- */
+  var SYNC_KEY = 'aorta_bp_sync';   // { owner: account id this device last saved to }
+  var acct = { ready: false, who: null, text: '', bad: false, busy: false, again: false };
+  var pushTimer;
+  function vault() { return window.FluxAortaVault || null; }
+  function syncMeta() { try { return JSON.parse(localStorage.getItem(SYNC_KEY) || '{}') || {}; } catch (e) { return {}; } }
+  function setSyncMeta(m) { try { localStorage.setItem(SYNC_KEY, JSON.stringify(m)); } catch (e) { /* blocked: syncs again next time */ } }
+  function schedulePush() { if (acct.who) { clearTimeout(pushTimer); pushTimer = setTimeout(syncNow, 1500); } }
+
+  function setStatus(text, bad) { acct.text = text; acct.bad = !!bad; renderAccount(); }
+
+  /* Pull, merge, push. Merging is safe to repeat, so a push never loses
+     what another phone saved in the meantime. */
+  function syncNow() {
+    var v = vault();
+    if (!v) return Promise.resolve();
+    if (acct.busy) { acct.again = true; return Promise.resolve(); }
+    acct.busy = true;
+    return v.account().then(function (who) {
+      acct.ready = true; acct.who = who;
+      if (!who) { renderAccount(); return; }
+      setStatus('Saving…');
+      return v.get().then(function (row) {
+        var remote = row && row.data ? normalize(row.data) : null;
+        var owner = syncMeta().owner;
+        if (owner && owner !== who.id) {
+          // Another account saved from this device before: show this
+          // account's family, not a mix of both.
+          state.people = remote ? remote.people : [];
+          state.gone = remote ? remote.gone : [];
+          state.selected = null;
+        } else if (remote) {
+          merge(remote);
+        }
+        if (!person()) state.selected = state.people[0] ? state.people[0].id : null;
+        saveLocal(); render();
+        return v.put({ v: 1, people: state.people, gone: state.gone }).then(function () {
+          setSyncMeta({ owner: who.id });
+          setStatus('Saved to your account at ' + clock(new Date()));
+        });
+      });
+    }).catch(function (e) {
+      acct.ready = true;
+      var code = e && e.code;
+      if (code === 'signed-out') { acct.who = null; setStatus(''); }
+      else if (code === 'offline' || navigator.onLine === false) setStatus('No internet. Saved on this device; it will update your account when you are back online.');
+      else if (code === 'not-ready') setStatus('Account saving is not switched on yet. Your readings are safe on this device.', true);
+      else setStatus('Could not reach your account. Your readings are safe on this device.', true);
+    }).then(function () {
+      acct.busy = false;
+      if (acct.again) { acct.again = false; syncNow(); }
+    });
+  }
+
+  function renderAccount() {
+    var box = $('account');
+    if (!vault() || !acct.ready) { box.hidden = true; return; }
+    box.hidden = false;
+    if (acct.who) {
+      box.innerHTML = '<p>Signed in with Flux as <b>' + esc(acct.who.name) + '</b>' +
+        '<span class="status' + (acct.bad ? ' bad' : '') + '">' + esc(acct.text) + '</span></p>' +
+        '<button type="button" class="btn btn-small" data-act="sign-out">Sign out</button>';
+    } else {
+      box.innerHTML = '<p><b>Keep your readings in an account.</b><span class="status">Sign in with Flux to see your family on any phone or computer, and never lose a reading.</span></p>' +
+        '<a class="btn btn-solid btn-small" href="index.html" data-flux-signin>Sign in or create a Flux account</a>';
+    }
+  }
+
+  actions['sign-out'] = function () {
+    var v = vault(); if (!v) return;
+    if (!confirm('Sign out of Flux on this device? Your readings stay saved in your account.')) return;
+    clearTimeout(pushTimer);
+    syncNow().then(function () { return v.signOut(); }).then(function () {
+      acct.who = null;
+      if (state.people.length && confirm('Also remove the readings from this device? They stay in your Flux account.')) {
+        state.people = []; state.gone = []; state.selected = null;
+        saveLocal(); render(); resetReadingForm();
+        $('addPersonForm').hidden = false;
+      }
+      renderAccount(); toast('Signed out');
+    }).catch(function () { toast('Could not sign out. Try again.'); });
+  };
+
+  // The planner's login sends people back here after they sign in.
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('[data-flux-signin]')) return;
+    try { sessionStorage.setItem('flux_return_to', 'aorta-tracker.html'); } catch (err) { /* blocked */ }
+  });
+
+  function startSync() { syncNow(); }
+  if (vault()) startSync(); else window.addEventListener('flux-aorta-vault', startSync, { once: true });
+  window.addEventListener('online', function () { if (acct.who) syncNow(); });
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && acct.who) syncNow(); });
+  // Another phone in the family may have logged a reading.
+  setInterval(function () { if (acct.who && document.visibilityState === 'visible') syncNow(); }, 60e3);
 
   /* ---------- start ---------- */
   if (!person() && state.people[0]) state.selected = state.people[0].id;
