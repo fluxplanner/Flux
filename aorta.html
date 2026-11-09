@@ -19,6 +19,8 @@
   sent. One thing still comes from them later:
     - DONATE_URL in the script at the bottom: their GoFundMe link. Until it
       is set, the Donate button says the link is coming.
+  The blood pressure tracker is its own page, aorta-tracker.html, linked
+  from the nav, the hero and the #tracker section.
   The medical dictionary has two layers:
     - public/partners/aorta/dictionary.json: everyday words with our own
       plain-language meanings, an array of { "term", "meaning" }.
@@ -187,6 +189,13 @@
   .dict-online small { display: block; margin-top: 10px; color: var(--muted); }
   .dict-online a { color: var(--ink); font-weight: 600; }
 
+  /* 4b. Blood pressure tracker teaser */
+  .tracker { background: var(--paper2); }
+  .tracker-points { list-style: none; margin: 26px 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+  .tracker-points li { padding: 18px; border-radius: 18px; background: #fff; border: 1px solid rgba(28,18,176,.1); }
+  .tracker-points b { display: block; margin-bottom: 4px; color: var(--ink); }
+  .tracker-points span { font-size: .94rem; color: var(--muted); }
+
   /* 5. Founders */
   .founders { background: linear-gradient(180deg, var(--sky), var(--paper)); }
   .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; margin-top: 26px; }
@@ -262,6 +271,7 @@
     <a href="#about">About</a>
     <a href="#aed">AED initiative</a>
     <a href="#dictionary">Dictionary</a>
+    <a href="#tracker">BP tracker</a>
     <a href="#founders">Founders</a>
     <a href="#events">Events</a>
     <a href="#volunteer">Volunteer</a>
@@ -284,6 +294,7 @@
         <div class="ctas">
           <a class="btn btn-solid" href="#aed">Our AED initiative</a>
           <a class="btn" href="#dictionary">Medical dictionary</a>
+          <a class="btn" href="aorta-tracker.html">Blood pressure tracker</a>
         </div>
       </div>
       <div class="hint">Scroll</div>
@@ -331,6 +342,21 @@
         <p class="dict-empty" id="dictEmpty" hidden></p>
         <div class="dict-online" id="dictOnline" aria-live="polite" hidden></div>
       </div>
+    </div>
+  </section>
+
+  <section class="sec tracker" id="tracker" aria-labelledby="tracker-h">
+    <div class="wrap">
+      <span class="eyebrow">Heart health at home</span>
+      <h2 id="tracker-h">Blood pressure tracker</h2>
+      <p class="lede">High and low blood pressure are among the biggest health problems in the world, and seniors carry most of it. Our free tracker helps families keep watch: <strong>take your medicines, log your blood pressure, and see right away if a number needs attention</strong>.</p>
+      <ul class="tracker-points">
+        <li><b>Medicines checklist</b><span>Tick off each pill as it is taken, every day.</span></li>
+        <li><b>Daily readings</b><span>Log the top and bottom numbers and get a plain answer: normal, high, low, or get help.</span></li>
+        <li><b>The whole family</b><span>Track grandparents and parents in one place, and share a backup file between phones.</span></li>
+        <li><b>Offline and private</b><span>No account. Nothing leaves the device. Print a log for the doctor.</span></li>
+      </ul>
+      <a class="btn btn-solid" href="aorta-tracker.html">Open the tracker</a>
     </div>
   </section>
 
