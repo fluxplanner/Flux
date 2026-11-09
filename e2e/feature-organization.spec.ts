@@ -31,7 +31,7 @@ test.describe('feature organization', () => {
     await page.getByRole('tab', { name: /Partners/ }).click();
     const partners = page.getByRole('tabpanel', { name: /Partners/ });
     await expect(partners.locator('a.app--synara')).toBeVisible();
-    await expect(partners.locator('a.app--aorta')).toHaveAttribute('href', 'aorta.html');
+    await expect(partners.locator('a.app--aorta')).toHaveAttribute('href', 'aorta-tracker.html');
     await expect(partners.locator('.partners-strip')).toBeVisible();
     await expect(study).toBeHidden();
     await expect(page).toHaveURL(/#partners$/);
