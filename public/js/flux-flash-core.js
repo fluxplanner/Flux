@@ -544,95 +544,6 @@
     return cards.length ? { cards: cards, count: n } : null;
   }
 
-  /* ── Quizlet: the "Send to Flux" bookmark ───────────────────────────────
-     Quizlet shows a captcha to anything that is not a person's browser, so
-     Flux cannot fetch a set from its link. The bookmark runs on the Quizlet
-     page the student already has open, reads the set from it, and opens
-     flashcards.html with an ordinary share link (#share=j…). Everything after
-     that (preview, save, "new cards since last time") is the share-link path.
-
-     Both functions below are turned into source text with toString() and run
-     on quizlet.com, so they must not use anything from this file, and they
-     must not use line comments: a bookmark URL loses its line breaks. */
-
-  /**
-   * The set's cards from the page's Next.js data. Quizlet keeps them as
-   * studiable items with cardSides (word, definition); the data is JSON with
-   * more JSON inside strings. Items from other sets on the page (suggestions)
-   * are dropped: the set is `setId`, or else the one with the most cards.
-   * Returns { cards: [[term, def]], skipped } where skipped counts cards with
-   * a side that has no text (a picture only).
-   */
-  function quizletCards(data, setId) {
-    var seen = {}, items = [];
-    (function walk(v, depth) {
-      if (v == null || depth > 60) return;
-      if (typeof v === 'string') {
-        var t = v.trim();
-        if (t.length > 20 && (t[0] === '{' || t[0] === '[') && t.indexOf('cardSides') > -1) {
-          try { walk(JSON.parse(t), depth + 1); } catch (e) {}
-        }
-        return;
-      }
-      if (typeof v !== 'object') return;
-      if (Array.isArray(v.cardSides)) {
-        var key = v.id != null ? String(v.id) : JSON.stringify(v.cardSides);
-        if (!seen[key]) { seen[key] = 1; items.push(v); }
-        return;
-      }
-      for (var k in v) if (Object.prototype.hasOwnProperty.call(v, k)) walk(v[k], depth + 1);
-    })(data, 0);
-    var groups = {}, best = null;
-    items.forEach(function (it) {
-      var g = String(it.studiableContainerId == null ? '' : it.studiableContainerId);
-      (groups[g] = groups[g] || []).push(it);
-    });
-    if (setId && groups[String(setId)]) best = groups[String(setId)];
-    else Object.keys(groups).forEach(function (g) { if (!best || groups[g].length > best.length) best = groups[g]; });
-    best = (best || []).slice().sort(function (a, b) { return (a.rank || 0) - (b.rank || 0); });
-    function side(it, label, i) {
-      var s = it.cardSides.filter(function (x) { return x && x.label === label; })[0] || it.cardSides[i] || {};
-      return (s.media || []).map(function (m) { return m && m.plainText ? String(m.plainText) : ''; }).join(' ').trim();
-    }
-    var cards = [], skipped = 0;
-    best.forEach(function (it) {
-      var term = side(it, 'word', 0), def = side(it, 'definition', 1);
-      if (term && def) cards.push([term, def]); else skipped++;
-    });
-    return { cards: cards, skipped: skipped };
-  }
-
-  /** Runs on the Quizlet page. `read` is quizletCards; `flux` is flashcards.html's address. */
-  function quizletGrab(read, flux) {
-    var host = location.hostname.replace(/^www\./, '');
-    if (!/(^|\.)quizlet\.com$/.test(host)) { alert('Open a Quizlet set first, then tap Send to Flux.'); return; }
-    var m = location.pathname.match(/\/(\d{3,})(\/|$)/) || location.pathname.match(/-(\d{3,})\/?$/);
-    var got = { cards: [], skipped: 0 };
-    try { got = read(JSON.parse(document.getElementById('__NEXT_DATA__').textContent), m && m[1]); } catch (e) {}
-    if (!got.cards.length) {
-      var t = document.querySelectorAll('.TermText');
-      for (var i = 0; i + 1 < t.length; i += 2) {
-        var a = (t[i].innerText || '').trim(), b = (t[i + 1].innerText || '').trim();
-        if (a && b) got.cards.push([a, b]);
-      }
-    }
-    if (!got.cards.length) { alert('Flux could not find any cards on this page. Open the set itself (the page that lists all its terms) and try again.'); return; }
-    var title = (document.title || '').replace(/\s*\|\s*Quizlet\s*$/i, '').replace(/\s*Flashcards\s*$/i, '').trim() || 'Quizlet set';
-    var p = { t: title.slice(0, 120), c: got.cards, d: 'From Quizlet: ' + location.hostname + location.pathname };
-    if (m) p.o = 'quizlet-' + m[1];
-    var code = 'j' + btoa(unescape(encodeURIComponent(JSON.stringify(p)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    if (got.skipped) alert(got.skipped + (got.skipped === 1 ? ' card has' : ' cards have') + ' only a picture on one side, so Flux left ' + (got.skipped === 1 ? 'it' : 'them') + ' out.');
-    var url = flux + '#share=' + code;
-    var w = window.open(url, '_blank');
-    if (w) { try { w.opener = null; } catch (e) {} } else location.href = url;
-  }
-
-  /** The bookmark's address, for a Flux Flashcards page at `fluxUrl`. */
-  function quizletBookmarklet(fluxUrl) {
-    var src = '(' + quizletGrab.toString() + ')(' + quizletCards.toString() + ',' + JSON.stringify(String(fluxUrl)) + ')';
-    return 'javascript:' + encodeURIComponent(src.replace(/\s*\n\s*/g, ' ')) + ';void 0';
-  }
-
   /* ── Decks and the store ────────────────────────────────────────────── */
 
   function newCard(c) {
@@ -785,7 +696,7 @@
     sharePayload: sharePayload, fromSharePayload: fromSharePayload,
     creator: creator, relatedDeck: relatedDeck, diffDecks: diffDecks, mergeInto: mergeInto,
     encodeShare: encodeShare, decodeShare: decodeShare,
-    quizletCards: quizletCards, quizletBookmarklet: quizletBookmarklet, quizletPageText: quizletPageText,
+    quizletPageText: quizletPageText,
     b64urlFromBytes: b64urlFromBytes, bytesFromB64url: bytesFromB64url,
     newDeck: newDeck, newCard: newCard,
     decks: decks, getDeck: getDeck, putDeck: putDeck, removeDeck: removeDeck,
