@@ -785,6 +785,109 @@
 
     /* ── Import ──────────────────────────────────────────────────────── */
 
+    /** The device the From Quizlet steps are written for. */
+    function quizletDevice() {
+      var saved = prefs().qzDevice;
+      if (/^(computer|ios|android)$/.test(saved || '')) return saved;
+      var ua = navigator.userAgent || '';
+      if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'ios';
+      return /Android/.test(ua) ? 'android' : 'computer';
+    }
+
+    /**
+     * Step-by-step instructions for getting a Quizlet set into Flux on `dev`:
+     * copy the whole page and paste it (not on iPhone/iPad: Safari cannot
+     * select a whole page), or the Send to Flux bookmark (`mark`).
+     */
+    function quizletGuide(dev, mark) {
+      var mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
+      function key() { return Array.prototype.map.call(arguments, function (k) { return '<kbd>' + k + '</kbd>'; }).join(' + '); }
+      var mod = mac ? '⌘' : 'Ctrl';
+      function steps(list, start) {
+        return '<ol class="ff-qz-steps"' + (start > 1 ? ' start="' + start + '" style="counter-reset:qz ' + (start - 1) + '"' : '') + '>' + list.map(function (s) { return '<li>' + s + '</li>'; }).join('') + '</ol>';
+      }
+      var openQuizlet = '<a class="ff-btn" href="https://quizlet.com" target="_blank" rel="noopener">Open Quizlet</a>';
+      var copyBtn = '<button type="button" class="ff-btn ff-btn--primary" data-qzcopy>Copy the bookmark code</button>';
+      var pageName = '“' + esc(document.title || 'Flux Flashcards') + '”';
+      var done = 'A new Flux tab opens with every card. Check them, then ' + (dev === 'computer' ? 'click' : 'tap') + ' <b>Save to my decks</b>.';
+      var pasteBox = '<textarea class="ff-input ff-paste ff-qz-paste" rows="4" placeholder="Paste the whole Quizlet page here"></textarea>';
+
+      var html = '<div class="ff-qz-devs" role="tablist" aria-label="Your device">'
+        + [['computer', 'Computer'], ['ios', 'iPhone or iPad'], ['android', 'Android']].map(function (d) {
+          return '<button type="button" role="tab" class="ff-tab' + (d[0] === dev ? ' is-on' : '') + '" data-qzdev="' + d[0] + '" aria-selected="' + (d[0] === dev) + '">' + d[1] + '</button>';
+        }).join('') + '</div>';
+
+      if (dev === 'computer') {
+        html += '<section class="ff-qz-way"><h3>Way 1: Copy and paste <span class="ff-tag">Every browser</span></h3>'
+          + '<p class="ff-muted">No setup. Takes about 10 seconds each time.</p>'
+          + steps([
+            'Open your set on Quizlet in another tab. Use the page that lists all the terms (it says <b>Terms in this set</b>). ' + openQuizlet,
+            'Click anywhere on the Quizlet page, then press ' + key(mod, 'A') + '. The whole page turns highlighted.',
+            'Press ' + key(mod, 'C') + ' to copy it.',
+            'Come back to this tab, click in the box below and press ' + key(mod, 'V') + ' to paste.' + pasteBox,
+            'Your cards appear underneath. Give the deck a name and click <b>Create deck</b>.',
+          ])
+          + '</section>'
+          + '<section class="ff-qz-way"><h3>Way 2: Send to Flux button <span class="ff-tag">One click</span></h3>'
+          + '<p class="ff-muted">Set it up once. After that, one click on any Quizlet set.</p>'
+          + '<h4>Set it up (once)</h4>'
+          + steps([
+            'Show your bookmarks bar: press ' + key(mod, 'Shift', 'B') + '.',
+            'Drag this pink button up onto the bookmarks bar and let go: <a class="ff-btn ff-btn--primary ff-qz-mark" href="' + esc(mark) + '" data-qzmark draggable="true">' + ICON.download + 'Send to Flux</a>',
+          ])
+          + '<h4>Use it</h4>'
+          + steps(['Open a Quizlet set and click <b>Send to Flux</b> on your bookmarks bar. ' + done], 3)
+          + '<details class="ff-qz-help"><summary>The button won’t drag onto my bookmarks (Dia, Arc, or nothing appeared)</summary>'
+          + '<p class="ff-muted">Make the bookmark by hand instead:</p>'
+          + steps([
+            copyBtn,
+            'Press ' + key(mod, 'D') + ' to bookmark this page, then click <b>Done</b>.',
+            'Open your bookmarks list: press ' + (mac ? key('⌘', 'Option', 'B') : key('Ctrl', 'Shift', 'O')) + '. (Safari: <b>Bookmarks</b> menu → <b>Edit Bookmarks</b>.)',
+            'Find the bookmark called ' + pageName + '. Right-click it and choose <b>Edit</b>.',
+            'Change the name to <b>Send to Flux</b>. Delete everything in the <b>URL</b> box, then press ' + key(mod, 'V') + ' to paste the code. Click <b>Save</b>.',
+            'To use it: open a Quizlet set, open your bookmarks and click <b>Send to Flux</b>. ' + done,
+          ])
+          + '</details></section>';
+      } else if (dev === 'ios') {
+        html += '<section class="ff-qz-way"><h3>Send to Flux bookmark <span class="ff-tag">Safari</span></h3>'
+          + '<p class="ff-muted">iPhone and iPad can’t copy a whole page, so use this bookmark. Set it up once; after that it takes two taps.</p>'
+          + '<h4>Set it up (once)</h4>'
+          + steps([
+            copyBtn,
+            'Tap the <b>Share</b> button (the square with an arrow pointing up), then <b>Add Bookmark</b>, then <b>Save</b>.',
+            'Tap the <b>Bookmarks</b> button (the open book), then tap <b>Edit</b> at the bottom.',
+            'Tap the bookmark called ' + pageName + '.',
+            'Change the name to <b>Send to Flux</b>. Tap the address under it, tap the <b>ⓧ</b> to clear it, then press and hold and tap <b>Paste</b>. Tap <b>Done</b>.',
+          ])
+          + '<h4>Use it</h4>'
+          + steps(['Open a Quizlet set in Safari. Tap the address bar, type <b>Send to Flux</b>, and tap it under <b>Bookmarks</b>. ' + done], 6)
+          + '<p class="ff-muted">Using Chrome? Tap <b>⋯</b> → <b>Bookmarks</b>, press and hold the new bookmark → <b>Edit Bookmark</b>, and do steps 5 and 6 the same way.</p>'
+          + '</section>';
+      } else {
+        html += '<section class="ff-qz-way"><h3>Way 1: Copy and paste <span class="ff-tag">No setup</span></h3>'
+          + steps([
+            'Open your set on Quizlet. Use the page that lists all the terms (it says <b>Terms in this set</b>). ' + openQuizlet,
+            'Press and hold on any term until it highlights, then tap <b>Select all</b>.',
+            'Tap <b>Copy</b>.',
+            'Come back to this tab. Press and hold in the box below and tap <b>Paste</b>.' + pasteBox,
+            'Your cards appear underneath. Give the deck a name and tap <b>Create deck</b>.',
+          ])
+          + '</section>'
+          + '<section class="ff-qz-way"><h3>Way 2: Send to Flux bookmark <span class="ff-tag">Chrome</span></h3>'
+          + '<h4>Set it up (once)</h4>'
+          + steps([
+            copyBtn,
+            'Tap <b>⋮</b> (top right), then the <b>☆</b> star to bookmark this page.',
+            'Tap <b>⋮</b> → <b>Bookmarks</b>. Tap <b>⋮</b> next to ' + pageName + ' → <b>Edit</b>.',
+            'Change the name to <b>Send to Flux</b>. Clear the <b>URL</b> box, press and hold in it and tap <b>Paste</b>. Tap the back arrow to save.',
+          ])
+          + '<h4>Use it</h4>'
+          + steps(['Open a Quizlet set. Tap the address bar, type <b>Send to Flux</b>, and tap the bookmark. ' + done], 5)
+          + '</section>';
+      }
+      return html + '<p class="ff-muted">Flux reads the set on your screen, so this works for any set you can open, including your class’s private ones. Cards that are only a picture are left out.</p>';
+    }
+
     function viewImport(intoId) {
       var into = intoId ? F.getDeck(decodeURIComponent(intoId)) : null;
       var tab = prefs().importTab || 'paste';
@@ -843,22 +946,7 @@
           // a dragged bookmark: copy the whole Quizlet page and paste it here
           // (FluxFlash.quizletPageText), or the one-tap bookmark.
           var mark = F.quizletBookmarklet(location.origin + location.pathname);
-          box.innerHTML = '<div class="ff-qz">'
-            + '<section><h3>Copy and paste <span class="ff-tag">Any browser</span></h3><ol>'
-            + '<li>Open the set on Quizlet.</li>'
-            + '<li>Press <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>A</kbd> to select the whole page, then <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>C</kbd> to copy it.</li>'
-            + '<li>Paste it here:</li></ol>'
-            + '<textarea class="ff-input ff-paste ff-qz-paste" rows="4" placeholder="Paste the whole Quizlet page"></textarea></section>'
-            + '<section><h3>One-tap bookmark <span class="ff-tag">Fastest</span></h3>'
-            + '<p>Set it up once, then tap it on any Quizlet set. Drag this button onto your bookmarks bar:</p>'
-            + '<p><a class="ff-btn ff-btn--primary ff-qz-mark" href="' + esc(mark) + '" data-qzmark draggable="true">' + ICON.download + 'Send to Flux</a></p>'
-            + '<p><b>Can’t drag it?</b> (Dia, Arc, phones and iPads)</p><ol>'
-            + '<li><button type="button" class="ff-btn" data-qzcopy>Copy the bookmark code</button></li>'
-            + '<li>Bookmark this page: <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>D</kbd>, or on a phone <b>Share</b> → <b>Add Bookmark</b> (Chrome: <b>☆</b>).</li>'
-            + '<li>Edit that bookmark: name it <b>Send to Flux</b> and replace its address with the code you copied.</li>'
-            + '<li>On a Quizlet set, open your bookmarks (or type <b>Send to Flux</b> in the address bar) and tap it.</li>'
-            + '</ol></section></div>'
-            + '<p class="ff-muted">Both read the set on your screen, so they work for any set you can open, including your class’s private ones. Cards that are only a picture are left out.</p>';
+          box.innerHTML = '<div class="ff-qz">' + quizletGuide(quizletDevice(), mark) + '</div>';
           box.oninput = function (e) {
             if (!e.target.classList.contains('ff-qz-paste')) return;
             var txt = e.target.value, got = F.quizletPageText(txt);
@@ -910,8 +998,9 @@
       drawTab();
 
       host.onclick = function (e) {
-        var t = e.target.closest('[data-tab],[data-make],[data-create],[data-qzmark],[data-qzcopy]');
+        var t = e.target.closest('[data-tab],[data-make],[data-create],[data-qzmark],[data-qzcopy],[data-qzdev]');
         if (!t) return;
+        if (t.dataset.qzdev) { setPref('qzDevice', t.dataset.qzdev); drawTab(); return; }
         if (t.hasAttribute('data-qzmark')) { e.preventDefault(); toast('Drag it to your bookmarks bar, then tap it on a Quizlet set'); return; }
         if (t.hasAttribute('data-qzcopy')) { copyText(F.quizletBookmarklet(location.origin + location.pathname), 'Copied: now make the bookmark'); return; }
         if (t.dataset.tab) { tab = t.dataset.tab; setPref('importTab', tab); drawTab(); return; }
