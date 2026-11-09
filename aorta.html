@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!-- While the owner has it hidden (Owner Controls → Hide apps), anyone else
      who opens this URL is sent to Flux Suite instead. -->
-<script src="public/js/flux-app-visibility.js?v=a2373fcc" data-app="aorta"></script>
+<script src="public/js/flux-app-visibility.js?v=63163233" data-app="aorta"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>The Aorta Project</title>
 <meta name="description" content="The Aorta Project is a student-led organization bridging the gap between immigrant communities and the American healthcare system: advocacy, heart-health education, and a free medical dictionary for immigrants and seniors.">
@@ -12,6 +13,17 @@
      line when the Aorta Project launches. -->
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#ffffff">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="The Aorta Project">
+<meta property="og:title" content="The Aorta Project">
+<meta property="og:url" content="https://fluxplanner.github.io/Flux/aorta.html">
+<!-- Link previews (iMessage, Discord…) use the logo, not the first photo on the page. -->
+<meta property="og:image" content="https://fluxplanner.github.io/Flux/public/partners/aorta/logo-share.jpg?v=2">
+<meta property="og:image:width" content="3840">
+<meta property="og:image:height" content="3840">
+<meta property="og:image:alt" content="The Aorta Project logo">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://fluxplanner.github.io/Flux/public/partners/aorta/logo-share.jpg?v=2">
 <link rel="icon" type="image/png" href="public/partners/aorta/logo.png">
 
 <!--
@@ -19,9 +31,16 @@
   sent. One thing still comes from them later:
     - DONATE_URL in the script at the bottom: their GoFundMe link. Until it
       is set, the Donate button says the link is coming.
+  The blood pressure tracker is its own page, aorta-tracker.html, linked
+  from the nav, the hero and the #tracker section. "Sign in" uses the Flux
+  login (index.html sends people on to the tracker); once signed in, the
+  button becomes "My tracker" (window.FluxAortaVault, bundled below).
   The medical dictionary has two layers:
-    - public/partners/aorta/dictionary.json: everyday words with our own
-      plain-language meanings, an array of { "term", "meaning" }.
+    - public/partners/aorta/dictionary.json: an array of { "term", "meaning" }.
+      About 800 words have our own plain-language meanings; the rest are the
+      opening lines of MedlinePlus health-topic summaries (public domain, from
+      medlineplus.gov/xml.html; NLM asks for the "courtesy of MedlinePlus"
+      credit shown under the search box). Our own wording wins on a clash.
     - Any other word (their Taber's word list included) is looked up live
       from Wiktionary, which allows reuse with credit, with a link to the
       Merriam-Webster medical dictionary next to it.
@@ -86,7 +105,9 @@
   .btn-red { color: #fff; background: var(--coral); border-color: var(--coral); }
   .btn-red:hover { background: #d93430; }
   .btn[aria-disabled="true"] { opacity: .55; cursor: default; }
+  .btn[hidden] { display: none; }
   .bar .btn { min-height: 38px; padding: 0 16px; }
+  @media (max-width: 420px) { .bar .btn { padding: 0 12px; font-size: .86rem; } .bar strong { font-size: 1.15rem; } }
 
   /* ---- scroll sections ---- */
   [data-scroll] { position: relative; --p: 0; }
@@ -186,13 +207,23 @@
   .dict-online li { margin: 4px 0; }
   .dict-online small { display: block; margin-top: 10px; color: var(--muted); }
   .dict-online a { color: var(--ink); font-weight: 600; }
+  .dict-credit { margin: 14px 0 0; font-size: .8rem; color: var(--muted); }
+  .dict-credit a { color: var(--ink); }
+
+  /* 4b. Blood pressure tracker teaser */
+  .tracker { background: var(--paper2); }
+  .tracker-points { list-style: none; margin: 26px 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+  .tracker-points li { padding: 18px; border-radius: 18px; background: #fff; border: 1px solid rgba(28,18,176,.1); }
+  .tracker-points b { display: block; margin-bottom: 4px; color: var(--ink); }
+  .tracker-points span { font-size: .94rem; color: var(--muted); }
+  .ctas-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .signin-note { margin: 12px 0 0; font-size: .9rem; color: var(--muted); max-width: 640px; }
 
   /* 5. Founders */
   .founders { background: linear-gradient(180deg, var(--sky), var(--paper)); }
   .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; margin-top: 26px; }
   .person { border-radius: 24px; padding: clamp(22px, 4vw, 32px); background: #fff; border: 1px solid rgba(28,18,176,.1); box-shadow: 0 24px 50px -36px rgba(28,18,176,.6); }
-  .person .initial { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 14px; font-family: var(--serif); font-style: italic; font-size: 1.7rem; color: #fff; background: var(--ink); }
-  .person:nth-child(2) .initial { background: var(--coral); }
+  .person .photo { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; object-position: 50% 20%; border-radius: 18px; margin-bottom: 18px; background: var(--paper2); }
   .person h3 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: 1.9rem; color: var(--ink); }
   .person .role { margin: 0 0 12px; font-size: .86rem; font-weight: 600; color: var(--coral); }
   .person p { margin: 0; color: var(--text); }
@@ -263,10 +294,12 @@
     <a href="#about">About</a>
     <a href="#aed">AED initiative</a>
     <a href="#dictionary">Dictionary</a>
+    <a href="#tracker">BP tracker</a>
     <a href="#founders">Founders</a>
     <a href="#events">Events</a>
     <a href="#volunteer">Volunteer</a>
   </nav>
+  <a class="btn" id="acctBtn" href="index.html" data-flux-signin>Sign in</a>
   <a class="btn btn-red" href="#donate">Donate</a>
 </header>
 
@@ -285,6 +318,7 @@
         <div class="ctas">
           <a class="btn btn-solid" href="#aed">Our AED initiative</a>
           <a class="btn" href="#dictionary">Medical dictionary</a>
+          <a class="btn" href="aorta-tracker.html">Blood pressure tracker</a>
         </div>
       </div>
       <div class="hint">Scroll</div>
@@ -331,7 +365,27 @@
         <ul class="dict-list" id="dictList"></ul>
         <p class="dict-empty" id="dictEmpty" hidden></p>
         <div class="dict-online" id="dictOnline" aria-live="polite" hidden></div>
+        <p class="dict-credit">Many meanings courtesy of <a href="https://medlineplus.gov/" target="_blank" rel="noopener">MedlinePlus</a> from the National Library of Medicine.</p>
       </div>
+    </div>
+  </section>
+
+  <section class="sec tracker" id="tracker" aria-labelledby="tracker-h">
+    <div class="wrap">
+      <span class="eyebrow">Heart health at home</span>
+      <h2 id="tracker-h">Blood pressure tracker</h2>
+      <p class="lede">High and low blood pressure are among the biggest health problems in the world, and seniors carry most of it. Our free tracker helps families keep watch: <strong>take your medicines, log your blood pressure, and see right away if a number needs attention</strong>.</p>
+      <ul class="tracker-points">
+        <li><b>Medicines checklist</b><span>Tick off each pill as it is taken, every day.</span></li>
+        <li><b>Daily readings</b><span>Log the top and bottom numbers and get a plain answer: normal, high, low, or get help.</span></li>
+        <li><b>The whole family</b><span>Track grandparents and parents in one place, and share a backup file between phones.</span></li>
+        <li><b>Offline and private</b><span>No account. Nothing leaves the device. Print a log for the doctor.</span></li>
+      </ul>
+      <div class="ctas-row">
+        <a class="btn btn-solid" href="aorta-tracker.html">Open the tracker</a>
+        <a class="btn" id="trackerSignIn" href="index.html" data-flux-signin>Sign in with Flux</a>
+      </div>
+      <p class="signin-note" id="trackerSignInNote">Sign in with a free Flux account to keep readings safe and see your family on every phone. Medicine reminders also show in your Flux Planner calendar.</p>
     </div>
   </section>
 
@@ -342,13 +396,13 @@
       <p class="lede">Just two motivated teens who kept watching the same thing happen in our own community.</p>
       <div class="pair">
         <article class="person">
-          <div class="initial" aria-hidden="true">A</div>
+          <img class="photo" src="public/partners/aorta/arav.jpg" alt="Arav Sheth" width="640" height="800" loading="lazy">
           <h3>Arav Sheth</h3>
           <p class="role">Junior · Co-founder</p>
           <p>Hi, I’m Arav Sheth, a motivated junior and co-founder of The Aorta Project. I am very passionate about healthcare and serving my community in any way I can, and I am also very connected to my heritage. As part of an immigrant community myself, I kept seeing families around me struggle to navigate a healthcare system that was never made for them. So I decided to build something that was.</p>
         </article>
         <article class="person">
-          <div class="initial" aria-hidden="true">A</div>
+          <img class="photo" src="public/partners/aorta/aryan.jpg" alt="Aryan Khedkar" width="640" height="800" loading="lazy">
           <h3>Aryan Khedkar</h3>
           <p class="role">Junior · Co-founder</p>
           <p>Hi! I’m Aryan Khedkar, a junior and co-founder of The Aorta Project. As a member of a minority community myself, I have seen firsthand how difficult it is for minority and immigrant families to adapt and find the right support, especially if they have just immigrated to another country. Motivated to change that, we decided to build a system where this wouldn’t happen to them — and we’re just getting started.</p>
@@ -409,6 +463,29 @@
   <p><a class="powered" href="https://fluxplanner.github.io/Flux/"><img src="icons/icon-192.png" alt="" width="26" height="26">Powered by Flux</a></p>
 </footer>
 
+<script defer src="public/bundles/flux-aorta_vault.b9e1f1d0.js"></script>
+<script>
+  /* Sign in with Flux: the planner's login sends people on to the tracker. */
+  (function () {
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('[data-flux-signin]')) return;
+      try { sessionStorage.setItem('flux_return_to', 'aorta-tracker.html'); } catch (err) { /* blocked */ }
+    });
+    function show() {
+      window.FluxAortaVault.account().then(function (who) {
+        if (!who) return;
+        var btn = document.getElementById('acctBtn');
+        btn.textContent = 'My tracker';
+        btn.href = 'aorta-tracker.html';
+        btn.title = 'Signed in with Flux as ' + who.name;
+        btn.removeAttribute('data-flux-signin');
+        document.getElementById('trackerSignIn').hidden = true;
+        document.getElementById('trackerSignInNote').textContent = 'Signed in with Flux as ' + who.name + '. Your readings save to your account, and medicine reminders show in your Flux Planner calendar.';
+      }).catch(function () { /* offline: keep "Sign in" */ });
+    }
+    if (window.FluxAortaVault) show(); else window.addEventListener('flux-aorta-vault', show, { once: true });
+  })();
+</script>
 <script>
   (function () {
     // Their GoFundMe link, when they send it.

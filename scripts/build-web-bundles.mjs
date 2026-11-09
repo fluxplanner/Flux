@@ -161,12 +161,32 @@ async function buildSynara() {
   ];
 }
 
+/* The Aorta tracker (aorta-tracker.html) saves to a Flux account through
+ * public/js/flux-aorta-vault.mjs, built the same way as Synara's vault. */
+async function buildAortaVault() {
+  const res = await esbuild.build({
+    entryPoints: [path.join(ROOT, 'public', 'js', 'flux-aorta-vault.mjs')],
+    bundle: true,
+    format: 'iife',
+    minify: true,
+    pure: PURE,
+    legalComments: 'none',
+    metafile: true,
+    write: false,
+  });
+  const code = res.outputFiles[0].text;
+  const out = hashedName('flux-aorta_vault.js', code);
+  fs.writeFileSync(path.join(OUT, out), code);
+  return [{ name: 'flux-aorta_vault.js', out, files: Object.keys(res.metafile.inputs).length, bytes: code.length }];
+}
+
 const results = [];
 results.push(await buildVendor('flux-vendor.js', manifest.vendor));
 results.push(await buildClassic('flux-core.js', manifest.core));
 results.push(await buildClassic('flux-features.js', manifest.features));
 results.push(await buildCss('flux.css', manifest.css));
 const synara = fs.existsSync(path.join(SYNARA, 'js', 'main.js')) ? await buildSynara() : [];
+const aorta = await buildAortaVault();
 // Owner Controls (owner.html) is its own app. Not precached: nobody else loads it.
 const owner = [
   await buildVendor('flux-owner_vendor.js', manifest.ownerVendor),
@@ -177,7 +197,7 @@ const owner = [
 /* ── Post-build wiring (B5.4) ── */
 
 // 1. Prune stale bundle outputs (older hashes) so git status stays exact.
-const keep = new Set([...results.map((r) => r.out), ...synara.map((r) => r.out), ...owner.map((r) => r.out), 'precache-manifest.json']);
+const keep = new Set([...results.map((r) => r.out), ...synara.map((r) => r.out), ...owner.map((r) => r.out), ...aorta.map((r) => r.out), 'precache-manifest.json']);
 for (const f of fs.readdirSync(OUT)) {
   if (!keep.has(f) && /^flux(-\w+)?\.[0-9a-f]{8}\.(js|css)$/.test(f)) fs.unlinkSync(path.join(OUT, f));
   if (!keep.has(f) && /^flux(-\w+)?\.(js|css)$/.test(f)) fs.unlinkSync(path.join(OUT, f)); // pre-hash era outputs
@@ -206,6 +226,19 @@ if (synara.length && fs.existsSync(SYNARA_HTML)) {
   fs.writeFileSync(SYNARA_HTML, page);
 }
 
+// 2a-aorta. aorta-tracker.html and aorta.html load the vault the same way.
+for (const AORTA_PAGE of ['aorta-tracker.html', 'aorta.html']) {
+  const AORTA_HTML = path.join(ROOT, AORTA_PAGE);
+  if (fs.existsSync(AORTA_HTML)) {
+    let page = fs.readFileSync(AORTA_HTML, 'utf8');
+    for (const r of aorta) {
+      const [base, ext] = r.name.split('.');
+      page = page.replace(new RegExp(`public/bundles/${base}(\\.[0-9a-f]{8})?\\.${ext}`, 'g'), `public/bundles/${r.out}`);
+    }
+    fs.writeFileSync(AORTA_HTML, page);
+  }
+}
+
 // 2a-owner. owner.html too.
 {
   const OWNER_HTML = path.join(ROOT, 'owner.html');
@@ -223,7 +256,7 @@ if (synara.length && fs.existsSync(SYNARA_HTML)) {
 //     the OLD scripts, and the page broke ("G.create is not a function").
 //     A content hash in each query string makes every version its own URL.
 //     calculator.html, periodic.html and composer.html are built the same way, for the same reason.
-for (const page of ['owner.html', 'grapher.html', 'calculator.html', 'periodic.html', 'composer.html', 'flashcards.html', 'translate.html', 'pixel.html', 'synara.html', 'partners.html', 'landing.html', 'suite.html', 'teacher.html', 'synara-welcome.html', 'aorta.html', 'index.html']) {
+for (const page of ['owner.html', 'grapher.html', 'calculator.html', 'periodic.html', 'composer.html', 'flashcards.html', 'translate.html', 'pixel.html', 'synara.html', 'partners.html', 'landing.html', 'suite.html', 'teacher.html', 'synara-welcome.html', 'aorta.html', 'aorta-tracker.html', 'index.html']) {
   const file = path.join(ROOT, page);
   if (!fs.existsSync(file)) continue;
   const before = fs.readFileSync(file, 'utf8');

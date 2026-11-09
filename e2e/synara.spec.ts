@@ -216,7 +216,7 @@ test.describe('Synara', () => {
     const hrefs = await page.locator('#apps .app').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
     // Flux's own apps first, then the partner app it builds for someone else.
     expect(hrefs[0]).toBe('index.html');
-    expect(hrefs.slice(-2), 'the partner apps close the list, under Partners').toEqual(['synara.html', 'aorta.html']);
+    expect(hrefs.slice(-2), 'the partner apps close the list, under Partners').toEqual(['synara.html', 'aorta-tracker.html']);
     await page.getByRole('tab', { name: /Partners/ }).click();
     await expect(page.locator('#apps-partner a.app--synara')).toHaveCount(1);
     const card = page.locator('#apps a.app--synara');

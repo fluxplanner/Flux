@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
+<!-- Hidden with the rest of the Aorta site while the owner has "aorta" hidden. -->
+<script src="public/js/flux-app-visibility.js?v=63163233" data-app="aorta"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Blood Pressure Tracker · The Aorta Project</title>
+<meta name="description" content="A free blood pressure and medicine log for families. Log each reading after your medicines, see what the numbers mean, and keep an eye on the people you love. Works offline; nothing leaves your device.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#ffffff">
+<script>
+  /* Pick light or dark before the page paints, so it never flashes. */
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem('aorta_theme'); } catch (e) { /* blocked */ }
+    if (t !== 'light' && t !== 'dark') t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="The Aorta Project">
+<meta property="og:title" content="Blood Pressure Tracker · The Aorta Project">
+<meta property="og:url" content="https://fluxplanner.github.io/Flux/aorta-tracker.html">
+<!-- Link previews (iMessage, Discord…) use the logo, not the first photo on the page. -->
+<meta property="og:image" content="https://fluxplanner.github.io/Flux/public/partners/aorta/logo-share.jpg?v=2">
+<meta property="og:image:width" content="3840">
+<meta property="og:image:height" content="3840">
+<meta property="og:image:alt" content="The Aorta Project logo">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://fluxplanner.github.io/Flux/public/partners/aorta/logo-share.jpg?v=2">
+<link rel="icon" type="image/png" href="public/partners/aorta/logo.png">
+
+<!--
+  The Aorta Project: family blood pressure tracker.
+
+  What it is for: seniors with high or low blood pressure take their
+  medicines, then log a reading. Family members on the same device (or
+  given a backup file) can see at a glance who has logged today, who has
+  taken their medicines, and whose numbers are out of range.
+
+  Offline first: everything lives in localStorage under STORE_KEY on this
+  device and works with no connection. Signing in with a Flux account
+  (optional) also keeps it in public.aorta_bp_records through
+  window.FluxAortaVault (public/js/flux-aorta-vault.mjs), so every phone
+  signed in to that account sees the same family. Sign-in itself happens on
+  the planner's login (index.html), which sends people back here.
+  Sync and backup files use the same MERGE: union by id, deletions travel
+  as ids in `gone` so a deleted reading never comes back, and a rename wins
+  by its time (nameAt). So there is never a "which copy?" question.
+  SYNC_KEY remembers which account this device last saved to: when a
+  different account signs in, the device takes that account's copy instead
+  of mixing two families together.
+
+  The categories follow the American Heart Association's adult chart
+  (2017 guideline), plus "low" below 90/60. This page informs; it does not
+  diagnose, and it says so.
+
+  It registers the Flux service worker (same as Synara) so the page and its
+  script keep opening with no connection after the first visit.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #ffffff;
+    --paper2: #f3f4fb;
+    --ink: #1c12b0;
+    --ink2: #120a7a;
+    --sky: #e8eaff;
+    --coral: #f0443f;
+    --text: #17172b;
+    --muted: #5d5d78;
+    --line: rgba(28,18,176,.12);
+    --ok: #1d7a46;     --ok-bg: #e3f5ea;
+    --warn: #8a5a00;   --warn-bg: #fff3d6;
+    --bad: #b3261e;    --bad-bg: #fde4e2;
+    --low: #0b5c8a;    --low-bg: #e0f0fa;
+    --s1: #9a4500;     --s1-bg: #ffe6d1;
+    --none-bg: #ececf3;
+    --on-ink: #ffffff;
+    --field-line: rgba(28,18,176,.25);
+    --foot: #120a7a;
+    --grid: #e6e6f0;
+    --ref: #9a9ab5;
+    color-scheme: light;
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  /* Dark mode. data-theme is set before first paint (script in <head>): the
+     saved choice, else the phone's own setting. Screen only, so printing
+     for the doctor always comes out dark-on-white. */
+  @media screen {
+    :root[data-theme="dark"] {
+      --paper: #191932;
+      --paper2: #0e0e1f;
+      --ink: #aaa5ff;
+      --ink2: #c7c3ff;
+      --sky: #27264d;
+      --coral: #ff7a74;
+      --text: #ececf7;
+      --muted: #a6a6c2;
+      --line: rgba(170,165,255,.18);
+      --ok: #7dd9a3;     --ok-bg: #153826;
+      --warn: #f3c86e;   --warn-bg: #3a2e10;
+      --bad: #ff9a90;    --bad-bg: #431a17;
+      --low: #86cdf5;    --low-bg: #10293b;
+      --s1: #ffb27a;     --s1-bg: #43260f;
+      --none-bg: #26263f;
+      --on-ink: #0e0e1f;
+      --field-line: rgba(170,165,255,.32);
+      --foot: #08081a;
+      --grid: #2b2b48;
+      --ref: #6d6d92;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: 76px; -webkit-text-size-adjust: 100%; }
+  html, body { margin: 0; background: var(--paper2); color: var(--text); }
+  /* A little larger than the main site: many readers are seniors. */
+  body { font-family: var(--sans); font-size: 18px; line-height: 1.55; overflow-x: clip; }
+  img { display: block; max-width: 100%; }
+  a { color: var(--ink); }
+  :focus-visible { outline: 3px solid var(--coral); outline-offset: 3px; }
+  [hidden] { display: none !important; }
+
+  .bar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; gap: 12px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+    background: color-mix(in srgb, var(--paper) 88%, transparent);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand {
+    display: flex; align-items: center; gap: 8px; margin-right: auto; min-width: 0; min-height: 44px; padding: 3px 14px 3px 8px;
+    border-radius: 999px; border: 1.5px solid var(--line); text-decoration: none; color: var(--ink);
+  }
+  .brand:hover { background: var(--sky); border-color: var(--ink); }
+  .brand .back { font-size: 1.2rem; line-height: 1; font-weight: 600; }
+  .brand .mini { width: 34px; height: 34px; border-radius: 50%; overflow: hidden; flex: none; }
+  .brand .mini img { width: 100%; height: 100%; transform: scale(1.08); }
+  .brand strong { font-family: var(--serif); font-style: italic; font-size: 1.3rem; color: var(--ink); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar .theme { width: 40px; padding: 0; font-size: 1.1rem; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 20px;
+    border-radius: 999px; font: inherit; font-weight: 600; font-size: 1rem; text-decoration: none; cursor: pointer;
+    border: 1.5px solid var(--ink); color: var(--ink); background: var(--paper);
+  }
+  .btn:hover { background: var(--sky); }
+  .btn-solid { color: var(--on-ink); background: var(--ink); }
+  .btn-solid:hover { background: var(--ink2); }
+  .btn-small { min-height: 40px; padding: 0 14px; font-size: .9rem; }
+  .btn-quiet { border-color: transparent; background: transparent; color: var(--muted); }
+  .btn-quiet:hover { background: var(--sky); color: var(--ink); }
+  .bar .btn { min-height: 40px; padding: 0 16px; font-size: .9rem; }
+  .bar .btn.flux { padding: 0 14px 0 8px; gap: 6px; }
+  .bar .btn.flux img { width: 22px; height: 22px; object-fit: contain; }
+  @media (max-width: 520px) { .bar { gap: 8px; } .bar .btn { padding: 0 12px; font-size: .86rem; } .bar .dict { display: none; } .brand strong { font-size: 1.12rem; } }
+  @media (max-width: 360px) { .brand strong { display: none; } }
+
+  main { max-width: 980px; margin: 0 auto; padding: 28px 16px 64px; }
+  h1 { margin: 0 0 8px; font-family: var(--serif); font-weight: 500; font-size: clamp(2.3rem, 7vw, 3.4rem); line-height: 1.05; color: var(--ink); }
+  h2 { margin: 0 0 12px; font-family: var(--serif); font-weight: 500; font-size: clamp(1.7rem, 4.6vw, 2.2rem); line-height: 1.1; color: var(--ink); }
+  h3 { margin: 0 0 8px; font-size: 1.05rem; }
+  .eyebrow { display: inline-block; margin-bottom: 8px; font-size: .74rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--coral); }
+  .lede { margin: 0 0 6px; max-width: 680px; color: var(--muted); font-size: 1.08rem; }
+  .private { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 6px 12px; border-radius: 999px; background: var(--sky); color: var(--ink); font-size: .84rem; font-weight: 600; }
+
+  .account { display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; margin-top: 20px; padding: 16px 18px; border-radius: 20px; background: var(--paper); border: 1px solid var(--line); }
+  .account p { flex: 1 1 260px; margin: 0; }
+  .account .status { display: block; font-size: .86rem; color: var(--muted); }
+  .account .status.bad { color: var(--bad); font-weight: 600; }
+
+  .panel { margin-top: 20px; padding: clamp(18px, 4vw, 26px); border-radius: 24px; background: var(--paper); border: 1px solid var(--line); }
+  .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .muted { color: var(--muted); }
+  .small { font-size: .88rem; }
+
+  /* Family overview: one card per person; tapping one opens their page. */
+  .family { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 12px; margin-top: 14px; }
+  .who {
+    display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 16px; border-radius: 18px; cursor: pointer;
+    font: inherit; color: var(--text); background: var(--paper2); border: 2px solid transparent;
+  }
+  .who:hover { border-color: var(--line); }
+  .who[aria-pressed="true"] { border-color: var(--ink); background: var(--paper); box-shadow: 0 16px 36px -26px rgba(28,18,176,.7); }
+  .who .name { font-weight: 700; font-size: 1.08rem; }
+  .who .nums { font-family: var(--serif); font-size: 1.9rem; line-height: 1; color: var(--ink); }
+  .who .flags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .who.add { align-items: center; justify-content: center; border: 2px dashed var(--line); background: transparent; color: var(--ink); font-weight: 600; min-height: 120px; }
+
+  .pill { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: .78rem; font-weight: 700; }
+  .c-normal { color: var(--ok); background: var(--ok-bg); }
+  .c-elevated { color: var(--warn); background: var(--warn-bg); }
+  .c-stage1 { color: var(--s1); background: var(--s1-bg); }
+  .c-stage2, .c-crisis { color: var(--bad); background: var(--bad-bg); }
+  .c-low { color: var(--low); background: var(--low-bg); }
+  .c-none { color: var(--muted); background: var(--none-bg); }
+
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 0 20px; }
+
+  /* Medicines */
+  .meds { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
+  .med { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--paper2); }
+  .med .what { flex: 1; min-width: 0; }
+  .med .what b { display: block; overflow-wrap: anywhere; }
+  .med .what span { font-size: .88rem; color: var(--muted); }
+  .med.done { background: var(--ok-bg); }
+  .med.done .what span { color: var(--ok); font-weight: 600; }
+  .med .x { flex: none; }
+
+  /* Forms */
+  form { margin: 0; }
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr)); gap: 12px; margin-top: 12px; }
+  .fields.wide { grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
+  label { display: block; font-weight: 600; font-size: .92rem; margin-bottom: 4px; }
+  label small { font-weight: 400; color: var(--muted); }
+  input[type=text], input[type=number], input[type=time], input[type=datetime-local] {
+    width: 100%; min-height: 52px; padding: 0 14px; border-radius: 14px; font: inherit; font-size: 1.08rem;
+    border: 1.5px solid var(--field-line); background: var(--paper); color: var(--text);
+  }
+  input.big { font-size: 1.6rem; font-weight: 700; text-align: center; }
+  input:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 4px var(--sky); }
+  .check { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-weight: 500; }
+  .check input { width: 24px; height: 24px; accent-color: var(--ink); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; align-items: center; }
+  .err { margin: 10px 0 0; color: var(--bad); font-weight: 600; }
+
+  /* The answer after logging a reading */
+  .verdict { margin-top: 16px; padding: 16px 18px; border-radius: 16px; border: 2px solid currentColor; }
+  .verdict b { display: block; font-size: 1.15rem; }
+  .verdict p { margin: 6px 0 0; color: var(--text); }
+  .verdict.c-crisis { border-width: 3px; }
+  .verdict a { font-weight: 700; }
+
+  /* Summary tiles */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 12px; margin-top: 14px; }
+  .tile { padding: 14px 16px; border-radius: 16px; background: var(--paper2); }
+  .tile .k { font-size: .8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .tile .v { font-family: var(--serif); font-size: 2rem; line-height: 1.1; color: var(--ink); }
+  .tile .s { font-size: .86rem; color: var(--muted); }
+
+  .chart { width: 100%; height: auto; margin-top: 12px; }
+  .chart .grid { stroke: var(--grid); }
+  .chart .ref { stroke: var(--ref); }
+  .chart text { fill: var(--muted); }
+  .chart .sys { stroke: var(--ink); fill: var(--ink); }
+  .chart .dia { stroke: var(--coral); fill: var(--coral); }
+  .chart polyline { fill: none; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: .86rem; color: var(--muted); }
+  .legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+
+  .table-wrap { overflow-x: auto; margin-top: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+  th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  td.n { font-weight: 700; white-space: nowrap; }
+
+  .guide { width: 100%; margin-top: 8px; }
+  .guide td:first-child { width: 42%; }
+
+  .empty { padding: 26px 18px; border-radius: 18px; background: var(--paper2); text-align: center; }
+  .note { margin-top: 20px; padding: 16px 18px; border-radius: 18px; background: var(--paper); border: 1px solid var(--line); font-size: .92rem; color: var(--muted); }
+  .note b { color: var(--text); }
+  .btn-danger { color: var(--bad); border-color: transparent; background: transparent; }
+  .btn-danger:hover { background: var(--bad-bg); color: var(--bad); }
+  .banner { margin-top: 16px; padding: 14px 16px; border-radius: 14px; background: var(--bad-bg); color: var(--bad); font-weight: 600; }
+  .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 20;
+    max-width: calc(100% - 32px); padding: 12px 20px; border-radius: 999px; background: var(--text); color: var(--paper); font-weight: 600; font-size: .95rem; }
+
+  footer { padding: 36px 16px calc(36px + env(safe-area-inset-bottom, 0px)); text-align: center; color: rgba(255,255,255,.75); font-size: .9rem; background: var(--foot); }
+  footer a { color: #fff; }
+  footer p { margin: 6px 0; }
+  footer .powered { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 6px 14px 6px 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.06); font-weight: 600; text-decoration: none; }
+  footer .powered:hover { background: rgba(255,255,255,.14); }
+  footer .powered img { width: 26px; height: 26px; object-fit: contain; }
+
+  .print-only { display: none; }
+  @media print {
+    body { font-size: 12pt; background: #fff; }
+    .bar, footer, .no-print, form, .btn, .who.add, .toast, .account { display: none !important; }
+    .panel { border: none; padding: 0; margin-top: 14px; }
+    .print-only { display: block; }
+    main { padding: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <a class="brand" href="aorta.html" aria-label="Back to The Aorta Project home page">
+    <span class="back" aria-hidden="true">←</span>
+    <span class="mini"><img src="public/partners/aorta/logo.png" alt=""></span>
+    <strong>Aorta Project</strong>
+  </a>
+  <a class="btn dict" href="aorta.html#dictionary">Dictionary</a>
+  <button class="btn theme" type="button" data-act="theme" id="themeBtn" aria-label="Switch to dark mode">🌙</button>
+  <a class="btn flux" href="suite.html" aria-label="Flux Suite: all Flux apps"><img src="icons/icon-192.png" alt="" width="22" height="22">Flux</a>
+</header>
+
+<main>
+  <span class="eyebrow">Heart health at home</span>
+  <h1>Blood pressure tracker</h1>
+  <p class="lede">Take your medicines, then log your blood pressure. Keep track for everyone in your family, and see right away if a number needs attention.</p>
+  <span class="private">🔒 Saved on this device, and works with no internet.</span>
+  <div class="account no-print" id="account" aria-live="polite" hidden></div>
+  <div class="banner" id="storeBanner" hidden>This browser is not letting the tracker save. Anything you add will be lost when you close the page. Try a normal (not private) window.</div>
+
+  <p class="print-only" id="printHead"></p>
+
+  <section class="panel no-print" aria-labelledby="fam-h">
+    <div class="panel-head">
+      <h2 id="fam-h">Your family</h2>
+      <span class="muted small" id="famToday"></span>
+    </div>
+    <div class="family" id="family" role="group" aria-label="Family members"></div>
+    <form id="addPersonForm" hidden>
+      <div class="fields">
+        <div>
+          <label for="personName">Name</label>
+          <input type="text" id="personName" maxlength="40" autocomplete="off" placeholder="e.g. Grandma" required>
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn btn-solid" type="submit">Add</button>
+        <button class="btn btn-quiet" type="button" data-act="cancel-person">Cancel</button>
+      </div>
+    </form>
+  </section>
+
+  <div id="person" hidden>
+    <section class="panel" aria-labelledby="sum-h">
+      <div class="panel-head">
+        <h2 id="sum-h"></h2>
+        <span class="no-print">
+          <button class="btn btn-quiet btn-small" type="button" data-act="rename-person">Rename</button>
+          <button class="btn btn-danger btn-small" type="button" data-act="remove-person" id="removePersonBtn">Remove person</button>
+        </span>
+      </div>
+      <div class="tiles" id="tiles"></div>
+    </section>
+
+    <div class="grid2">
+      <section class="panel" aria-labelledby="meds-h">
+        <h2 id="meds-h">1. Today’s medicines</h2>
+        <p class="muted small" id="medsHint"></p>
+        <ul class="meds" id="medList"></ul>
+        <form id="addMedForm" class="no-print">
+          <div class="fields">
+            <div>
+              <label for="medName">Medicine</label>
+              <input type="text" id="medName" maxlength="60" autocomplete="off" placeholder="e.g. Amlodipine" required>
+            </div>
+            <div>
+              <label for="medDose">Dose <small>(optional)</small></label>
+              <input type="text" id="medDose" maxlength="30" autocomplete="off" placeholder="5 mg">
+            </div>
+            <div>
+              <label for="medTime">Reminder time <small>(optional)</small></label>
+              <input type="time" id="medTime">
+            </div>
+          </div>
+          <div class="row"><button class="btn" type="submit">Add medicine</button></div>
+          <p class="muted small">Signed in with Flux? Medicines with a reminder time also show in your Flux Planner calendar, with a reminder when it is time.</p>
+        </form>
+      </section>
+
+      <section class="panel no-print" aria-labelledby="log-h">
+        <h2 id="log-h">2. Log blood pressure</h2>
+        <p class="muted small">Sit quietly for 5 minutes first, feet flat, arm resting at heart level.</p>
+        <form id="readingForm" novalidate>
+          <div class="fields">
+            <div>
+              <label for="sys">Top number <small>(systolic)</small></label>
+              <input class="big" type="number" id="sys" inputmode="numeric" min="50" max="300" placeholder="120" required>
+            </div>
+            <div>
+              <label for="dia">Bottom number <small>(diastolic)</small></label>
+              <input class="big" type="number" id="dia" inputmode="numeric" min="30" max="200" placeholder="80" required>
+            </div>
+            <div>
+              <label for="pulse">Pulse <small>(optional)</small></label>
+              <input class="big" type="number" id="pulse" inputmode="numeric" min="30" max="250" placeholder="70">
+            </div>
+          </div>
+          <div class="fields wide">
+            <div>
+              <label for="when">When</label>
+              <input type="datetime-local" id="when" required>
+            </div>
+            <div>
+              <label for="rnote">Note <small>(optional)</small></label>
+              <input type="text" id="rnote" maxlength="120" autocomplete="off" placeholder="e.g. felt dizzy">
+            </div>
+          </div>
+          <label class="check"><input type="checkbox" id="afterMeds"> Taken after my medicines</label>
+          <p class="err" id="readingErr" role="alert" hidden></p>
+          <div class="row"><button class="btn btn-solid" type="submit">Save reading</button></div>
+        </form>
+        <div id="verdict" aria-live="polite"></div>
+      </section>
+    </div>
+
+    <section class="panel" aria-labelledby="trend-h">
+      <div class="panel-head">
+        <h2 id="trend-h">Trend</h2>
+        <div class="legend"><span><i style="background:var(--ink)"></i>Top number</span><span><i style="background:var(--coral)"></i>Bottom number</span><span><i style="background:repeating-linear-gradient(90deg,var(--ref) 0 4px,transparent 4px 7px)"></i>120 / 80</span></div>
+      </div>
+      <div id="chart"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="hist-h">
+      <div class="panel-head">
+        <h2 id="hist-h">History</h2>
+        <button class="btn btn-small no-print" type="button" data-act="print">Print for the doctor</button>
+      </div>
+      <div id="history"></div>
+    </section>
+  </div>
+
+  <section class="panel no-print" aria-labelledby="share-h">
+    <h2 id="share-h">Share with family</h2>
+    <p class="muted"><b>Easiest:</b> sign in with the same Flux account on each family member’s phone. Everyone sees the same family, and it updates by itself.</p>
+    <p class="muted">No account? Save a backup file and send it to a family member (text, email, AirDrop). When they open it here, it adds to what they already have.</p>
+    <div class="row">
+      <button class="btn" type="button" data-act="export">Save backup file</button>
+      <button class="btn" type="button" data-act="import">Open backup file</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="guide-h">
+    <h2 id="guide-h">What the numbers mean</h2>
+    <p class="muted small">For adults, from the American Heart Association. Your doctor may give you a different goal; follow theirs.</p>
+    <div class="table-wrap">
+      <table class="guide">
+        <thead><tr><th>Category</th><th>Top</th><th></th><th>Bottom</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill c-low">Low</span></td><td>under 90</td><td>or</td><td>under 60</td></tr>
+          <tr><td><span class="pill c-normal">Normal</span></td><td>under 120</td><td>and</td><td>under 80</td></tr>
+          <tr><td><span class="pill c-elevated">Elevated</span></td><td>120–129</td><td>and</td><td>under 80</td></tr>
+          <tr><td><span class="pill c-stage1">High, stage 1</span></td><td>130–139</td><td>or</td><td>80–89</td></tr>
+          <tr><td><span class="pill c-stage2">High, stage 2</span></td><td>140 or more</td><td>or</td><td>90 or more</td></tr>
+          <tr><td><span class="pill c-crisis">Severe, get help</span></td><td>over 180</td><td>and/or</td><td>over 120</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note"><b>Call 911</b> if the reading is over 180/120 and you have chest pain, shortness of breath, back pain, numbness or weakness, a change in vision, or trouble speaking. Also call if blood pressure is low and you faint or have chest pain.<br><br>This tracker helps you keep a record. It is not medical advice and does not replace your doctor. Do not stop or change a medicine without talking to them. Confused by a word your doctor used? Look it up in our <a href="aorta.html#dictionary">medical dictionary</a>.</p>
+  </section>
+</main>
+
+<footer>
+  <p>The Aorta Project · a student-led organization</p>
+  <p><a href="aorta.html">Back to the Aorta Project</a></p>
+  <p><a class="powered" href="https://fluxplanner.github.io/Flux/"><img src="icons/icon-192.png" alt="" width="26" height="26">Powered by Flux</a></p>
+</footer>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<!-- Flux account sync (public/js/flux-aorta-vault.mjs). Deferred; the page
+     works without it, e.g. offline on a first visit. -->
+<script defer src="public/bundles/flux-aorta_vault.b9e1f1d0.js"></script>
+<script>
+(function () {
+  'use strict';
+  var STORE_KEY = 'aorta_bp_v1';
+
+  /* ---------- storage ---------- */
+  function blank() { return { v: 1, people: [], gone: [], selected: null }; }
+  function load() {
+    try {
+      var d = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+      return d && Array.isArray(d.people) ? normalize(d) : blank();
+    } catch (e) { return blank(); }
+  }
+  function normalize(d) {
+    var out = blank();
+    out.gone = Array.isArray(d.gone) ? d.gone.filter(function (x) { return typeof x === 'string'; }) : [];
+    out.selected = typeof d.selected === 'string' ? d.selected : null;
+    out.people = d.people.filter(function (p) { return p && typeof p.id === 'string'; }).map(function (p) {
+      return {
+        id: p.id,
+        name: String(p.name || 'Someone').slice(0, 40),
+        nameAt: Number(p.nameAt) || 0,
+        meds: (Array.isArray(p.meds) ? p.meds : []).filter(function (m) { return m && typeof m.id === 'string'; }).map(function (m) {
+          return { id: m.id, name: String(m.name || '').slice(0, 60), dose: String(m.dose || '').slice(0, 30), time: /^\d\d:\d\d$/.test(m.time) ? m.time : '', added: /^\d{4}-\d\d-\d\d$/.test(m.added) ? m.added : '' };
+        }),
+        doses: (Array.isArray(p.doses) ? p.doses : []).filter(function (x) { return x && typeof x.id === 'string' && validDate(x.at); }).map(function (x) {
+          return { id: x.id, medId: String(x.medId), at: x.at };
+        }),
+        readings: (Array.isArray(p.readings) ? p.readings : []).filter(function (r) {
+          return r && typeof r.id === 'string' && validDate(r.at) && okNum(r.sys, 50, 300) && okNum(r.dia, 30, 200);
+        }).map(function (r) {
+          return { id: r.id, at: r.at, sys: +r.sys, dia: +r.dia, pulse: okNum(r.pulse, 30, 250) ? +r.pulse : null, afterMeds: !!r.afterMeds, note: String(r.note || '').slice(0, 120) };
+        })
+      };
+    });
+    return out;
+  }
+  var saveWorks = true;
+  function saveLocal() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); saveWorks = true; }
+    catch (e) { saveWorks = false; }
+    $('storeBanner').hidden = saveWorks;
+  }
+  /* Every change: keep it here, then send it to the account a moment later. */
+  function save() { saveLocal(); schedulePush(); }
+  function validDate(s) { return typeof s === 'string' && !isNaN(new Date(s).getTime()); }
+  function okNum(n, lo, hi) { n = Number(n); return isFinite(n) && n >= lo && n <= hi; }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+  var state = load();
+
+  /* ---------- helpers ---------- */
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function dayKey(d) { d = new Date(d); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function today() { return dayKey(new Date()); }
+  function localInput(d) { return dayKey(d) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function clock(d) { return new Date(d).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+  function dateLabel(d) {
+    var k = dayKey(d), t = today(), y = dayKey(Date.now() - 864e5);
+    if (k === t) return 'Today';
+    if (k === y) return 'Yesterday';
+    return new Date(d).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+  function timeText(hhmm) {
+    if (!hhmm) return '';
+    var p = hhmm.split(':'), d = new Date(); d.setHours(+p[0], +p[1], 0, 0); return clock(d);
+  }
+  function person() { return state.people.find(function (p) { return p.id === state.selected; }) || null; }
+  function sortedReadings(p) { return p.readings.slice().sort(function (a, b) { return new Date(b.at) - new Date(a.at); }); }
+  function takenToday(p, medId) {
+    var t = today();
+    return p.doses.filter(function (x) { return x.medId === medId && dayKey(x.at) === t; })
+      .sort(function (a, b) { return new Date(b.at) - new Date(a.at); })[0] || null;
+  }
+
+  /* ---------- blood pressure categories ---------- */
+  var CATS = {
+    crisis:   { label: 'Severe, get help', advice: 'Wait 5 minutes and measure again. If it is still over 180/120, call your doctor right away. <b>Call 911</b> if you also have chest pain, shortness of breath, back pain, numbness or weakness, a change in vision, or trouble speaking.' },
+    stage2:   { label: 'High, stage 2', advice: 'This is high. Keep taking your medicines as prescribed and tell your doctor about readings like this, especially if they keep happening.' },
+    stage1:   { label: 'High, stage 1', advice: 'A little high. Keep logging; if most readings look like this, share them with your doctor.' },
+    low:      { label: 'Low', advice: 'This is low. If you feel dizzy, faint, confused or have blurry vision, sit or lie down and call your doctor. <b>Call 911</b> if you faint or have chest pain.' },
+    elevated: { label: 'Elevated', advice: 'Slightly above normal. Healthy food, less salt and regular walks help.' },
+    normal:   { label: 'Normal', advice: 'In the healthy range. Nice work, keep it up.' }
+  };
+  function category(sys, dia) {
+    if (sys > 180 || dia > 120) return 'crisis';
+    if (sys >= 140 || dia >= 90) return 'stage2';
+    if (sys >= 130 || dia >= 80) return 'stage1';
+    if (sys < 90 || dia < 60) return 'low';
+    if (sys >= 120) return 'elevated';
+    return 'normal';
+  }
+  function pill(cat) { return '<span class="pill c-' + cat + '">' + esc(CATS[cat].label) + '</span>'; }
+
+  /* ---------- render ---------- */
+  function renderFamily() {
+    var t = today();
+    $('famToday').textContent = new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+    var html = state.people.map(function (p) {
+      var last = sortedReadings(p)[0];
+      var loggedToday = last && dayKey(last.at) === t;
+      var taken = p.meds.filter(function (m) { return takenToday(p, m.id); }).length;
+      var flags = [];
+      if (last) flags.push(pill(category(last.sys, last.dia)));
+      if (!loggedToday) flags.push('<span class="pill c-none">No reading today</span>');
+      if (p.meds.length) flags.push('<span class="pill ' + (taken === p.meds.length ? 'c-normal' : 'c-elevated') + '">Meds ' + taken + '/' + p.meds.length + '</span>');
+      return '<button type="button" class="who" data-act="select" data-id="' + esc(p.id) + '" aria-pressed="' + (p.id === state.selected) + '">' +
+        '<span class="name">' + esc(p.name) + '</span>' +
+        '<span class="nums">' + (last ? last.sys + '/' + last.dia : '—') + '</span>' +
+        '<span class="muted small">' + (last ? esc(dateLabel(last.at) + ', ' + clock(last.at)) : 'No readings yet') + '</span>' +
+        '<span class="flags">' + flags.join('') + '</span></button>';
+    }).join('');
+    html += '<button type="button" class="who add" data-act="add-person">+ Add ' + (state.people.length ? 'someone' : 'yourself or a family member') + '</button>';
+    $('family').innerHTML = html;
+  }
+
+  function renderPerson() {
+    var p = person();
+    $('person').hidden = !p;
+    $('printHead').textContent = p ? 'Blood pressure log for ' + p.name + ', printed ' + new Date().toLocaleDateString() + ' · The Aorta Project · Powered by Flux' : '';
+    if (!p) return;
+    $('sum-h').textContent = p.name;
+    $('removePersonBtn').setAttribute('aria-label', 'Remove ' + p.name);
+
+    var rs = sortedReadings(p);
+    var last = rs[0];
+    var weekAgo = Date.now() - 7 * 864e5;
+    var week = rs.filter(function (r) { return new Date(r.at).getTime() >= weekAgo; });
+    var avgS = week.length ? Math.round(week.reduce(function (s, r) { return s + r.sys; }, 0) / week.length) : null;
+    var avgD = week.length ? Math.round(week.reduce(function (s, r) { return s + r.dia; }, 0) / week.length) : null;
+    var taken = p.meds.filter(function (m) { return takenToday(p, m.id); }).length;
+    $('tiles').innerHTML =
+      tile('Last reading', last ? last.sys + '/' + last.dia : '—', last ? pill(category(last.sys, last.dia)) + ' ' + esc(dateLabel(last.at) + ', ' + clock(last.at)) : 'Log one below') +
+      tile('7-day average', avgS ? avgS + '/' + avgD : '—', avgS ? pill(category(avgS, avgD)) + ' from ' + week.length + ' reading' + (week.length === 1 ? '' : 's') : 'Needs a reading this week') +
+      tile('Medicines today', p.meds.length ? taken + ' of ' + p.meds.length : '—', p.meds.length ? (taken === p.meds.length ? 'All taken' : 'Not all taken yet') : 'None added');
+
+    $('medsHint').textContent = p.meds.length ? 'Tap a medicine when you take it.' : 'Add the medicines ' + p.name + ' takes each day.';
+    $('medList').innerHTML = p.meds.map(function (m) {
+      var dose = takenToday(p, m.id);
+      var sub = [m.dose, m.time ? 'at ' + timeText(m.time) : ''].filter(Boolean).join(' · ');
+      return '<li class="med' + (dose ? ' done' : '') + '">' +
+        '<div class="what"><b>' + esc(m.name) + '</b><span>' + (dose ? 'Taken at ' + esc(clock(dose.at)) : esc(sub || 'Not taken yet')) + '</span></div>' +
+        (dose
+          ? '<button type="button" class="btn btn-small btn-quiet no-print" data-act="undo-dose" data-id="' + esc(dose.id) + '">Undo</button>'
+          : '<button type="button" class="btn btn-small btn-solid no-print" data-act="take" data-id="' + esc(m.id) + '">Taken</button>') +
+        '<button type="button" class="btn btn-small btn-quiet x no-print" data-act="remove-med" data-id="' + esc(m.id) + '" aria-label="Remove ' + esc(m.name) + '">✕</button></li>';
+    }).join('');
+
+    renderChart(rs);
+    renderHistory(rs);
+  }
+  function tile(k, v, s) { return '<div class="tile"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="s">' + s + '</div></div>'; }
+
+  function renderChart(rs) {
+    var pts = rs.slice(0, 30).reverse();
+    if (pts.length < 2) {
+      $('chart').innerHTML = '<div class="empty muted">Log two or more readings to see a trend.</div>';
+      return;
+    }
+    var W = 640, H = 260, L = 40, R = 12, T = 12, B = 28;
+    var lo = Math.min(50, Math.min.apply(null, pts.map(function (r) { return r.dia; })) - 10);
+    var hi = Math.max(190, Math.max.apply(null, pts.map(function (r) { return r.sys; })) + 10);
+    function x(i) { return L + (W - L - R) * (pts.length === 1 ? 0.5 : i / (pts.length - 1)); }
+    function y(v) { return T + (H - T - B) * (1 - (v - lo) / (hi - lo)); }
+    // Colours come from CSS (.chart .sys / .dia) so they follow dark mode.
+    function line(key) {
+      return '<g class="' + key + '"><polyline stroke-width="3" stroke-linejoin="round" points="' +
+        pts.map(function (r, i) { return x(i).toFixed(1) + ',' + y(r[key]).toFixed(1); }).join(' ') + '"/>' +
+        pts.map(function (r, i) { return '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(r[key]).toFixed(1) + '" r="4" stroke="none"/>'; }).join('') + '</g>';
+    }
+    var grid = '';
+    for (var g = Math.ceil(lo / 20) * 20; g <= hi; g += 20) {
+      grid += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(g) + '" y2="' + y(g) + '" class="grid"/>' +
+        '<text x="' + (L - 6) + '" y="' + (y(g) + 4) + '" text-anchor="end" font-size="11">' + g + '</text>';
+    }
+    [120, 80].forEach(function (v) {
+      grid += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" class="ref" stroke-dasharray="4 3"/>';
+    });
+    var first = pts[0], lastP = pts[pts.length - 1];
+    var labels = '<text x="' + L + '" y="' + (H - 8) + '" font-size="11">' + esc(new Date(first.at).toLocaleDateString([], { month: 'short', day: 'numeric' })) + '</text>' +
+      '<text x="' + (W - R) + '" y="' + (H - 8) + '" text-anchor="end" font-size="11">' + esc(new Date(lastP.at).toLocaleDateString([], { month: 'short', day: 'numeric' })) + '</text>';
+    var desc = 'Last ' + pts.length + ' readings, from ' + first.sys + '/' + first.dia + ' to ' + lastP.sys + '/' + lastP.dia + '.';
+    $('chart').innerHTML = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(desc) + '">' +
+      grid + line('sys') + line('dia') + labels + '</svg>';
+  }
+
+  function renderHistory(rs) {
+    if (!rs.length) { $('history').innerHTML = '<div class="empty muted">No readings yet.</div>'; return; }
+    $('history').innerHTML = '<div class="table-wrap"><table><thead><tr><th>When</th><th>Reading</th><th>Pulse</th><th>Result</th><th>After meds</th><th>Note</th><th class="no-print"></th></tr></thead><tbody>' +
+      rs.map(function (r) {
+        return '<tr><td>' + esc(dateLabel(r.at)) + '<br><span class="muted small">' + esc(clock(r.at)) + '</span></td>' +
+          '<td class="n">' + r.sys + '/' + r.dia + '</td><td>' + (r.pulse || '—') + '</td><td>' + pill(category(r.sys, r.dia)) + '</td>' +
+          '<td>' + (r.afterMeds ? 'Yes' : 'No') + '</td><td>' + esc(r.note) + '</td>' +
+          '<td class="no-print"><button type="button" class="btn btn-small btn-quiet" data-act="remove-reading" data-id="' + esc(r.id) + '" aria-label="Delete reading ' + r.sys + '/' + r.dia + '">Delete</button></td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+
+  function resetReadingForm() {
+    var p = person();
+    $('readingForm').reset();
+    $('when').value = localInput(new Date());
+    $('afterMeds').checked = !!(p && p.meds.some(function (m) { return takenToday(p, m.id); }));
+    $('readingErr').hidden = true;
+  }
+
+  function render() { renderFamily(); renderPerson(); }
+
+  var toastTimer;
+  function toast(msg) {
+    var t = $('toast'); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, 2600);
+  }
+  function forget(id) { if (state.gone.indexOf(id) < 0) state.gone.push(id); }
+
+  /* ---------- actions ---------- */
+  var actions = {
+    'select': function (el) {
+      state.selected = el.dataset.id; save(); $('verdict').innerHTML = ''; render(); resetReadingForm();
+    },
+    'add-person': function () { $('addPersonForm').hidden = false; $('personName').focus(); },
+    'cancel-person': function () { $('addPersonForm').hidden = true; },
+    'rename-person': function () {
+      var p = person(); if (!p) return;
+      var n = (prompt('New name', p.name) || '').trim().slice(0, 40);
+      if (n) { p.name = n; p.nameAt = Date.now(); save(); render(); }
+    },
+    'remove-person': function () {
+      var p = person(); if (!p) return;
+      var where = acct.who ? 'from this device and your Flux account' : 'from this device';
+      if (!confirm('Remove ' + p.name + ' and all of their medicines and readings ' + where + '? This cannot be undone.')) return;
+      forget(p.id);
+      state.people = state.people.filter(function (x) { return x !== p; });
+      state.selected = state.people[0] ? state.people[0].id : null;
+      save(); render(); resetReadingForm(); toast(p.name + ' removed');
+    },
+    'take': function (el) {
+      var p = person(); if (!p) return;
+      p.doses.push({ id: uid(), medId: el.dataset.id, at: new Date().toISOString() });
+      save(); render(); $('afterMeds').checked = true; toast('Marked as taken');
+    },
+    'undo-dose': function (el) {
+      var p = person(); if (!p) return;
+      forget(el.dataset.id);
+      p.doses = p.doses.filter(function (x) { return x.id !== el.dataset.id; });
+      save(); render();
+    },
+    'remove-med': function (el) {
+      var p = person(); if (!p) return;
+      var m = p.meds.find(function (x) { return x.id === el.dataset.id; });
+      if (!m || !confirm('Remove ' + m.name + ' from the list?')) return;
+      forget(m.id);
+      p.meds = p.meds.filter(function (x) { return x !== m; });
+      save(); render();
+    },
+    'remove-reading': function (el) {
+      var p = person(); if (!p) return;
+      if (!confirm('Delete this reading?')) return;
+      forget(el.dataset.id);
+      p.readings = p.readings.filter(function (x) { return x.id !== el.dataset.id; });
+      save(); render();
+    },
+    'theme': function () {
+      var next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      try { localStorage.setItem('aorta_theme', next); } catch (e) { /* blocked: lasts until reload */ }
+      applyTheme(next);
+    },
+    'print': function () { window.print(); },
+    'export': function () {
+      var blob = new Blob([JSON.stringify({ app: 'aorta-bp', v: 1, people: state.people, gone: state.gone }, null, 1)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'blood-pressure-backup-' + today() + '.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+      toast('Backup file saved');
+    },
+    'import': function () { $('importFile').click(); }
+  };
+
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-act]');
+    if (el && actions[el.dataset.act]) { e.preventDefault(); actions[el.dataset.act](el); }
+  });
+
+  $('addPersonForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var n = $('personName').value.trim().slice(0, 40);
+    if (!n) return;
+    var p = { id: uid(), name: n, meds: [], doses: [], readings: [] };
+    state.people.push(p); state.selected = p.id;
+    save(); this.reset(); this.hidden = true; render(); resetReadingForm();
+    $('medName').focus();
+  });
+
+  $('addMedForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var p = person(); var n = $('medName').value.trim().slice(0, 60);
+    if (!p || !n) return;
+    p.meds.push({ id: uid(), name: n, dose: $('medDose').value.trim().slice(0, 30), time: $('medTime').value || '', added: today() });
+    save(); this.reset(); render(); $('medName').focus();
+  });
+
+  $('readingForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var p = person(); if (!p) return;
+    var sys = Number($('sys').value), dia = Number($('dia').value), pulseRaw = $('pulse').value.trim(), pulse = Number(pulseRaw);
+    var when = new Date($('when').value);
+    var err = '';
+    if (!okNum(sys, 50, 300)) err = 'The top number should be between 50 and 300.';
+    else if (!okNum(dia, 30, 200)) err = 'The bottom number should be between 30 and 200.';
+    else if (dia >= sys) err = 'The top number should be bigger than the bottom number. Check that they are not swapped.';
+    else if (pulseRaw && !okNum(pulse, 30, 250)) err = 'The pulse should be between 30 and 250, or left empty.';
+    else if (isNaN(when.getTime())) err = 'Pick the date and time of the reading.';
+    else if (when.getTime() > Date.now() + 5 * 60e3) err = 'That time is in the future.';
+    $('readingErr').textContent = err; $('readingErr').hidden = !err;
+    if (err) return;
+
+    p.readings.push({ id: uid(), at: when.toISOString(), sys: sys, dia: dia, pulse: pulseRaw ? pulse : null, afterMeds: $('afterMeds').checked, note: $('rnote').value.trim().slice(0, 120) });
+    save();
+    var cat = category(sys, dia);
+    $('verdict').innerHTML = '<div class="verdict c-' + cat + '"' + (cat === 'crisis' ? ' role="alert"' : '') + '><b>' + sys + '/' + dia + ' · ' + esc(CATS[cat].label) + '</b><p>' + CATS[cat].advice + '</p></div>';
+    render(); resetReadingForm();
+  });
+
+  $('importFile').addEventListener('change', function () {
+    var f = this.files && this.files[0]; this.value = '';
+    if (!f) return;
+    f.text().then(function (txt) {
+      var data = normalize(JSON.parse(txt));
+      var added = merge(data);
+      save(); render(); resetReadingForm();
+      toast(added ? 'Added ' + added + ' new item' + (added === 1 ? '' : 's') : 'Already up to date');
+    }).catch(function () { toast('That file is not a tracker backup'); });
+  });
+
+  // Union by id; anything either side deleted stays deleted.
+  function merge(inc) {
+    var added = 0;
+    inc.gone.forEach(forget);
+    var gone = new Set(state.gone);
+    inc.people.forEach(function (ip) {
+      if (gone.has(ip.id)) return;
+      var p = state.people.find(function (x) { return x.id === ip.id; });
+      if (!p) { p = { id: ip.id, name: ip.name, nameAt: ip.nameAt, meds: [], doses: [], readings: [] }; state.people.push(p); added++; }
+      else if (ip.nameAt > (p.nameAt || 0)) { p.name = ip.name; p.nameAt = ip.nameAt; }
+      ['meds', 'doses', 'readings'].forEach(function (k) {
+        var have = new Set(p[k].map(function (x) { return x.id; }));
+        ip[k].forEach(function (x) { if (!have.has(x.id) && !gone.has(x.id)) { p[k].push(x); added++; } });
+      });
+    });
+    state.people = state.people.filter(function (p) { return !gone.has(p.id); });
+    state.people.forEach(function (p) {
+      ['meds', 'doses', 'readings'].forEach(function (k) { p[k] = p[k].filter(function (x) { return !gone.has(x.id); }); });
+    });
+    if (!person()) state.selected = state.people[0] ? state.people[0].id : null;
+    return added;
+  }
+
+  /* ---------- Flux account ---------- */
+  var SYNC_KEY = 'aorta_bp_sync';   // { owner: account id this device last saved to }
+  var acct = { ready: false, who: null, text: '', bad: false, busy: false, again: false };
+  var pushTimer;
+  function vault() { return window.FluxAortaVault || null; }
+  function syncMeta() { try { return JSON.parse(localStorage.getItem(SYNC_KEY) || '{}') || {}; } catch (e) { return {}; } }
+  function setSyncMeta(m) { try { localStorage.setItem(SYNC_KEY, JSON.stringify(m)); } catch (e) { /* blocked: syncs again next time */ } }
+  function schedulePush() { if (acct.who) { clearTimeout(pushTimer); pushTimer = setTimeout(syncNow, 1500); } }
+
+  function setStatus(text, bad) { acct.text = text; acct.bad = !!bad; renderAccount(); }
+
+  /* Pull, merge, push. Merging is safe to repeat, so a push never loses
+     what another phone saved in the meantime. */
+  function syncNow() {
+    var v = vault();
+    if (!v) return Promise.resolve();
+    if (acct.busy) { acct.again = true; return Promise.resolve(); }
+    acct.busy = true;
+    return v.account().then(function (who) {
+      acct.ready = true; acct.who = who;
+      if (!who) { renderAccount(); return; }
+      setStatus('Saving…');
+      return v.get().then(function (row) {
+        var remote = row && row.data ? normalize(row.data) : null;
+        var owner = syncMeta().owner;
+        if (owner && owner !== who.id) {
+          // Another account saved from this device before: show this
+          // account's family, not a mix of both.
+          state.people = remote ? remote.people : [];
+          state.gone = remote ? remote.gone : [];
+          state.selected = null;
+        } else if (remote) {
+          merge(remote);
+        }
+        if (!person()) state.selected = state.people[0] ? state.people[0].id : null;
+        saveLocal(); render();
+        return v.put({ v: 1, people: state.people, gone: state.gone }).then(function () {
+          setSyncMeta({ owner: who.id });
+          setStatus('Saved to your account at ' + clock(new Date()));
+        });
+      });
+    }).catch(function (e) {
+      acct.ready = true;
+      var code = e && e.code;
+      if (code === 'signed-out') { acct.who = null; setStatus(''); }
+      else if (code === 'offline' || navigator.onLine === false) setStatus('No internet. Saved on this device; it will update your account when you are back online.');
+      else if (code === 'not-ready') setStatus('Account saving is not switched on yet. Your readings are safe on this device.', true);
+      else setStatus('Could not reach your account. Your readings are safe on this device.', true);
+    }).then(function () {
+      acct.busy = false;
+      if (acct.again) { acct.again = false; syncNow(); }
+    });
+  }
+
+  function renderAccount() {
+    var box = $('account');
+    if (!vault() || !acct.ready) { box.hidden = true; return; }
+    box.hidden = false;
+    if (acct.who) {
+      box.innerHTML = '<p>Signed in with Flux as <b>' + esc(acct.who.name) + '</b>' +
+        '<span class="status' + (acct.bad ? ' bad' : '') + '">' + esc(acct.text) + '</span></p>' +
+        '<button type="button" class="btn btn-small" data-act="sign-out">Sign out</button>';
+    } else {
+      box.innerHTML = '<p><b>Keep your readings in an account.</b><span class="status">Sign in with Flux to see your family on any phone or computer, and never lose a reading.</span></p>' +
+        '<a class="btn btn-solid btn-small" href="index.html" data-flux-signin>Sign in or create a Flux account</a>';
+    }
+  }
+
+  actions['sign-out'] = function () {
+    var v = vault(); if (!v) return;
+    if (!confirm('Sign out of Flux on this device? Your readings stay saved in your account.')) return;
+    clearTimeout(pushTimer);
+    syncNow().then(function () { return v.signOut(); }).then(function () {
+      acct.who = null;
+      if (state.people.length && confirm('Also remove the readings from this device? They stay in your Flux account.')) {
+        state.people = []; state.gone = []; state.selected = null;
+        saveLocal(); render(); resetReadingForm();
+        $('addPersonForm').hidden = false;
+      }
+      renderAccount(); toast('Signed out');
+    }).catch(function () { toast('Could not sign out. Try again.'); });
+  };
+
+  // The planner's login sends people back here after they sign in.
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('[data-flux-signin]')) return;
+    try { sessionStorage.setItem('flux_return_to', 'aorta-tracker.html'); } catch (err) { /* blocked */ }
+  });
+
+  function startSync() { syncNow(); }
+  if (vault()) startSync(); else window.addEventListener('flux-aorta-vault', startSync, { once: true });
+  window.addEventListener('online', function () { if (acct.who) syncNow(); });
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && acct.who) syncNow(); });
+  // Another phone in the family may have logged a reading.
+  setInterval(function () { if (acct.who && document.visibilityState === 'visible') syncNow(); }, 60e3);
+
+  /* ---------- light / dark ---------- */
+  function applyTheme(t) {
+    document.documentElement.dataset.theme = t;
+    var dark = t === 'dark';
+    $('themeBtn').textContent = dark ? '☀️' : '🌙';
+    $('themeBtn').setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+    document.querySelector('meta[name="theme-color"]').content = dark ? '#191932' : '#ffffff';
+  }
+  applyTheme(document.documentElement.dataset.theme);
+  // No saved choice: follow the phone when it switches (e.g. at sunset).
+  if (window.matchMedia) {
+    var mq = matchMedia('(prefers-color-scheme: dark)');
+    var follow = function (e) {
+      var saved = null;
+      try { saved = localStorage.getItem('aorta_theme'); } catch (err) { /* blocked */ }
+      if (saved !== 'light' && saved !== 'dark') applyTheme(e.matches ? 'dark' : 'light');
+    };
+    if (mq.addEventListener) mq.addEventListener('change', follow); else if (mq.addListener) mq.addListener(follow);
+  }
+  // Escape closes the "add someone" form.
+  $('addPersonForm').addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && state.people.length) this.hidden = true;
+  });
+
+  /* ---------- start ---------- */
+  if (!person() && state.people[0]) state.selected = state.people[0].id;
+  try { localStorage.setItem(STORE_KEY + '_probe', '1'); localStorage.removeItem(STORE_KEY + '_probe'); }
+  catch (e) { saveWorks = false; $('storeBanner').hidden = false; }
+  render(); resetReadingForm();
+  if (!state.people.length) $('addPersonForm').hidden = false;
+  // Midnight rollover: "today" lists reset without a reload.
+  var lastDay = today();
+  setInterval(function () { if (today() !== lastDay) { lastDay = today(); render(); } }, 60e3);
+
+  // Keep working offline after the first visit.
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register(new URL('service-worker.js', location.href), { updateViaCache: 'none' }).catch(function () {});
+    });
+  }
+})();
+</script>
+</body>
+</html>

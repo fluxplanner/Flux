@@ -56,6 +56,7 @@
   var ALSO = {
     grapher: { pages: ['graph/'], hashes: ['#grapher'] },
     synara: { pages: ['synara-welcome.html', 'partners.html'], hashes: [] },
+    aorta: { pages: ['aorta-tracker.html'], hashes: [] },
   };
 
   var root = document.documentElement;

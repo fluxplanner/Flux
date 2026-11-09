@@ -125,6 +125,20 @@ runtime.onMessage.addListener((msg, sender, sendResponse) => {
         .then((r) => sendResponse({ ok: true, ...r }))
         .catch((e) => sendResponse({ ok: false, error: e.message }));
       return true; // async
+    case 'FLUX_OPEN_QUIZLET': {
+      // From quizlet.js on a Quizlet set: open Flux Flashcards with the set as
+      // a share link. The code is checked so a page cannot steer the URL.
+      const code = String(msg.code || '');
+      if (!sender.tab || !/^j[A-Za-z0-9_-]+$/.test(code)) { sendResponse({ ok: false, error: 'Not a Quizlet set' }); return; }
+      getConfig()
+        .then((cfg) => {
+          const base = String(cfg.app_url || 'https://fluxplanner.github.io/Flux/').replace(/\/+$/, '');
+          return ext.tabs.create({ url: base + '/flashcards.html#share=' + code, index: sender.tab.index + 1 });
+        })
+        .then(() => sendResponse({ ok: true }))
+        .catch((e) => sendResponse({ ok: false, error: e.message }));
+      return true;
+    }
     case 'FLUX_GET_CONFIG':
       getConfig({ refresh: !!msg.refresh })
         .then((c) => sendResponse({ ok: true, config: c }))
