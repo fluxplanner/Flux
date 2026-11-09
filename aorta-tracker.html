@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- Hidden with the rest of the Aorta site while the owner has "aorta" hidden. -->
-<script src="public/js/flux-app-visibility.js?v=a2373fcc" data-app="aorta"></script>
+<script src="public/js/flux-app-visibility.js?v=63163233" data-app="aorta"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Blood Pressure Tracker · The Aorta Project</title>
 <meta name="description" content="A free blood pressure and medicine log for families. Log each reading after your medicines, see what the numbers mean, and keep an eye on the people you love. Works offline; nothing leaves your device.">
@@ -95,6 +95,9 @@
   .btn-quiet { border-color: transparent; background: transparent; color: var(--muted); }
   .btn-quiet:hover { background: var(--sky); color: var(--ink); }
   .bar .btn { min-height: 40px; padding: 0 16px; font-size: .9rem; }
+  .bar .btn.flux { padding: 0 14px 0 8px; gap: 6px; }
+  .bar .btn.flux img { width: 22px; height: 22px; object-fit: contain; }
+  @media (max-width: 440px) { .bar .btn { padding: 0 12px; font-size: .86rem; } .brand strong { font-size: 1.12rem; } }
 
   main { max-width: 980px; margin: 0 auto; padding: 28px 16px 64px; }
   h1 { margin: 0 0 8px; font-family: var(--serif); font-weight: 500; font-size: clamp(2.3rem, 7vw, 3.4rem); line-height: 1.05; color: var(--ink); }
@@ -220,6 +223,7 @@
     <strong>Aorta Project</strong>
   </a>
   <a class="btn" href="aorta.html#dictionary">Dictionary</a>
+  <a class="btn flux" href="suite.html" aria-label="Flux Suite: all Flux apps"><img src="icons/icon-192.png" alt="" width="22" height="22">Flux</a>
 </header>
 
 <main>
