@@ -839,19 +839,46 @@
         } else if (tab === 'quizlet') {
           // Quizlet blocks other sites from reading a set by its link, so this
           // is a bookmark the student taps on the set itself (FluxFlash.quizletBookmarklet).
+          // Two ways in, because some browsers (Dia, Arc, phones) will not take
+          // a dragged bookmark: copy the whole Quizlet page and paste it here
+          // (FluxFlash.quizletPageText), or the one-tap bookmark.
           var mark = F.quizletBookmarklet(location.origin + location.pathname);
-          box.innerHTML = '<p class="ff-muted">Add the <b>Send to Flux</b> bookmark once. After that, open any Quizlet set, tap the bookmark, and the whole set opens here ready to save.</p>'
-            + '<div class="ff-qz">'
-            + '<section><h3>On a computer</h3><p>Show your bookmarks bar (<kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd>), then drag this button onto it:</p>'
-            + '<p><a class="ff-btn ff-btn--primary ff-qz-mark" href="' + esc(mark) + '" data-qzmark draggable="true">' + ICON.download + 'Send to Flux</a></p></section>'
-            + '<section><h3>On a phone or iPad</h3><ol>'
+          box.innerHTML = '<div class="ff-qz">'
+            + '<section><h3>Copy and paste <span class="ff-tag">Any browser</span></h3><ol>'
+            + '<li>Open the set on Quizlet.</li>'
+            + '<li>Press <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>A</kbd> to select the whole page, then <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>C</kbd> to copy it.</li>'
+            + '<li>Paste it here:</li></ol>'
+            + '<textarea class="ff-input ff-paste ff-qz-paste" rows="4" placeholder="Paste the whole Quizlet page"></textarea></section>'
+            + '<section><h3>One-tap bookmark <span class="ff-tag">Fastest</span></h3>'
+            + '<p>Set it up once, then tap it on any Quizlet set. Drag this button onto your bookmarks bar:</p>'
+            + '<p><a class="ff-btn ff-btn--primary ff-qz-mark" href="' + esc(mark) + '" data-qzmark draggable="true">' + ICON.download + 'Send to Flux</a></p>'
+            + '<p><b>Can’t drag it?</b> (Dia, Arc, phones and iPads)</p><ol>'
             + '<li><button type="button" class="ff-btn" data-qzcopy>Copy the bookmark code</button></li>'
-            + '<li>Bookmark this page: in Safari tap <b>Share</b> → <b>Add Bookmark</b>; in Chrome tap <b>☆</b>.</li>'
-            + '<li>Open your bookmarks, edit the one you just made, name it <b>Send to Flux</b>, and replace its address with the code you copied.</li>'
-            + '<li>On a Quizlet set, tap the address bar, type <b>Send to Flux</b> and tap the bookmark.</li>'
+            + '<li>Bookmark this page: <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>D</kbd>, or on a phone <b>Share</b> → <b>Add Bookmark</b> (Chrome: <b>☆</b>).</li>'
+            + '<li>Edit that bookmark: name it <b>Send to Flux</b> and replace its address with the code you copied.</li>'
+            + '<li>On a Quizlet set, open your bookmarks (or type <b>Send to Flux</b> in the address bar) and tap it.</li>'
             + '</ol></section></div>'
-            + '<p class="ff-muted">It reads the set on your screen, so it works for any set you can open, including your class’s private ones. Cards that are only a picture are left out.</p>';
-          box.oninput = null; box.onchange = null;
+            + '<p class="ff-muted">Both read the set on your screen, so they work for any set you can open, including your class’s private ones. Cards that are only a picture are left out.</p>';
+          box.oninput = function (e) {
+            if (!e.target.classList.contains('ff-qz-paste')) return;
+            var txt = e.target.value, got = F.quizletPageText(txt);
+            found = got ? got.cards : [];
+            aiTitle = 'Quizlet set';
+            drawPreview(txt.trim() ? 'That doesn’t look like a whole Quizlet set page. Open the set, press Ctrl/⌘ + A, then Ctrl/⌘ + C, and paste again.' : '');
+            if (got && got.count && got.count !== got.cards.length) prev.insertAdjacentHTML('afterbegin', '<p class="ff-warn">Quizlet says this set has ' + plural(got.count, 'card') + ' but ' + got.cards.length + ' came through. Check the list before saving, or use the bookmark.</p>');
+          };
+          box.onchange = null;
+          // Some browsers only make a bookmark from a drag that carries the
+          // address in every format they read, so put it there explicitly.
+          box.ondragstart = function (e) {
+            if (!e.target.closest || !e.target.closest('[data-qzmark]') || !e.dataTransfer) return;
+            try {
+              e.dataTransfer.effectAllowed = 'copyLink';
+              e.dataTransfer.setData('text/uri-list', mark);
+              e.dataTransfer.setData('text/x-moz-url', mark + '\nSend to Flux');
+              e.dataTransfer.setData('text/plain', mark);
+            } catch (err) {}
+          };
         } else if (tab === 'ai') {
           box.innerHTML = '<p class="ff-muted">Paste your notes, a chapter or a study guide' + (signedIn ? ' and Flux AI turns it into cards.' : !AI_ENABLED ? '. Flux picks out lines like “X is Y” and “term: definition” and makes each one a card.' : '. <b>Sign in to the Flux Planner</b> to have AI write the cards; without it, Flux picks out lines like “X is Y” and “term: definition”.') + '</p>'
             + '<textarea class="ff-input ff-paste" rows="12" placeholder="Photosynthesis is the process by which plants make glucose from carbon dioxide and water using light energy…"></textarea>'
