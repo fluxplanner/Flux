@@ -226,9 +226,9 @@ if (synara.length && fs.existsSync(SYNARA_HTML)) {
   fs.writeFileSync(SYNARA_HTML, page);
 }
 
-// 2a-aorta. aorta-tracker.html loads its vault the same way.
-{
-  const AORTA_HTML = path.join(ROOT, 'aorta-tracker.html');
+// 2a-aorta. aorta-tracker.html and aorta.html load the vault the same way.
+for (const AORTA_PAGE of ['aorta-tracker.html', 'aorta.html']) {
+  const AORTA_HTML = path.join(ROOT, AORTA_PAGE);
   if (fs.existsSync(AORTA_HTML)) {
     let page = fs.readFileSync(AORTA_HTML, 'utf8');
     for (const r of aorta) {
