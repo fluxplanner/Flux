@@ -20,8 +20,11 @@
     - DONATE_URL in the script at the bottom: their GoFundMe link. Until it
       is set, the Donate button says the link is coming.
   The medical dictionary has two layers:
-    - public/partners/aorta/dictionary.json: everyday words with our own
-      plain-language meanings, an array of { "term", "meaning" }.
+    - public/partners/aorta/dictionary.json: an array of { "term", "meaning" }.
+      About 800 words have our own plain-language meanings; the rest are the
+      opening lines of MedlinePlus health-topic summaries (public domain, from
+      medlineplus.gov/xml.html; NLM asks for the "courtesy of MedlinePlus"
+      credit shown under the search box). Our own wording wins on a clash.
     - Any other word (their Taber's word list included) is looked up live
       from Wiktionary, which allows reuse with credit, with a link to the
       Merriam-Webster medical dictionary next to it.
@@ -186,6 +189,8 @@
   .dict-online li { margin: 4px 0; }
   .dict-online small { display: block; margin-top: 10px; color: var(--muted); }
   .dict-online a { color: var(--ink); font-weight: 600; }
+  .dict-credit { margin: 14px 0 0; font-size: .8rem; color: var(--muted); }
+  .dict-credit a { color: var(--ink); }
 
   /* 5. Founders */
   .founders { background: linear-gradient(180deg, var(--sky), var(--paper)); }
@@ -330,6 +335,7 @@
         <ul class="dict-list" id="dictList"></ul>
         <p class="dict-empty" id="dictEmpty" hidden></p>
         <div class="dict-online" id="dictOnline" aria-live="polite" hidden></div>
+        <p class="dict-credit">Many meanings courtesy of <a href="https://medlineplus.gov/" target="_blank" rel="noopener">MedlinePlus</a> from the National Library of Medicine.</p>
       </div>
     </div>
   </section>
