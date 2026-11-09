@@ -9,6 +9,15 @@
 <meta name="description" content="A free blood pressure and medicine log for families. Log each reading after your medicines, see what the numbers mean, and keep an eye on the people you love. Works offline; nothing leaves your device.">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#ffffff">
+<script>
+  /* Pick light or dark before the page paints, so it never flashes. */
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem('aorta_theme'); } catch (e) { /* blocked */ }
+    if (t !== 'light' && t !== 'dark') t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
 <link rel="icon" type="image/png" href="public/partners/aorta/logo.png">
 
 <!--
@@ -57,8 +66,44 @@
     --warn: #8a5a00;   --warn-bg: #fff3d6;
     --bad: #b3261e;    --bad-bg: #fde4e2;
     --low: #0b5c8a;    --low-bg: #e0f0fa;
+    --s1: #9a4500;     --s1-bg: #ffe6d1;
+    --none-bg: #ececf3;
+    --on-ink: #ffffff;
+    --field-line: rgba(28,18,176,.25);
+    --foot: #120a7a;
+    --grid: #e6e6f0;
+    --ref: #9a9ab5;
+    color-scheme: light;
     --serif: 'Cormorant Garamond', Georgia, serif;
     --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  /* Dark mode. data-theme is set before first paint (script in <head>): the
+     saved choice, else the phone's own setting. Screen only, so printing
+     for the doctor always comes out dark-on-white. */
+  @media screen {
+    :root[data-theme="dark"] {
+      --paper: #191932;
+      --paper2: #0e0e1f;
+      --ink: #aaa5ff;
+      --ink2: #c7c3ff;
+      --sky: #27264d;
+      --coral: #ff7a74;
+      --text: #ececf7;
+      --muted: #a6a6c2;
+      --line: rgba(170,165,255,.18);
+      --ok: #7dd9a3;     --ok-bg: #153826;
+      --warn: #f3c86e;   --warn-bg: #3a2e10;
+      --bad: #ff9a90;    --bad-bg: #431a17;
+      --low: #86cdf5;    --low-bg: #10293b;
+      --s1: #ffb27a;     --s1-bg: #43260f;
+      --none-bg: #26263f;
+      --on-ink: #0e0e1f;
+      --field-line: rgba(170,165,255,.32);
+      --foot: #08081a;
+      --grid: #2b2b48;
+      --ref: #6d6d92;
+      color-scheme: dark;
+    }
   }
   * { box-sizing: border-box; }
   html { scroll-padding-top: 76px; -webkit-text-size-adjust: 100%; }
@@ -78,18 +123,24 @@
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--line);
   }
-  .brand { display: flex; align-items: center; gap: 8px; text-decoration: none; margin-right: auto; }
-  .brand .mini { width: 38px; height: 38px; border-radius: 50%; overflow: hidden; flex: none; }
+  .brand {
+    display: flex; align-items: center; gap: 8px; margin-right: auto; min-width: 0; min-height: 44px; padding: 3px 14px 3px 8px;
+    border-radius: 999px; border: 1.5px solid var(--line); text-decoration: none; color: var(--ink);
+  }
+  .brand:hover { background: var(--sky); border-color: var(--ink); }
+  .brand .back { font-size: 1.2rem; line-height: 1; font-weight: 600; }
+  .brand .mini { width: 34px; height: 34px; border-radius: 50%; overflow: hidden; flex: none; }
   .brand .mini img { width: 100%; height: 100%; transform: scale(1.08); }
-  .brand strong { font-family: var(--serif); font-style: italic; font-size: 1.35rem; color: var(--ink); font-weight: 500; white-space: nowrap; }
+  .brand strong { font-family: var(--serif); font-style: italic; font-size: 1.3rem; color: var(--ink); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar .theme { width: 40px; padding: 0; font-size: 1.1rem; }
 
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 20px;
     border-radius: 999px; font: inherit; font-weight: 600; font-size: 1rem; text-decoration: none; cursor: pointer;
-    border: 1.5px solid var(--ink); color: var(--ink); background: #fff;
+    border: 1.5px solid var(--ink); color: var(--ink); background: var(--paper);
   }
   .btn:hover { background: var(--sky); }
-  .btn-solid { color: #fff; background: var(--ink); }
+  .btn-solid { color: var(--on-ink); background: var(--ink); }
   .btn-solid:hover { background: var(--ink2); }
   .btn-small { min-height: 40px; padding: 0 14px; font-size: .9rem; }
   .btn-quiet { border-color: transparent; background: transparent; color: var(--muted); }
@@ -97,7 +148,8 @@
   .bar .btn { min-height: 40px; padding: 0 16px; font-size: .9rem; }
   .bar .btn.flux { padding: 0 14px 0 8px; gap: 6px; }
   .bar .btn.flux img { width: 22px; height: 22px; object-fit: contain; }
-  @media (max-width: 440px) { .bar .btn { padding: 0 12px; font-size: .86rem; } .brand strong { font-size: 1.12rem; } }
+  @media (max-width: 520px) { .bar { gap: 8px; } .bar .btn { padding: 0 12px; font-size: .86rem; } .bar .dict { display: none; } .brand strong { font-size: 1.12rem; } }
+  @media (max-width: 360px) { .brand strong { display: none; } }
 
   main { max-width: 980px; margin: 0 auto; padding: 28px 16px 64px; }
   h1 { margin: 0 0 8px; font-family: var(--serif); font-weight: 500; font-size: clamp(2.3rem, 7vw, 3.4rem); line-height: 1.05; color: var(--ink); }
@@ -107,12 +159,12 @@
   .lede { margin: 0 0 6px; max-width: 680px; color: var(--muted); font-size: 1.08rem; }
   .private { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 6px 12px; border-radius: 999px; background: var(--sky); color: var(--ink); font-size: .84rem; font-weight: 600; }
 
-  .account { display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; margin-top: 20px; padding: 16px 18px; border-radius: 20px; background: #fff; border: 1px solid var(--line); }
+  .account { display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; margin-top: 20px; padding: 16px 18px; border-radius: 20px; background: var(--paper); border: 1px solid var(--line); }
   .account p { flex: 1 1 260px; margin: 0; }
   .account .status { display: block; font-size: .86rem; color: var(--muted); }
   .account .status.bad { color: var(--bad); font-weight: 600; }
 
-  .panel { margin-top: 20px; padding: clamp(18px, 4vw, 26px); border-radius: 24px; background: #fff; border: 1px solid var(--line); }
+  .panel { margin-top: 20px; padding: clamp(18px, 4vw, 26px); border-radius: 24px; background: var(--paper); border: 1px solid var(--line); }
   .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .muted { color: var(--muted); }
   .small { font-size: .88rem; }
@@ -124,7 +176,7 @@
     font: inherit; color: var(--text); background: var(--paper2); border: 2px solid transparent;
   }
   .who:hover { border-color: var(--line); }
-  .who[aria-pressed="true"] { border-color: var(--ink); background: #fff; box-shadow: 0 16px 36px -26px rgba(28,18,176,.7); }
+  .who[aria-pressed="true"] { border-color: var(--ink); background: var(--paper); box-shadow: 0 16px 36px -26px rgba(28,18,176,.7); }
   .who .name { font-weight: 700; font-size: 1.08rem; }
   .who .nums { font-family: var(--serif); font-size: 1.9rem; line-height: 1; color: var(--ink); }
   .who .flags { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -133,10 +185,10 @@
   .pill { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: .78rem; font-weight: 700; }
   .c-normal { color: var(--ok); background: var(--ok-bg); }
   .c-elevated { color: var(--warn); background: var(--warn-bg); }
-  .c-stage1 { color: #9a4500; background: #ffe6d1; }
+  .c-stage1 { color: var(--s1); background: var(--s1-bg); }
   .c-stage2, .c-crisis { color: var(--bad); background: var(--bad-bg); }
   .c-low { color: var(--low); background: var(--low-bg); }
-  .c-none { color: var(--muted); background: #ececf3; }
+  .c-none { color: var(--muted); background: var(--none-bg); }
 
   .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 0 20px; }
 
@@ -158,7 +210,7 @@
   label small { font-weight: 400; color: var(--muted); }
   input[type=text], input[type=number], input[type=time], input[type=datetime-local] {
     width: 100%; min-height: 52px; padding: 0 14px; border-radius: 14px; font: inherit; font-size: 1.08rem;
-    border: 1.5px solid rgba(28,18,176,.25); background: #fff; color: var(--text);
+    border: 1.5px solid var(--field-line); background: var(--paper); color: var(--text);
   }
   input.big { font-size: 1.6rem; font-weight: 700; text-align: center; }
   input:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 4px var(--sky); }
@@ -182,6 +234,12 @@
   .tile .s { font-size: .86rem; color: var(--muted); }
 
   .chart { width: 100%; height: auto; margin-top: 12px; }
+  .chart .grid { stroke: var(--grid); }
+  .chart .ref { stroke: var(--ref); }
+  .chart text { fill: var(--muted); }
+  .chart .sys { stroke: var(--ink); fill: var(--ink); }
+  .chart .dia { stroke: var(--coral); fill: var(--coral); }
+  .chart polyline { fill: none; }
   .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: .86rem; color: var(--muted); }
   .legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
 
@@ -195,13 +253,15 @@
   .guide td:first-child { width: 42%; }
 
   .empty { padding: 26px 18px; border-radius: 18px; background: var(--paper2); text-align: center; }
-  .note { margin-top: 20px; padding: 16px 18px; border-radius: 18px; background: #fff; border: 1px solid var(--line); font-size: .92rem; color: var(--muted); }
+  .note { margin-top: 20px; padding: 16px 18px; border-radius: 18px; background: var(--paper); border: 1px solid var(--line); font-size: .92rem; color: var(--muted); }
   .note b { color: var(--text); }
+  .btn-danger { color: var(--bad); border-color: transparent; background: transparent; }
+  .btn-danger:hover { background: var(--bad-bg); color: var(--bad); }
   .banner { margin-top: 16px; padding: 14px 16px; border-radius: 14px; background: var(--bad-bg); color: var(--bad); font-weight: 600; }
   .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 20;
-    max-width: calc(100% - 32px); padding: 12px 20px; border-radius: 999px; background: var(--text); color: #fff; font-weight: 600; font-size: .95rem; }
+    max-width: calc(100% - 32px); padding: 12px 20px; border-radius: 999px; background: var(--text); color: var(--paper); font-weight: 600; font-size: .95rem; }
 
-  footer { padding: 36px 16px calc(36px + env(safe-area-inset-bottom, 0px)); text-align: center; color: rgba(255,255,255,.75); font-size: .9rem; background: var(--ink2); }
+  footer { padding: 36px 16px calc(36px + env(safe-area-inset-bottom, 0px)); text-align: center; color: rgba(255,255,255,.75); font-size: .9rem; background: var(--foot); }
   footer a { color: #fff; }
   footer p { margin: 6px 0; }
 
@@ -218,11 +278,13 @@
 <body>
 
 <header class="bar">
-  <a class="brand" href="aorta.html" aria-label="Back to The Aorta Project">
+  <a class="brand" href="aorta.html" aria-label="Back to The Aorta Project home page">
+    <span class="back" aria-hidden="true">←</span>
     <span class="mini"><img src="public/partners/aorta/logo.png" alt=""></span>
     <strong>Aorta Project</strong>
   </a>
-  <a class="btn" href="aorta.html#dictionary">Dictionary</a>
+  <a class="btn dict" href="aorta.html#dictionary">Dictionary</a>
+  <button class="btn theme" type="button" data-act="theme" id="themeBtn" aria-label="Switch to dark mode">🌙</button>
   <a class="btn flux" href="suite.html" aria-label="Flux Suite: all Flux apps"><img src="icons/icon-192.png" alt="" width="22" height="22">Flux</a>
 </header>
 
@@ -262,7 +324,7 @@
         <h2 id="sum-h"></h2>
         <span class="no-print">
           <button class="btn btn-quiet btn-small" type="button" data-act="rename-person">Rename</button>
-          <button class="btn btn-quiet btn-small" type="button" data-act="remove-person">Remove</button>
+          <button class="btn btn-danger btn-small" type="button" data-act="remove-person" id="removePersonBtn">Remove person</button>
         </span>
       </div>
       <div class="tiles" id="tiles"></div>
@@ -332,7 +394,7 @@
     <section class="panel" aria-labelledby="trend-h">
       <div class="panel-head">
         <h2 id="trend-h">Trend</h2>
-        <div class="legend"><span><i style="background:var(--ink)"></i>Top number</span><span><i style="background:var(--coral)"></i>Bottom number</span><span><i style="background:repeating-linear-gradient(90deg,#9a9ab5 0 4px,transparent 4px 7px)"></i>120 / 80</span></div>
+        <div class="legend"><span><i style="background:var(--ink)"></i>Top number</span><span><i style="background:var(--coral)"></i>Bottom number</span><span><i style="background:repeating-linear-gradient(90deg,var(--ref) 0 4px,transparent 4px 7px)"></i>120 / 80</span></div>
       </div>
       <div id="chart"></div>
     </section>
@@ -511,6 +573,7 @@
     $('printHead').textContent = p ? 'Blood pressure log for ' + p.name + ', printed ' + new Date().toLocaleDateString() + ' · The Aorta Project' : '';
     if (!p) return;
     $('sum-h').textContent = p.name;
+    $('removePersonBtn').setAttribute('aria-label', 'Remove ' + p.name);
 
     var rs = sortedReadings(p);
     var last = rs[0];
@@ -552,25 +615,26 @@
     var hi = Math.max(190, Math.max.apply(null, pts.map(function (r) { return r.sys; })) + 10);
     function x(i) { return L + (W - L - R) * (pts.length === 1 ? 0.5 : i / (pts.length - 1)); }
     function y(v) { return T + (H - T - B) * (1 - (v - lo) / (hi - lo)); }
-    function line(key, color) {
-      return '<polyline fill="none" stroke="' + color + '" stroke-width="3" stroke-linejoin="round" points="' +
+    // Colours come from CSS (.chart .sys / .dia) so they follow dark mode.
+    function line(key) {
+      return '<g class="' + key + '"><polyline stroke-width="3" stroke-linejoin="round" points="' +
         pts.map(function (r, i) { return x(i).toFixed(1) + ',' + y(r[key]).toFixed(1); }).join(' ') + '"/>' +
-        pts.map(function (r, i) { return '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(r[key]).toFixed(1) + '" r="4" fill="' + color + '"/>'; }).join('');
+        pts.map(function (r, i) { return '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(r[key]).toFixed(1) + '" r="4" stroke="none"/>'; }).join('') + '</g>';
     }
     var grid = '';
     for (var g = Math.ceil(lo / 20) * 20; g <= hi; g += 20) {
-      grid += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(g) + '" y2="' + y(g) + '" stroke="#e6e6f0"/>' +
-        '<text x="' + (L - 6) + '" y="' + (y(g) + 4) + '" text-anchor="end" font-size="11" fill="#5d5d78">' + g + '</text>';
+      grid += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(g) + '" y2="' + y(g) + '" class="grid"/>' +
+        '<text x="' + (L - 6) + '" y="' + (y(g) + 4) + '" text-anchor="end" font-size="11">' + g + '</text>';
     }
     [120, 80].forEach(function (v) {
-      grid += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="#9a9ab5" stroke-dasharray="4 3"/>';
+      grid += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" class="ref" stroke-dasharray="4 3"/>';
     });
     var first = pts[0], lastP = pts[pts.length - 1];
-    var labels = '<text x="' + L + '" y="' + (H - 8) + '" font-size="11" fill="#5d5d78">' + esc(new Date(first.at).toLocaleDateString([], { month: 'short', day: 'numeric' })) + '</text>' +
-      '<text x="' + (W - R) + '" y="' + (H - 8) + '" text-anchor="end" font-size="11" fill="#5d5d78">' + esc(new Date(lastP.at).toLocaleDateString([], { month: 'short', day: 'numeric' })) + '</text>';
+    var labels = '<text x="' + L + '" y="' + (H - 8) + '" font-size="11">' + esc(new Date(first.at).toLocaleDateString([], { month: 'short', day: 'numeric' })) + '</text>' +
+      '<text x="' + (W - R) + '" y="' + (H - 8) + '" text-anchor="end" font-size="11">' + esc(new Date(lastP.at).toLocaleDateString([], { month: 'short', day: 'numeric' })) + '</text>';
     var desc = 'Last ' + pts.length + ' readings, from ' + first.sys + '/' + first.dia + ' to ' + lastP.sys + '/' + lastP.dia + '.';
     $('chart').innerHTML = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(desc) + '">' +
-      grid + line('sys', '#1c12b0') + line('dia', '#f0443f') + labels + '</svg>';
+      grid + line('sys') + line('dia') + labels + '</svg>';
   }
 
   function renderHistory(rs) {
@@ -615,7 +679,8 @@
     },
     'remove-person': function () {
       var p = person(); if (!p) return;
-      if (!confirm('Remove ' + p.name + ' and all of their readings from this device? This cannot be undone.')) return;
+      var where = acct.who ? 'from this device and your Flux account' : 'from this device';
+      if (!confirm('Remove ' + p.name + ' and all of their medicines and readings ' + where + '? This cannot be undone.')) return;
       forget(p.id);
       state.people = state.people.filter(function (x) { return x !== p; });
       state.selected = state.people[0] ? state.people[0].id : null;
@@ -646,6 +711,11 @@
       forget(el.dataset.id);
       p.readings = p.readings.filter(function (x) { return x.id !== el.dataset.id; });
       save(); render();
+    },
+    'theme': function () {
+      var next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      try { localStorage.setItem('aorta_theme', next); } catch (e) { /* blocked: lasts until reload */ }
+      applyTheme(next);
     },
     'print': function () { window.print(); },
     'export': function () {
@@ -834,6 +904,30 @@
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && acct.who) syncNow(); });
   // Another phone in the family may have logged a reading.
   setInterval(function () { if (acct.who && document.visibilityState === 'visible') syncNow(); }, 60e3);
+
+  /* ---------- light / dark ---------- */
+  function applyTheme(t) {
+    document.documentElement.dataset.theme = t;
+    var dark = t === 'dark';
+    $('themeBtn').textContent = dark ? '☀️' : '🌙';
+    $('themeBtn').setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+    document.querySelector('meta[name="theme-color"]').content = dark ? '#191932' : '#ffffff';
+  }
+  applyTheme(document.documentElement.dataset.theme);
+  // No saved choice: follow the phone when it switches (e.g. at sunset).
+  if (window.matchMedia) {
+    var mq = matchMedia('(prefers-color-scheme: dark)');
+    var follow = function (e) {
+      var saved = null;
+      try { saved = localStorage.getItem('aorta_theme'); } catch (err) { /* blocked */ }
+      if (saved !== 'light' && saved !== 'dark') applyTheme(e.matches ? 'dark' : 'light');
+    };
+    if (mq.addEventListener) mq.addEventListener('change', follow); else if (mq.addListener) mq.addListener(follow);
+  }
+  // Escape closes the "add someone" form.
+  $('addPersonForm').addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && state.people.length) this.hidden = true;
+  });
 
   /* ---------- start ---------- */
   if (!person() && state.people[0]) state.selected = state.people[0].id;
