@@ -264,6 +264,9 @@
   footer { padding: 36px 16px calc(36px + env(safe-area-inset-bottom, 0px)); text-align: center; color: rgba(255,255,255,.75); font-size: .9rem; background: var(--foot); }
   footer a { color: #fff; }
   footer p { margin: 6px 0; }
+  footer .powered { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 6px 14px 6px 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.06); font-weight: 600; text-decoration: none; }
+  footer .powered:hover { background: rgba(255,255,255,.14); }
+  footer .powered img { width: 26px; height: 26px; object-fit: contain; }
 
   .print-only { display: none; }
   @media print {
@@ -442,6 +445,7 @@
 <footer>
   <p>The Aorta Project · a student-led organization</p>
   <p><a href="aorta.html">Back to the Aorta Project</a></p>
+  <p><a class="powered" href="https://fluxplanner.github.io/Flux/"><img src="icons/icon-192.png" alt="" width="26" height="26">Powered by Flux</a></p>
 </footer>
 
 <div class="toast" id="toast" role="status" hidden></div>
@@ -570,7 +574,7 @@
   function renderPerson() {
     var p = person();
     $('person').hidden = !p;
-    $('printHead').textContent = p ? 'Blood pressure log for ' + p.name + ', printed ' + new Date().toLocaleDateString() + ' · The Aorta Project' : '';
+    $('printHead').textContent = p ? 'Blood pressure log for ' + p.name + ', printed ' + new Date().toLocaleDateString() + ' · The Aorta Project · Powered by Flux' : '';
     if (!p) return;
     $('sum-h').textContent = p.name;
     $('removePersonBtn').setAttribute('aria-label', 'Remove ' + p.name);
