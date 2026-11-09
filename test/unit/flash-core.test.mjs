@@ -17,6 +17,8 @@ const sandbox = { window: { localStorage }, TextEncoder, TextDecoder, btoa, atob
 vm.createContext(sandbox);
 vm.runInContext(readFileSync(new URL('../../public/js/flux-flash-core.js', import.meta.url), 'utf8'), sandbox);
 const F = sandbox.window.FluxFlash;
+vm.runInContext(readFileSync(new URL('../../public/js/flux-quizlet.js', import.meta.url), 'utf8'), sandbox);
+const Q = sandbox.window.FluxQuizlet;
 const DAY = F.DAY, MIN = F.MIN;
 const T0 = Date.UTC(2026, 9, 4, 12);
 /** Arrays made inside the VM belong to another realm; compare their contents. */
@@ -238,13 +240,13 @@ const qzPage = () => ({
 });
 
 test('Quizlet page data gives the set’s cards in order, without suggested sets', () => {
-  const r = plain(F.quizletCards(qzPage(), '341080361'));
+  const r = plain(Q.cards(qzPage(), '341080361'));
   assert.deepEqual(r.cards, [['moose', 'el alce'], ['eagle', 'el águila']]);
   assert.equal(r.skipped, 1, 'a picture-only card is counted, not imported');
 });
 
 test('the bookmark, run on a Quizlet set, opens Flux with that set as a share link', () => {
-  const mark = F.quizletBookmarklet('https://flux.example/flashcards.html');
+  const mark = Q.bookmarklet('https://flux.example/flashcards.html');
   assert.match(mark, /^javascript:/);
   const src = decodeURIComponent(mark.slice('javascript:'.length));
   assert.ok(!src.includes('\n'), 'a bookmark has no line breaks');
@@ -255,6 +257,7 @@ test('the bookmark, run on a Quizlet set, opens Flux with that set as a share li
       title: 'Spanish Animales Flashcards | Quizlet',
       getElementById: (id) => (id === '__NEXT_DATA__' ? { textContent: JSON.stringify(qzPage()) } : null),
       querySelectorAll: () => [],
+      querySelector: () => null,
     },
     window: { open: (u) => { opened.push(u); return {}; } },
     alert: (m) => alerts.push(m),
@@ -273,7 +276,7 @@ test('the bookmark, run on a Quizlet set, opens Flux with that set as a share li
 });
 
 test('the bookmark on any other site says to open a Quizlet set', () => {
-  const src = decodeURIComponent(F.quizletBookmarklet('https://flux.example/flashcards.html').slice(11));
+  const src = decodeURIComponent(Q.bookmarklet('https://flux.example/flashcards.html').slice(11));
   const alerts = [], opened = [];
   vm.runInNewContext(src, {
     location: { hostname: 'example.com', pathname: '/' }, document: {},
@@ -281,4 +284,24 @@ test('the bookmark on any other site says to open a Quizlet set', () => {
   });
   assert.equal(opened.length, 0);
   assert.match(alerts[0], /Quizlet set/);
+});
+
+test('a whole Quizlet page, copied and pasted, gives the set’s cards', () => {
+  const page = [
+    'Study tools', 'Spanish Animales', 'Learn', 'Choose an answer', '1', 'moose',
+    'Terms in this set (3)', 'moose', 'el alce', '', 'eagle', 'el águila', 'piranha', 'la piraña',
+    'About us', 'About Quizlet', 'Careers',
+  ].join('\r\n');
+  const got = plain(F.quizletPageText(page));
+  assert.equal(got.count, 3);
+  assert.deepEqual(got.cards, [
+    { term: 'moose', def: 'el alce' }, { term: 'eagle', def: 'el águila' }, { term: 'piranha', def: 'la piraña' },
+  ], 'stops at the set’s own count, before the footer');
+  assert.deepEqual(plain(F.parseImport(page)), got.cards, 'the Paste a list tab recognises it too');
+  assert.equal(F.quizletPageText('perro\tdog\ngato\tcat'), null, 'an ordinary list is not mistaken for one');
+});
+
+test('after moving to another set inside Quizlet, the stale page data is not mistaken for it', () => {
+  assert.deepEqual(plain(Q.cards(qzPage(), '999999')), { cards: [], skipped: 0 }, 'the bookmark falls back to the visible terms instead');
+  assert.equal(Q.message({ error: 'no-cards' }).includes('could not find'), true);
 });
