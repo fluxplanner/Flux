@@ -941,11 +941,11 @@
           setTimeout(function () { var t = $('.ff-paste', box); if (t) t.focus(); }, 0);
         } else if (tab === 'quizlet') {
           // Quizlet blocks other sites from reading a set by its link, so this
-          // is a bookmark the student taps on the set itself (FluxFlash.quizletBookmarklet).
+          // is a bookmark the student taps on the set itself (FluxQuizlet.bookmarklet).
           // Two ways in, because some browsers (Dia, Arc, phones) will not take
           // a dragged bookmark: copy the whole Quizlet page and paste it here
           // (FluxFlash.quizletPageText), or the one-tap bookmark.
-          var mark = F.quizletBookmarklet(location.origin + location.pathname);
+          var mark = window.FluxQuizlet.bookmarklet(location.origin + location.pathname);
           box.innerHTML = '<div class="ff-qz">' + quizletGuide(quizletDevice(), mark) + '</div>';
           box.oninput = function (e) {
             if (!e.target.classList.contains('ff-qz-paste')) return;
@@ -1002,7 +1002,7 @@
         if (!t) return;
         if (t.dataset.qzdev) { setPref('qzDevice', t.dataset.qzdev); drawTab(); return; }
         if (t.hasAttribute('data-qzmark')) { e.preventDefault(); toast('Drag it to your bookmarks bar, then tap it on a Quizlet set'); return; }
-        if (t.hasAttribute('data-qzcopy')) { copyText(F.quizletBookmarklet(location.origin + location.pathname), 'Copied: now make the bookmark'); return; }
+        if (t.hasAttribute('data-qzcopy')) { copyText(window.FluxQuizlet.bookmarklet(location.origin + location.pathname), 'Copied: now make the bookmark'); return; }
         if (t.dataset.tab) { tab = t.dataset.tab; setPref('importTab', tab); drawTab(); return; }
         if (t.hasAttribute('data-make')) {
           var text = $('.ff-paste', box).value.trim();
