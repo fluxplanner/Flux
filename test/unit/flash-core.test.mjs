@@ -282,3 +282,18 @@ test('the bookmark on any other site says to open a Quizlet set', () => {
   assert.equal(opened.length, 0);
   assert.match(alerts[0], /Quizlet set/);
 });
+
+test('a whole Quizlet page, copied and pasted, gives the set’s cards', () => {
+  const page = [
+    'Study tools', 'Spanish Animales', 'Learn', 'Choose an answer', '1', 'moose',
+    'Terms in this set (3)', 'moose', 'el alce', '', 'eagle', 'el águila', 'piranha', 'la piraña',
+    'About us', 'About Quizlet', 'Careers',
+  ].join('\r\n');
+  const got = plain(F.quizletPageText(page));
+  assert.equal(got.count, 3);
+  assert.deepEqual(got.cards, [
+    { term: 'moose', def: 'el alce' }, { term: 'eagle', def: 'el águila' }, { term: 'piranha', def: 'la piraña' },
+  ], 'stops at the set’s own count, before the footer');
+  assert.deepEqual(plain(F.parseImport(page)), got.cards, 'the Paste a list tab recognises it too');
+  assert.equal(F.quizletPageText('perro\tdog\ngato\tcat'), null, 'an ordinary list is not mistaken for one');
+});
