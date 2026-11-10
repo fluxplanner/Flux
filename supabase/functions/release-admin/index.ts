@@ -82,17 +82,17 @@ function devAccounts(ownerData: JsonRecord): DevAccount[] {
   return Array.isArray(raw) ? raw.filter(Boolean) as DevAccount[] : [];
 }
 
-function findDev(ownerData: JsonRecord, email: string) {
-  return devAccounts(ownerData).find((d) => normEmail(d.email) === email) || null;
+function findDev(ownerData: JsonRecord, userId: string) {
+  return devAccounts(ownerData).find((d) => !!userId && d.userId === userId) || null;
 }
 
 function canPushRelease(
   ownerData: JsonRecord,
-  email: string,
+  userId: string,
   ownerVerified: boolean,
 ) {
   if (ownerVerified) return { ok: true, role: "owner" };
-  const dev = findDev(ownerData, email);
+  const dev = findDev(ownerData, userId);
   if (!dev) return { ok: false, role: "user" };
   const role = String(dev.role || "viewer").toLowerCase();
   const perms = Array.isArray(dev.perms) ? dev.perms : [];
@@ -102,6 +102,25 @@ function canPushRelease(
     role === "owner" ||
     role === "dev";
   return { ok, role: ok ? "dev" : "viewer" };
+}
+
+/**
+ * The release gate as this caller may see it.
+ *
+ * Every signed-in planner reads the gate to learn whether an update is live,
+ * but previewEmails and the pushedBy / updatedBy fields are staff addresses.
+ * The owner and release devs get the whole gate. Anyone else gets the list cut
+ * down to their own address, which is all the planner compares it against.
+ */
+function gateForCaller(gate: unknown, email: string, full: boolean) {
+  if (!gate || typeof gate !== "object" || Array.isArray(gate)) return null;
+  if (full) return gate;
+  const g = { ...(gate as JsonRecord) };
+  delete g.pushedBy;
+  delete g.stagingUpdatedBy;
+  delete g.previewUpdatedBy;
+  g.previewEmails = normalizePreviewEmails(g.previewEmails).filter((e) => !!email && e === email);
+  return g;
 }
 
 function normalizePreviewMode(v: unknown) {
@@ -275,12 +294,12 @@ Deno.serve(async (req) => {
     const ownerData = asRecord(ownerRow.data);
     const platformConfig = asRecord(ownerData.platformConfig);
     const gate = platformConfig.releaseGate || null;
-    const pushAuth = canPushRelease(ownerData, email, ownerVerified);
+    const pushAuth = canPushRelease(ownerData, callerUserId, ownerVerified);
 
     if (req.method === "GET") {
       return json({
         ok: true,
-        gate,
+        gate: gateForCaller(gate, email, ownerVerified || pushAuth.ok),
         role: pushAuth.role,
         canPush: pushAuth.ok,
         canManagePreview: ownerVerified,

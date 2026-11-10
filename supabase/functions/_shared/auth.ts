@@ -73,10 +73,26 @@ export async function verifyUserJWT(
     };
   }
 
-  // Only PostgREST runs flux_check_request, so functions check bans themselves.
-  // cf-connecting-ip is set by Cloudflare; a client sending its own is refused.
-  const ip = (req.headers.get("cf-connecting-ip") ?? "").trim();
-  const values = ip ? `(${user.id},"${ip}")` : `(${user.id})`;
+  if (await isBanned(user.id, req)) {
+    return { error: "flux_banned", status: 403 };
+  }
+  const hasMfa = (user.factors ?? []).some((f) => f.status === "verified");
+  return { userId: user.id, email: user.email ?? "", hasMfa, ...sessionAssurance(token) };
+}
+
+/**
+ * An active ban on this account, or on the address it is calling from.
+ *
+ * Only PostgREST runs flux_check_request, so functions check bans themselves.
+ * cf-connecting-ip is set by Cloudflare; a client sending its own is refused.
+ * The address goes into a filter string, so anything that is not shaped like
+ * an address is dropped rather than quoted.
+ */
+export async function isBanned(userId: string, req: Request): Promise<boolean> {
+  if (userId === OWNER_UID) return false;
+  const raw = (req.headers.get("cf-connecting-ip") ?? "").trim();
+  const ip = /^[0-9a-fA-F:.]{3,45}$/.test(raw) ? raw : "";
+  const values = ip ? `(${userId},"${ip}")` : `(${userId})`;
   const { data: bans } = await serviceClient()
     .from("flux_bans")
     .select("id")
@@ -84,11 +100,7 @@ export async function verifyUserJWT(
     .in("kind", ["user", "ip"])
     .filter("value", "in", values)
     .limit(1);
-  if (bans?.length && user.id !== OWNER_UID) {
-    return { error: "flux_banned", status: 403 };
-  }
-  const hasMfa = (user.factors ?? []).some((f) => f.status === "verified");
-  return { userId: user.id, email: user.email ?? "", hasMfa, ...sessionAssurance(token) };
+  return !!bans?.length;
 }
 
 export function serviceClient(headers?: Record<string, string>) {
@@ -101,6 +113,18 @@ export function serviceClient(headers?: Record<string, string>) {
     },
   );
 }
+
+const DEFAULT_ORIGIN = "https://fluxplanner.github.io";
+const ALLOWED_ORIGINS = new Set([
+  DEFAULT_ORIGIN,
+  "https://azfermohammed.github.io",
+  "https://claude.ai",
+  "https://claude.com",
+  ...(Deno.env.get("FLUX_ALLOWED_ORIGINS") || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
+]);
 
 /**
  * A service client whose writes flux_admin_action_log credits to the signed-in
@@ -115,16 +139,13 @@ export function serviceClientActingFor(req: Request, userId: string) {
 }
 
 /**
- * Echo a safe Origin for Access-Control-Allow-Origin.
- * Browsers require an exact match with the page origin; a fixed fallback breaks
- * GitHub Pages project URLs, custom domains, previews, etc.
- * The anon key is already public in static bundles — broad http(s) echo is acceptable here.
+ * Echo the Origin only for Flux's own sites, local development and the browser
+ * extension. Any other site gets the default, so a browser refuses to hand it the
+ * response. Add a preview or custom domain with the FLUX_ALLOWED_ORIGINS secret.
  */
 function resolveCorsOrigin(origin: string): string {
   const trimmed = (origin || "").trim();
-  if (!trimmed) return "https://azfermohammed.github.io";
-  // Opaque / file origins — some browsers send the literal string "null"
-  if (trimmed === "null") return "null";
+  if (ALLOWED_ORIGINS.has(trimmed)) return trimmed;
   // Extension pages: do not rely on URL() — some runtimes mishandle chrome-extension://
   if (
     trimmed.startsWith("chrome-extension://") ||
@@ -134,22 +155,13 @@ function resolveCorsOrigin(origin: string): string {
   }
   try {
     const u = new URL(trimmed);
-    if (u.protocol !== "http:" && u.protocol !== "https:") {
-      return "https://azfermohammed.github.io";
-    }
-    const host = u.hostname;
-    if (
-      host === "localhost" ||
-      host === "127.0.0.1" ||
-      host.endsWith(".localhost") ||
-      host.includes(".")
-    ) {
-      return trimmed;
-    }
+    const local = u.hostname === "localhost" || u.hostname === "127.0.0.1" ||
+      u.hostname.endsWith(".localhost");
+    if (local && (u.protocol === "http:" || u.protocol === "https:")) return trimmed;
   } catch {
     /* ignore */
   }
-  return "https://azfermohammed.github.io";
+  return DEFAULT_ORIGIN;
 }
 
 export function corsHeaders(origin: string) {

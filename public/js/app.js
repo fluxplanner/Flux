@@ -3572,7 +3572,7 @@ async function fetchAndCacheEntitlement(){
 // ══ HELPERS ══
 const G=10.0000; // Physics constant — enforced everywhere
 const precise=n=>Number(n).toFixed(4);
-const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 window.esc=esc; // 144 cross-module reads expected this on window
 /** Settings → Account: lets student-role accounts become educators so Work/Personal mode appears. */
 function syncStudentEducatorUpgradeCard(){
@@ -4089,7 +4089,7 @@ document.addEventListener('keydown',e=>{
 function populateSubjectSelects(){
   if(fluxIsStaffPersonalMode())return;
   const subjs=getSubjects();
-  const opts='<option value="">No subject</option>'+Object.entries(subjs).map(([k,s])=>`<option value="${k}">${s.name}</option>`).join('');
+  const opts='<option value="">No subject</option>'+Object.entries(subjs).map(([k,s])=>`<option value="${esc(k)}">${esc(s.name)}</option>`).join('');
   ['taskSubject','editSubject','noteSubjectTag','timerSubject','addEventSubject'].forEach(id=>{
     const el=document.getElementById(id);
     if(!el)return;
@@ -6273,7 +6273,7 @@ async function syncGoogleCalendar(opts){
         return`<div style="display:flex;gap:6px;align-items:flex-start;padding:5px 0;border-bottom:1px solid var(--border)">
           <div style="width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:4px"></div>
           <div style="flex:1;min-width:0"><div style="font-size:.72rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ev.summary||'(no title)')}</div><div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${d}</div></div>
-          <button onclick="addGCalEventAsTask('${encodeURIComponent(ev.summary||'')}','${start.slice(0,10)}')" style="padding:2px 6px;font-size:.62rem;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.25);color:var(--accent);border-radius:6px;flex-shrink:0">+ Task</button>
+          <button onclick="addGCalEventAsTask('${encodeURIComponent(ev.summary||'').replace(/'/g,'%27')}','${esc(start.slice(0,10))}')" style="padding:2px 6px;font-size:.62rem;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.25);color:var(--accent);border-radius:6px;flex-shrink:0">+ Task</button>
         </div>`;
       }).join('');
     }
@@ -8415,7 +8415,7 @@ function updateDynamicFocus(){
   const sugHtml=fitTask?`<div style="margin-top:12px;padding:10px;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid var(--border)">
     <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:4px">Suggested task for this gap</div>
     <div style="font-size:.85rem;font-weight:600">${esc(fitTask.name)}</div>
-    <div style="font-size:.7rem;color:var(--muted2)">Fits before ${nextClass.name}</div>
+    <div style="font-size:.7rem;color:var(--muted2)">Fits before ${esc(nextClass.name)}</div>
   </div>`:'';
 
   el.innerHTML=`<div class="focus-card">
@@ -8594,7 +8594,7 @@ function renderAIChatTabs(){
   if(!aiChats.length){el.innerHTML='';return;}
   el.innerHTML=aiChats.map(c=>`
     <div class="flux-ai-tab${c.id===aiCurrentChatId?' flux-ai-tab--active':''}" role="button" onclick="loadAIChat('${c.id}')">
-      <span class="flux-ai-tab__title">${c.title||'Chat'}</span>
+      <span class="flux-ai-tab__title">${esc(c.title||'Chat')}</span>
       <span class="flux-ai-tab__close" onclick="deleteAIChat('${c.id}',event)" title="Delete">×</span>
     </div>`).join('');
 }
@@ -8666,9 +8666,9 @@ function fmtAI(raw){
   }).join('');
 
   // 3. Markdown links [text](url)
-  t=t.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer" class="ai-link">$1</a>');
+  t=t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s"'<>\)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer" class="ai-link">$1</a>');
   // 4. Bare URLs not already in href
-  t=t.replace(/(?<!href=")(https?:\/\/[^\s<>")\]]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer" class="ai-link">$1</a>');
+  t=t.replace(/(?<!href=")(https?:\/\/[^\s<>"')\]]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer" class="ai-link">$1</a>');
 
   // 5. Horizontal rule
   t=t.replace(/^---+$/gm,'<hr style="border:none;border-top:1px solid var(--border);margin:10px 0">');
@@ -12204,7 +12204,7 @@ async function analyzeScheduleImg(){
     if(resultEl){
       resultEl.style.display='block';
       resultEl.innerHTML='<div style="color:var(--green);font-weight:700;margin-bottom:8px;font-size:.82rem">✓ Found '+obExtractedClasses.length+' classes</div>'+
-        obExtractedClasses.map(c=>`<div class="ob-class-row"><div class="ob-class-period">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.85rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${c.teacher}${c.room?' · Rm '+c.room:''}</div></div></div>`).join('');
+        obExtractedClasses.map(c=>`<div class="ob-class-row"><div class="ob-class-period">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.85rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${esc(c.teacher||'')}${c.room?' · Rm '+esc(c.room):''}</div></div></div>`).join('');
     }
   }catch(e){
     if(resultEl){resultEl.style.display='block';resultEl.innerHTML='<div style="color:var(--red);font-size:.82rem">Could not read schedule. Add classes manually in the School tab.</div>';}
@@ -14694,7 +14694,7 @@ function _updateUserUI(user,name){
   const fullName=name||firstName;
   fluxSaveStoredString('flux_user_name',firstName);
   const avatarHTML=avatarUrl
-    ?`<img src="${avatarUrl}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`
+    ?`<img src="${esc(avatarUrl)}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`
     :`<span style="font-size:.9rem;font-weight:700;line-height:1">${firstName.charAt(0).toUpperCase()}</span>`;
   // Update every user display element
   ['sidebarAv','mobAv'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=avatarHTML;});
@@ -14709,7 +14709,7 @@ function _updateUserUI(user,name){
   if(topMobAv){
     const initial=firstName.charAt(0).toUpperCase();
     topMobAv.innerHTML=avatarUrl
-      ?`<img src="${avatarUrl}" referrerpolicy="no-referrer" alt="${esc(firstName)}">`
+      ?`<img src="${esc(avatarUrl)}" referrerpolicy="no-referrer" alt="${esc(firstName)}">`
       :`<span id="topbarMobAvInitial">${initial}</span>`;
   }
   // Re-call after DOM fully ready in case elements weren't present
@@ -15899,7 +15899,7 @@ function renderSubjectEfficiencyHeatmap(){
     ${days.map(d=>`<th style="padding:3px 5px;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:center;font-size:.6rem">${d}</th>`).join('')}</tr></thead>
     <tbody>${keys.map(k=>{
       const s=subjs[k];
-      return`<tr><td style="padding:3px 8px;white-space:nowrap;color:${s.color};font-weight:600;font-size:.7rem">${s.name.slice(0,12)}</td>
+      return`<tr><td style="padding:3px 8px;white-space:nowrap;color:${esc(s.color)};font-weight:600;font-size:.7rem">${esc(String(s.name||'').slice(0,12))}</td>
       ${grid[k].map(mins=>{
         const i=mins/maxVal;
         const bg=i>0.7?'var(--green)':i>0.3?'var(--accent)':i>0?'rgba(var(--accent-rgb),.25)':'var(--card2)';
@@ -22256,11 +22256,8 @@ async function selectAppointmentDate(btn,counselorId){
   }
   let booked=new Set();
   try{
-    const {data:b}=await sb.from('counselor_appointments')
-      .select('time_slot,status')
-      .eq('counselor_id',counselorId)
-      .eq('date',_selectedApptDate);
-    booked=new Set((b||[]).filter(x=>x.status!=='cancelled').map(x=>x.time_slot));
+    const {data:b}=await sb.rpc('flux_counselor_taken_slots',{p_counselor_id:counselorId,p_from:_selectedApptDate,p_to:_selectedApptDate});
+    booked=new Set((b||[]).map(x=>x.time_slot));
   }catch(_){}
 
   const container=document.getElementById('timeSlotContainer');

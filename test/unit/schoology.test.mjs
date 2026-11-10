@@ -6,8 +6,20 @@ import { transformSync } from 'esbuild';
 /* CI runs Node 20, which cannot import a .ts file, so strip the types first. */
 const tsSrc = readFileSync(new URL('../../supabase/functions/_shared/schoology-feed.ts', import.meta.url), 'utf8');
 const { code } = transformSync(tsSrc, { loader: 'ts', format: 'esm' });
-const { normalizeFeedUrl, looksLikeCalendar } =
+const { normalizeFeedUrl, looksLikeCalendar, isPrivateAddress } =
   await import('data:text/javascript;base64,' + Buffer.from(code).toString('base64'));
+
+test('a name that resolves to a private address is refused', () => {
+  for (const ip of ['127.0.0.1', '10.1.2.3', '172.16.0.1', '172.31.255.255', '192.168.1.1',
+    '169.254.169.254', '100.64.0.1', '0.0.0.0', '::1', '::', 'fd00::1', 'fe80::1',
+    '::ffff:127.0.0.1', '::ffff:7f00:1', 'not-an-address']) {
+    assert.equal(isPrivateAddress(ip), true, ip);
+  }
+  for (const ip of ['8.8.8.8', '172.15.0.1', '172.32.0.1', '100.63.0.1', '192.167.1.1',
+    '2606:4700:4700::1111']) {
+    assert.equal(isPrivateAddress(ip), false, ip);
+  }
+});
 
 const moduleSrc = readFileSync(new URL('../../public/js/flux-schoology.js', import.meta.url), 'utf8');
 const fakeWindow = {};

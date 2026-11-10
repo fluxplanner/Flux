@@ -14,7 +14,7 @@
 // Deploy NOTE: must be deployed with verify_jwt = false (discovery, /register and
 // /token are called by Claude without a Supabase JWT). Auth is enforced in-code.
 
-import { serviceClient, verifyUserJWT, corsHeaders } from "../_shared/auth.ts";
+import { serviceClient, verifyUserJWT, corsHeaders, isBanned } from "../_shared/auth.ts";
 import {
   json,
   oauthError,
@@ -22,6 +22,7 @@ import {
   rpcError,
   RPC,
   randomToken,
+  isAllowedRedirectUri,
   sha256hex,
   verifyPkceS256,
   type JsonRpcId,
@@ -170,13 +171,7 @@ async function register(req: Request, ch: Record<string, string>) {
   }
   for (const u of redirectUris) {
     try {
-      const parsed = new URL(u);
-      // Allow https + Claude's localhost/loopback desktop redirects.
-      const ok =
-        parsed.protocol === "https:" ||
-        parsed.hostname === "localhost" ||
-        parsed.hostname === "127.0.0.1" ||
-        parsed.hostname === "[::1]";
+      const ok = isAllowedRedirectUri(u);
       if (!ok) return oauthError("invalid_redirect_uri", `Unsupported redirect_uri: ${u}`, 400, ch);
     } catch {
       return oauthError("invalid_redirect_uri", `Malformed redirect_uri: ${u}`, 400, ch);
@@ -236,7 +231,7 @@ async function authorize(req: Request, base: string, ch: Record<string, string>)
 
   // Invalid client / redirect_uri → must NOT redirect (RFC 6749 §4.1.2.1).
   if (!client || !clientId) return htmlError("Unknown client_id.", ch);
-  if (!redirectUri || !(client.redirect_uris as string[]).includes(redirectUri)) {
+  if (!isAllowedRedirectUri(redirectUri) || !(client.redirect_uris as string[]).includes(redirectUri)) {
     return htmlError("redirect_uri does not match the registered client.", ch);
   }
 
@@ -293,7 +288,7 @@ async function grant(req: Request, ch: Record<string, string>) {
     .select("client_id, redirect_uris")
     .eq("client_id", clientId)
     .maybeSingle();
-  if (!client || !(client.redirect_uris as string[]).includes(redirectUri) || !codeChallenge) {
+  if (!client || !isAllowedRedirectUri(redirectUri) || !(client.redirect_uris as string[]).includes(redirectUri) || !codeChallenge) {
     return json({ error: "invalid_request" }, 400, ch);
   }
 
@@ -353,8 +348,17 @@ async function token(req: Request, ch: Record<string, string>) {
       return oauthError("invalid_grant", "PKCE verification failed", 400, ch);
     }
 
-    // Single-use: burn the code immediately.
-    await sb.from("flux_mcp_auth_codes").update({ used: true }).eq("code_sha256", codeHash);
+    // Single-use. The update only matches a code that is still unused, so of
+    // two requests racing with the same code exactly one gets a row back.
+    const { data: burned } = await sb
+      .from("flux_mcp_auth_codes")
+      .update({ used: true })
+      .eq("code_sha256", codeHash)
+      .eq("used", false)
+      .select("code_sha256");
+    if (!burned?.length) {
+      return oauthError("invalid_grant", "Authorization code invalid or used", 400, ch);
+    }
 
     const { data: client } = await sb
       .from("flux_mcp_oauth_clients")
@@ -498,6 +502,8 @@ async function authBearer(req: Request): Promise<Session | null> {
     .maybeSingle();
   if (!row || row.revoked_at) return null;
   if (row.access_expires_at && new Date(row.access_expires_at).getTime() < Date.now()) return null;
+  // A ban closes the planner; it has to close this door into it as well.
+  if (await isBanned(row.user_id, req)) return null;
   // best-effort last_used_at (don't block the response)
   sb.from("flux_mcp_tokens").update({ last_used_at: new Date().toISOString() }).eq("id", row.id).then(
     () => {},
@@ -864,16 +870,22 @@ async function mutateTasks<T>(
   throw new Error("write_conflict");
 }
 
+/** Longest text a tool may write into each task field: the planner blob is one row. */
+const TASK_FIELD_MAX: Record<string, number> = {
+  name: 300, notes: 4000, subject: 120, type: 40, priority: 12, date: 10,
+};
+const clip = (key: string, v: unknown) => String(v).slice(0, TASK_FIELD_MAX[key] ?? 120);
+
 async function createTask(sb: ReturnType<typeof serviceClient>, userId: string, args: any) {
   if (!args || !args.name || !String(args.name).trim()) throw new Error("name is required");
   const task: Record<string, any> = {
     id: Date.now(),
-    name: String(args.name).trim(),
+    name: clip("name", String(args.name).trim()),
     done: false,
     createdAt: new Date().toISOString(),
   };
   for (const k of ["date", "subject", "priority", "type", "notes"]) {
-    if (args[k] != null && args[k] !== "") task[k] = String(args[k]);
+    if (args[k] != null && args[k] !== "") task[k] = clip(k, args[k]);
   }
   if (args.date) task.date = String(args.date).slice(0, 10);
   if (args.estTime != null) task.estTime = Number(args.estTime);
@@ -892,7 +904,7 @@ async function updateTask(sb: ReturnType<typeof serviceClient>, userId: string, 
     if (i < 0) throw new Error("Task not found: " + args.id);
     const t = { ...tasks[i] };
     for (const k of ["name", "date", "subject", "priority", "type", "notes"]) {
-      if (args[k] != null) t[k] = String(args[k]);
+      if (args[k] != null) t[k] = clip(k, args[k]);
     }
     if (args.date != null) t.date = String(args.date).slice(0, 10);
     if (args.estTime != null) t.estTime = Number(args.estTime);

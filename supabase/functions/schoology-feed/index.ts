@@ -1,5 +1,5 @@
 import { corsHeaders, verifyUserJWT } from "../_shared/auth.ts";
-import { looksLikeCalendar, normalizeFeedUrl } from "../_shared/schoology-feed.ts";
+import { looksLikeCalendar, normalizeFeedUrl, resolvesToPublicHost } from "../_shared/schoology-feed.ts";
 
 /*
  * Fetches a student's Schoology calendar link. Browsers cannot read it directly
@@ -41,6 +41,7 @@ async function readCapped(res: Response): Promise<string | null> {
 async function fetchFeed(start: string, signal: AbortSignal): Promise<Response | null> {
   let url = start;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    if (!(await resolvesToPublicHost(new URL(url).hostname))) return null;
     const res = await fetch(url, {
       redirect: "manual",
       signal,
