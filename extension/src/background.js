@@ -183,8 +183,14 @@ runtime.onMessage.addListener((msg, sender, sendResponse) => {
       })();
       return true;
     case 'FLUX_LOGOUT_FROM_WEB':
-      Promise.all([lsx.remove('flux_auth_session'), lsx.remove('flux_ai_routing')])
-        .then(() => sendResponse({ ok: true }))
+      // Same origin rule as the sign-in handoff: content.js relays this from
+      // every page, so without it any website could sign the extension out.
+      isPlannerOrigin((sender && (sender.url || sender.tab?.url)) || '')
+        .then((allowed) => {
+          if (!allowed) { sendResponse({ ok: false, error: 'origin mismatch' }); return null; }
+          return Promise.all([lsx.remove('flux_auth_session'), lsx.remove('flux_ai_routing')])
+            .then(() => sendResponse({ ok: true }));
+        })
         .catch(() => sendResponse({ ok: false }));
       return true;
     case 'FLUX_GET_AUTH':

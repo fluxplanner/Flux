@@ -67,11 +67,17 @@ export async function sha256Hex(s: string): Promise<string> {
     .join("");
 }
 
-/** First hop of x-forwarded-for — the client IP as seen by the edge. */
+/**
+ * The caller's address. cf-connecting-ip first: Cloudflare sets it and refuses
+ * a client's own copy. x-forwarded-for is only the fallback, because a client
+ * can put anything in its first hop, and a guest allowance counted on that is
+ * reset by changing one header.
+ */
 export function clientIp(req: Request): string {
+  const cf = (req.headers.get("cf-connecting-ip") ?? "").trim();
+  if (cf) return cf;
   const xff = req.headers.get("x-forwarded-for") ?? "";
-  const first = xff.split(",")[0].trim();
-  return first || req.headers.get("cf-connecting-ip") || "unknown";
+  return xff.split(",")[0].trim() || "unknown";
 }
 
 /**

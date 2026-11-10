@@ -148,10 +148,15 @@ Deno.serve(async (req) => {
         if (!isAllowedCanvasHost(host)) {
           return jsonErr("Host not allowed", 403, origin);
         }
+        // The Canvas token rides on this request, so it only ever goes out
+        // encrypted, to the standard port, with no login tucked into the address.
+        if (u.protocol !== "https:" || u.username || u.password || (u.port && u.port !== "443")) {
+          return jsonErr("Host not allowed", 403, origin);
+        }
         if (!isApiV1Path(u.pathname + u.search)) {
           return jsonErr("Path must start with /api/v1/", 403, origin);
         }
-        targetUrl = String(raw.url);
+        targetUrl = u.toString();
         canvasToken = String(raw.token);
         const m = (raw.method || "GET").toUpperCase();
         if (m !== "GET" && m !== "POST") {

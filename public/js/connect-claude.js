@@ -107,6 +107,17 @@
     return `<ul class="scopes">${items}</ul>`;
   }
 
+  /* Where "Allow access" hands the connection. Shown so that a link sending it
+     anywhere but Claude is visible before the button is pressed. */
+  function returnsTo() {
+    try {
+      const u = new URL(params.redirect_uri);
+      return u.protocol === "https:" ? u.hostname : "an app on this computer";
+    } catch {
+      return "an unknown address";
+    }
+  }
+
   function renderConsent(user) {
     const email = user.email || user.user_metadata?.email || "your account";
     const initial = (email[0] || "F").toUpperCase();
@@ -114,7 +125,7 @@
       <h1>Connect to Claude</h1>
       <p class="lede"><b>Claude</b> wants to access your Flux Planner so it can help manage your work.</p>
       <div class="who"><span class="av">${esc(initial)}</span>
-        <span>Signed in as <b>${esc(email)}</b><br><small>Approving links Claude to this account.</small></span></div>
+        <span>Signed in as <b>${esc(email)}</b><br><small>Approving links Claude to this account, then sends you back to <b>${esc(returnsTo())}</b>.</small></span></div>
       ${scopesHtml()}
       <p class="deny-note">Claude <b>cannot</b> see your Canvas/Google tokens, account settings, or anyone else's data. You can disconnect anytime in Flux → Settings.</p>
       <div class="row">

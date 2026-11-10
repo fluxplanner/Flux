@@ -16,6 +16,14 @@ test('script and data addresses are refused even when the host looks local', () 
   assert.equal(isAllowedRedirectUri('not a url'), false);
 });
 
+test('only Claude may receive a planner over https', () => {
+  assert.equal(isAllowedRedirectUri('https://evil.example/cb'), false);
+  assert.equal(isAllowedRedirectUri('https://claude.ai.evil.example/api/mcp/auth_callback'), false);
+  assert.equal(isAllowedRedirectUri('https://claude.ai@evil.example/cb'), false);
+  assert.equal(isAllowedRedirectUri('https://user:pw@claude.ai/api/mcp/auth_callback'), false);
+  assert.equal(isAllowedRedirectUri('https://claude.com/api/mcp/auth_callback'), true);
+});
+
 test('Claude redirects still work', () => {
   assert.equal(isAllowedRedirectUri('https://claude.ai/api/mcp/auth_callback'), true);
   assert.equal(isAllowedRedirectUri('http://localhost:6274/callback'), true);

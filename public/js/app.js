@@ -4089,7 +4089,7 @@ document.addEventListener('keydown',e=>{
 function populateSubjectSelects(){
   if(fluxIsStaffPersonalMode())return;
   const subjs=getSubjects();
-  const opts='<option value="">No subject</option>'+Object.entries(subjs).map(([k,s])=>`<option value="${k}">${s.name}</option>`).join('');
+  const opts='<option value="">No subject</option>'+Object.entries(subjs).map(([k,s])=>`<option value="${esc(k)}">${esc(s.name)}</option>`).join('');
   ['taskSubject','editSubject','noteSubjectTag','timerSubject','addEventSubject'].forEach(id=>{
     const el=document.getElementById(id);
     if(!el)return;
@@ -8415,7 +8415,7 @@ function updateDynamicFocus(){
   const sugHtml=fitTask?`<div style="margin-top:12px;padding:10px;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid var(--border)">
     <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:4px">Suggested task for this gap</div>
     <div style="font-size:.85rem;font-weight:600">${esc(fitTask.name)}</div>
-    <div style="font-size:.7rem;color:var(--muted2)">Fits before ${nextClass.name}</div>
+    <div style="font-size:.7rem;color:var(--muted2)">Fits before ${esc(nextClass.name)}</div>
   </div>`:'';
 
   el.innerHTML=`<div class="focus-card">
@@ -8594,7 +8594,7 @@ function renderAIChatTabs(){
   if(!aiChats.length){el.innerHTML='';return;}
   el.innerHTML=aiChats.map(c=>`
     <div class="flux-ai-tab${c.id===aiCurrentChatId?' flux-ai-tab--active':''}" role="button" onclick="loadAIChat('${c.id}')">
-      <span class="flux-ai-tab__title">${c.title||'Chat'}</span>
+      <span class="flux-ai-tab__title">${esc(c.title||'Chat')}</span>
       <span class="flux-ai-tab__close" onclick="deleteAIChat('${c.id}',event)" title="Delete">×</span>
     </div>`).join('');
 }
@@ -12204,7 +12204,7 @@ async function analyzeScheduleImg(){
     if(resultEl){
       resultEl.style.display='block';
       resultEl.innerHTML='<div style="color:var(--green);font-weight:700;margin-bottom:8px;font-size:.82rem">✓ Found '+obExtractedClasses.length+' classes</div>'+
-        obExtractedClasses.map(c=>`<div class="ob-class-row"><div class="ob-class-period">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.85rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${c.teacher}${c.room?' · Rm '+c.room:''}</div></div></div>`).join('');
+        obExtractedClasses.map(c=>`<div class="ob-class-row"><div class="ob-class-period">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.85rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${esc(c.teacher||'')}${c.room?' · Rm '+esc(c.room):''}</div></div></div>`).join('');
     }
   }catch(e){
     if(resultEl){resultEl.style.display='block';resultEl.innerHTML='<div style="color:var(--red);font-size:.82rem">Could not read schedule. Add classes manually in the School tab.</div>';}
@@ -15899,7 +15899,7 @@ function renderSubjectEfficiencyHeatmap(){
     ${days.map(d=>`<th style="padding:3px 5px;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:center;font-size:.6rem">${d}</th>`).join('')}</tr></thead>
     <tbody>${keys.map(k=>{
       const s=subjs[k];
-      return`<tr><td style="padding:3px 8px;white-space:nowrap;color:${s.color};font-weight:600;font-size:.7rem">${s.name.slice(0,12)}</td>
+      return`<tr><td style="padding:3px 8px;white-space:nowrap;color:${esc(s.color)};font-weight:600;font-size:.7rem">${esc(String(s.name||'').slice(0,12))}</td>
       ${grid[k].map(mins=>{
         const i=mins/maxVal;
         const bg=i>0.7?'var(--green)':i>0.3?'var(--accent)':i>0?'rgba(var(--accent-rgb),.25)':'var(--card2)';

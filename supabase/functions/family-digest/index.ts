@@ -104,8 +104,17 @@ function digestFor(data: Record<string, unknown>, categories: string[]) {
   return out;
 }
 
+/* The student types their own label, and it lands in an email to their parent
+   sent from Flux's address. Unescaped, it could carry a link or a whole fake
+   message. */
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+}
+
 /* ── minimal HTML (wins first, calm tone, no branding noise) ── */
-function renderHtml(lang: string, studentName: string, payload: any): string {
+function renderHtml(lang: string, rawName: string, payload: any): string {
+  const studentName = escapeHtml(String(rawName).slice(0, 80));
   const rows: string[] = [];
   if (payload.wins) {
     rows.push(`<h2 style="font-size:15px;margin:18px 0 6px">${t(lang, "wins")}</h2>`);

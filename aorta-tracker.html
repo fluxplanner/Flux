@@ -518,7 +518,8 @@
 
   /* ---------- helpers ---------- */
   function $(id) { return document.getElementById(id); }
-  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+  /* Quotes too: ids and names from the synced record are written into attributes. */
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function dayKey(d) { d = new Date(d); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
   function today() { return dayKey(new Date()); }

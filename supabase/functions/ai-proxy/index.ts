@@ -1,5 +1,8 @@
 import { verifyUserJWT, json, corsHeaders } from "../_shared/auth.ts";
-import { normalizeFeedUrl as publicHttpsUrl } from "../_shared/schoology-feed.ts";
+import {
+  normalizeFeedUrl as publicHttpsUrl,
+  resolvesToPublicHost,
+} from "../_shared/schoology-feed.ts";
 import {
   type Entitlement,
   getEntitlement,
@@ -608,7 +611,7 @@ async function openOpenAICompatibleStream(
 ): Promise<Response> {
   const payload = buildOpenAIChatPayload(body, rc.model || body.model || "gpt-4o-mini");
   payload.stream = true;
-  const res = await fetch(openaiCompatibleUrl(rc.baseUrl), {
+  const res = await fetch(await openaiCompatibleUrl(rc.baseUrl), {
     redirect: "error",
     method: "POST",
     headers: {
@@ -655,12 +658,13 @@ async function openAnthropicStream(
   return res;
 }
 
-function openaiCompatibleUrl(baseUrl: string): string {
+async function openaiCompatibleUrl(baseUrl: string): Promise<string> {
   let base = baseUrl.replace(/\/+$/, "");
   if (!base) base = "https://api.openai.com/v1";
-  // The server calls this address, so it may never point at anything private.
+  // The server calls this address, so it may never point at anything private:
+  // not by its name, and not by what that name resolves to.
   const safe = publicHttpsUrl(base);
-  if (!safe) {
+  if (!safe || !(await resolvesToPublicHost(new URL(safe).hostname))) {
     throw new Error("OpenAI-compatible base URL must be a public https address");
   }
   base = safe.replace(/\/+$/, "");
@@ -716,7 +720,7 @@ async function callOpenAICompatible(
   const model = rc.model || body.model || "gpt-4o-mini";
   const payload = buildOpenAIChatPayload(body, model);
 
-  const res = await fetch(openaiCompatibleUrl(rc.baseUrl), {
+  const res = await fetch(await openaiCompatibleUrl(rc.baseUrl), {
     redirect: "error",
     method: "POST",
     headers: {
@@ -1120,12 +1124,16 @@ async function callGemini(body: {
     };
   }
 
+  /* The key travels in a header, never in the address. A failed connection
+     throws an error that quotes the address, and that error text is returned
+     to the browser as "details" — with the key in the address, one network
+     blip would have handed Flux's Gemini key to whoever was scanning. */
   const post = (model: string) =>
     fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
         body: JSON.stringify(reqBody),
       },
     );
@@ -1176,7 +1184,8 @@ let _geminiWorkingModel: string | null = null;
 async function discoverGeminiFlash(key: string): Promise<string | null> {
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000&key=${key}`,
+      "https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000",
+      { headers: { "x-goog-api-key": key } },
     );
     if (!res.ok) return null;
     const data = await res.json();

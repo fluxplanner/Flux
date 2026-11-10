@@ -76,14 +76,24 @@ export function oauthError(error: string, description: string, status = 400, hea
 }
 
 /**
- * Https anywhere, or http on this machine for Claude's desktop redirects.
- * The scheme is the check that matters: javascript://localhost/ has the hostname
+ * Claude's own https callback, or http on this machine for Claude's desktop
+ * redirects. Nothing else.
+ *
+ * Anyone can register a client, and the consent page says "Claude wants to
+ * access your planner" whoever registered it. While any https address was
+ * accepted, a stranger could register their own site, send a student the
+ * consent link, and receive that student's planner on "Allow access".
+ *
+ * The scheme matters too: javascript://localhost/ has the hostname
  * "localhost", and sending a browser there runs script on the Flux site.
  */
 export function isAllowedRedirectUri(raw: string): boolean {
   try {
     const u = new URL(raw);
-    if (u.protocol === "https:") return true;
+    if (u.username || u.password) return false;
+    if (u.protocol === "https:") {
+      return u.hostname === "claude.ai" || u.hostname === "claude.com";
+    }
     return u.protocol === "http:" &&
       (u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "[::1]");
   } catch {
