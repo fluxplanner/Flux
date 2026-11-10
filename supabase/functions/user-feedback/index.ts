@@ -1,4 +1,5 @@
 import { verifyUserJWT, json, corsHeaders, serviceClient } from "../_shared/auth.ts";
+import { overDailyLimit } from "../_shared/rate-limit.ts";
 
 /** Matches OWNER_UID in release-admin and public/js/app.js. */
 const OWNER_UID = (Deno.env.get("FLUX_OWNER_UID") ||
@@ -60,6 +61,10 @@ Deno.serve(async (req) => {
     return json({ error: auth.error }, auth.status, origin);
   }
 
+  // rateOk lives in memory and resets on every cold start.
+  if (await overDailyLimit("user-feedback", auth.userId, 40)) {
+    return json({ error: "rate_limited" }, 429, origin);
+  }
   if (!rateOk(auth.userId)) {
     return json({ error: "Too many feedback submissions. Try again in a minute." }, 429, origin);
   }

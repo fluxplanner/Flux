@@ -27,6 +27,7 @@ import {
   verifyPkceS256,
   type JsonRpcId,
 } from "../_shared/mcp.ts";
+import { clientIp, overDailyLimit } from "../_shared/rate-limit.ts";
 
 const SUPPORTED_SCOPES = ["planner.read", "tasks.write"];
 const ACCESS_TTL_SEC = 60 * 60; // 1h
@@ -159,6 +160,10 @@ Deno.serve(async (req) => {
 // OAuth: Dynamic Client Registration
 // ===========================================================================
 async function register(req: Request, ch: Record<string, string>) {
+  // Anyone can register a client without signing in, and each one is a row.
+  if (await overDailyLimit("mcp-register", clientIp(req), 20)) {
+    return oauthError("temporarily_unavailable", "Too many registrations", 429, ch);
+  }
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -319,6 +324,9 @@ async function grant(req: Request, ch: Record<string, string>) {
 // OAuth: Token endpoint (authorization_code + refresh_token)
 // ===========================================================================
 async function token(req: Request, ch: Record<string, string>) {
+  if (await overDailyLimit("mcp-token", clientIp(req), 300)) {
+    return oauthError("temporarily_unavailable", "Too many token requests", 429, ch);
+  }
   const form = await readForm(req);
   const grantType = form.get("grant_type") || "";
   const sb = serviceClient();
@@ -462,6 +470,9 @@ async function mcp(req: Request, base: string, ch: Record<string, string>) {
         "WWW-Authenticate": `Bearer resource_metadata="${base}/.well-known/oauth-protected-resource"`,
       },
     });
+  }
+  if (await overDailyLimit("mcp", session.userId, 3000)) {
+    return json({ error: "rate_limited" }, 429, ch);
   }
 
   let payload: unknown;

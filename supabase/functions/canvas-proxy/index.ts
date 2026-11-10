@@ -1,4 +1,5 @@
 import { verifyUserJWT, corsHeaders } from "../_shared/auth.ts";
+import { overDailyLimit } from "../_shared/rate-limit.ts";
 
 const MAX_BODY_BYTES = 5 * 1024 * 1024;
 const MAX_REQUEST_BYTES = 256 * 1024;
@@ -98,6 +99,9 @@ Deno.serve(async (req) => {
     return jsonErr(auth.error, auth.status, origin);
   }
   const userId = auth.userId;
+  if (await overDailyLimit("canvas-proxy", userId, 2000)) {
+    return jsonErr("rate_limited", 429, origin);
+  }
 
   let targetUrl: string | null = null;
   let canvasToken: string | null = null;

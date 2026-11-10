@@ -1,4 +1,5 @@
 import { verifyUserJWT, serviceClient, json, corsHeaders } from "../_shared/auth.ts";
+import { overDailyLimit } from "../_shared/rate-limit.ts";
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 const APP_URL = "https://azfermohammed.github.io/Fluxplanner";
@@ -18,6 +19,9 @@ Deno.serve(async (req) => {
     return json({ error: auth.error }, auth.status, origin);
   }
 
+  if (await overDailyLimit("stripe-portal", auth.userId, 20)) {
+    return json({ error: "rate_limited" }, 429, origin);
+  }
   const db = serviceClient();
   const { data: sub } = await db
     .from("subscriptions")

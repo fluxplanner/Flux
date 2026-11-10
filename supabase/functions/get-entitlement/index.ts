@@ -1,4 +1,5 @@
 import { verifyUserJWT, json, corsHeaders } from "../_shared/auth.ts";
+import { overDailyLimit } from "../_shared/rate-limit.ts";
 import { getEntitlement, checkAILimit } from "../_shared/plan.ts";
 
 Deno.serve(async (req) => {
@@ -12,6 +13,9 @@ Deno.serve(async (req) => {
     return json({ error: auth.error }, auth.status, origin);
   }
 
+  if (await overDailyLimit("get-entitlement", auth.userId, 1000)) {
+    return json({ error: "rate_limited" }, 429, origin);
+  }
   const entitlement = await getEntitlement(auth.userId);
   const usage = await checkAILimit(auth.userId, entitlement);
 
