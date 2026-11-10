@@ -912,8 +912,11 @@
         prev.innerHTML = '<div class="ff-prev-head"><b>' + plural(found.length, 'card') + ' found</b>'
           + (into ? '' : '<input class="ff-input" id="ffNewTitle" placeholder="Deck title" value="' + esc(aiTitle) + '">')
           + '<button type="button" class="ff-btn ff-btn--primary" data-create>' + (into ? 'Add ' + plural(found.length, 'card') : 'Create deck') + '</button></div>'
-          + '<div class="ff-list">' + found.slice(0, 300).map(function (c) {
-            return '<div class="ff-row"><div class="ff-row-term">' + fmt(c.term) + '</div><div class="ff-row-def">' + fmt(c.def) + '</div></div>';
+          + '<p class="ff-muted">Term and definition the wrong way round? <button type="button" class="ff-btn ff-btn--small" data-swap="all">Swap all</button> or use ⇄ on one card. × leaves a card out.</p>'
+          + '<div class="ff-list">' + found.slice(0, 300).map(function (c, i) {
+            return '<div class="ff-row ff-row--imp"><div class="ff-row-term">' + fmt(c.term) + '</div><div class="ff-row-def">' + fmt(c.def) + '</div>'
+              + '<div class="ff-row-tools"><button type="button" class="ff-icon-btn" data-swap="' + i + '" aria-label="Swap term and definition" title="Swap term and definition">⇄</button>'
+              + '<button type="button" class="ff-icon-btn" data-drop="' + i + '" aria-label="Leave this card out" title="Leave this card out">×</button></div></div>';
           }).join('') + '</div>' + (found.length > 300 ? '<p class="ff-muted">…and ' + (found.length - 300) + ' more.</p>' : '');
       }
 
@@ -998,11 +1001,21 @@
       drawTab();
 
       host.onclick = function (e) {
-        var t = e.target.closest('[data-tab],[data-make],[data-create],[data-qzmark],[data-qzcopy],[data-qzdev]');
+        var t = e.target.closest('[data-tab],[data-make],[data-create],[data-qzmark],[data-qzcopy],[data-qzdev],[data-swap],[data-drop]');
         if (!t) return;
         if (t.dataset.qzdev) { setPref('qzDevice', t.dataset.qzdev); drawTab(); return; }
         if (t.hasAttribute('data-qzmark')) { e.preventDefault(); toast('Drag it to your bookmarks bar, then tap it on a Quizlet set'); return; }
         if (t.hasAttribute('data-qzcopy')) { copyText(window.FluxQuizlet.bookmarklet(location.origin + location.pathname), 'Copied: now make the bookmark'); return; }
+        if (t.dataset.swap || t.dataset.drop) {
+          var keep = ($('#ffNewTitle', host) || {}).value;
+          var flip = function (c) { return { term: c.def, def: c.term }; };
+          if (t.dataset.swap === 'all') found = found.map(flip);
+          else if (t.dataset.swap) found[+t.dataset.swap] = flip(found[+t.dataset.swap]);
+          else found.splice(+t.dataset.drop, 1);
+          drawPreview('All cards left out.');
+          if (keep != null && $('#ffNewTitle', host)) $('#ffNewTitle', host).value = keep;
+          return;
+        }
         if (t.dataset.tab) { tab = t.dataset.tab; setPref('importTab', tab); drawTab(); return; }
         if (t.hasAttribute('data-make')) {
           var text = $('.ff-paste', box).value.trim();

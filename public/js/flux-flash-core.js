@@ -352,6 +352,8 @@
       var id = detectSep(chunks);
       if (!id) {
         // Alternating lines: term, definition, term, definition.
+        // An odd count is almost always the set's title on top: skip it.
+        if (cardSep === 'newline' && chunks.length >= 3 && chunks.length % 2 === 1) chunks = chunks.slice(1);
         if (cardSep === 'newline' && chunks.length >= 2 && chunks.length % 2 === 0) {
           var pairs = [];
           for (var i = 0; i < chunks.length; i += 2) pairs.push({ term: chunks[i], def: chunks[i + 1] });
@@ -364,12 +366,19 @@
       var known = SEPS.filter(function (s) { return s.id === between; })[0];
       re = known ? known.re : new RegExp(between.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     }
-    return chunks.map(function (c) {
+    // A line with no separator is the rest of the previous definition (a
+    // definition with line breaks in it), not a card of its own.
+    var cards = [];
+    chunks.forEach(function (c) {
       var m = c.match(re);
-      if (!m) return null;
+      if (!m) {
+        if (cards.length && cardSep === 'newline') cards[cards.length - 1].def += ' ' + c;
+        return;
+      }
       var at = m.index;
-      return { term: c.slice(0, at).replace(/^[•*\-\d.)\s]+/, '').trim(), def: c.slice(at + m[0].length).trim() };
-    }).filter(function (c) { return c && c.term && c.def; });
+      cards.push({ term: c.slice(0, at).replace(/^[•*\-\d.)\s]+/, '').trim(), def: c.slice(at + m[0].length).trim() });
+    });
+    return cards.filter(function (c) { return c.term && c.def; });
   }
 
   /* ── Tests and games ────────────────────────────────────────────────── */
