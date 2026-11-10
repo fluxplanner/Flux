@@ -127,6 +127,11 @@ test('imports what students actually paste', () => {
   assert.equal(F.parseImport('').length, 0);
 });
 
+test('a definition with a line break stays on its own card', () => {
+  const text = 'mitosis\tcell division\nmakes two identical cells\nmeiosis\tmakes gametes';
+  assert.deepEqual(plain(F.parseImport(text).map((c) => [c.term, c.def])), [['mitosis', 'cell division makes two identical cells'], ['meiosis', 'makes gametes']]);
+});
+
 test('a practice test mixes question types and marks itself', () => {
   const cards = 'abcdef'.split('').map((x, i) => ({ id: x, term: 'term ' + x, def: 'definition ' + i }));
   let seed = 1;
