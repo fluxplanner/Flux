@@ -6,6 +6,7 @@ import {
   serviceClientActingFor,
   verifyUserJWT,
 } from "../_shared/auth.ts";
+import { overDailyLimit } from "../_shared/rate-limit.ts";
 
 const OWNER_EMAIL = (Deno.env.get("FLUX_OWNER_EMAIL") ||
   "azfermohammed21@gmail.com").toLowerCase();
@@ -279,6 +280,12 @@ Deno.serve(async (req) => {
 
   const email = normEmail(auth.email);
   const callerUserId = auth.userId; // captured here (narrowed) for use inside nested helpers
+  // Every signed-in user reads the release gate here, and the owner's tools
+  // run here. Owner Controls stays well under this; a stolen session trying
+  // to mass-ban or mass-delete runs into it.
+  if (await overDailyLimit("release-admin", callerUserId, 1500)) {
+    return json({ error: "rate_limited" }, 429, origin);
+  }
   // Same rule as flux_is_platform_admin(): once the owner has an authenticator,
   // a session without a recent code is treated as an ordinary account.
   const ownerVerified = isOwnerCaller(email, callerUserId) &&

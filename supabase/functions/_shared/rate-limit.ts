@@ -36,6 +36,20 @@ export async function bumpDailyGuard(bucket: string): Promise<number | null> {
 }
 
 /**
+ * Daily cap for a function that does not call an AI provider. Same table as
+ * the AI guard, bucket "<fn>:<key>". Fails open: when the guard itself is
+ * down, a person must still reach their own data.
+ */
+export async function overDailyLimit(
+  fn: string,
+  key: string,
+  max: number,
+): Promise<boolean> {
+  const n = await bumpDailyGuard(`${fn}:${key}`);
+  return n !== null && n > max;
+}
+
+/**
  * Give one count back — the provider failed, so the request did nothing and
  * should not use up the day's allowance. Best effort: a read then a write,
  * so a request counted in between is lost — at worst one extra request that

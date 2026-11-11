@@ -1,4 +1,5 @@
 import { corsHeaders, json, serviceClient, verifyUserJWT } from "../_shared/auth.ts";
+import { overDailyLimit } from "../_shared/rate-limit.ts";
 
 /**
  * Let someone set their own sign-in name and password.
@@ -84,6 +85,9 @@ Deno.serve(async (req) => {
     return json({ error: auth.error }, auth.status, origin);
   }
   const { userId, email: currentEmail } = auth as { userId: string; email: string };
+  if (await overDailyLimit("account-setup", userId, 30)) {
+    return json({ error: "rate_limited" }, 429, origin);
+  }
 
   let body: Record<string, unknown>;
   try {

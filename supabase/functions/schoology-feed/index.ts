@@ -1,4 +1,5 @@
 import { corsHeaders, verifyUserJWT } from "../_shared/auth.ts";
+import { overDailyLimit } from "../_shared/rate-limit.ts";
 import { looksLikeCalendar, normalizeFeedUrl, resolvesToPublicHost } from "../_shared/schoology-feed.ts";
 
 /*
@@ -69,6 +70,9 @@ Deno.serve(async (req) => {
 
   const auth = await verifyUserJWT(req);
   if ("error" in auth) return json({ error: auth.error }, auth.status);
+  if (await overDailyLimit("schoology-feed", auth.userId, 300)) {
+    return json({ error: "rate_limited" }, 429);
+  }
 
   let url: string | null = null;
   try {

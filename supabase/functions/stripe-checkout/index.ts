@@ -1,4 +1,5 @@
 import { verifyUserJWT, serviceClient, json, corsHeaders } from "../_shared/auth.ts";
+import { overDailyLimit } from "../_shared/rate-limit.ts";
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 const STRIPE_PRICE_ID = Deno.env.get("STRIPE_PRICE_ID") ?? "";
@@ -19,6 +20,9 @@ Deno.serve(async (req) => {
     return json({ error: auth.error }, auth.status, origin);
   }
   const { userId, email } = auth;
+  if (await overDailyLimit("stripe-checkout", userId, 20)) {
+    return json({ error: "rate_limited" }, 429, origin);
+  }
 
   const db = serviceClient();
 
