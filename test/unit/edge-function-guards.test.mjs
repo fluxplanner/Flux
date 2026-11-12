@@ -19,6 +19,7 @@ const SECRET_GATED = {
   'daily-briefing': /CRON_SECRET|x-cron/,
   'family-digest': /CRON_SECRET|x-cron/,
   'notify-push': /CRON_SECRET|x-cron|WEBHOOK_SECRET/,
+  'security-watch': /secretMatches\(req\.headers\.get\("x-monitor-secret"\)/,
   'stripe-webhook': /verifyStripeSignature\(rawBody, signature, STRIPE_WEBHOOK_SECRET\)/,
 };
 /* Reached with an unguessable token in the URL, not a login. */
