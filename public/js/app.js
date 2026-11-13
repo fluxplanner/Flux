@@ -12627,7 +12627,7 @@ async function fluxChangePassword(){
     cur.value='';nw.value='';nw2.value='';
     /* Named in the confirmation on purpose: with no reset link, the moment
        they are holding the new password is the only moment to say this. */
-    say('Password changed. Write this one down — there is no reset email.',true);
+    say('Password changed. Write this one down, or add a recovery email below so you can reset it yourself.',true);
   }catch(e){
     say(typeof fluxAuthErrorText==='function'?fluxAuthErrorText(e):(e.message||'Could not change your password. Try again.'));
   }finally{
@@ -12669,15 +12669,27 @@ async function fluxRequestPasswordHelp(){
   const prev=btn?btn.textContent:'';
   if(btn){btn.disabled=true;btn.textContent='Sending…';}
   try{
-    /* Insert only. This table is readable by the owner alone — the rows are a
-       list of who is currently locked out, which is exactly the list you would
-       want if you were trying to get into someone's account. */
-    const {error}=await sb.from('flux_password_help').insert({
-      username,
-      note:'Asked for help from the sign-in screen.'
-    });
-    if(error)throw error;
-    showAuthError('Request sent. We\'ll get you back in as soon as we can.','ok');
+    /* First the reset-by-email route (flux-recovery.js). The server emails a
+       link if this account has a confirmed recovery email and otherwise tells
+       the owner itself; it answers the same either way, so this screen cannot
+       be used to find out which names exist or have an email. */
+    let asked=false;
+    if(window.FluxRecovery){
+      const r=await window.FluxRecovery.requestReset(username);
+      asked=!!(r&&r.ok);
+    }
+    if(!asked){
+      /* The function could not be reached: fall back to the direct note.
+         Insert only. This table is readable by the owner alone — the rows are a
+         list of who is currently locked out, which is exactly the list you would
+         want if you were trying to get into someone's account. */
+      const {error}=await sb.from('flux_password_help').insert({
+        username,
+        note:'Asked for help from the sign-in screen.'
+      });
+      if(error)throw error;
+    }
+    showAuthError('If that account has a recovery email, a reset link is on its way to it. If it does not, we\'ve been told and will get you back in as soon as we can.','ok');
     if(btn){btn.textContent='Request sent';}
   }catch(e){
     showAuthError('Could not send that just now. Please try again in a moment.');
@@ -12707,6 +12719,14 @@ async function handleEmailAuth(){
     const weak=typeof window.fluxWeakPasswordReason==='function'
       ?window.fluxWeakPasswordReason(password,rawName):'';
     if(weak){showAuthError(weak);return;}
+    /* Optional. Checked before the account is made, so a typo is caught while
+       the person is still looking at the form. */
+    const recEmailTyped=(document.getElementById('loginRecoveryEmail')?.value||'').trim();
+    if(recEmailTyped&&!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(recEmailTyped)){
+      showAuthError('That email address does not look right. Fix it, or leave it empty.');
+      document.getElementById('loginRecoveryEmail')?.focus();
+      return;
+    }
     /* A bot gets the same silence a refused sign-up would, and no account. */
     if(fluxLoginTrapped()){showAuthError('Could not create that account. Please try again later.');return;}
     _fluxSignupPolicy=null;
@@ -12752,6 +12772,17 @@ async function handleEmailAuth(){
         return;
       }
       fluxShowPasswordKeepsafe(username);
+      /* The recovery email, if one was typed. Sent after the account exists
+         because the address is stored against the signed-in account; never
+         allowed to hold up or fail the sign-up itself. */
+      const recEmail=(document.getElementById('loginRecoveryEmail')?.value||'').trim();
+      if(recEmail&&window.FluxRecovery){
+        window.FluxRecovery.setAfterSignup(recEmail,password).then(r=>{
+          if(typeof showToast!=='function')return;
+          if(r&&r.ok)showToast('Check '+recEmail+' and click the link to confirm your recovery email.','info');
+          else showToast('Your account is ready, but the recovery email was not saved. Add it in Settings, under Account.','warning');
+        }).catch(()=>{});
+      }
     } else {
       result=await sb.auth.signInWithPassword({email,password});
       if(result.error){
