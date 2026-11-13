@@ -51,7 +51,8 @@
 
   function place(c) {
     var line = c.querySelector(':scope > .fx-tab-line');
-    if (!line) {
+    var fresh = !line;
+    if (fresh) {
       line = document.createElement('span');
       line.className = 'fx-tab-line';
       line.setAttribute('aria-hidden', 'true');
@@ -59,10 +60,20 @@
     }
     var a = c.querySelector(ACTIVE);
     if (!a || !a.offsetWidth) { line.classList.remove('is-on'); line.style.opacity = '0'; return; }
-    line.style.width = a.offsetWidth + 'px';
-    line.style.transform = 'translate(' + a.offsetLeft + 'px,' + (a.offsetTop + a.offsetHeight - 2) + 'px)';
+    var x = a.offsetLeft, w = a.offsetWidth, y = a.offsetTop + a.offsetHeight - 2;
+    // Slide only when the choice moves to another tab. A new line (the row
+    // was just re-rendered, as Connect does on every switch) or a reflow of
+    // the same tab snaps into place — animating those flung the line in
+    // from the left edge and across the screen.
+    var moved = line._fxTab && line._fxTab !== a;
+    line.style.transition = moved && !fresh ? '' : 'none';
+    line.style.width = w + 'px';
+    line.style.top = y + 'px';
+    line.style.transform = 'translateX(' + x + 'px)';
     line.style.opacity = '1';
     line.classList.add('is-on');
+    if (line.style.transition === 'none') { void line.offsetWidth; line.style.transition = ''; }
+    line._fxTab = a;
   }
 
   function scan() {
