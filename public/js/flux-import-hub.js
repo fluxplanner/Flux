@@ -43,6 +43,16 @@
       },
     });
 
+    list.push({
+      icon: '📋', title: 'Paste a list',
+      desc: 'Paste an assignment sheet or syllabus — each line becomes a task. Works offline.',
+      run: function () {
+        close();
+        if (window.FluxPasteImport) window.FluxPasteImport.open();
+        else toast('Paste import is still loading. Try again in a moment.', 'info');
+      },
+    });
+
     if (!isEducator()) {
       list.push({
         icon: '📷', title: 'Class schedule (photo or PDF)',

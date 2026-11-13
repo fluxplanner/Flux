@@ -13059,6 +13059,7 @@ function renderCmdResults(){
   // Actions
   const actions=[
     {icon:'📥',label:'Import into Flux (everything)',cat:'Actions',action:()=>{closeCommandPalette();if(typeof window.openImportHub==='function')window.openImportHub();}},
+    {icon:'📋',label:'Paste a list of tasks',cat:'Actions',action:()=>{closeCommandPalette();if(window.FluxPasteImport)window.FluxPasteImport.open();}},
     {icon:'🔄',label:'Force Sync',cat:'Actions',action:()=>{closeCommandPalette();forceSyncNow();}},
     {icon:'🎯',label:'Start Deep Work Mode',cat:'Actions',action:()=>{closeCommandPalette();startDeepWork();}},
     {icon:'📆',label:'Explain my week (Flux AI)',cat:'Actions',action:()=>{closeCommandPalette();explainMyWeek();}},
