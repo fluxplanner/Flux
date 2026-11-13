@@ -12750,7 +12750,14 @@ async function handleEmailAuth(){
       fluxShowPasswordKeepsafe(username);
     } else {
       result=await sb.auth.signInWithPassword({email,password});
-      if(result.error)throw result.error;
+      if(result.error){
+        /* Feeds the security watch's "burst of failed sign-ins" alert. Only a
+           wrong name/password counts; fire and forget so sign-in never waits. */
+        if(/invalid login credentials/i.test(result.error.message||'')){
+          try{sb.rpc('flux_note_failed_login',{p_username:username}).then(()=>{},()=>{});}catch(_){}
+        }
+        throw result.error;
+      }
     }
   }catch(e){
     /* Pass the mode and the name: "Dominic is taken" and "that name and

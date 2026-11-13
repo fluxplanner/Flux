@@ -246,6 +246,34 @@ test.describe('Name + password sign-in', () => {
     expect(help.text).toMatch(/forgot your password/i);
   });
 
+  /*
+   * The security watch alerts on bursts of wrong passwords. Supabase Auth keeps
+   * no record of them this project can read, so the sign-in screen reports
+   * each one. Only a wrong name/password counts, and only the name is sent.
+   */
+  test('a wrong password is reported to the security watch, by name only', async ({ page }) => {
+    const reported: unknown[] = [];
+    await page.route('**/auth/v1/token**', (route) => route.fulfill({
+      status: 400,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'invalid_grant', error_description: 'Invalid login credentials', code: 'invalid_credentials', msg: 'Invalid login credentials' }),
+    }));
+    await page.route('**/rest/v1/rpc/flux_note_failed_login', async (route) => {
+      reported.push(route.request().postDataJSON());
+      await route.fulfill({ status: 204, body: '' });
+    });
+
+    await page.evaluate(() => {
+      (document.querySelector('#loginUsername') as HTMLInputElement).value = 'Tester One';
+      (document.querySelector('#loginPassword') as HTMLInputElement).value = 'not-the-password-123';
+      (window as unknown as { handleEmailAuth: () => Promise<void> }).handleEmailAuth();
+    });
+    await expect.poll(() => reported.length, { timeout: 10000 }).toBe(1);
+    expect(reported[0]).toEqual({ p_username: await page.evaluate(() =>
+      (window as unknown as { fluxNormalizeUsername: (s: string) => string }).fluxNormalizeUsername('Tester One')) });
+    expect(JSON.stringify(reported[0])).not.toContain('not-the-password');
+  });
+
   test('asking for help with an empty name says so instead of sending', async ({ page }) => {
     await page.evaluate(() => {
       const u = document.querySelector('#loginUsername') as HTMLInputElement;
