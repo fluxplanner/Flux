@@ -4,34 +4,72 @@
     {
       "name": "flux-planner",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["-y", "serve", "-l", "3344", "."],
+      "runtimeArgs": [
+        "-y",
+        "serve",
+        "-l",
+        "3344",
+        "."
+      ],
       "port": 3344
     },
     {
       "name": "flux-planner-py",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "3346", "--bind", "127.0.0.1"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "3346",
+        "--bind",
+        "127.0.0.1"
+      ],
       "port": 3346
     },
     {
       "name": "web-next-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3000,
       "cwd": "web"
     },
     {
       "name": "e2e-server",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", ".", "-l", "4173"],
+      "runtimeArgs": [
+        "serve",
+        ".",
+        "-l",
+        "4173"
+      ],
       "port": 4173
     },
     {
       "name": "troy-martial-arts",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "-p", "3400"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "-p",
+        "3400"
+      ],
       "port": 3400,
       "cwd": ".troy-preview"
+    },
+    {
+      "name": "flat-look",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "3381",
+        "--bind",
+        "127.0.0.1"
+      ],
+      "port": 3381
     }
   ]
 }
