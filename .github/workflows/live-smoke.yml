@@ -1,0 +1,59 @@
+name: Live smoke
+
+# Every hour, load the real site (fluxplanner.github.io/Flux) and check the
+# planner, the main apps and the backend still answer. Read-only: it never
+# signs in or saves anything. A failure is sent to Discord and email through
+# the security-watch function, once until it passes again.
+on:
+  schedule:
+    - cron: '7 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-smoke
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      - name: Check the live site
+        run: npx playwright test -c playwright.live.config.ts
+        env:
+          CI: '1'
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: live-smoke-report
+          path: test-results/
+          retention-days: 7
+
+      - name: Alert
+        if: always()
+        env:
+          MONITOR_SECRET: ${{ secrets.MONITOR_SECRET }}
+          STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -n "$MONITOR_SECRET" ] || { echo "MONITOR_SECRET not set; no alert sent"; exit 0; }
+          if [ "$STATUS" = "success" ]; then kind=workflow_ok; else kind=workflow_failed; fi
+          curl -s -o /dev/null -w 'security-watch answered %{http_code}\n' --max-time 30 \
+            -X POST -H "x-monitor-secret: $MONITOR_SECRET" -H 'content-type: application/json' \
+            -d "{\"kind\":\"$kind\",\"workflow\":\"Live smoke\",\"run_url\":\"$RUN_URL\"}" \
+            https://lfigdijuqmbensebnevo.supabase.co/functions/v1/security-watch || true
