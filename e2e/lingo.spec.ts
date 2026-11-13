@@ -44,9 +44,18 @@ test.describe('Flux Lingo', () => {
     await page.locator('#lgFindWho').selectOption('3');
     await expect(page.locator('#lgFindOut .lg-find-form')).toHaveText('tuviéramos');
     await expect(page.locator('#lgFindOut')).toContainText('si clauses');
-    // A tense the Essentials view hides is shown when asked for.
+    // Picking never moves the page; the whole tense opens right under the answer.
+    const y = await page.evaluate(() => window.scrollY);
     await page.locator('#lgFindTense').selectOption('subjFuture');
-    await expect(page.locator('[data-cell="subjFuture-3"]')).toHaveClass(/is-flash/);
+    await page.waitForTimeout(400);
+    expect(await page.evaluate(() => window.scrollY)).toBe(y);
+    await expect(page.locator('#lgFindChart .lg-find-card')).toHaveCount(0);
+    await page.locator('[data-act="find-chart"]').click();
+    await expect(page.locator('#lgFindChart [data-cell="subjFuture-3"]')).toHaveClass(/is-pick/);
+    await page.locator('#lgFindWho').selectOption('0');
+    await expect(page.locator('#lgFindChart [data-cell="subjFuture-0"]')).toHaveClass(/is-pick/);
+    await page.locator('[data-act="find-chart"]').click();
+    await expect(page.locator('#lgFindChart .lg-find-card')).toHaveCount(0);
     await open(page, '#fr/aller');
     await page.locator('#lgFindTense').selectOption('passeCompose');
     await page.locator('#lgFindWho').selectOption('3');
