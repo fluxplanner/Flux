@@ -73,7 +73,9 @@
     }
     var list;
     try { list = document.querySelectorAll(SEL); } catch (_) { return; }
-    list.forEach(place);
+    list.forEach(function (c) { if (!c.closest('#sidebar')) place(c); });
+    // Lines left in the sidebar by an earlier version would cover its pill.
+    document.querySelectorAll('#sidebar .fx-tab-line').forEach(function (l) { l.remove(); });
   }
   // setTimeout, not requestAnimationFrame: rAF stalls in hidden tabs, and the
   // line must already be right when the tab comes back.
