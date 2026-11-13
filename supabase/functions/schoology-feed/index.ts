@@ -3,8 +3,8 @@ import { overDailyLimit } from "../_shared/rate-limit.ts";
 import { looksLikeCalendar, normalizeFeedUrl, resolvesToPublicHost } from "../_shared/schoology-feed.ts";
 
 /*
- * Fetches a student's Schoology calendar link. Browsers cannot read it directly
- * because Schoology does not allow cross-site requests.
+ * Fetches a student's Schoology or Moodle calendar link. Browsers cannot read it directly
+ * because neither site allows cross-site requests.
  *
  * The link is a secret: anyone holding it can read that calendar. It is never
  * logged, and neither is the response.
@@ -92,12 +92,12 @@ Deno.serve(async (req) => {
     console.log(JSON.stringify({ userId: auth.userId, host: new URL(url).hostname, status: res.status }));
     if (text === null) return json({ error: "That calendar is too large." }, 413);
     if (!res.ok || !looksLikeCalendar(text)) {
-      return json({ error: "That link didn't return a calendar. Copy it from Schoology again." }, 422);
+      return json({ error: "That link didn't return a calendar. Copy it from your school site again." }, 422);
     }
     return json({ ics: text });
   } catch (e) {
     const aborted = e instanceof Error && e.name === "AbortError";
-    return json({ error: aborted ? "Schoology took too long to answer." : "Couldn't reach Schoology." }, 502);
+    return json({ error: aborted ? "Your school site took too long to answer." : "Couldn't reach your school site." }, 502);
   } finally {
     clearTimeout(timer);
   }

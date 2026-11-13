@@ -167,6 +167,11 @@
 .lg-find-out { margin: 10px 0 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
 .lg-find-form { font-size: 1.25rem; color: var(--accent); cursor: pointer; }
 .lg-find-use { flex-basis: 100%; color: var(--muted2); font-size: .85rem; }
+.lg-find-more { margin-top: 8px; min-height: 44px; }
+.lg-find-card { margin-top: 6px; }
+.lg-find-card .lg-card { background: var(--bg, transparent); }
+.lg-row.is-pick { background: color-mix(in srgb, var(--accent) 16%, transparent); border-radius: 8px; }
+.lg-row.is-pick .lg-form { font-weight: 700; }
 /* ── Print panel ── */
 .lg-pp-quick { margin: 0 0 8px; color: var(--muted2); font-size: .88rem; }
 .lg-linkbtn { appearance: none; border: 0; padding: 4px 2px; background: none; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }

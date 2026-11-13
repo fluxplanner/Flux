@@ -26,8 +26,9 @@ const ics = [
 async function openCard(page: Page) {
   await page.setViewportSize({ width: 1280, height: 900 });
   await gotoScenario(page, 'student-semester');
-  await page.locator('#sidebar .nav-item[data-tab="schoology"]').click();
-  await expect(page.locator('#schoology.panel.active #fluxSchoologyCard')).toBeVisible();
+  await page.locator('#sidebar .nav-item[data-tab="canvas"]:visible').click();
+  await page.locator('#canvas.panel.active').getByRole('tab', { name: 'Schoology' }).click();
+  await expect(page.locator('#canvas.panel.active #fluxSchoologyCard')).toBeVisible();
 }
 
 const schoologyTasks = (page: Page) => page.evaluate(() =>
@@ -87,4 +88,27 @@ test('disconnecting keeps the imported tasks', async ({ page }) => {
 
   await expect(page.locator('#fluxSchoologyConnect')).toBeAttached();
   expect(await schoologyTasks(page)).toEqual(['Schoology Essay', 'Schoology Quiz']);
+});
+
+test('Moodle connects from its own tab and keeps its tasks apart', async ({ page }) => {
+  const moodleIcs = [
+    'BEGIN:VCALENDAR',
+    'BEGIN:VEVENT', 'UID:hw-1', 'SUMMARY:Moodle Lab', 'CATEGORIES:CHEM101', `DTSTART;VALUE=DATE:${day(4)}`, 'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n');
+  await page.route('**/functions/v1/schoology-feed', (route) => route.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify({ ics: moodleIcs }),
+  }));
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await gotoScenario(page, 'student-semester');
+  await page.locator('#sidebar .nav-item[data-tab="canvas"]:visible').click();
+  await page.locator('#canvas.panel.active').getByRole('tab', { name: 'Moodle' }).click();
+  await page.locator('#fluxMoodleUrl').fill('https://moodle.example.org/calendar/export_execute.php?authtoken=test');
+  await page.locator('#fluxMoodleConnect').click();
+  await expect(page.locator('#fluxMoodleSync')).toBeVisible();
+  const moodle = await page.evaluate(() =>
+    (window as any).tasks.filter((t: any) => t.moodleUid).map((t: any) => [t.name, t.notes.split('\n')[0]]));
+  expect(moodle).toEqual([['Moodle Lab', 'From Moodle: CHEM101']]);
+  /* Same uid as a Schoology event must not collide with it. */
+  expect(await page.evaluate(() => (window as any).FluxSchoology.isConnected())).toBe(false);
 });

@@ -157,3 +157,17 @@ test('skips old events and school-wide days', () => {
   assert.deepEqual(tasks.map((t) => t.schoologyUid), ['edge']);
   assert.equal(r.added, 1);
 });
+
+test('Moodle tasks use their own fields and ids, and keep the course name', () => {
+  const moodle = fakeWindow.FluxMoodle;
+  const [e] = moodle._parseIcs('BEGIN:VEVENT\nUID:a\nSUMMARY:Lab 3\nCATEGORIES:CHEM101\nDTSTART;VALUE=DATE:20261110\nEND:VEVENT');
+  assert.equal(e.category, 'CHEM101');
+  const mTasks = [];
+  moodle._mergeEvents(mTasks, [e], [], { today: TODAY, classes: [], calcUrgency: null });
+  const sTasks = [];
+  merge(sTasks, [ev('a', 'Lab 3', '2026-11-10')]);
+  assert.equal(mTasks[0].moodleUid, 'a');
+  assert.equal(mTasks[0].schoologyUid, undefined);
+  assert.equal(mTasks[0].notes.split('\n')[0], 'From Moodle: CHEM101');
+  assert.notEqual(mTasks[0].id, sTasks[0].id);
+});

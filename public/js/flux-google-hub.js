@@ -373,10 +373,23 @@
     console.log('[FluxGoogle] Educator workspace hub ready (Supabase OAuth pop-up).');
   }
 
+  /* School learning systems — Canvas, Schoology and Moodle share this tab
+     whether or not Google is on. */
+  const LMS_TABS = [
+    { id: 'canvas', label: 'Canvas', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>' },
+    { id: 'schoology', label: 'Schoology', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15 9.5c-.6-1-1.7-1.5-3-1.5-1.7 0-3 .9-3 2.2 0 3 6 1.6 6 4.6 0 1.3-1.3 2.2-3 2.2-1.4 0-2.6-.6-3.1-1.6"/></svg>' },
+    { id: 'moodle', label: 'Moodle', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19v-7a3 3 0 0 1 6 0v7M10 19v-7a3 3 0 0 1 6 0v7M16 12a3 3 0 0 1 4 2.8V19"/><path d="M3 7l6-3 6 3"/></svg>' },
+  ];
+  const LMS_TAB_IDS = LMS_TABS.map((t) => t.id);
+
   function hubTab() {
     // A stored Google tab would otherwise leave the panel blank now that only
     // Canvas renders, so coerce it rather than trusting what was saved.
-    if (!googleOn()) return 'canvas';
+    if (!googleOn()) {
+      let saved = 'canvas';
+      try { saved = load(LS_HUB_TAB, 'canvas'); } catch (_) {}
+      return LMS_TAB_IDS.includes(saved) ? saved : 'canvas';
+    }
     try {
       return load(LS_HUB_TAB, 'tasks');
     } catch (_) {
@@ -449,7 +462,7 @@
     if (!googleOn()) {
       // This is a Canvas tab now — do not advertise Gmail/Tasks/Docs to a
       // student who may not have a Google account at all.
-      sub.textContent = 'Connect your school\'s Canvas to pull assignments, modules and due dates into Flux.';
+      sub.textContent = 'Connect Canvas, Schoology or Moodle to pull your assignments and due dates into Flux.';
       return;
     }
     if (isStaffHub()) {
@@ -469,9 +482,7 @@
 
   function hubTabsList() {
     // Canvas only: this is a Canvas tab for students while Google is off.
-    if (!googleOn()) {
-      return [{ id: 'canvas', label: 'Canvas', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>' }];
-    }
+    if (!googleOn()) return LMS_TABS.slice();
     const tabs = [
       { id: 'tasks', label: 'Tasks', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>' },
       { id: 'calendar', label: 'Calendar', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>' },
@@ -488,8 +499,7 @@
         tabs.push({ id: 'drive', label: 'Drive', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' });
       }
     } catch (_) {}
-    tabs.push({ id: 'canvas', label: 'Canvas', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>' });
-    return tabs;
+    return tabs.concat(LMS_TABS);
   }
 
   async function syncCalendar() {
@@ -584,7 +594,7 @@
     <div class="g-hub">
       ${chrome ? statusStripHtml() : ''}
       ${chrome ? '<p class="g-hub-muted g-hub-import-lede">Import into Flux — use <strong>+ Task</strong> or <strong>+ Flux</strong> on each row, or bulk import on Tasks and Canvas.</p>' : ''}
-      ${chrome ? `<nav class="g-hub-tabs" role="tablist" aria-label="Google integrations">
+      ${tabs.length > 1 ? `<nav class="g-hub-tabs" role="tablist" aria-label="Connected apps">
         ${tabs
           .map(
             (t) =>
@@ -601,10 +611,17 @@
       <div id="gHubClassroomSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'classroom' ? '' : 'style="display:none"'}></div>
       <div id="gHubDriveSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'drive' ? '' : 'style="display:none"'}></div>
       <div id="gHubCanvasSlot" class="g-hub-pane" ${tab === 'canvas' ? '' : 'style="display:none"'}></div>
+      <div id="fluxSchoologySlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'schoology' ? '' : 'style="display:none"'}></div>
+      <div id="fluxMoodleSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'moodle' ? '' : 'style="display:none"'}></div>
     </div>`;
 
     if (tab === 'canvas') {
       if (typeof window.__fluxRenderCanvasPanelCore === 'function') window.__fluxRenderCanvasPanelCore();
+    } else if (tab === 'schoology' || tab === 'moodle') {
+      const sync = tab === 'moodle' ? window.FluxMoodle : window.FluxSchoology;
+      if (sync && typeof sync.render === 'function') {
+        sync.render(document.getElementById(tab === 'moodle' ? 'fluxMoodleSlot' : 'fluxSchoologySlot'));
+      }
     } else if (tab === 'drive') {
       if (window.FluxDriveImport && typeof FluxDriveImport.render === 'function') {
         FluxDriveImport.render(document.getElementById('gHubDriveSlot'));
