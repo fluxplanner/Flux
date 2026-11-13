@@ -134,3 +134,17 @@ html[data-flux-look="flat"] :is(button, .tmode-btn, .stab, .flux-pill-item) { tr
 @media (prefers-reduced-motion: reduce) {
   html[data-flux-look="flat"] .fx-tab-line { transition: none; }
 }
+
+/* ── Two things the underline rules above broke ────────────────────────────
+   Those rules carry an id's weight (from #filterChips inside :is), so they
+   beat ordinary rules elsewhere. */
+/* The planner's simple periodic table has no view tabs; `display: flex`
+   above brought them back. */
+html[data-flux-look="flat"] .fpt.is-simple .fpt-views:not(#fx-none) { display: none !important; }
+/* On a phone a tab still has to be a 44px touch target; `min-height: 0`
+   above shrank them to the height of their text. */
+@media (max-width: 768px) {
+  html[data-flux-look="flat"] :is(#filterChips, .stabs, .ftt-nav, .flg-seg, .dash-toolbar-views, .tmode-toggle, .tmode-segmented, :has(> .tmode-btn), [role="tablist"]:not(.flux-pulse-tier-grid)):not(#sidebar, #sidebar *) > :is(button, .tmode-btn, .stab, .flux-pill-item):not(#fx-none) {
+    min-height: 44px !important;
+  }
+}

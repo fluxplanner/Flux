@@ -404,21 +404,11 @@ body[data-flux-mesh='off']::before {
   border-color: rgba(255, 77, 109, 0.3);
   box-shadow: 0 0 0 1px rgba(255, 77, 109, 0.15), 0 4px 20px rgba(255, 77, 109, 0.08);
 }
-@media (prefers-reduced-motion: no-preference) {
-  .task-item[data-priority='high'] {
-    animation: priority-glow 2.5s ease-in-out infinite;
-    will-change: box-shadow;
-  }
-  @keyframes priority-glow {
-    0%,
-    100% {
-      box-shadow: 0 0 0 1px rgba(255, 77, 109, 0.15), 0 4px 20px rgba(255, 77, 109, 0.05);
-    }
-    50% {
-      box-shadow: 0 0 0 2px rgba(255, 77, 109, 0.3), 0 6px 28px rgba(255, 77, 109, 0.15);
-    }
-  }
-}
+/* No pulsing glow here. It used to animate box-shadow forever on every
+   high-priority row, which made the browser redo layout and repaint each
+   row on every frame — one cost per row, never stopping. With a long list
+   that kept the page ~97% busy while doing nothing (e2e/idle-work.spec.ts
+   guards this). The steady red outline above marks the row instead. */
 
 .canvas-card::after,
 .ref-card::after {

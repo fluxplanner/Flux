@@ -154,6 +154,13 @@ const STRIPS: Array<[string, string, string]> = [
 ];
 
 test.describe('the sliding highlight reaches the rest of the planner', () => {
+  // The pill is the classic look's highlight. The 2026-11 look swaps it for a
+  // sliding underline inside tab switchers (flux-look.js) and hides the pill
+  // there, so these run in classic, which is still one click away in Settings.
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('flux_look', 'classic'));
+  });
+
   for (const [hostClass, itemClass, where] of STRIPS) {
     test(`${where} (.${hostClass}) gets a pill that moves`, async ({ page }) => {
       await gotoScenario(page, 'student-semester');
