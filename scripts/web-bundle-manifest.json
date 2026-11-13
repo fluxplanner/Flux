@@ -151,6 +151,8 @@
     "public/js/flux-ical-subscribe.js",
     "public/js/flux-claude-connect.js",
     "public/js/flux-ics-timetable-import.js",
+    "public/js/flux-paste-import-core.js",
+    "public/js/flux-paste-import.js",
     "public/js/flux-sport-practice-pack.js",
     "public/js/flux-google-docs.js",
     "public/js/flux-gmail-educator.js",
