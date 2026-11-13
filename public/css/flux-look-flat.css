@@ -1,0 +1,112 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   Flux "new" look (2026-11) — two changes on top of the normal Flux look:
+     1. Dashboard header: the date, when the next task is due, and three
+        numbers (open / overdue / days left). Built by renderFlatDashHead()
+        in app.js.
+     2. Every pill-style switcher (task filters, Settings tabs, Time modes,
+        College Prep, grapher segments…) becomes plain words with an
+        underline under the chosen one. Glowing gradient pills were the
+        biggest "AI-made" tell.
+
+   Everything sits behind  html[data-flux-look="flat"]  (public/js/flux-look.js).
+   Settings → Appearance → Look → Classic, or ?look=classic, turns this whole
+   file off and restores the old look exactly.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Underline tabs ───────────────────────────────────────────────────────── */
+html[data-flux-look="flat"] :is(#filterChips, .stabs, .ftt-nav, .flg-seg, .dash-toolbar-views, .tmode-toggle, .tmode-segmented, :has(> .tmode-btn)) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px !important;
+  background: none !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--fx-hair, rgba(255,255,255,.08)) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+html[data-flux-look="flat"] :is(.flux-morph-pill, .flg-glide) { display: none !important; }
+html[data-flux-look="flat"] :is(#filterChips, .stabs, .ftt-nav, .flg-seg, .dash-toolbar-views, .tmode-toggle, .tmode-segmented, :has(> .tmode-btn)) > :is(button, .tmode-btn, .stab, .flux-pill-item) {
+  background: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 8px 0 !important;
+  margin: 0 0 -1px !important;
+  min-height: 0 !important;
+  width: auto !important;
+  flex: 0 0 auto !important;
+  font-weight: 500 !important;
+  color: var(--muted) !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  transform: none !important;
+}
+html[data-flux-look="flat"] :is(#filterChips, .stabs, .ftt-nav, .flg-seg, .dash-toolbar-views, .tmode-toggle, .tmode-segmented, :has(> .tmode-btn)) > :is(button, .tmode-btn, .stab, .flux-pill-item):hover {
+  color: var(--text) !important;
+}
+html[data-flux-look="flat"] :is(#filterChips, .stabs, .ftt-nav, .flg-seg, .dash-toolbar-views, .tmode-toggle, .tmode-segmented, :has(> .tmode-btn)) > :is(.active, [aria-selected="true"], [aria-pressed="true"]) {
+  color: var(--text) !important;
+  box-shadow: inset 0 -2px 0 var(--accent) !important;
+}
+
+/* ── Dashboard header: date, next due, and three numbers ─────────────────── */
+.fx-head { display: none; }
+html[data-flux-look="flat"] #dashHero .fx-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 20px;
+  padding-bottom: 18px;
+  margin-bottom: 6px;
+}
+html[data-flux-look="flat"] #dashHero > :not(.fx-head) { display: none !important; }
+html[data-flux-look="flat"] #dashboard #dashHero .fx-head-date {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -.02em;
+  background: none !important;
+  -webkit-text-fill-color: var(--text) !important;
+  color: var(--text) !important;
+  animation: none !important;
+}
+.fx-head-sub { margin: 4px 0 0; font-size: .9rem; color: var(--muted); }
+.fx-head-stats { display: flex; gap: 24px; text-align: right; }
+.fx-stat b { display: block; font-size: 1.75rem; font-weight: 600; line-height: 1; letter-spacing: -.02em; color: var(--text); font-variant-numeric: tabular-nums; }
+.fx-stat small { display: block; margin-top: 4px; font-size: .75rem; color: var(--muted); }
+.fx-stat.is-bad b { color: var(--red, #f87171); }
+@media (max-width: 768px) {
+  html[data-flux-look="flat"] #dashHero .fx-head { grid-template-columns: 1fr; gap: 12px; }
+  .fx-head-stats { text-align: left; }
+}
+/* Older pill rules colour the chosen button for a filled pill (dark text on
+   accent) at high specificity; with no fill that text vanished. */
+html[data-flux-look="flat"] body #app :is(#filterChips, .stabs, .ftt-nav, .flg-seg, .dash-toolbar-views, .tmode-toggle, .tmode-segmented, :has(> .tmode-btn)) > :is(.active, [aria-selected="true"], [aria-pressed="true"]) {
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text) !important;
+  background: none !important;
+}
+
+/* ── Buttons: rounded boxes instead of pills ─────────────────────────────────
+   flux-motion.css and the planner pill rule force every <button> into a
+   999px pill at up to (0,8,1) !important. :not(#fx-none) adds an id's worth
+   of specificity so these win everywhere without touching those files.
+   Round things stay round: checkboxes, avatars, icon buttons, colour swatches. */
+html[data-flux-look="flat"] button:not(#fx-none):not(.check):not(.fab-trigger):not(.btn-icon):not(.pt-el):not(.fih-tile):not([class*="avatar"]):not([class*="swatch"]):not([class*="color"]):not([class*="dot"]):not([class*="icon-btn"]):not(.nav-item):not(.bnav-item),
+html[data-flux-look="flat"] :is(.btn, a.btn, .btn-sec, .pw-entry):not(#fx-none) {
+  border-radius: 10px !important;
+}
+/* Small things — chips, tags, presets, "btn-sm" — get tighter corners so a
+   row of them reads as a set of keys, not a string of pills. */
+html[data-flux-look="flat"] :is(.btn-sm, .task-chip, [class*="chip"], [class*="preset"], [class*="tag"]):not(#fx-none) {
+  border-radius: 6px !important;
+}
+/* The top-bar status pills (date, countdown, task count) become small boxes. */
+html[data-flux-look="flat"] :is(.date-pill, .topbar-cd, .sync-badge, .topbar-sync-pill, .topbar-new-task-btn, .topbar-left-cluster > *):not(#fx-none) {
+  border-radius: 8px !important;
+}
+/* Underline tabs stay square, or the underline curls up into a box. */
+html[data-flux-look="flat"] :is(#filterChips, .stabs, .ftt-nav, .flg-seg, .dash-toolbar-views, .tmode-toggle, .tmode-segmented, :has(> .tmode-btn)) > :is(button, .tmode-btn, .stab, .flux-pill-item):not(#fx-none) {
+  border-radius: 0 !important;
+}

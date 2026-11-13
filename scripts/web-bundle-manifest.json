@@ -439,7 +439,8 @@
     "public/css/flux-datepicker.css",
     "public/css/flux-settings-shell.css",
     "public/css/flux-design-2026.css",
-    "public/css/flux-staff-2026.css"
+    "public/css/flux-staff-2026.css",
+    "public/css/flux-look-flat.css"
   ],
   "ownerVendor": [
     "public/js/flux-supabase-vendor.js"
