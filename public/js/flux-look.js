@@ -40,3 +40,56 @@
     if (e.key === KEY) apply(e.newValue === 'classic' ? 'classic' : 'flat');
   });
 })();
+
+/* Sliding underline for the new look's tab switchers (flux-look-flat.css).
+   Keeps one .fx-tab-line in each switcher and slides it under the chosen
+   tab whenever the choice changes, so switching still animates. */
+(function () {
+  var SEL = '#filterChips, .stabs, .ftt-nav, .flg-seg, .dash-toolbar-views, .tmode-toggle, .tmode-segmented, :has(> .tmode-btn), [role="tablist"]:not(.flux-pulse-tier-grid)';
+  var ACTIVE = ':scope > :is(.active, [aria-selected="true"], [aria-pressed="true"])';
+  var queued = false;
+
+  function place(c) {
+    var line = c.querySelector(':scope > .fx-tab-line');
+    if (!line) {
+      line = document.createElement('span');
+      line.className = 'fx-tab-line';
+      line.setAttribute('aria-hidden', 'true');
+      c.appendChild(line);
+    }
+    var a = c.querySelector(ACTIVE);
+    if (!a || !a.offsetWidth) { line.classList.remove('is-on'); line.style.opacity = '0'; return; }
+    line.style.width = a.offsetWidth + 'px';
+    line.style.transform = 'translate(' + a.offsetLeft + 'px,' + (a.offsetTop + a.offsetHeight - 2) + 'px)';
+    line.style.opacity = '1';
+    line.classList.add('is-on');
+  }
+
+  function scan() {
+    queued = false;
+    if (document.documentElement.getAttribute('data-flux-look') !== 'flat') {
+      document.querySelectorAll('.fx-tab-line').forEach(function (l) { l.remove(); });
+      return;
+    }
+    var list;
+    try { list = document.querySelectorAll(SEL); } catch (_) { return; }
+    list.forEach(place);
+  }
+  // setTimeout, not requestAnimationFrame: rAF stalls in hidden tabs, and the
+  // line must already be right when the tab comes back.
+  function queue() { if (!queued) { queued = true; setTimeout(scan, 30); } }
+
+  function start() {
+    scan();
+    new MutationObserver(function (muts) {
+      for (var i = 0; i < muts.length; i++) {
+        var t = muts[i].target;
+        if (t.classList && t.classList.contains('fx-tab-line')) continue;
+        queue(); return;
+      }
+    }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'aria-selected', 'aria-pressed', 'hidden'] });
+    window.addEventListener('resize', queue);
+    window.addEventListener('flux:look', queue);
+  }
+  if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();
