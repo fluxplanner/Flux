@@ -84,9 +84,9 @@
      ones a role can show again. Owner Controls and Settings › Your roles both
      read this list. */
   var PLANNER_TABS = [
-    ['calendar', 'Calendar'], ['school', 'School Info'], ['canvas', 'Canvas'], ['notes', 'Notebook'],
+    ['calendar', 'Calendar'], ['school', 'School Info'], ['canvas', 'Connect'], ['notes', 'Notebook'],
     ['timer', 'Time'], ['profile', 'Profile'], ['goals', 'College Prep'], ['mood', 'Mood'],
-    ['toolbox', 'Study tools'], ['readingLog', 'Reading log'], ['schoology', 'Schoology'],
+    ['toolbox', 'Study tools'], ['readingLog', 'Reading log'],
   ];
   var FIXED_PERMISSIONS = {
     'apps:all': 'See every hidden app',

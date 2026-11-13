@@ -235,6 +235,7 @@ const DATA_VERSION=6;
     'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
     'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
     'flux_schoology_v1',
+    'flux_moodle_v1',
     'flux_canvas_token','flux_canvas_url','flux_canvas_host',
     'flux_canvas_last_view','flux_canvas_last_params',
     'flux_canvas_autosync','flux_canvas_last_sync',
@@ -1819,7 +1820,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notebook',notebook:'Notebook',timer:'Time',canvas:'Canvas',schoology:'Schoology',google:'Google',profile:'Profile',goals:'College Prep',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',teacherResources:'Resources',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffMessages:'Messages',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notebook',notebook:'Notebook',timer:'Time',canvas:'Connect',google:'Google',profile:'Profile',goals:'College Prep',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',teacherResources:'Resources',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffMessages:'Messages',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
 
 // ══ Time / format helpers (used by educator dashboards + onboarding) ══
 function getTimeGreeting(){
@@ -3326,7 +3327,7 @@ const DEFAULT_TABS=[
   {id:'dashboard',icon:'⚡',label:'Dashboard',visible:true},
   {id:'calendar',icon:'📅',label:'Calendar',visible:true},
   {id:'school',icon:'🏫',label:'School Info',visible:true},
-  {id:'canvas',icon:'C',label:'Canvas',visible:true},
+  {id:'canvas',icon:'C',label:'Connect',visible:true},
   {id:'notes',icon:'📓',label:'Notebook',visible:true},
   {id:'timer',icon:'⏱',label:'Time',visible:true},
   {id:'profile',icon:'👤',label:'Profile',visible:true},
@@ -3337,10 +3338,11 @@ const DEFAULT_TABS=[
   // dashboard card and Study tools ▸ English ▸ Literature; a tab of its own
   // puts it beside Study tools in Learn.
   {id:'readingLog',icon:'📖',label:'Reading log',visible:true},
-  {id:'schoology',icon:'S',label:'Schoology',visible:true},
   {id:'settings',icon:'⚙',label:'Settings',visible:true},
 ];
 let tabConfig=load('flux_tabs',DEFAULT_TABS);
+// Schoology had its own tab before it moved into Connect (with Canvas and Moodle).
+tabConfig=tabConfig.filter(t=>t&&t.id!=='schoology');
 // 'notebook' merged into 'notes' (one Notebook tab with Knowledge as a sub-view)
 /* 'ai' joins the retired list. Dropping it from DEFAULT_TABS alone would not
    have removed it: tabConfig is restored from localStorage, so everyone who
@@ -3365,7 +3367,8 @@ tabConfig.forEach(t=>{if(t.id==='ai'&&/flux\s*agent/i.test(String(t.label||'')))
 tabConfig.forEach(t=>{if(t.id==='notes'&&(/^notes$/i.test(String(t.label||''))||!t.label))t.label='Notebook';});
 tabConfig.forEach(t=>{
   if(t.id!=='canvas')return;
-  if(/gmail/i.test(String(t.label||''))||t.label==='Google'||!t.label)t.label='Canvas';
+  // Canvas, Schoology and Moodle share this tab as "Connect".
+  if(/gmail/i.test(String(t.label||''))||t.label==='Google'||t.label==='Canvas'||!t.label)t.label='Connect';
 });
 (function migrateCanvasTabOrder(){
   const si=tabConfig.findIndex(t=>t.id==='school');
@@ -4132,7 +4135,6 @@ const NAV_TAB_SVGS={
   canvas:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>`,
   toolbox:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5"/></svg>`,
   /* Open book — Reading log. Not the notebook's spiral or the references' spine. */
-  schoology:`<svg viewBox="0 0 24 24" class="nt-svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 15l3 2 5-4"/></svg>`,
   readingLog:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg>`,
   profile:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>`,
   /* People / clubs — not concentric rings (was too close to old AI look) */
@@ -4224,8 +4226,8 @@ function buildEducatorNavAugmentation(isMob,schoolClassicLabelEscaped){
 </div>`;
   const googleNavIcon=`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>`;
   const googleNavOnclick=isMob?`navMob('canvas');try{FluxGoogle.renderHub()}catch(e){}`:`nav('canvas',this);try{FluxGoogle.renderHub()}catch(e){}`;
-  const googleNavWork=`<button type="button" class="nav-item" data-educator-google data-educator-google-work onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Canvas"><span class="ni">${googleNavIcon}</span><span class="nl">Canvas</span></button>`;
-  const googleNavPersonal=`<button type="button" class="nav-item" data-educator-google data-educator-google-personal onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Canvas"><span class="ni">${googleNavIcon}</span><span class="nl">Canvas</span></button>`;
+  const googleNavWork=`<button type="button" class="nav-item" data-educator-google data-educator-google-work onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Connect school apps"><span class="ni">${googleNavIcon}</span><span class="nl">Connect</span></button>`;
+  const googleNavPersonal=`<button type="button" class="nav-item" data-educator-google data-educator-google-personal onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Connect school apps"><span class="ni">${googleNavIcon}</span><span class="nl">Connect</span></button>`;
   const staffPersonal=`<button type="button" class="nav-item" onclick="${isMob?`navMob('staffTasks');try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`:`nav('staffTasks',this);try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni">${getNavIconHtml('staffTasks')}</span><span class="nl">Tasks</span></button>
 <button type="button" class="nav-item" onclick="${isMob?`navMob('staffResources');try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`:`nav('staffResources',this);try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni">${getNavIconHtml('staffResources')}</span><span class="nl">Resources</span></button>
 <button type="button" class="nav-item" onclick="${isMob?`navMob('staffPersonalHub');try{renderStaffPersonalHub()}catch(e){}`:`nav('staffPersonalHub',this);try{renderStaffPersonalHub()}catch(e){}`}" data-tab="staffPersonalHub" data-staff-personal style="display:none"><span class="ni">${getNavIconHtml('staffPersonalHub')}</span><span class="nl">Personal hub</span></button>
@@ -4266,7 +4268,7 @@ function renderSidebars(){
   // Me & Life 4.
   const groups=[
     {label:'Plan',ids:['dashboard','calendar','timer']},
-    {label:'Learn',ids:['notes','toolbox','readingLog','canvas','schoology']},
+    {label:'Learn',ids:['notes','toolbox','readingLog','canvas']},
     {label:'Me & Life',ids:['profile','goals','mood','settings']},
   ];
   const visibleIds=new Set(tabConfig.filter(t=>t.visible).map(t=>t.id));
@@ -4285,7 +4287,7 @@ function renderSidebars(){
   const augSide=buildEducatorNavAugmentation(false,schoolClassicLabel);
   const augMob=buildEducatorNavAugmentation(true,schoolClassicLabel);
   const includeWorkspaceNav=typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator();
-  const schoolIds=['notes','toolbox','readingLog','canvas','schoology'];
+  const schoolIds=['notes','toolbox','readingLog','canvas'];
   const schoolItemsSide=schoolIds.filter(id=>visibleIds.has(id)).map(id=>{
     const tc=tabConfig.find(t=>t.id===id)||DEFAULT_TABS.find(t=>t.id===id);
     const lab=esc(tc?.label||id);
@@ -10041,6 +10043,7 @@ function getCloudPayload(){
     syllabusWeekScaffold:(window.FluxSyllabusWeekScaffold?.getCloudSlice?FluxSyllabusWeekScaffold.getCloudSlice():load('flux_syllabus_week_scaffold_v1',{termStart:'',defaultSubject:'',scaffoldedWeeks:[]})),
     taskTemplateMarketplace:(window.FluxTaskTemplateMarketplace?.getCloudSlice?FluxTaskTemplateMarketplace.getCloudSlice():load('flux_task_template_marketplace_v1',{importedPacks:[],recentPackIds:[]})),
     schoology:(window.FluxSchoology?.getCloudSlice?FluxSchoology.getCloudSlice():load('flux_schoology_v1',null)),
+    moodle:(window.FluxMoodle?.getCloudSlice?FluxMoodle.getCloudSlice():load('flux_moodle_v1',null)),
     emailTaskInbox:(window.FluxEmailTaskInbox?.getCloudSlice?FluxEmailTaskInbox.getCloudSlice():load('flux_email_task_inbox_v1',{queue:[]})),
     icalSubscribe:(window.FluxIcalSubscribe?.getCloudSlice?FluxIcalSubscribe.getCloudSlice():load('flux_ical_subscribe_v1',{includeFocus:true,token:'',lastPublishedAt:0})),
     icsTimetableImport:(window.FluxIcsTimetableImport?.getCloudSlice?FluxIcsTimetableImport.getCloudSlice():load('flux_ics_timetable_import_v1',{lastImportAt:0,lastFileName:'',importBlackouts:true,importWeekly:true})),
@@ -10697,6 +10700,9 @@ async function syncFromCloud(opts){
     }
     if(d.schoology&&typeof d.schoology==='object'){
       try{if(window.FluxSchoology?.applyFromCloud)FluxSchoology.applyFromCloud(d.schoology);else save('flux_schoology_v1',d.schoology);}catch(_){}
+    }
+    if(d.moodle&&typeof d.moodle==='object'){
+      try{if(window.FluxMoodle?.applyFromCloud)FluxMoodle.applyFromCloud(d.moodle);else save('flux_moodle_v1',d.moodle);}catch(_){}
     }
     if(d.emailTaskInbox&&typeof d.emailTaskInbox==='object'){
       try{if(window.FluxEmailTaskInbox?.applyFromCloud)FluxEmailTaskInbox.applyFromCloud(d.emailTaskInbox);else save('flux_email_task_inbox_v1',d.emailTaskInbox);}catch(_){}
@@ -15958,8 +15964,7 @@ function fluxTourSteps(){
       tab('school','School Info','Your classes, bell schedule and locker. Upload a photo or PDF of your timetable and Flux fills in your periods.'),
       tab('toolbox','Study tools','Tools for 16 subjects, sorted into units: a periodic table, an equation balancer, formula sheets, a verb drill and a full graphing calculator. Search finds a tool from a few words, even with a typo. The row at the top opens the other Flux apps.'),
       tab('readingLog','Reading log','Log what you read each day for English class, keep quotes, set a weekly goal and print a log to hand in.'),
-      tab('canvas','Canvas','Connect Canvas to bring your assignments in, then add the ones you want to your planner.'),
-      tab('schoology','Schoology','Paste your Schoology calendar link once and your assignments keep arriving as tasks.'),
+      tab('canvas','Connect','Canvas, Schoology and Moodle in one place. Connect Canvas to pick assignments, or paste your Schoology or Moodle calendar link once and your work keeps arriving as tasks.'),
       tab('profile','Profile','Your details, study style, how confident you feel in each course, and your stats.'),
       tab('goals','College Prep','Activities, your college list with deadlines, and every test score: GPA, SAT, ACT and AP/IB results, with superscores worked out for you.'),
       tab('mood','Mood','A quick daily check-in and a one-line journal with a history to look back on, plus affirmations and a breathing exercise.'),
