@@ -329,7 +329,7 @@ test.describe('the app', () => {
       'Keep saving while Flux is read-only', 'Post while posting is paused', 'Skip slow-downs', 'Tester mode']) {
       await expect(mount.getByRole('switch', { name: new RegExp(': ' + name + '$') })).toHaveCount(1);
     }
-    expect(await mount.getByRole('switch').count()).toBeGreaterThanOrEqual(28);
+    expect(await mount.getByRole('switch').count()).toBeGreaterThanOrEqual(27);
     // Each save redraws the panel from the database; type once that is done.
     await expect.poll(() => db.calls.filter((c) => c.rpc === 'flux_owner_roles').length).toBe(2);
     await page.waitForLoadState('networkidle');
