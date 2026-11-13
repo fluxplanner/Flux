@@ -87,3 +87,26 @@ html[data-flux-look="flat"] body #app :is(#filterChips, .stabs, .ftt-nav, .flg-s
   -webkit-text-fill-color: var(--text) !important;
   background: none !important;
 }
+
+/* ── Buttons: rounded boxes instead of pills ─────────────────────────────────
+   flux-motion.css and the planner pill rule force every <button> into a
+   999px pill at up to (0,8,1) !important. :not(#fx-none) adds an id's worth
+   of specificity so these win everywhere without touching those files.
+   Round things stay round: checkboxes, avatars, icon buttons, colour swatches. */
+html[data-flux-look="flat"] button:not(#fx-none):not(.check):not(.fab-trigger):not(.btn-icon):not(.pt-el):not(.fih-tile):not([class*="avatar"]):not([class*="swatch"]):not([class*="color"]):not([class*="dot"]):not([class*="icon-btn"]):not(.nav-item):not(.bnav-item),
+html[data-flux-look="flat"] :is(.btn, a.btn, .btn-sec, .pw-entry):not(#fx-none) {
+  border-radius: 10px !important;
+}
+/* Small things — chips, tags, presets, "btn-sm" — get tighter corners so a
+   row of them reads as a set of keys, not a string of pills. */
+html[data-flux-look="flat"] :is(.btn-sm, .task-chip, [class*="chip"], [class*="preset"], [class*="tag"]):not(#fx-none) {
+  border-radius: 6px !important;
+}
+/* The top-bar status pills (date, countdown, task count) become small boxes. */
+html[data-flux-look="flat"] :is(.date-pill, .topbar-cd, .sync-badge, .topbar-sync-pill, .topbar-new-task-btn, .topbar-left-cluster > *):not(#fx-none) {
+  border-radius: 8px !important;
+}
+/* Underline tabs stay square, or the underline curls up into a box. */
+html[data-flux-look="flat"] :is(#filterChips, .stabs, .ftt-nav, .flg-seg, .dash-toolbar-views, .tmode-toggle, .tmode-segmented, :has(> .tmode-btn)) > :is(button, .tmode-btn, .stab, .flux-pill-item):not(#fx-none) {
+  border-radius: 0 !important;
+}
