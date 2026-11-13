@@ -9,6 +9,8 @@
   const STORE_KEY = 'flux_obsidian_export_v1';
   const BANNER_ID = 'fluxNoxBanner';
   const JSZIP_URL = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+  /* Integrity hash: the browser refuses the file if the CDN ever serves different bytes. Update it whenever the version in the URL changes. */
+  const JSZIP_SRI = 'sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG';
 
   let jszipPromise = null;
 
@@ -210,6 +212,8 @@
       jszipPromise = new Promise((resolve, reject) => {
         const script = document.createElement('script');
         script.src = JSZIP_URL;
+        script.integrity = JSZIP_SRI;
+        script.crossOrigin = 'anonymous';
         script.onload = () => {
           if (window.JSZip) resolve(window.JSZip);
           else reject(new Error('jszip missing'));
