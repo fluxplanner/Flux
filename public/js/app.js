@@ -4777,7 +4777,47 @@ function renderAboutStats(){
   if(typeof renderStorageMeter==='function')renderStorageMeter();
 }
 
+/** Flat-look dashboard header (public/css/flux-look-flat.css): the date,
+ *  when the next task is due, and three numbers — open, overdue, and days
+ *  left on the user's countdown. Hidden by CSS in the classic look. */
+function renderFlatDashHead(){
+  const hero=document.getElementById('dashHero');
+  if(!hero)return;
+  let head=hero.querySelector('.fx-head');
+  if(!head){
+    head=document.createElement('div');
+    head.className='fx-head';
+    hero.prepend(head);
+  }
+  const d0=new Date();d0.setHours(0,0,0,0);
+  const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const today=iso(d0);
+  const list=Array.isArray(tasks)?tasks:[];
+  const open=list.filter(t=>t&&!t.done);
+  const overdue=open.filter(t=>t.date&&t.date<today).length;
+  const upcoming=open.filter(t=>t.date&&t.date>=today).map(t=>t.date).sort();
+  let sub='Nothing due soon';
+  if(upcoming.length){
+    const days=Math.round((new Date(upcoming[0]+'T00:00:00')-d0)/86400000);
+    sub=days===0?'Next due today':days===1?'Next due tomorrow':'Next due in '+days+' days';
+  }
+  let countdown='';
+  try{
+    const t=fluxCountdownTarget();
+    if(t){
+      const p=fluxCountdownParts(t);
+      if(p.dayDiff>=0)countdown=`<div class="fx-stat" title="${esc(t.label||'Countdown').replace(/"/g,'&quot;')}"><b>${p.dayDiff}</b><small>days left</small></div>`;
+    }
+  }catch(_){}
+  const date=d0.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'});
+  const html=`<div><h1 class="fx-head-date">${esc(date)}</h1><p class="fx-head-sub">${esc(sub)}</p></div>`
+    +`<div class="fx-head-stats"><div class="fx-stat"><b>${open.length}</b><small>open</small></div>`
+    +`<div class="fx-stat${overdue?' is-bad':''}"><b>${overdue}</b><small>overdue</small></div>${countdown}</div>`;
+  if(head.dataset.fx!==html){head.innerHTML=html;head.dataset.fx=html;}
+}
+
 function updateDashHero(opts){
+  try{renderFlatDashHead();}catch(_){}
   const greet=document.getElementById('dashGreeting');
   if(!greet)return;
   const raw=(fluxLoadStoredString('flux_user_name','there').trim()||'there');
