@@ -1,105 +1,52 @@
 /* ════════════════════════════════════════════════════════════════════════════
-   Flux "flat" look (2026-11)
-   Same Flux colours, without the effects that made people call Flux
-   "AI-generated": colour fades on text and buttons, glows, neon pills,
-   tinted gradient cards and all-caps code-style tags.
+   Flux "new" look (2026-11) — two changes on top of the normal Flux look:
+     1. Dashboard header: the date, when the next task is due, and three
+        numbers (open / overdue / days left). Built by renderFlatDashHead()
+        in app.js.
+     2. Every pill-style switcher (task filters, Settings tabs, Time modes,
+        College Prep, grapher segments…) becomes plain words with an
+        underline under the chosen one. Glowing gradient pills were the
+        biggest "AI-made" tell.
 
-   Everything here sits behind  html[data-flux-look="flat"]  (set by
-   public/js/flux-look.js). Switching to "classic" in Settings, or opening a
-   page with ?look=classic, turns this whole file off and brings back the old
-   look exactly as it was. This file loads after every other stylesheet.
+   Everything sits behind  html[data-flux-look="flat"]  (public/js/flux-look.js).
+   Settings → Appearance → Look → Classic, or ?look=classic, turns this whole
+   file off and restores the old look exactly.
    ════════════════════════════════════════════════════════════════════════════ */
 
-/* ── Tokens: one solid accent instead of the blue→purple fade ─────────────── */
-html[data-flux-look="flat"] {
-  --fx-accent-2: var(--accent);
-  --fx-accent-grad: var(--accent);
-  --fx-glow: none;
-  --fx-sheen: none;
-  --fx-card-shadow: none;
-  --fx-r: 10px;
-  --fx-r-sm: 8px;
-}
-
-/* ── Type: one font, no code-style tags ───────────────────────────────────── */
-html[data-flux-look="flat"] body,
-html[data-flux-look="flat"] #app {
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-}
-/* Gradient-filled text becomes plain text, everywhere. */
-html[data-flux-look="flat"] :is(.dash-v2-greet-gradient, .shimmer-text, [data-flux-shimmer], .hero h1 span) {
+/* ── Underline tabs ───────────────────────────────────────────────────────── */
+html[data-flux-look="flat"] :is(#filterChips, .stabs, .ftt-nav, .flg-seg, .dash-toolbar-views, .tmode-toggle, .tmode-segmented, :has(> .tmode-btn)) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px !important;
   background: none !important;
-  -webkit-background-clip: border-box !important;
-  background-clip: border-box !important;
-  -webkit-text-fill-color: currentColor !important;
-  color: inherit !important;
-  animation: none !important;
-  text-shadow: none !important;
-}
-
-/* ── Planner background: flat navy, no washes or moving mesh ─────────────── */
-html[data-flux-look="flat"] body:not([data-theme="light"]) #app { background: none !important; }
-html[data-flux-look="flat"] #fluxMeshCanvas,
-html[data-flux-look="flat"] #app .flux-dash-scroll-paths { display: none !important; }
-
-/* ── Sidebar: quiet selected row ──────────────────────────────────────────── */
-html[data-flux-look="flat"] #sidebar .nav-item.active {
-  background: rgba(var(--accent-rgb), .12) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--fx-hair, rgba(255,255,255,.08)) !important;
+  border-radius: 0 !important;
   box-shadow: none !important;
 }
-html[data-flux-look="flat"] #sidebar :is(.logo, .sidebar-logo, .brand) * {
-  background: none !important;
-  -webkit-text-fill-color: currentColor !important;
-}
-
-/* ── Cards: solid, hairline border, smaller radius ───────────────────────── */
-html[data-flux-look="flat"] :where(#app) .card {
-  background: var(--card, #121a2b) !important;
-  border: 1px solid var(--fx-hair) !important;
-  box-shadow: none !important;
-  border-radius: 10px;
-}
-html[data-flux-look="flat"] :where(#app) .card:hover { border-color: var(--fx-hair-2) !important; }
-
-/* ── Buttons & pills: solid accent, no glow ──────────────────────────────── */
-html[data-flux-look="flat"] #app :is(button, .btn, a.btn, .pw-entry) {
-  box-shadow: none !important;
-  text-shadow: none !important;
-}
-html[data-flux-look="flat"] #app :is(.tmode-btn.active, .stab.active, .flux-pill-item.tmode-btn.active),
-html[data-flux-look="flat"] #app .flux-morph-pill,
-html[data-flux-look="flat"] #app .flg-shell--planner .flg-seg .flg-glide {
-  box-shadow: none !important;
-}
-
-/* ── Task filter tabs: underline instead of pills ────────────────────────── */
-html[data-flux-look="flat"] #dashboard .dash-filters-row { border-bottom: 1px solid var(--fx-hair); margin-bottom: 4px; }
-html[data-flux-look="flat"] #dashboard #filterChips { gap: 20px !important; background: none !important; padding: 0 !important; border: 0 !important; }
-html[data-flux-look="flat"] #dashboard #filterChips .flux-morph-pill { display: none !important; }
-html[data-flux-look="flat"] #dashboard #filterChips .tmode-btn {
+html[data-flux-look="flat"] :is(.flux-morph-pill, .flg-glide) { display: none !important; }
+html[data-flux-look="flat"] :is(#filterChips, .stabs, .ftt-nav, .flg-seg, .dash-toolbar-views, .tmode-toggle, .tmode-segmented, :has(> .tmode-btn)) > :is(button, .tmode-btn, .stab, .flux-pill-item) {
   background: none !important;
   border: 0 !important;
   border-radius: 0 !important;
   padding: 8px 0 !important;
+  margin: 0 0 -1px !important;
   min-height: 0 !important;
-  font-size: .85rem !important;
+  width: auto !important;
+  flex: 0 0 auto !important;
   font-weight: 500 !important;
   color: var(--muted) !important;
   box-shadow: none !important;
+  text-shadow: none !important;
+  transform: none !important;
 }
-html[data-flux-look="flat"] #dashboard #filterChips .tmode-btn:hover { color: var(--text) !important; }
-html[data-flux-look="flat"] #dashboard #filterChips .tmode-btn.active {
+html[data-flux-look="flat"] :is(#filterChips, .stabs, .ftt-nav, .flg-seg, .dash-toolbar-views, .tmode-toggle, .tmode-segmented, :has(> .tmode-btn)) > :is(button, .tmode-btn, .stab, .flux-pill-item):hover {
+  color: var(--text) !important;
+}
+html[data-flux-look="flat"] :is(#filterChips, .stabs, .ftt-nav, .flg-seg, .dash-toolbar-views, .tmode-toggle, .tmode-segmented, :has(> .tmode-btn)) > :is(.active, [aria-selected="true"], [aria-pressed="true"]) {
   color: var(--text) !important;
   box-shadow: inset 0 -2px 0 var(--accent) !important;
-}
-
-/* ── Task rows: lines, not glowing boxes ─────────────────────────────────── */
-html[data-flux-look="flat"] #app .task-item { box-shadow: none !important; border-radius: 8px !important; }
-html[data-flux-look="flat"] #app .task-item :is(.task-badge, .badge, .pri-badge, .tag) {
-  font-family: inherit !important;
-  text-transform: none !important;
-  letter-spacing: 0 !important;
-  box-shadow: none !important;
 }
 
 /* ── Dashboard header: date, next due, and three numbers ─────────────────── */
@@ -111,68 +58,32 @@ html[data-flux-look="flat"] #dashHero .fx-head {
   gap: 20px;
   padding-bottom: 18px;
   margin-bottom: 6px;
-  border-bottom: 1px solid var(--fx-hair);
 }
-/* The old greeting and its "Clear runway" chips step aside. */
 html[data-flux-look="flat"] #dashHero > :not(.fx-head) { display: none !important; }
-.fx-head-date { margin: 0; font: 600 1.45rem/1.2 'Inter', system-ui, sans-serif; letter-spacing: -.01em; color: var(--text); }
+html[data-flux-look="flat"] #dashboard #dashHero .fx-head-date {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -.02em;
+  background: none !important;
+  -webkit-text-fill-color: var(--text) !important;
+  color: var(--text) !important;
+  animation: none !important;
+}
 .fx-head-sub { margin: 4px 0 0; font-size: .9rem; color: var(--muted); }
 .fx-head-stats { display: flex; gap: 24px; text-align: right; }
-.fx-stat b { display: block; font: 500 1.75rem/1 'Inter', system-ui, sans-serif; letter-spacing: -.02em; color: var(--text); font-variant-numeric: tabular-nums; }
+.fx-stat b { display: block; font-size: 1.75rem; font-weight: 600; line-height: 1; letter-spacing: -.02em; color: var(--text); font-variant-numeric: tabular-nums; }
 .fx-stat small { display: block; margin-top: 4px; font-size: .75rem; color: var(--muted); }
 .fx-stat.is-bad b { color: var(--red, #f87171); }
 @media (max-width: 768px) {
   html[data-flux-look="flat"] #dashHero .fx-head { grid-template-columns: 1fr; gap: 12px; }
   .fx-head-stats { text-align: left; }
 }
-
-/* ── Suite pages (grapher, flashcards, suite home, …) ─────────────────────── */
-html[data-flux-look="flat"] body:not(:has(#app)) {
-  background: var(--bg, #070b14) !important;
-}
-html[data-flux-look="flat"] :is(.app-icon, .app-icon--logo, .app.app--feature .go, .hub-tab--partner[aria-selected="true"]) {
-  background: var(--c1, var(--accent)) !important;
-  box-shadow: none !important;
-}
-html[data-flux-look="flat"] .app.app--feature { background: var(--card) !important; }
-
-/* ── Follow-ups found in the live planner ───────────────────────────────── */
-/* The dashboard paints every h1 in it with a fade; the new date stays plain. */
-html[data-flux-look="flat"] #dashboard #dashHero .fx-head-date {
-  background: none !important;
-  -webkit-text-fill-color: var(--text) !important;
+/* Older pill rules colour the chosen button for a filled pill (dark text on
+   accent) at high specificity; with no fill that text vanished. */
+html[data-flux-look="flat"] body #app :is(#filterChips, .stabs, .ftt-nav, .flg-seg, .dash-toolbar-views, .tmode-toggle, .tmode-segmented, :has(> .tmode-btn)) > :is(.active, [aria-selected="true"], [aria-pressed="true"]) {
   color: var(--text) !important;
-  animation: none !important;
-}
-/* Decorative fade line under the greeting. */
-html[data-flux-look="flat"] #dashHero::before,
-html[data-flux-look="flat"] #dashHero::after { display: none !important; }
-/* Task tags (HIGH / Nov 14 / HW): normal type, no code look. */
-html[data-flux-look="flat"] #app .task-chip {
-  font-family: inherit !important;
-  text-transform: capitalize !important;
-  letter-spacing: 0 !important;
-  font-size: .75rem !important;
-  font-weight: 500 !important;
-  box-shadow: none !important;
-}
-/* Top bar pills: same font as everything else, no glow. */
-html[data-flux-look="flat"] :is(.date-pill, .topbar-cd, .sync-badge, .topbar-sync-pill) {
-  font-family: inherit !important;
-  letter-spacing: 0 !important;
-  box-shadow: none !important;
-  text-shadow: none !important;
-}
-html[data-flux-look="flat"] .user-card :is(.user-sub, small, .user-status) { font-family: inherit !important; }
-/* Sidebar section labels and small print: drop the typewriter font. */
-html[data-flux-look="flat"] #sidebar :is(.nav-group-label, .user-card *, .sidebar-logo *) {
-  font-family: inherit !important;
-  letter-spacing: .02em !important;
-}
-html[data-flux-look="flat"] #sidebar .nav-group-label { text-transform: none !important; font-weight: 500 !important; }
-html[data-flux-look="flat"] #sidebar .nav-group-label::after { display: none !important; }
-html[data-flux-look="flat"] .topbar :is(h1, h2, .topbar-title, .page-title, .flux-page-title) {
-  background: none !important;
   -webkit-text-fill-color: var(--text) !important;
-  box-shadow: none !important;
+  background: none !important;
 }
