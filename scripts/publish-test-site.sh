@@ -18,7 +18,7 @@ TEST_REF="bwgtpqvvxunyvxrgvpny"
 # Public "anon" keys — safe to ship in a web page (the real one already is).
 PROD_ANON="$(grep -oE "eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+" public/js/app.js | head -1)"
 TEST_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3Z3RwcXZ2eHVueXZ4cmd2cG55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ1MjUxNDgsImV4cCI6MjExMDEwMTE0OH0.qw7blYD3VE4Q2VcG61VRGtMmld3jhO--jzaM1tu_d4s"
-TEST_REPO="git@github.com:azfermohammed/flux-test.git"
+TEST_REPO="https://github.com/azfermohammed/flux-test.git"
 
 if [ -n "$(git status --porcelain -- public index.html '*.html' service-worker.js)" ]; then
   echo "Commit your changes first — the test site is built from what's committed." >&2
