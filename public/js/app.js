@@ -11969,6 +11969,8 @@ function _updateSidebarName(name){
 }
 
 const FLUX_PDFJS_SRC='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js';
+/* Integrity hash: the browser refuses the file if the CDN ever serves different bytes. Update it whenever the version in the URL changes. */
+const FLUX_PDFJS_SRI='sha384-lrb5efVIYR2lZw+OsuztHZzP9wpGNrhui+0VlpiHb/iPcZSCDT3CeETsL9EMQ8ih';
 const FLUX_PDFJS_WORKER='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 const FLUX_PDF_PREVIEW_MAX_PAGES=28;
 let _fluxPdfJsPromise=null;
@@ -12005,6 +12007,8 @@ function ensurePdfJsLoaded(){
     _fluxPdfJsPromise=new Promise((resolve,reject)=>{
       const s=document.createElement('script');
       s.src=FLUX_PDFJS_SRC;
+      s.integrity=FLUX_PDFJS_SRI;
+      s.crossOrigin='anonymous';
       s.async=true;
       s.dataset.fluxPdfjs='1';
       s.onload=()=>{

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<script src="public/js/flux-frame-guard.js?v=9afa87b3"></script>
 <script src="public/js/flux-app-visibility.js?v=8ab1ae57"></script>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -17,8 +18,6 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <!-- Owner Controls: the owner's own app, moved out of the planner. It shares the
      planner's sign-in but loads none of its code. See public/js/flux-owner-runtime.js. -->
-<script>/* GitHub Pages cannot send a frame header, and every button here is powerful. */
-if (window.top !== window.self) window.top.location = window.self.location;</script>
 <link rel="stylesheet" href="public/bundles/flux-owner.150ce1ba.css">
 </head>
 <body>

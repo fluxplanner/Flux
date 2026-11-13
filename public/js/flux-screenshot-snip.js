@@ -6,7 +6,10 @@
   'use strict';
 
   const FLAG = 'enable_screenshot_snip';
-  const TESSERACT_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+  /* Pinned to an exact version: "@5" let the CDN swap the file under us. */
+  const TESSERACT_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+  /* Integrity hash: the browser refuses the file if the CDN ever serves different bytes. Update it whenever the version in the URL changes. */
+  const TESSERACT_SRI = 'sha384-GJqSu7vueQ9qN0E9yLPb3Wtpd7OrgK8KmYzC8T1IysG1bcvxvIO4qtYR/D3A991F';
   let _processing = false;
   let _tesseractPromise = null;
   let _previewUrl = null;
@@ -68,6 +71,8 @@
         }
         const s = document.createElement('script');
         s.src = TESSERACT_URL;
+        s.integrity = TESSERACT_SRI;
+        s.crossOrigin = 'anonymous';
         s.async = true;
         s.dataset.fluxTesseract = '1';
         s.onload = () => resolve(window.Tesseract);

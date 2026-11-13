@@ -9,6 +9,8 @@
   const STORE_KEY = 'flux_latex_preview_v1';
   const KATEX_CSS = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css';
   const KATEX_JS = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js';
+  /* Integrity hash: the browser refuses the file if the CDN ever serves different bytes. Update it whenever the version in the URL changes. */
+  const KATEX_SRI = { [KATEX_CSS]: 'sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+', [KATEX_JS]: 'sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg' };
   const SPLIT_ID = 'fluxLatexSplit';
   const PREVIEW_BODY_ID = 'fluxLatexPreviewBody';
 
@@ -93,6 +95,7 @@
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = href;
+      if (KATEX_SRI[href]) { link.integrity = KATEX_SRI[href]; link.crossOrigin = 'anonymous'; }
       link.onload = () => resolve();
       link.onerror = () => reject(new Error('css load failed'));
       document.head.appendChild(link);
@@ -107,6 +110,7 @@
       }
       const script = document.createElement('script');
       script.src = src;
+      if (KATEX_SRI[src]) { script.integrity = KATEX_SRI[src]; script.crossOrigin = 'anonymous'; }
       script.defer = true;
       script.onload = () => resolve();
       script.onerror = () => reject(new Error('script load failed'));

@@ -79,6 +79,12 @@
   const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   const MAMMOTH_SRC = 'https://cdn.jsdelivr.net/npm/mammoth@1.13.0/mammoth.browser.min.js';
   const TESSERACT_SRC = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+  /* Integrity hash: the browser refuses the file if the CDN ever serves different bytes. Update it whenever the version in the URL changes. */
+  const READER_SRI = {
+    [PDFJS_SRC]: 'sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e',
+    [MAMMOTH_SRC]: 'sha384-8NWE3bZDrmRI4IePMoQaEoLhAQ1MmRMJkdNgnGiHRFanTqsFKr0TmK6aSZvFJ/PO',
+    [TESSERACT_SRC]: 'sha384-GJqSu7vueQ9qN0E9yLPb3Wtpd7OrgK8KmYzC8T1IysG1bcvxvIO4qtYR/D3A991F',
+  };
   const TESSERACT_PATHS = {
     workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
     corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
@@ -1335,6 +1341,7 @@
       script.src = src;
       script.async = true;
       script.crossOrigin = 'anonymous';
+      if (READER_SRI[src]) script.integrity = READER_SRI[src];
       script.onload = () => (window[globalName] ? resolve(window[globalName]) : reject(new Error('The file reader did not start. Reload the page and try again.')));
       script.onerror = () => reject(new Error('The file reader could not be downloaded. Check your connection and try again.'));
       document.head.appendChild(script);
