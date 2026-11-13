@@ -237,6 +237,24 @@
     disconnect: async () => { window.FluxSchoology?.disconnect(); },
   });
 
+  // 4b · Moodle — same calendar-link sync as Schoology (flux-schoology.js)
+  register({
+    id: 'moodle',
+    name: 'Moodle',
+    icon: '🅜',
+    category: 'lms',
+    auth_kind: 'api_key',
+    description: 'Assignment and quiz dates from your Moodle calendar.',
+    supports: ['assignments', 'calendar'],
+    role: 'student',
+    status: () => (window.FluxMoodle?.isConnected() ? 'connected' : 'off'),
+    connect: async () => {
+      window.FluxMoodle?.open();
+      return false;
+    },
+    disconnect: async () => { window.FluxMoodle?.disconnect(); },
+  });
+
   // 5 · PowerSchool / Infinite Campus (gradebook read)
   register({
     id: 'powerschool',

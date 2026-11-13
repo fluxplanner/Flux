@@ -19,11 +19,12 @@ test('Schoology and Canvas each offer a how-to video', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await gotoScenario(page, 'student-semester');
 
-  await page.locator('#sidebar .nav-item[data-tab="schoology"]').click();
-  await page.locator('#schoology.active').getByRole('button', { name: 'Watch how' }).click();
+  await page.locator('#sidebar .nav-item[data-tab="canvas"]:visible').click();
+  await page.locator('#canvas.active').getByRole('tab', { name: 'Schoology' }).click();
+  await page.locator('#canvas.active').getByRole('button', { name: 'Watch how' }).click();
   await expectGuide(page, 'How to connect Schoology', 'public/videos/connect-schoology.mp4');
 
-  await page.evaluate(() => (window as any).nav('canvas'));
+  await page.locator('#canvas.active').getByRole('tab', { name: 'Canvas' }).click();
   await page.locator('#canvas.active').getByRole('button', { name: 'Watch how' }).click();
   await expectGuide(page, 'How to connect Canvas', 'public/videos/connect-canvas.mp4');
 });

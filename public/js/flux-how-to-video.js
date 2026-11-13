@@ -16,7 +16,7 @@
         'Scroll to the bottom of the calendar and click Export.',
         'Choose Share Calendar, not Download Calendar.',
         'Copy the whole link. Keep it private: anyone who has it can read your calendar.',
-        'In Flux, open Schoology under Learn, paste the link and click Connect Schoology.',
+        'In Flux, open Connect under Learn, pick Schoology, paste the link and click Connect Schoology.',
       ],
     },
     canvas: {
