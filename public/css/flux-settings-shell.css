@@ -167,3 +167,25 @@
    moment a module puts something inside — at which point it is a real card and
    deserves its gap. */
 .spane.active > :empty { display: none; }
+
+/* ── Recovery email: the dialogs opened by an emailed link (flux-recovery.js) ──
+   Sizes carry the dialog's class in front because styles.css forces padding
+   and font-size on every text input with !important. */
+.frc-modal { max-width: 420px; width: min(420px, calc(100vw - 32px)); padding: 22px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; }
+.frc-title { margin: 0; font-size: 1.1rem; }
+.frc-text { margin: 0; font-size: .86rem; line-height: 1.5; color: var(--muted, #8b93b5); }
+.frc-text strong { color: var(--text, #e8ecff); }
+.frc-field { display: flex; flex-direction: column; gap: 6px; font-size: .78rem; font-weight: 600; color: var(--muted, #8b93b5); }
+.frc-modal input.frc-input {
+  width: 100%; box-sizing: border-box; min-height: 44px;
+  padding: 10px 12px !important; margin: 0 !important; font-size: .95rem !important;
+  color: var(--text, #e8ecff); background: var(--card2, rgba(127, 127, 127, .08));
+  border: 1px solid var(--border, rgba(127, 127, 127, .3)); border-radius: 10px;
+}
+.frc-msg { min-height: 1.2em; font-size: .8rem; color: var(--red, #e23e57); }
+.frc-foot { display: flex; justify-content: flex-end; gap: 8px; }
+.frc-modal .frc-btn { min-height: 44px; padding: 0 18px; border-radius: 10px; font-size: .88rem; font-weight: 600; cursor: pointer; }
+.frc-modal .frc-btn--ghost { background: transparent; color: var(--text, #e8ecff); border: 1px solid var(--border, rgba(127, 127, 127, .3)); box-shadow: none; }
+.frc-modal .frc-btn--primary { background: var(--accent, #6366f1); color: #fff; border: 1px solid transparent; }
+.frc-modal .frc-btn--primary:disabled { opacity: .55; cursor: wait; }
+@media (max-width: 480px) { .frc-foot { flex-direction: column-reverse; } }

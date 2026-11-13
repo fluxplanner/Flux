@@ -121,7 +121,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.01105787.css">
+<link rel="stylesheet" href="public/bundles/flux.7fbd6e82.css">
 <!-- Scroll story on the sign-in screen (kept out of the bundle: landing pages load it too). -->
 <link rel="stylesheet" href="public/css/flux-scroll-story.css?v=cb163716">
 </head>
@@ -320,8 +320,8 @@
               <div id="loginKeepsafe" class="lx-keepsafe" style="display:none" role="status">
                 <div class="lx-keepsafe-title">Write your password down somewhere safe</div>
                 <div class="lx-keepsafe-body">
-                  You sign in as <strong id="loginKeepsafeName"></strong>. Flux has no email for you,
-                  so there is no reset link — if you forget this password, you'll have to request a reset from this screen.
+                  You sign in as <strong id="loginKeepsafeName"></strong>. Unless you add a recovery email and confirm it
+                  (Settings, under Account), there is no reset link — if you forget this password, you'll have to request a reset from this screen and wait.
                 </div>
               </div>
               <!-- This row held a second "Name (optional)" box, left over from
@@ -336,6 +336,13 @@
               <div id="loginNameRow" style="display:none">
                 <label class="lx-field" for="loginPassword2">Confirm password
                   <input type="password" id="loginPassword2" name="loginPassword2" autocomplete="new-password" placeholder="Type it again">
+                </label>
+                <!-- Optional, and not how you sign in. It is kept beside the
+                     account for one purpose: sending a link to set a new
+                     password (flux-recovery.js). It counts only after the
+                     person clicks the confirmation link sent to it. -->
+                <label class="lx-field" for="loginRecoveryEmail">Email (optional)
+                  <input type="email" id="loginRecoveryEmail" name="loginRecoveryEmail" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="Only used to reset your password">
                 </label>
                 <!-- Shown only while the owner has sign-ups set to invite code. -->
                 <label class="lx-field" for="loginInvite" id="loginInviteRow" style="display:none">Invite code
@@ -357,7 +364,8 @@
               <span id="loginToggleText">Don't have an account?</span>
               <button type="button" class="lx-toggle-btn" onclick="toggleAuthMode()"><span id="loginToggleAction">Sign up</span></button>
             </div>
-            <!-- The only way back in. There is no email on file and therefore
+            <!-- The way back in. With a confirmed recovery email this sends a
+                 reset link (flux-recovery.js). Without one there is
                  no reset link, so someone locked out cannot reach anyone from
                  inside the app — they cannot sign in to ask. This writes to a
                  table the owner alone can read. -->
@@ -1618,7 +1626,7 @@
         <div class="lx-keepsafe" style="margin-bottom:14px">
           <div class="lx-keepsafe-title">Write it down somewhere safe</div>
           <div class="lx-keepsafe-body">
-            Flux has no email for you, so there is no reset link. If you forget this,
+            Unless you add a recovery email (Settings, under Account), there is no reset link. If you forget this,
             you'll have to request a reset from the sign-in screen.
           </div>
         </div>
@@ -2648,12 +2656,26 @@
                  an account that has no recovery route. -->
             <div class="fx-pw" style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
               <div class="slabel" style="margin-bottom:2px">Change your password</div>
-              <div class="ssub" style="margin-bottom:10px">Pick something you'll remember. There's no reset email — write the new one down.</div>
+              <div class="ssub" style="margin-bottom:10px">Pick something you'll remember. Write the new one down, or add a recovery email below.</div>
               <div class="fx-pw-row"><input type="password" id="pwCurrent" autocomplete="current-password" placeholder="Current password"></div>
               <div class="fx-pw-row"><input type="password" id="pwNew" autocomplete="new-password" placeholder="New password"></div>
               <div class="fx-pw-row"><input type="password" id="pwNew2" autocomplete="new-password" placeholder="Type the new one again"></div>
               <div id="pwMsg" class="fx-pw-msg" role="status" aria-live="polite"></div>
               <button type="button" id="pwSaveBtn" class="btn-sec" style="width:100%;margin-top:8px" onclick="fluxChangePassword()">Change password</button>
+            </div>
+            <!-- Recovery email (flux-recovery.js). The one real address kept
+                 beside an account, for a password reset link and nothing else.
+                 The current password is asked for, for the same reason the card
+                 above asks: a minute at an unlocked laptop must not be enough to
+                 point someone's account at another inbox. -->
+            <div class="fx-pw" id="fluxRecoveryCard" style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
+              <div class="slabel" style="margin-bottom:2px">Recovery email</div>
+              <div class="ssub" id="recStatus" style="margin-bottom:10px">Add an email so you can reset a forgotten password yourself. It is used for that and nothing else.</div>
+              <div class="fx-pw-row"><input type="email" id="recEmail" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com" aria-label="Recovery email"></div>
+              <div class="fx-pw-row"><input type="password" id="recPassword" autocomplete="current-password" placeholder="Current password" aria-label="Current password"></div>
+              <div id="recMsg" class="fx-pw-msg" role="status" aria-live="polite"></div>
+              <button type="button" id="recSaveBtn" class="btn-sec" style="width:100%;margin-top:8px" onclick="FluxRecovery.save()">Save and send confirmation</button>
+              <button type="button" id="recRemoveBtn" class="btn-sec" style="width:100%;margin-top:8px" onclick="FluxRecovery.remove()" hidden>Remove email</button>
             </div>
           </div>
         </div>
@@ -3053,8 +3075,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.bf294322.js"></script>
-<script defer src="public/bundles/flux-core.3fbd0012.js"></script>
-<script defer src="public/bundles/flux-features.e9367ce7.js"></script>
+<script defer src="public/bundles/flux-core.46e7c219.js"></script>
+<script defer src="public/bundles/flux-features.252e6b76.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
