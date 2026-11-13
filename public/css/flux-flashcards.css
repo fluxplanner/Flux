@@ -183,6 +183,7 @@ select.ff-input { cursor: pointer; }
   padding: 12px 12px 12px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--card);
 }
 .ff-row:not(:has(.ff-dot)) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); }
+.ff-row.ff-row--imp { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) auto; }
 .ff-dot { width: 8px; height: 8px; margin-top: 8px; border-radius: 50%; }
 .ff-row-term { font-weight: 700; overflow-wrap: anywhere; }
 .ff-row-def { color: color-mix(in srgb, var(--text) 85%, var(--muted2)); overflow-wrap: anywhere; }
@@ -228,6 +229,26 @@ select.ff-input { cursor: pointer; }
 .ff-drop { display: grid; place-items: center; min-height: 140px; border: 2px dashed var(--border2); border-radius: var(--ff-radius); color: var(--muted2); font-weight: 700; cursor: pointer; }
 .ff-drop span { display: inline-flex; align-items: center; gap: 8px; }
 .ff-drop:hover { border-color: var(--accent); color: var(--text); }
+.ff-qz { display: flex; flex-direction: column; gap: 14px; max-width: 760px; }
+.ff-qz > p { margin: 0; }
+.ff-qz-devs { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 14px; width: fit-content; max-width: 100%; }
+.ff-qz-way { padding: 16px 18px; border: 1px solid var(--border); border-radius: var(--ff-radius); background: rgba(255,255,255,.03); }
+.ff-qz h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 1.08rem; }
+.ff-qz h4 { margin: 14px 0 6px; font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted2); }
+.ff-qz-way > p { margin: 0 0 4px; line-height: 1.5; }
+/* Numbered steps: a big number beside each one, so "step 3" is easy to find again.
+   A list that continues another sets counter-reset inline. */
+.ff-qz-steps { list-style: none; counter-reset: qz; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.ff-qz-steps > li { counter-increment: qz; position: relative; padding-left: 40px; min-height: 28px; line-height: 1.55; color: var(--text); }
+.ff-qz-steps > li::before { content: counter(qz); position: absolute; left: 0; top: -1px; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 800; font-size: .9rem; }
+.ff-qz-steps .ff-btn { margin: 6px 6px 0 0; vertical-align: middle; }
+.ff-qz-steps .ff-qz-paste { display: block; width: 100%; min-height: 96px; margin-top: 8px; }
+.ff-qz kbd { padding: 1px 6px; border: 1px solid var(--border2); border-bottom-width: 2px; border-radius: 5px; font: inherit; font-size: .85em; font-weight: 700; white-space: nowrap; }
+.ff-qz-steps + p { margin-top: 14px; }
+.ff-qz-help { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+.ff-qz-help summary { cursor: pointer; font-weight: 700; color: var(--text); }
+.ff-qz-help[open] summary { margin-bottom: 8px; }
+.ff-qz-mark { cursor: grab; }
 .ff-preview { margin-top: 18px; }
 .ff-prev-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
 .ff-prev-head .ff-input { flex: 1 1 220px; max-width: 360px; }

@@ -559,6 +559,7 @@
         </div>
         <h2 class="cv-onb-title flux-color-title">Sign in to Canvas</h2>
         <p class="cv-onb-sub">Tell Flux your school's Canvas address, sign in to Canvas the way you normally do, then paste an access token once — Flux remembers it on your account.</p>
+        <button type="button" class="btn-sec" onclick="FluxHowTo.open('canvas')" style="margin-bottom:12px">Watch how</button>
         ${stepDots}
       </div>`;
 

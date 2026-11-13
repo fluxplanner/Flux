@@ -149,12 +149,6 @@
     if (!pid) return { ok: true };
 
     try {
-      if (pid === 'flux_control') {
-        const r = typeof getMyRole === 'function' ? getMyRole() : '';
-        if (r === 'owner' || r === 'dev') return { ok: true };
-        return { ok: false, reason: 'flux_control_owner_only', fallbackId: 'dashboard' };
-      }
-
       if (pid === 'parentPortal') {
         try {
           if (
@@ -316,7 +310,6 @@
       'staffTasks',
       'schoolFeedPanel',
       'canvas',
-      'flux_control',
     ];
     const rows = panels.map((p) => {
       const r = check(p);

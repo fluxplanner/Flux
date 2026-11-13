@@ -17,6 +17,8 @@ const sandbox = { window: { localStorage }, TextEncoder, TextDecoder, btoa, atob
 vm.createContext(sandbox);
 vm.runInContext(readFileSync(new URL('../../public/js/flux-flash-core.js', import.meta.url), 'utf8'), sandbox);
 const F = sandbox.window.FluxFlash;
+vm.runInContext(readFileSync(new URL('../../public/js/flux-quizlet.js', import.meta.url), 'utf8'), sandbox);
+const Q = sandbox.window.FluxQuizlet;
 const DAY = F.DAY, MIN = F.MIN;
 const T0 = Date.UTC(2026, 9, 4, 12);
 /** Arrays made inside the VM belong to another realm; compare their contents. */
@@ -125,6 +127,11 @@ test('imports what students actually paste', () => {
   assert.equal(F.parseImport('').length, 0);
 });
 
+test('a definition with a line break stays on its own card', () => {
+  const text = 'mitosis\tcell division\nmakes two identical cells\nmeiosis\tmakes gametes';
+  assert.deepEqual(plain(F.parseImport(text).map((c) => [c.term, c.def])), [['mitosis', 'cell division makes two identical cells'], ['meiosis', 'makes gametes']]);
+});
+
 test('a practice test mixes question types and marks itself', () => {
   const cards = 'abcdef'.split('').map((x, i) => ({ id: x, term: 'term ' + x, def: 'definition ' + i }));
   let seed = 1;
@@ -213,4 +220,93 @@ test('a re-shared copy keeps its creator, and its changes merge back', () => {
   assert.equal(mine.cards[1].def, 'to eat (a meal)');
   assert.equal(mine.cards[0].s.S, 12, 'progress kept');
   assert.equal(F.relatedDeck(F.newDeck({ title: 'x' }), [mine]), null);
+});
+
+/* ── Quizlet "Send to Flux" bookmark ─────────────────────────────────── */
+
+/** A studiable item the way Quizlet's page data has it. */
+const qzItem = (id, set, rank, term, def) => ({
+  id, studiableContainerId: set, rank,
+  cardSides: [
+    { sideId: 1, label: 'word', media: [{ type: 1, plainText: term }] },
+    { sideId: 2, label: 'definition', media: [{ type: 1, plainText: def }] },
+  ],
+});
+/** __NEXT_DATA__: the set lives in JSON inside a string, beside a suggested set. */
+const qzPage = () => ({
+  props: { pageProps: { dehydratedReduxStateKey: JSON.stringify({
+    studyModesCommon: { studiableData: { studiableItems: [
+      qzItem(2, 341080361, 1, 'eagle', 'el águila'),
+      qzItem(1, 341080361, 0, 'moose', 'el alce'),
+      qzItem(3, 341080361, 2, '', 'picture only'),
+    ] } },
+    suggestions: [qzItem(9, 555, 0, 'other', 'set'), qzItem(10, 555, 1, 'not', 'mine'), qzItem(11, 555, 2, 'nor', 'this')],
+  }) } },
+});
+
+test('Quizlet page data gives the set’s cards in order, without suggested sets', () => {
+  const r = plain(Q.cards(qzPage(), '341080361'));
+  assert.deepEqual(r.cards, [['moose', 'el alce'], ['eagle', 'el águila']]);
+  assert.equal(r.skipped, 1, 'a picture-only card is counted, not imported');
+});
+
+test('the bookmark, run on a Quizlet set, opens Flux with that set as a share link', () => {
+  const mark = Q.bookmarklet('https://flux.example/flashcards.html');
+  assert.match(mark, /^javascript:/);
+  const src = decodeURIComponent(mark.slice('javascript:'.length));
+  assert.ok(!src.includes('\n'), 'a bookmark has no line breaks');
+  const opened = [], alerts = [];
+  const page = {
+    location: { hostname: 'quizlet.com', pathname: '/341080361/spanish-animales-flash-cards/', href: '' },
+    document: {
+      title: 'Spanish Animales Flashcards | Quizlet',
+      getElementById: (id) => (id === '__NEXT_DATA__' ? { textContent: JSON.stringify(qzPage()) } : null),
+      querySelectorAll: () => [],
+      querySelector: () => null,
+    },
+    window: { open: (u) => { opened.push(u); return {}; } },
+    alert: (m) => alerts.push(m),
+    btoa, unescape, encodeURIComponent, JSON,
+  };
+  vm.runInNewContext(src, page);
+  assert.equal(opened.length, 1);
+  const [base, code] = opened[0].split('#share=');
+  assert.equal(base, 'https://flux.example/flashcards.html');
+  const deck = F.decodeShare(code);
+  assert.equal(deck.title, 'Spanish Animales');
+  assert.deepEqual(plain(deck.cards.map((c) => [c.term, c.def])), [['moose', 'el alce'], ['eagle', 'el águila']]);
+  assert.equal(deck.desc, 'From Quizlet: quizlet.com/341080361/spanish-animales-flash-cards/');
+  assert.equal(deck.origin.id, 'quizlet-341080361', 'sending the same set again offers to merge new cards');
+  assert.equal(alerts.length, 1, 'tells the student a picture-only card was left out');
+});
+
+test('the bookmark on any other site says to open a Quizlet set', () => {
+  const src = decodeURIComponent(Q.bookmarklet('https://flux.example/flashcards.html').slice(11));
+  const alerts = [], opened = [];
+  vm.runInNewContext(src, {
+    location: { hostname: 'example.com', pathname: '/' }, document: {},
+    window: { open: (u) => opened.push(u) }, alert: (m) => alerts.push(m),
+  });
+  assert.equal(opened.length, 0);
+  assert.match(alerts[0], /Quizlet set/);
+});
+
+test('a whole Quizlet page, copied and pasted, gives the set’s cards', () => {
+  const page = [
+    'Study tools', 'Spanish Animales', 'Learn', 'Choose an answer', '1', 'moose',
+    'Terms in this set (3)', 'moose', 'el alce', '', 'eagle', 'el águila', 'piranha', 'la piraña',
+    'About us', 'About Quizlet', 'Careers',
+  ].join('\r\n');
+  const got = plain(F.quizletPageText(page));
+  assert.equal(got.count, 3);
+  assert.deepEqual(got.cards, [
+    { term: 'moose', def: 'el alce' }, { term: 'eagle', def: 'el águila' }, { term: 'piranha', def: 'la piraña' },
+  ], 'stops at the set’s own count, before the footer');
+  assert.deepEqual(plain(F.parseImport(page)), got.cards, 'the Paste a list tab recognises it too');
+  assert.equal(F.quizletPageText('perro\tdog\ngato\tcat'), null, 'an ordinary list is not mistaken for one');
+});
+
+test('after moving to another set inside Quizlet, the stale page data is not mistaken for it', () => {
+  assert.deepEqual(plain(Q.cards(qzPage(), '999999')), { cards: [], skipped: 0 }, 'the bookmark falls back to the visible terms instead');
+  assert.equal(Q.message({ error: 'no-cards' }).includes('could not find'), true);
 });

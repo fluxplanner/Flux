@@ -1,4 +1,5 @@
 import { serviceClient, corsHeaders } from "../_shared/auth.ts";
+import { clientIp, overDailyLimit } from "../_shared/rate-limit.ts";
 
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin") ?? "";
@@ -15,6 +16,11 @@ Deno.serve(async (req) => {
   const token = (url.searchParams.get("t") || url.searchParams.get("token") || "").trim();
   if (!token || token.length < 16) {
     return new Response("Not found", { status: 404, headers: corsHeaders(origin) });
+  }
+  // Calendar apps poll a few times an hour; thousands of lookups from one
+  // address is someone guessing feed tokens.
+  if (await overDailyLimit("ical-feed", clientIp(req), 2000)) {
+    return new Response("Too many requests", { status: 429, headers: corsHeaders(origin) });
   }
 
   const sb = serviceClient();

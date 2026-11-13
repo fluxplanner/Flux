@@ -24,6 +24,10 @@ Deno.serve(async (req) => {
   const url = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !serviceKey) return json({ error: "missing service env" }, 500);
+  // Reads across every account, so a signed-in user's token is not enough.
+  if (req.headers.get("authorization") !== `Bearer ${serviceKey}`) {
+    return json({ error: "unauthorized" }, 401);
+  }
   const sb = createClient(url, serviceKey);
 
   // Pull blobs in pages. user_data: { user_id, data: {...planner keys...} }

@@ -1768,7 +1768,10 @@
               <div style="flex:1;min-width:0">
                 <div style="font-weight:800;display:flex;align-items:center;flex-wrap:wrap;gap:4px">${esc(p.title)}${pinned}</div>
                 ${p.body ? `<div style="font-size:.82rem;color:var(--muted2);margin-top:5px;line-height:1.5">${esc(p.body)}</div>` : ''}
-                <div style="font-size:.68rem;color:var(--muted);margin-top:6px">${typeof timeAgo === 'function' ? timeAgo(new Date(p.created_at)) : ''}</div>
+                <div style="font-size:.68rem;color:var(--muted);margin-top:6px;display:flex;align-items:center;gap:10px">
+                  <span>${typeof timeAgo === 'function' ? timeAgo(new Date(p.created_at)) : ''}</span>
+                  ${p.posted_by !== currentUser.id ? `<button type="button" class="sf-report" data-sf-report="${esc(p.id)}" style="background:none;border:none;padding:0;font-size:.68rem;color:var(--muted);text-decoration:underline;cursor:pointer">Report</button>` : ''}
+                </div>
               </div>
             </div>
           </div>`;
@@ -1776,6 +1779,27 @@
         </div>
       </div>`;
     el.querySelector('#sfNew')?.addEventListener('click', openNewFeedPostModal);
+    el.querySelectorAll('[data-sf-report]').forEach((b) => b.addEventListener('click', () => reportFeedPost(b)));
+  }
+
+  /* Reports go to the owner. Enough of them on one post raises an alert in
+     Owner Controls, and can take the post down (flux_report_post). */
+  async function reportFeedPost(btn) {
+    const reason = window.prompt('What is wrong with this post? (optional)\n\nYour report goes to the people who run Flux. The person who posted it is not told who reported it.');
+    if (reason === null) return;
+    const client = sb();
+    if (!client) return;
+    btn.disabled = true;
+    const { error } = await client.rpc('flux_report_post', {
+      p_source: 'school_feed', p_id: btn.getAttribute('data-sf-report'), p_reason: reason.trim() || null,
+    });
+    if (error) {
+      btn.disabled = false;
+      if (typeof showToast === 'function') showToast(error.message || 'Could not send that report. Try again.', 'error');
+      return;
+    }
+    btn.textContent = 'Reported';
+    if (typeof showToast === 'function') showToast('Thanks. Your report was sent.', 'success');
   }
 
   function openNewFeedPostModal() {
@@ -1894,93 +1918,6 @@
       .subscribe();
   }
 
-  async function hydrateOwnerStaffVerification(mount, opts) {
-    if (!mount || typeof isOwner !== 'function' || !isOwner()) return;
-    const client = sb();
-    if (!client) return;
-    const silent = opts === true || (opts && opts.silent);
-    if (!silent) {
-      mount.innerHTML = '<div style="color:var(--muted2)">Loading requests…</div>';
-    }
-    const { data: requests, error } = await client
-      .from('staff_verification_requests')
-      .select('*')
-      .eq('verification_status', 'pending')
-      .order('created_at', { ascending: true });
-    if (error) {
-      mount.innerHTML = '<div style="color:var(--red)">' + esc(error.message) + '</div>';
-      return;
-    }
-    if (!requests?.length) {
-      mount.innerHTML = '<div style="color:var(--muted2);font-size:.85rem">No pending staff verification requests.</div>';
-      return;
-    }
-    mount.innerHTML = requests
-      .map(
-        (r) => `
-      <div class="card" style="margin-bottom:10px">
-        <div style="font-weight:800">${esc(r.requested_name)}</div>
-        <div style="font-size:.78rem;color:var(--muted2)">${esc(r.requested_role)} · ${esc(r.personal_gmail || '')}</div>
-        ${r.applicant_note ? `<div style="font-size:.78rem;margin-top:8px;font-style:italic;color:var(--muted2)">“${esc(r.applicant_note)}”</div>` : ''}
-        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-          <button type="button" class="edu-action-btn primary" data-sv-approve="${esc(r.user_id)}" data-role="${esc(r.requested_role)}" data-name="${esc(r.requested_name)}">Approve</button>
-          <button type="button" class="btn-sec" data-sv-reject="${esc(r.user_id)}">Reject</button>
-        </div>
-      </div>`
-      )
-      .join('');
-    mount.querySelectorAll('[data-sv-approve]').forEach((btn) => {
-      btn.addEventListener('click', () =>
-        approveStaffRequest(btn.getAttribute('data-sv-approve'), btn.getAttribute('data-role'), btn.getAttribute('data-name'))
-      );
-    });
-    mount.querySelectorAll('[data-sv-reject]').forEach((btn) => {
-      btn.addEventListener('click', () => rejectStaffRequest(btn.getAttribute('data-sv-reject')));
-    });
-  }
-
-  async function approveStaffRequest(userId, role, name) {
-    const client = sb();
-    if (!client || !currentUser) return;
-    await client
-      .from('user_roles')
-      .update({
-        role,
-        display_name: name,
-        school: (window.FluxSchool?.IAE?.name || 'International Academy East'),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('user_id', userId);
-    await client
-      .from('staff_verification_requests')
-      .update({ verification_status: 'approved', resolved_at: new Date().toISOString(), identity_confirmed: true })
-      .eq('user_id', userId);
-    if (typeof fluxEnsureThreadAndSend === 'function') {
-      await fluxEnsureThreadAndSend(
-        userId,
-        'Your staff access was approved. Sign out and back in if your dashboard does not update immediately.'
-      );
-    }
-    if (typeof showToast === 'function') showToast('Approved', 'success');
-    const m = document.getElementById('osStaffVerifyMount');
-    if (m) hydrateOwnerStaffVerification(m);
-  }
-
-  async function rejectStaffRequest(userId) {
-    const client = sb();
-    if (!client) return;
-    await client
-      .from('staff_verification_requests')
-      .update({ verification_status: 'rejected', resolved_at: new Date().toISOString() })
-      .eq('user_id', userId);
-    if (typeof fluxEnsureThreadAndSend === 'function') {
-      await fluxEnsureThreadAndSend(userId, 'Your staff verification request was not approved. Contact your administrator if this is a mistake.');
-    }
-    if (typeof showToast === 'function') showToast('Rejected', 'info');
-    const m = document.getElementById('osStaffVerifyMount');
-    if (m) hydrateOwnerStaffVerification(m);
-  }
-
   /* ── Telling the owner a request is waiting ───────────────────────────────
      The review queue only refreshed while the Staff verify tab was already
      open, so a request could sit unseen indefinitely — nothing anywhere told
@@ -2039,9 +1976,6 @@
     staffWorkspacePinsHtml,
     renderSchoolFeed,
     renderStaffProfile,
-    hydrateOwnerStaffVerification,
-    approveStaffRequest,
-    rejectStaffRequest,
     listenForApproval,
     teardownVerificationRealtime,
   };

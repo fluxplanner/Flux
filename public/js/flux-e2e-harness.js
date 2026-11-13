@@ -86,7 +86,21 @@
     }
   }
 
+  /**
+   * This file ships to production, so without this check adding ?e2e=1 to the
+   * live address opened the planner with no account. The tests only ever run
+   * against a server on the same machine.
+   */
+  function onLocalMachine() {
+    try {
+      return /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
+    } catch (_) {
+      return false;
+    }
+  }
+
   function active() {
+    if (!onLocalMachine()) return false;
     if (qsFlag()) return true;
     try {
       return localStorage.getItem('flux_e2e') === '1';
@@ -324,11 +338,34 @@
       return { data: rows, error: null };
     }
 
+    /* flux_hidden_apps, refusing non-owners the way its RLS does: an error on
+       insert, and a delete that succeeds with no rows. The real policies are
+       checked against the database, not here. Seed via window.__fluxE2EHiddenApps. */
+    function hiddenAppsResult(state) {
+      if (!Array.isArray(window.__fluxE2EHiddenApps)) window.__fluxE2EHiddenApps = [];
+      const store = window.__fluxE2EHiddenApps;
+      const owner = window.currentUser && window.currentUser.id === 'eabe2b1f-e428-4181-8530-8e5366eb3975';
+      if (state.op === 'insert') {
+        if (!owner) return { data: null, error: { message: 'new row violates row-level security policy' } };
+        const row = { app_id: state.payload.app_id };
+        store.push(row);
+        return { data: [{ ...row }], error: null };
+      }
+      if (state.op === 'delete') {
+        if (!owner) return { data: [], error: null };
+        const hits = store.filter((r) => matchesFilters(r, state.filters));
+        window.__fluxE2EHiddenApps = store.filter((r) => !matchesFilters(r, state.filters));
+        return { data: hits, error: null };
+      }
+      return { data: store.map((r) => ({ ...r })), error: null };
+    }
+
     function buildResult(table, state) {
       const empty = { data: [], error: null };
       const single = (row) => ({ data: row, error: null });
       if (table === 'flux_help_tickets') return helpTicketResult(state);
       if (table === 'owner_direct_messages') return ownerMessageResult(state);
+      if (table === 'flux_hidden_apps') return hiddenAppsResult(state);
       if (table === 'counselors' && scenario === 'counselor-path') {
         if (state.op === 'insert' || state.op === 'update') return single(counselorRow);
         if (state.single) return single(counselorRow);
@@ -433,6 +470,12 @@
       from(table) {
         return chain(table);
       },
+      /* Database functions answer from window.__fluxE2ERpc[name] (seeded by a
+         spec), or with null, as an unknown function would leave things. */
+      rpc(name) {
+        const answers = window.__fluxE2ERpc || {};
+        return Promise.resolve({ data: name in answers ? answers[name] : null, error: null });
+      },
       auth: {
         getSession: () =>
           Promise.resolve({
@@ -445,6 +488,7 @@
   }
 
   function getMockClient() {
+    if (!active()) return null;
     if (!active()) return null;
     const scenario = pendingScenario();
     const cfg = SCENARIOS[scenario];

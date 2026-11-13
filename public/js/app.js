@@ -234,6 +234,8 @@ const DATA_VERSION=6;
     'flux_data_version','flux_splash_shown',
     'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
     'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
+    'flux_schoology_v1',
+    'flux_moodle_v1',
     'flux_canvas_token','flux_canvas_url','flux_canvas_host',
     'flux_canvas_last_view','flux_canvas_last_params',
     'flux_canvas_autosync','flux_canvas_last_sync',
@@ -785,14 +787,20 @@ function checkTesterMode(){
   FLUX_FLAGS.TESTER_MODE=false;
   if(!currentUser||!currentUser.email)return;
   const list=load('flux_tester_emails',[]);
-  if(!Array.isArray(list)||!list.length)return;
   const email=String(currentUser.email).toLowerCase().trim();
-  if(list.some(e=>String(e||'').toLowerCase().trim()===email)){
+  // A role with "Tester mode" (Owner Controls › Roles) counts the same as the list.
+  const byRole=!!(window.FluxAppVisibility&&window.FluxAppVisibility.can&&window.FluxAppVisibility.can('perk:tester'));
+  if(byRole||(Array.isArray(list)&&list.some(e=>String(e||'').toLowerCase().trim()===email))){
     FLUX_FLAGS.TESTER_MODE=true;
     _entitlement.plan='pro';
     try{console.log('[Flux] Tester mode active for',currentUser.email);}catch(_){}
   }
 }
+
+// Role permissions arrive after sign-in, so tester mode is checked again then.
+window.addEventListener('flux-app-visibility',()=>{
+  try{if(currentUser){checkTesterMode();renderTesterBadge();}}catch(_){/* the next sign-in check picks it up */}
+});
 
 function renderTesterBadge(){
   document.querySelectorAll('.flux-tester-badge').forEach(el => el.remove());
@@ -933,7 +941,6 @@ function renderDynamicFocus(){
       </div>
       ${gapSug?`<div style="background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.15);border-radius:10px;padding:10px 14px;font-size:.8rem">
         <span style="color:var(--muted2)">Gap task:</span> <strong>${esc(gapSug.name)}</strong>
-        <span style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.72rem;margin-left:6px">~${gapSug.estTime}min</span>
       </div>`:''}
     </div>`;
     if(mode==='collapsed'){
@@ -956,7 +963,7 @@ function renderDynamicFocus(){
     html=`<div class="focus-card">
       <div class="focus-label">Focus on now</div>
       <div style="font-size:1rem;font-weight:700;margin-top:6px">${esc(urgent.name)}</div>
-      <div style="font-size:.75rem;color:var(--muted2);margin-top:4px">Due today${urgent.estTime?' · ~'+urgent.estTime+'min':''}</div>
+      <div style="font-size:.75rem;color:var(--muted2);margin-top:4px">Due today</div>
     </div>`;
   }
   el.innerHTML=useIntel?FluxIntel.appendFocusHtml(html):html;
@@ -1813,7 +1820,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notebook',notebook:'Notebook',timer:'Time',canvas:'Canvas',google:'Google',profile:'Profile',goals:'College Prep',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',teacherResources:'Resources',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffMessages:'Messages',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notebook',notebook:'Notebook',timer:'Time',canvas:'Connect',google:'Google',profile:'Profile',goals:'College Prep',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',teacherResources:'Resources',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffMessages:'Messages',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
 
 // ══ Time / format helpers (used by educator dashboards + onboarding) ══
 function getTimeGreeting(){
@@ -2522,81 +2529,6 @@ function renderImpersonatePill(){
   document.getElementById('fluxImpersonatePill')?.remove();
 }
 window.renderImpersonatePill=renderImpersonatePill;
-
-/** Modal picker: choose Off / Student / any staff directory entry. */
-function openImpersonatePicker(){
-  if(typeof isOwner==='function'&&!isOwner())return;
-  document.getElementById('fluxImpersonatePicker')?.remove();
-  const dir=window.FluxStaffDirectory;
-  const ov=document.createElement('div');
-  ov.id='fluxImpersonatePicker';
-  ov.style.cssText='position:fixed;inset:0;background:rgba(5,8,16,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:9990;display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto';
-  ov.innerHTML=`
-    <div style="max-width:560px;width:100%;background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,.55)">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-        <span style="font-size:1.4rem"></span>
-        <h2 style="margin:0;font-size:1.2rem;font-weight:900" class="flux-color-title">Owner test mode</h2>
-      </div>
-      <p style="font-size:.82rem;color:var(--muted2);margin:0 0 16px">Impersonate any role or staff member to test their planner. Your real Supabase data is untouched. Exit at any time.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-        <button type="button" data-imp="off" style="padding:11px;border-radius:12px;background:var(--card2);border:1px solid var(--border2);color:var(--text);font-weight:700;cursor:pointer">Off (real owner)</button>
-        <button type="button" data-imp="student" style="padding:11px;border-radius:12px;background:rgba(var(--accent-rgb),.1);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent);font-weight:700;cursor:pointer">Student (generic)</button>
-      </div>
-      <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px">Pick a real staff member</label>
-      <select id="impDirSelect" style="width:100%;padding:10px;font-size:.9rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);margin-bottom:10px">
-        <option value="">— choose —</option>
-      </select>
-      <div style="display:flex;gap:8px;margin-bottom:14px">
-        <label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:10px;background:var(--card2);border:1px solid var(--border2);font-size:.78rem;cursor:pointer"><input type="radio" name="impMode" value="work" checked> Work mode</label>
-        <label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:10px;background:var(--card2);border:1px solid var(--border2);font-size:.78rem;cursor:pointer"><input type="radio" name="impMode" value="personal"> Personal mode</label>
-      </div>
-      <div style="display:flex;gap:10px">
-        <button type="button" id="impCancel" style="flex:0 0 auto;padding:11px 16px;border-radius:12px;background:var(--card2);border:1px solid var(--border2);color:var(--muted2);font-weight:700;cursor:pointer">Cancel</button>
-        <button type="button" id="impGo" style="flex:1;padding:11px;border-radius:12px;background:linear-gradient(90deg,#7c5cff,#ff5c7c);color:#fff;font-weight:800;border:none;cursor:pointer">Switch into selected staff</button>
-      </div>
-    </div>`;
-  document.body.appendChild(ov);
-
-  const sel=document.getElementById('impDirSelect');
-  if(sel&&dir){
-    const list=dir.all.slice().sort((a,b)=>a.name.localeCompare(b.name));
-    const ROLE_LABEL={teacher:'Teacher',counselor:'Counselor',staff:'Staff',admin:'Admin'};
-    sel.innerHTML='<option value="">— choose —</option>'+list.map(d=>{
-      const roleTxt=ROLE_LABEL[d.role]||d.role;
-      const subj=d.subject?' · '+d.subject:'';
-      return `<option value="${esc(d.email)}">${esc(d.name)} — ${esc(roleTxt)}${esc(subj)}</option>`;
-    }).join('');
-    const cur=FluxImpersonate.active();
-    if(cur&&cur.email)sel.value=cur.email;
-  }
-
-  const close=()=>ov.remove();
-  ov.querySelectorAll('[data-imp]').forEach(b=>b.addEventListener('click',()=>{
-    const v=b.dataset.imp;
-    if(v==='off'){FluxImpersonate.clear();close();return;}
-    if(v==='student'){
-      FluxImpersonate.set({role:'student',name:'Test Student',subject:'',email:'',mode:'personal'});
-      close();
-    }
-  }));
-  document.getElementById('impCancel')?.addEventListener('click',close);
-  document.getElementById('impGo')?.addEventListener('click',()=>{
-    const email=sel?.value||'';
-    if(!email||!dir){return;}
-    const rec=dir.findByEmail(email);
-    if(!rec)return;
-    const mode=document.querySelector('input[name="impMode"]:checked')?.value||'work';
-    FluxImpersonate.set({
-      role:rec.role,
-      name:rec.name,
-      subject:rec.subject||'',
-      email:rec.email,
-      mode,
-    });
-    close();
-  });
-}
-window.openImpersonatePicker=openImpersonatePicker;
 
 /** Sidebar / drawer: educator Work mode shows School tab strip; students keep classic rows. */
 function syncSchoolNavChrome(){
@@ -3395,7 +3327,7 @@ const DEFAULT_TABS=[
   {id:'dashboard',icon:'⚡',label:'Dashboard',visible:true},
   {id:'calendar',icon:'📅',label:'Calendar',visible:true},
   {id:'school',icon:'🏫',label:'School Info',visible:true},
-  {id:'canvas',icon:'C',label:'Canvas',visible:true},
+  {id:'canvas',icon:'C',label:'Connect',visible:true},
   {id:'notes',icon:'📓',label:'Notebook',visible:true},
   {id:'timer',icon:'⏱',label:'Time',visible:true},
   {id:'profile',icon:'👤',label:'Profile',visible:true},
@@ -3409,6 +3341,8 @@ const DEFAULT_TABS=[
   {id:'settings',icon:'⚙',label:'Settings',visible:true},
 ];
 let tabConfig=load('flux_tabs',DEFAULT_TABS);
+// Schoology had its own tab before it moved into Connect (with Canvas and Moodle).
+tabConfig=tabConfig.filter(t=>t&&t.id!=='schoology');
 // 'notebook' merged into 'notes' (one Notebook tab with Knowledge as a sub-view)
 /* 'ai' joins the retired list. Dropping it from DEFAULT_TABS alone would not
    have removed it: tabConfig is restored from localStorage, so everyone who
@@ -3433,7 +3367,8 @@ tabConfig.forEach(t=>{if(t.id==='ai'&&/flux\s*agent/i.test(String(t.label||'')))
 tabConfig.forEach(t=>{if(t.id==='notes'&&(/^notes$/i.test(String(t.label||''))||!t.label))t.label='Notebook';});
 tabConfig.forEach(t=>{
   if(t.id!=='canvas')return;
-  if(/gmail/i.test(String(t.label||''))||t.label==='Google'||!t.label)t.label='Canvas';
+  // Canvas, Schoology and Moodle share this tab as "Connect".
+  if(/gmail/i.test(String(t.label||''))||t.label==='Google'||t.label==='Canvas'||!t.label)t.label='Connect';
 });
 (function migrateCanvasTabOrder(){
   const si=tabConfig.findIndex(t=>t.id==='school');
@@ -3504,6 +3439,7 @@ const API={
   ai:`${SB_URL}/functions/v1/ai-proxy`,
   gemini:`${SB_URL}/functions/v1/gemini-proxy`,
   canvas:`${SB_URL}/functions/v1/canvas-proxy`,
+  schoology:`${SB_URL}/functions/v1/schoology-feed`,
   ecCollegeChat:`${SB_URL}/functions/v1/ec-college-chat`,
   userFeedback:`${SB_URL}/functions/v1/user-feedback`,
   mcp:`${SB_URL}/functions/v1/mcp`,
@@ -3639,7 +3575,7 @@ async function fetchAndCacheEntitlement(){
 // ══ HELPERS ══
 const G=10.0000; // Physics constant — enforced everywhere
 const precise=n=>Number(n).toFixed(4);
-const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 window.esc=esc; // 144 cross-module reads expected this on window
 /** Settings → Account: lets student-role accounts become educators so Work/Personal mode appears. */
 function syncStudentEducatorUpgradeCard(){
@@ -3830,9 +3766,11 @@ function nav(id,btn,navOpt){
   // would not catch them — send them somewhere real rather than to a blank
   // panel with no way back.
   if(!FLUX_NOTEBOOK_ENABLED&&(id==='notebook'||id==='notes')){ id='dashboard'; }
+  // Owner Controls moved to its own app. Old saved links still lead somewhere.
   if(id==='flux_control'){
-    const r=getMyRole();
-    if(r!=='owner'&&r!=='dev'){nav('dashboard');return;}
+    if(isOwner())location.href='owner.html';
+    else nav('dashboard');
+    return;
   }
   // Check if tab is visible
   const tc=tabConfig.find(t=>t.id===id);
@@ -3949,11 +3887,10 @@ function nav(id,btn,navOpt){
   syncPanelScrollLayout();
   const tTitle=document.getElementById('topbarTitle');
   if(tTitle){
-    if(id==='flux_control')tTitle.textContent=isOwner()?'Owner control':(getMyRole()==='dev'?'Dev panel':'Control');
-    else if(id==='canvas')tTitle.textContent=PANEL_TITLES.canvas||'Canvas';
+    if(id==='canvas')tTitle.textContent=PANEL_TITLES.canvas||'Canvas';
     else tTitle.textContent=PANEL_TITLES[id]||id;
   }
-  const fns={dashboard:()=>{try{const pendStaff=typeof currentUser!=='undefined'&&currentUser&&String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'&&FluxRole.current==='student'&&FluxRole.isPersonalMode();const eduDash=(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode())||pendStaff;if(eduDash){fluxApplyStudentDashboardChrome(false);if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function'){FluxStaffPlatform.renderStaffPersonalDashboard();return;}}fluxApplyStudentDashboardChrome(true);}catch(e){}renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderScheduleConflictNotices();if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();if(FluxPersonal.applyDashboardVisibility)FluxPersonal.applyDashboardVisibility();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>{ensureNbkSubtabs();renderNotesList();},notebook:()=>{ensureNbkSubtabs();try{const m=document.getElementById('notebookMount');if(m&&!m.dataset.fnbReady&&window.FluxNotebook&&FluxNotebook.open){FluxNotebook.open(m);m.dataset.fnbReady='1';}}catch(e){}},goals:()=>{renderExtrasList();renderSchoolsList();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();try{window.FluxAcademicScores?.render();}catch(e){}},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();restoreTodayMood();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();try{window.FluxChangelog?.render();}catch(e){}try{window.FluxPlatformUI?.renderSettings();}catch(e){}loadSettingsUI();try{fluxUpgradeSwatchA11y();}catch(e){}try{if(window.FluxParentPortal?.renderStudentSettings)FluxParentPortal.renderStudentSettings();}catch(e){}try{if(window.FluxLearnerProfile?.renderCard)FluxLearnerProfile.renderCard();}catch(e){}},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},counselorWorkspace:()=>{try{renderCounselorWorkspace();}catch(e){}},adminDashboard:()=>{try{renderAdminDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},teacherResources:()=>{try{if(typeof renderTeacherResources==='function')renderTeacherResources();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}},staffTasks:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffTasksPanel==='function')FluxStaffPlatform.renderStaffTasksPanel();}catch(e){}},staffMeetingNotes:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderMeetingNotesPanel==='function')FluxStaffPlatform.renderMeetingNotesPanel();}catch(e){}},staffPD:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderPDPanel==='function')FluxStaffPlatform.renderPDPanel();}catch(e){}},staffWellbeing:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderWellbeingPanel==='function')FluxStaffPlatform.renderWellbeingPanel();}catch(e){}},staffResources:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderResourcesPanel==='function')FluxStaffPlatform.renderResourcesPanel();}catch(e){}},staffPersonalHub:()=>{try{if(typeof renderStaffPersonalHub==='function')renderStaffPersonalHub();}catch(e){}},schoolFeedPanel:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderSchoolFeed==='function')FluxStaffPlatform.renderSchoolFeed();}catch(e){}},staffHub:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffWorkHub==='function')FluxStaffPlatform.renderStaffWorkHub();}catch(e){}},staffMessages:()=>{try{if(typeof renderStaffMessages==='function')renderStaffMessages();}catch(e){}},parentPortal:()=>{try{if(window.renderParentPortal)renderParentPortal();}catch(e){}}};
+  const fns={dashboard:()=>{try{const pendStaff=typeof currentUser!=='undefined'&&currentUser&&String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'&&FluxRole.current==='student'&&FluxRole.isPersonalMode();const eduDash=(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode())||pendStaff;if(eduDash){fluxApplyStudentDashboardChrome(false);if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function'){FluxStaffPlatform.renderStaffPersonalDashboard();return;}}fluxApplyStudentDashboardChrome(true);}catch(e){}renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderScheduleConflictNotices();if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();if(FluxPersonal.applyDashboardVisibility)FluxPersonal.applyDashboardVisibility();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>{ensureNbkSubtabs();renderNotesList();},notebook:()=>{ensureNbkSubtabs();try{const m=document.getElementById('notebookMount');if(m&&!m.dataset.fnbReady&&window.FluxNotebook&&FluxNotebook.open){FluxNotebook.open(m);m.dataset.fnbReady='1';}}catch(e){}},goals:()=>{renderExtrasList();renderSchoolsList();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();try{window.FluxAcademicScores?.render();}catch(e){}},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();restoreTodayMood();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();try{window.FluxChangelog?.render();}catch(e){}try{window.FluxPlatformUI?.renderSettings();}catch(e){}loadSettingsUI();try{fluxUpgradeSwatchA11y();}catch(e){}try{if(window.FluxParentPortal?.renderStudentSettings)FluxParentPortal.renderStudentSettings();}catch(e){}try{if(window.FluxLearnerProfile?.renderCard)FluxLearnerProfile.renderCard();}catch(e){}},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},counselorWorkspace:()=>{try{renderCounselorWorkspace();}catch(e){}},adminDashboard:()=>{try{renderAdminDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},teacherResources:()=>{try{if(typeof renderTeacherResources==='function')renderTeacherResources();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}},staffTasks:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffTasksPanel==='function')FluxStaffPlatform.renderStaffTasksPanel();}catch(e){}},staffMeetingNotes:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderMeetingNotesPanel==='function')FluxStaffPlatform.renderMeetingNotesPanel();}catch(e){}},staffPD:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderPDPanel==='function')FluxStaffPlatform.renderPDPanel();}catch(e){}},staffWellbeing:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderWellbeingPanel==='function')FluxStaffPlatform.renderWellbeingPanel();}catch(e){}},staffResources:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderResourcesPanel==='function')FluxStaffPlatform.renderResourcesPanel();}catch(e){}},staffPersonalHub:()=>{try{if(typeof renderStaffPersonalHub==='function')renderStaffPersonalHub();}catch(e){}},schoolFeedPanel:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderSchoolFeed==='function')FluxStaffPlatform.renderSchoolFeed();}catch(e){}},staffHub:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffWorkHub==='function')FluxStaffPlatform.renderStaffWorkHub();}catch(e){}},staffMessages:()=>{try{if(typeof renderStaffMessages==='function')renderStaffMessages();}catch(e){}},parentPortal:()=>{try{if(window.renderParentPortal)renderParentPortal();}catch(e){}}};
   // A panel renderer must never abort the rest of nav(): the panel class has
   // already been swapped above, so throwing here strands the user on a
   // half-initialised tab with the post-render steps (split layout, bumpNav,
@@ -4155,7 +4092,7 @@ document.addEventListener('keydown',e=>{
 function populateSubjectSelects(){
   if(fluxIsStaffPersonalMode())return;
   const subjs=getSubjects();
-  const opts='<option value="">No subject</option>'+Object.entries(subjs).map(([k,s])=>`<option value="${k}">${s.name}</option>`).join('');
+  const opts='<option value="">No subject</option>'+Object.entries(subjs).map(([k,s])=>`<option value="${esc(k)}">${esc(s.name)}</option>`).join('');
   ['taskSubject','editSubject','noteSubjectTag','timerSubject','addEventSubject'].forEach(id=>{
     const el=document.getElementById(id);
     if(!el)return;
@@ -4205,7 +4142,6 @@ const NAV_TAB_SVGS={
   mood:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 10h.01M16 10h.01"/><path d="M8.2 15a4 4 0 0 0 7.6 0"/></svg>`,
   /* Sliders — distinct from Flux AI sparkles */
   settings:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 3v5"/><path d="M20 21v-5"/><path d="M20 8V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 14h4"/></svg>`,
-  flux_control:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="11" width="7" height="10" rx="1.5"/><rect x="3" y="15" width="7" height="6" rx="1.5"/></svg>`,
   references:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/><path d="M8 7h8M8 11h6"/></svg>`,
   periodic:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
   gmail:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2Z"/><path d="m22 6-10 7L2 6"/></svg>`,
@@ -4244,15 +4180,10 @@ function getNavIconHtml(tabId,variant){
    icon, the label and whether it appears at all from tabConfig — the same
    source renderSidebars() builds the sidebar and the drawer from. The phone
    then cannot disagree with the laptop, which is the point of the redesign,
-   and a tab someone renames in Settings gets renamed here too.
-
-   The admin slot is exempt: flux_control is injected by role a few lines
-   above and deliberately is not a tabConfig entry, so matching on tabConfig
-   would hide it from the owner. */
+   and a tab someone renames in Settings gets renamed here too. */
 function syncMoreSheetNav(){
   const visible=new Set(tabConfig.filter(t=>t.visible).map(t=>t.id));
   document.querySelectorAll('.more-sheet-item[data-nav-tab]').forEach(btn=>{
-    if(btn.closest('#moreSheetAdminSlot'))return;
     const id=btn.getAttribute('data-nav-tab');
     btn.style.display=visible.has(id)?'':'none';
     const tc=tabConfig.find(t=>t.id===id);
@@ -4295,8 +4226,8 @@ function buildEducatorNavAugmentation(isMob,schoolClassicLabelEscaped){
 </div>`;
   const googleNavIcon=`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>`;
   const googleNavOnclick=isMob?`navMob('canvas');try{FluxGoogle.renderHub()}catch(e){}`:`nav('canvas',this);try{FluxGoogle.renderHub()}catch(e){}`;
-  const googleNavWork=`<button type="button" class="nav-item" data-educator-google data-educator-google-work onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Canvas"><span class="ni">${googleNavIcon}</span><span class="nl">Canvas</span></button>`;
-  const googleNavPersonal=`<button type="button" class="nav-item" data-educator-google data-educator-google-personal onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Canvas"><span class="ni">${googleNavIcon}</span><span class="nl">Canvas</span></button>`;
+  const googleNavWork=`<button type="button" class="nav-item" data-educator-google data-educator-google-work onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Connect school apps"><span class="ni">${googleNavIcon}</span><span class="nl">Connect</span></button>`;
+  const googleNavPersonal=`<button type="button" class="nav-item" data-educator-google data-educator-google-personal onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Connect school apps"><span class="ni">${googleNavIcon}</span><span class="nl">Connect</span></button>`;
   const staffPersonal=`<button type="button" class="nav-item" onclick="${isMob?`navMob('staffTasks');try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`:`nav('staffTasks',this);try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni">${getNavIconHtml('staffTasks')}</span><span class="nl">Tasks</span></button>
 <button type="button" class="nav-item" onclick="${isMob?`navMob('staffResources');try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`:`nav('staffResources',this);try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni">${getNavIconHtml('staffResources')}</span><span class="nl">Resources</span></button>
 <button type="button" class="nav-item" onclick="${isMob?`navMob('staffPersonalHub');try{renderStaffPersonalHub()}catch(e){}`:`nav('staffPersonalHub',this);try{renderStaffPersonalHub()}catch(e){}`}" data-tab="staffPersonalHub" data-staff-personal style="display:none"><span class="ni">${getNavIconHtml('staffPersonalHub')}</span><span class="nl">Personal hub</span></button>
@@ -4390,25 +4321,6 @@ function renderSidebars(){
       schoolGroupMob,
       buildStdGroup('Me & Life',groups[2].ids,'navMob','padding:8px 16px 4px'),
     ].join('');
-  }
-
-  const role=getMyRole();
-  if(role==='owner'||role==='dev'){
-    const lab=role==='owner'?'Owner control':'Dev panel';
-    const adminGroup=`<div class="nav-group"><div class="nav-group-label">Admin</div><button type="button" class="nav-item" onclick="nav('flux_control',this)" data-tab="flux_control" aria-label="${lab}"><span class="ni">${getNavIconHtml('flux_control')}</span><span class="nl">${lab}</span></button></div>`;
-    const adminGroupMob=`<div class="nav-group"><div class="nav-group-label">Admin</div><button type="button" class="nav-item" onclick="navMob('flux_control')" data-tab="flux_control" aria-label="${lab}"><span class="ni">${getNavIconHtml('flux_control')}</span><span class="nl">${lab}</span></button></div>`;
-    if(sidebarNav)sidebarNav.insertAdjacentHTML('beforeend',adminGroup);
-    if(drawerNav)drawerNav.insertAdjacentHTML('beforeend',adminGroupMob);
-  }
-
-  const adminSlot=document.getElementById('moreSheetAdminSlot');
-  if(adminSlot){
-    if(role==='owner'||role==='dev'){
-      const lab=role==='owner'?'Owner control':'Dev panel';
-      adminSlot.innerHTML=`<button type="button" class="more-sheet-item" data-nav-tab="flux_control" onclick="navMob('flux_control')"><span class="more-sheet-icon" aria-hidden="true">${getNavIconHtml('flux_control','moreSheet')}</span><span class="more-sheet-label">${lab}</span></button>`;
-    }else{
-      adminSlot.innerHTML='';
-    }
   }
 
   // Mobile bottom nav is always the same 5 spec tabs:
@@ -5969,8 +5881,6 @@ function changeMonth(d){
     if(calMonth>11){calMonth=0;calYear++;}
     if(calMonth<0){calMonth=11;calYear--;}
     renderCalendar();
-    const gdd=document.getElementById('calGlassDropdown');
-    if(gdd&&!gdd.hidden&&typeof renderCalGlassDropdown==='function')renderCalGlassDropdown();
     if(!animate&&!reduced){try{window.FluxMotionMore?.calRipple(document.getElementById('calGrid'),d);}catch(_){}}
     if(animate){
       const g=document.getElementById('calGrid');
@@ -5996,141 +5906,10 @@ function selectDay(d){
   const b=document.getElementById('calAddEventBtn');if(b)b.style.display='inline-flex';
 }
 
-// ── Calendar glass date picker (month title dropdown; task-focused) ──
-let calGlassMode='month';
-function calGlassOpenTasksOn(y,m,d){
-  const ds=fluxLocalYMD(new Date(y,m,d));
-  return tasks.filter(t=>t.date===ds&&!t.done).length;
-}
-function toggleCalGlassDropdown(ev){
-  if(ev&&typeof ev.stopPropagation==='function')ev.stopPropagation();
-  const dd=document.getElementById('calGlassDropdown');
-  const btn=document.getElementById('calMonthOpenBtn');
-  if(!dd||!btn)return;
-  if(!dd.hidden){closeCalGlassDropdown();return;}
-  dd.hidden=false;
-  btn.setAttribute('aria-expanded','true');
-  renderCalGlassDropdown();
-  setTimeout(()=>{document.addEventListener('click',calGlassOutsideClose,true);},0);
-}
-function closeCalGlassDropdown(){
-  const dd=document.getElementById('calGlassDropdown');
-  const btn=document.getElementById('calMonthOpenBtn');
-  if(dd)dd.hidden=true;
-  if(btn)btn.setAttribute('aria-expanded','false');
-  document.removeEventListener('click',calGlassOutsideClose,true);
-}
-function calGlassOutsideClose(e){
-  const dd=document.getElementById('calGlassDropdown');
-  const btn=document.getElementById('calMonthOpenBtn');
-  if(!dd||dd.hidden)return;
-  if(dd.contains(e.target)||btn&&btn.contains(e.target))return;
-  closeCalGlassDropdown();
-}
-function calGlassSetMode(mode){
-  calGlassMode=mode==='week'?'week':'month';
-  renderCalGlassDropdown();
-}
-function calGlassScrollToSchedule(){
-  closeCalGlassDropdown();
-  const el=document.querySelector('[data-flux-cal-section="schedule"]');
-  if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
-}
-function calGlassSelectDay(d){
-  selectDay(d);
-  closeCalGlassDropdown();
-}
 function calGlassSelectDayFromDate(y,ma,d){
   calYear=y;calMonth=ma;calSelected=d;
   renderCalendar();
-  closeCalGlassDropdown();
 }
-function calGlassNoteQuick(){
-  const ds=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
-  closeCalGlassDropdown();
-  nav('notes');
-  if(typeof showToast==='function')showToast('Notes — capture something for '+ds,'info');
-}
-function renderCalGlassDropdown(){
-  const dd=document.getElementById('calGlassDropdown');
-  if(!dd||dd.hidden)return;
-  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const now=new Date();now.setHours(0,0,0,0);
-  const y=calYear,m=calMonth;
-  const daysInMonth=new Date(y,m+1,0).getDate();
-  const selStr=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
-  let daysHtml='';
-  if(calGlassMode==='month'){
-    for(let d=1;d<=daysInMonth;d++){
-      const dt=new Date(y,m,d);
-      const isToday=dt.getTime()===now.getTime();
-      const isSel=fluxLocalYMD(dt)===selStr;
-      const wk=dt.toLocaleDateString('en-US',{weekday:'short'}).charAt(0);
-      const cnt=calGlassOpenTasksOn(y,m,d);
-      daysHtml+=`<button type="button" class="flux-cal-glass-day${isSel?' is-selected':''}${isToday?' is-today':''}" onclick="calGlassSelectDay(${d})" aria-pressed="${isSel?'true':'false'}" aria-label="${months[m]} ${d}, ${cnt} open tasks">
-        <span class="flux-cal-glass-dow">${wk}</span>
-        <span class="flux-cal-glass-dn">${cnt>0?`<span class="flux-cal-glass-task-dot" aria-hidden="true"></span>`:''}${d}</span>
-      </button>`;
-    }
-  }else{
-    const ref=new Date(y,m,calSelected);
-    const dow=ref.getDay();
-    const start=new Date(ref);
-    start.setDate(ref.getDate()-dow);
-    for(let i=0;i<7;i++){
-      const dt=new Date(start);
-      dt.setDate(start.getDate()+i);
-      const dy=dt.getDate(),dm=dt.getMonth(),dyy=dt.getFullYear();
-      const isToday=dt.getTime()===now.getTime();
-      const isSel=fluxLocalYMD(dt)===selStr;
-      const wk=dt.toLocaleDateString('en-US',{weekday:'short'}).charAt(0);
-      const cnt=calGlassOpenTasksOn(dyy,dm,dy);
-      daysHtml+=`<button type="button" class="flux-cal-glass-day${isSel?' is-selected':''}${isToday?' is-today':''}" onclick="calGlassSelectDayFromDate(${dyy},${dm},${dy})" aria-pressed="${isSel?'true':'false'}">
-        <span class="flux-cal-glass-dow">${wk}</span>
-        <span class="flux-cal-glass-dn">${cnt>0?`<span class="flux-cal-glass-task-dot" aria-hidden="true"></span>`:''}${dy}</span>
-      </button>`;
-    }
-  }
-  const selDs=selStr;
-  const openTasks=tasks.filter(t=>t.date===selDs&&!t.done).length;
-  const evList=load('flux_events',[]);
-  const dayEv=(Array.isArray(evList)?evList:[]).filter(e=>e.date===selDs).length;
-  let summary=`${openTasks} open task${openTasks===1?'':'s'}`;
-  if(dayEv)summary+=` · ${dayEv} event${dayEv===1?'':'s'}`;
-  summary+=` · <strong>${selDs}</strong>`;
-  dd.innerHTML=`
-    <div class="flux-cal-glass-inner">
-      <div class="flux-cal-glass-top">
-        <div class="flux-cal-glass-tabs" role="tablist">
-          <button type="button" role="tab" class="${calGlassMode==='week'?'on':''}" onclick="calGlassSetMode('week')">Weekly</button>
-          <button type="button" role="tab" class="${calGlassMode==='month'?'on':''}" onclick="calGlassSetMode('month')">Monthly</button>
-        </div>
-        <button type="button" class="flux-cal-glass-iconbtn" onclick="calGlassScrollToSchedule()" title="Cycle &amp; weekly schedule">⚙</button>
-      </div>
-      <div class="flux-cal-glass-monthrow">
-        <span class="flux-cal-glass-monthtitle">${months[m]} ${y}</span>
-        <div class="flux-cal-glass-chevrow">
-          <button type="button" aria-label="Previous month" onclick="changeMonth(-1)">‹</button>
-          <button type="button" aria-label="Next month" onclick="changeMonth(1)">›</button>
-        </div>
-      </div>
-      <div class="flux-cal-glass-scroll"><div class="flux-cal-glass-scroll-inner">${daysHtml}</div></div>
-      <div class="flux-cal-glass-divider" aria-hidden="true"></div>
-      <div class="flux-cal-glass-footer">
-        <div class="flux-cal-glass-taskline" role="status">${summary}</div>
-        <div class="flux-cal-glass-actions">
-          <button type="button" class="flux-cal-glass-notehit" onclick="calGlassNoteQuick()">✎ Add a note…</button>
-          <!-- Was ＋ Task and ＋ Event. Same dialog either way now, and it
-               opens on Task, so the split bought nothing but a second button. -->
-          <button type="button" class="flux-cal-glass-btn-ev" onclick="closeCalGlassDropdown();openAddEventModal();">＋ Add</button>
-        </div>
-      </div>
-    </div>`;
-}
-document.addEventListener('keydown',e=>{
-  const dd=document.getElementById('calGlassDropdown');
-  if(dd&&!dd.hidden&&e.key==='Escape'){e.preventDefault();closeCalGlassDropdown();}
-});
 
 /* openAddForDate / showCalAddModal / submitCalTask lived here and are gone.
    They were the "+ Task" dialog: a name, a subject and a priority, built from
@@ -6161,8 +5940,9 @@ function renderCalendar(){
     const ds=fluxLocalYMD(new Date(calYear,calMonth,d));
     const wk=weeklyVirtualEventsForDate(ds);
     if(wk.length){if(!evMap[d])evMap[d]=[];evMap[d].push(...wk);}
-    // Synara dose times, only while the student has linked Synara (flux-synara-link.js).
-    const sy=window.FluxSynara?window.FluxSynara.dosesForDate(ds):[];
+    // Synara dose times, only while the student has linked Synara (flux-synara-link.js),
+    // and Aorta tracker reminder times (flux-aorta-link.js).
+    const sy=(window.FluxSynara?window.FluxSynara.dosesForDate(ds):[]).concat(window.FluxAorta?window.FluxAorta.dosesForDate(ds):[]);
     if(sy.length){if(!evMap[d])evMap[d]=[];evMap[d].push(...sy);}
   }
   let html=['S','M','T','W','T','F','S'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
@@ -6218,7 +5998,7 @@ function renderCalDay(){
   const day=tasks.filter(t=>{if(!t.date)return false;const d=new Date(t.date+'T00:00:00');return d.getFullYear()===calYear&&d.getMonth()===calMonth&&d.getDate()===calSelected;});
   const events=(load('flux_events',[])).filter(e=>{if(!e.date)return false;const d=new Date(e.date+'T12:00:00');return d.getFullYear()===calYear&&d.getMonth()===calMonth&&d.getDate()===calSelected;});
   const weekly=weeklyVirtualEventsForDate(ds);
-  const synara=window.FluxSynara?window.FluxSynara.dosesForDate(ds):[];
+  const synara=(window.FluxSynara?window.FluxSynara.dosesForDate(ds):[]).concat(window.FluxAorta?window.FluxAorta.dosesForDate(ds):[]);
   const el=document.getElementById('calDayTasks');
   let conflictHint='';
   try{if(window.FluxSyllabusConflict?.renderDayHint)conflictHint=FluxSyllabusConflict.renderDayHint(ds)||'';}catch(_){}
@@ -6239,8 +6019,9 @@ function renderCalDay(){
   blocks.sort((a,b)=>{const s=fluxScopeSortKey(a.o)-fluxScopeSortKey(b.o);if(s!==0)return s;const ta=fluxTimeSortMinutes(a.o.time),tb=fluxTimeSortMinutes(b.o.time);if(ta!==tb)return ta-tb;return ord[a.k]-ord[b.k];});
   el.innerHTML=dayHints+blocks.map(({k,o})=>{
     if(k==='s'){
-      // A Synara dose: read-only here; it is logged in Synara.
-      return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(156,122,255,.1);border:1px solid rgba(156,122,255,.35);border-radius:10px;margin-bottom:6px"><span style="font-size:.85rem">💊</span><div style="flex:1;min-width:0"><div style="font-size:.72rem;font-weight:700;color:#a78bfa">Synara · medication</div><div style="font-size:.85rem;font-weight:600">${esc(o.title)}</div>${o.time?`<div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${esc(formatCalTimeShort(o.time))}</div>`:''}</div><a href="synara.html#/meds" style="font-size:.78rem;font-weight:700;color:#a78bfa;text-decoration:none;padding:4px 6px" title="Log this dose in Synara">Log →</a></div>`;
+      // A Synara or Aorta dose: read-only here; it is logged in that app.
+      const ao=o._src==='aorta';
+      return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(156,122,255,.1);border:1px solid rgba(156,122,255,.35);border-radius:10px;margin-bottom:6px"><span style="font-size:.85rem">💊</span><div style="flex:1;min-width:0"><div style="font-size:.72rem;font-weight:700;color:#a78bfa">${ao?(o._taken?'Aorta · medicine · taken':'Aorta · medicine'):'Synara · medication'}</div><div style="font-size:.85rem;font-weight:600">${esc(o.title)}</div>${o.time?`<div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${esc(formatCalTimeShort(o.time))}</div>`:''}</div><a href="${ao?'aorta-tracker.html':'synara.html#/meds'}" style="font-size:.78rem;font-weight:700;color:#a78bfa;text-decoration:none;padding:4px 6px" title="${ao?'Mark it taken in the Aorta tracker':'Log this dose in Synara'}">Log →</a></div>`;
     }
     if(k==='w'){
       const sch=fluxEventScope(o)==='school';
@@ -6534,7 +6315,7 @@ async function syncGoogleCalendar(opts){
         return`<div style="display:flex;gap:6px;align-items:flex-start;padding:5px 0;border-bottom:1px solid var(--border)">
           <div style="width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:4px"></div>
           <div style="flex:1;min-width:0"><div style="font-size:.72rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ev.summary||'(no title)')}</div><div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${d}</div></div>
-          <button onclick="addGCalEventAsTask('${encodeURIComponent(ev.summary||'')}','${start.slice(0,10)}')" style="padding:2px 6px;font-size:.62rem;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.25);color:var(--accent);border-radius:6px;flex-shrink:0">+ Task</button>
+          <button onclick="addGCalEventAsTask('${encodeURIComponent(ev.summary||'').replace(/'/g,'%27')}','${esc(start.slice(0,10))}')" style="padding:2px 6px;font-size:.62rem;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.25);color:var(--accent);border-radius:6px;flex-shrink:0">+ Task</button>
         </div>`;
       }).join('');
     }
@@ -7704,7 +7485,7 @@ async function fluxSyncLoginNameToProfile(newName, oldName){
     'You sign in as:  '+was+'\n'+
     'You will sign in as:  '+now+'\n\n'+
     'Your password stays the same. Write the new name down — there is no reset '+
-    'email, so if you forget it only Azfer can get you back in.\n\n'+
+    'email, so if you forget it you\'ll have to request a reset from the sign-in screen.\n\n'+
     'Change it?');
   if(!ok)return false;
 
@@ -8381,7 +8162,6 @@ function loadSettingsUI(){
   }
   if(window.FluxPersonal&&FluxPersonal.initSettingsUI)FluxPersonal.initSettingsUI();
   if(typeof window.fluxGoogleDocsLoadSettingsUI==='function')window.fluxGoogleDocsLoadSettingsUI();
-  updateMasterBacklogCardVisibility();
 }
 function requestFluxNotifications(){
   if(!('Notification' in window)){showToast('Notifications not supported here','warning');return;}
@@ -8563,332 +8343,22 @@ const OWNER_EMAIL='azfermohammed21@gmail.com';
    restored backup still recognises the owner before any conversion. */
 const OWNER_UID='eabe2b1f-e428-4181-8530-8e5366eb3975';
 
-// Permission levels: owner > dev > user
-// Dev accounts + their permissions stored in Supabase under owner's row
+// Permission levels: owner > user.
+// The dev tier was switched off in the 2026-11-05 incident. It was read from
+// flux_dev_accounts, which any user can edit in their own browser or user_data
+// row, so it could never be evidence of anything. Owner rights come from the
+// account id alone: sign-ups are auto-confirmed, so an address proves nothing.
 function isOwner(){
   if(!currentUser)return false;
-  if(OWNER_UID&&currentUser.id===OWNER_UID)return true;
-  return currentUser.email===OWNER_EMAIL;
+  return !!OWNER_UID&&currentUser.id===OWNER_UID;
 }
 function getMyRole(){
-  if(isOwner())return'owner';
-  const devAccounts=load('flux_dev_accounts',[]);
-  const me=devAccounts.find(d=>d.email===currentUser?.email);
-  return me?'dev':'user';
+  return isOwner()?'owner':'user';
 }
-/** Owner or dev (admin-tier) — used for internal roadmap UI. */
-function canAccessMasterBacklog(){
-  const r=getMyRole();
-  return r==='owner'||r==='dev';
-}
-function updateMasterBacklogCardVisibility(){
-  const mb=document.getElementById('settingsMasterBacklogCard');
-  if(mb)mb.style.display=canAccessMasterBacklog()?'block':'none';
-}
-function getMyDevPerms(){
-  const devAccounts=load('flux_dev_accounts',[]);
-  const me=devAccounts.find(d=>d.email===currentUser?.email);
-  return me?.perms||[];
-}
-function hasDevPerm(perm){
-  if(isOwner())return true;
-  return getMyDevPerms().includes(perm);
-}
-
-/** Sections the owner can show/hide on Dev Panel for dev accounts (owner always sees all + this editor). */
-const DEV_PANEL_SECTION_META=[
-  {id:'devMode',label:'Dev Mode toggle',desc:'Flip local dev mode for testing'},
-  {id:'featureFlags',label:'Feature flags',desc:'Planner tab visibility toggles'},
-  {id:'actions',label:'Clear & sync',desc:'Clear my data and force cloud sync'},
-  {id:'stagedRollout',label:'Staged rollout',desc:'Build preview and push to all users'},
-];
-function getDevPanelSectionsMap(){
-  const pc=load('flux_platform_config',{})||{};
-  const raw=pc.devPanelSections&&typeof pc.devPanelSections==='object'?pc.devPanelSections:{};
-  const out={};
-  DEV_PANEL_SECTION_META.forEach(s=>{out[s.id]=raw[s.id]!==false;});
-  return out;
-}
-function devPanelShowsSection(sectionId){
-  if(isOwner())return true;
-  if(getMyRole()!=='dev')return false;
-  return getDevPanelSectionsMap()[sectionId]===true;
-}
-function saveDevPanelSectionsMap(map){
-  const next={...getDevPanelSectionsMap(),...map};
-  if(typeof savePlatformConfig==='function'){
-    savePlatformConfig({devPanelSections:next});
-  }else{
-    const pc=load('flux_platform_config',{})||{};
-    pc.devPanelSections=next;
-    save('flux_platform_config',pc);
-  }
-  try{if(typeof syncKey==='function')syncKey('platform',1);}catch(_){}
-  try{if(isOwner()&&typeof syncToCloud==='function')void syncToCloud();}catch(_){}
-  try{if(typeof ownerAuditAppend==='function')ownerAuditAppend('dev_panel_layout',JSON.stringify(next));}catch(_){}
-}
-function renderDevPanelLayoutEditorHtml(){
-  if(!isOwner())return'';
-  const map=getDevPanelSectionsMap();
-  return`<div class="dev-panel-layout-editor-wrap" style="margin-bottom:16px;padding:12px 14px;background:var(--card2);border:1px solid var(--border2);border-radius:12px">
-    <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:6px">Dev panel layout</div>
-    <div style="font-size:.72rem;color:var(--muted2);margin-bottom:10px;line-height:1.45">Toggle what <b>dev accounts</b> see in Dev Panel. You always see every section.</div>
-    ${DEV_PANEL_SECTION_META.map(s=>{
-      const on=map[s.id];
-      return`<label style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:.8rem">
-        <input type="checkbox" data-dev-panel-section="${s.id}" ${on?'checked':''} style="margin-top:3px;width:15px;height:15px;flex-shrink:0">
-        <span><b>${esc(s.label)}</b><br><span style="font-size:.68rem;color:var(--muted2)">${esc(s.desc)}</span></span>
-      </label>`;
-    }).join('')}
-    <button type="button" onclick="saveDevPanelSectionsFromCheckboxes(this)" style="margin-top:12px;width:100%;padding:9px;font-size:.78rem;font-weight:700;border-radius:10px;background:rgba(var(--accent-rgb),.14);border:1px solid rgba(var(--accent-rgb),.32);color:var(--accent);cursor:pointer">Save layout for devs</button>
-  </div>`;
-}
-window.saveDevPanelSectionsFromCheckboxes=function(anchor){
-  if(!isOwner())return;
-  const wrap=anchor&&anchor.closest?anchor.closest('.dev-panel-layout-editor-wrap'):null;
-  const scope=wrap||document;
-  const next={};
-  scope.querySelectorAll('[data-dev-panel-section]').forEach(cb=>{
-    next[cb.getAttribute('data-dev-panel-section')]=cb.checked;
-  });
-  saveDevPanelSectionsMap(next);
-  if(typeof showToast==='function')showToast('Dev panel layout saved','success');
-  if(document.getElementById('flux_control')?.classList.contains('active')&&typeof renderFluxControlTab==='function')renderFluxControlTab();
-  else if(document.getElementById('modPanel'))openModPanel();
-  else if(typeof reopenOwnerSuite==='function')reopenOwnerSuite('team');
-};
-window.renderDevPanelLayoutEditorHtml=renderDevPanelLayoutEditorHtml;
-
-function isDevMode(){return load('flux_dev_mode',false);}
-
-// Load dev accounts from cloud (stored under owner's Supabase row)
-async function loadDevAccounts(){
-  const sb=getSB();if(!sb)return;
-  try{
-    const{data}=await sb.from('user_data').select('data').eq('id',currentUser.id).single();
-    if(data?.data?.devAccounts){
-      save('flux_dev_accounts',data.data.devAccounts);
-    }
-  }catch(e){}
-}
-
-// Save dev accounts to cloud under owner's row
-async function saveDevAccounts(devAccounts){
-  save('flux_dev_accounts',devAccounts);
-  // Also push to cloud immediately
-  if(isOwner())await syncToCloud();
-}
-
-function initModFeatures(){
-  /* Owner / dev tools: sidebar → Admin → Owner control or Dev panel (full planner tab). */
-}
-
-function buildModPanelCardHtml(embed){
-  const role=getMyRole();
-  const devMode=isDevMode();
-  const devAccounts=load('flux_dev_accounts',[]);
-  const allPerms=['clear_data','feature_flags','dev_mode','manage_devs','view_users'];
-  const permLabels={clear_data:'Clear Data',feature_flags:'Feature Flags',dev_mode:'Dev Mode Toggle',manage_devs:'Manage Dev Accounts',view_users:'View Users'};
-  const myPerms=getMyDevPerms();
-  const showDevModeBlock=devPanelShowsSection('devMode')&&(isOwner()||myPerms.includes('dev_mode'));
-  const showFlagsBlock=devPanelShowsSection('featureFlags')&&(isOwner()||myPerms.includes('feature_flags'));
-  const showActionsBlock=devPanelShowsSection('actions');
-  const showClearBtn=showActionsBlock&&(isOwner()||myPerms.includes('clear_data'));
-  const showForceSync=showActionsBlock;
-  const showStagedBlock=devPanelShowsSection('stagedRollout');
-  const devPanelEmpty=!isOwner()&&!showDevModeBlock&&!showFlagsBlock&&!showActionsBlock&&!showStagedBlock;
-  const dismissClick=embed?`onclick="nav('dashboard')"`:`onclick="document.getElementById('modPanel')?.remove()"`;
-  const cardScroll=embed?'max-height:none;overflow:visible':'max-height:90vh;overflow-y:auto';
-
-  const devAccountsHTML=isOwner()?`
-    <div style="margin-top:18px">
-      <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:10px">Dev Accounts</div>
-      <div id="devAccountsList">
-        ${devAccounts.length?devAccounts.map((d,i)=>`
-          <div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-              <span style="font-size:.82rem;font-weight:700;flex:1">${esc(d.email)}</span>
-              <button onclick="removeDevAccount(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.8rem;padding:2px 6px">✕ Remove</button>
-            </div>
-            <div style="display:flex;flex-wrap:wrap;gap:6px">
-              ${allPerms.map(p=>`<button onclick="toggleDevPerm(${i},'${p}',this)" style="padding:3px 10px;font-size:.68rem;border-radius:20px;background:${d.perms?.includes(p)?'rgba(var(--accent-rgb),.15)':'rgba(255,255,255,.04)'};border:1px solid ${d.perms?.includes(p)?'rgba(var(--accent-rgb),.35)':'var(--border2)'};color:${d.perms?.includes(p)?'var(--accent)':'var(--muted2)'}">${permLabels[p]}</button>`).join('')}
-            </div>
-          </div>`).join(''):'<div style="color:var(--muted);font-size:.78rem;margin-bottom:10px">No dev accounts yet.</div>'}
-      </div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <input type="email" id="newDevEmail" placeholder="email@gmail.com" style="flex:1;margin:0;padding:8px 12px;font-size:.8rem">
-        <button onclick="addDevAccount()" style="padding:8px 14px;font-size:.78rem;flex-shrink:0">+ Add Dev</button>
-      </div>
-    </div>`:'';
-
-  return`
-    <div style="background:var(--card);border:1px solid ${role==='owner'?'rgba(251,191,36,.4)':'rgba(var(--accent-rgb),.3)'};border-radius:22px;padding:24px;width:100%;max-width:500px;box-shadow:${embed?'0 8px 40px rgba(0,0,0,.2)':'0 32px 80px rgba(0,0,0,.6)'};${cardScroll}">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-        <div style="font-size:1.4rem">${role==='owner'?'👑':'⚡'}</div>
-        <div>
-          <div style="font-size:1rem;font-weight:800">${role==='owner'?'Owner Panel':'Dev Panel'}</div>
-          <div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${esc(currentUser?.email||'')}</div>
-        </div>
-        <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
-          <span style="font-size:.65rem;padding:3px 8px;border-radius:20px;background:${role==='owner'?'rgba(251,191,36,.15)':'rgba(var(--accent-rgb),.12)'};border:1px solid ${role==='owner'?'rgba(251,191,36,.3)':'rgba(var(--accent-rgb),.25)'};color:${role==='owner'?'var(--gold)':'var(--accent)'};font-family:JetBrains Mono,monospace">${role.toUpperCase()} · ${isDevMode()?'DEV':'LIVE'}</span>
-          <button type="button" ${dismissClick} style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:0" aria-label="${embed?'Back to planner':'Close'}">✕</button>
-        </div>
-      </div>
-
-      ${isOwner()?renderDevPanelLayoutEditorHtml():''}
-
-      ${devPanelEmpty?`<div style="padding:14px 12px;margin-bottom:8px;background:var(--card2);border:1px solid var(--border2);border-radius:12px;font-size:.78rem;color:var(--muted2);line-height:1.5">No sections are enabled for dev accounts on this panel. Ask the owner to turn sections on in <b>Dev Panel</b> or <b>Owner Suite → Team &amp; roles</b>.</div>`:''}
-
-      ${showDevModeBlock?`
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">
-        <div><div style="font-size:.87rem;font-weight:700">Dev Mode</div><div style="font-size:.72rem;color:var(--muted)">Test features before pushing to users</div></div>
-        <button onclick="toggleDevMode()" style="padding:6px 16px;font-size:.78rem;background:${devMode?'var(--green)':'rgba(255,255,255,.06)'};border:1px solid ${devMode?'var(--green)':'var(--border2)'};color:${devMode?'#080a0f':'var(--muted2)'}">${devMode?'ON':'OFF'}</button>
-      </div>`:''}
-
-      ${showFlagsBlock?`
-      <div style="margin-top:14px;margin-bottom:6px;font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-family:'JetBrains Mono',monospace">Feature Flags</div>
-      ${['ai','canvas','calendar','goals','mood','timer','notes'].map(f=>{
-        const enabled=load('flux_feat_'+f,true);
-        return`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
-          <span style="font-size:.85rem;font-weight:500">${f.charAt(0).toUpperCase()+f.slice(1)}</span>
-          <button onclick="toggleFeatureFlag('${f}',this)" style="padding:4px 12px;font-size:.72rem;background:${enabled?'rgba(var(--accent-rgb),.15)':'rgba(255,255,255,.04)'};border:1px solid ${enabled?'rgba(var(--accent-rgb),.3)':'var(--border2)'};color:${enabled?'var(--accent)':'var(--muted2)'}">${enabled?'Enabled':'Disabled'}</button>
-        </div>`;
-      }).join('')}`:''}
-
-      ${showActionsBlock?`<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-        ${showClearBtn?`<button onclick="clearMyPlannerData()" style="flex:1;background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);color:var(--red);font-size:.78rem;min-width:120px">Clear My Data</button>`:''}
-        ${showForceSync?`<button onclick="forceSyncNow()" style="flex:1;font-size:.78rem;min-width:100px">⟳ Force Sync</button>`:''}
-      </div>`:''}
-
-      ${showStagedBlock?(()=>{
-        const buildId=(typeof FLUX_BUILD_ID!=='undefined'&&FLUX_BUILD_ID)||(window.FLUX_BUILD_ID||'unknown');
-        const gate=(typeof FluxRelease!=='undefined'&&FluxRelease.getGate())||null;
-        const released=gate&&gate.released?String(gate.released).replace(/^build-/,''):'— none yet';
-        const preview=String(buildId).replace(/^build-/,'');
-        const isLive=gate&&gate.released===buildId;
-        return`
-        <div style="margin-top:16px;padding:12px 14px;background:linear-gradient(135deg,rgba(251,191,36,.1),rgba(124,92,255,.08));border:1px solid rgba(251,191,36,.28);border-radius:12px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-            <span style="font-size:.6rem;font-weight:800;letter-spacing:.08em;color:#fbbf24;font-family:JetBrains Mono,monospace">STAGED ROLLOUT</span>
-            <span style="margin-left:auto;font-size:.62rem;color:var(--muted);font-family:JetBrains Mono,monospace">${isLive?'live':'preview'}</span>
-          </div>
-          <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:10px">Preview build <b style="color:var(--text)">${preview}</b> · users on <b style="color:var(--text)">${released}</b>${isLive?' ✓':''}</div>
-          <button type="button" onclick="window.FluxRelease&&window.FluxRelease.openPushDialog()" ${isLive?'disabled':''} style="width:100%;padding:8px;font-size:.78rem;font-weight:700;border-radius:10px;background:${isLive?'var(--card2)':'linear-gradient(135deg,#fbbf24,#f59e0b)'};border:1px solid ${isLive?'var(--border)':'rgba(251,191,36,.4)'};color:${isLive?'var(--muted)':'#080a0f'};cursor:${isLive?'default':'pointer'};opacity:${isLive?0.6:1}">${isLive?'✓ Build already released':'Push this build to all users'}</button>
-        </div>`;
-      })():''}
-
-      ${devAccountsHTML}
-    </div>`;
-}
-
-function refreshFluxControlIfActive(){
-  const p=document.getElementById('flux_control');
-  if(p&&p.classList.contains('active')&&typeof renderFluxControlTab==='function'){
-    renderFluxControlTab();
-    return true;
-  }
-  return false;
-}
-
-function renderFluxControlTab(){
-  const mount=document.getElementById('fluxControlMount');
-  if(!mount)return;
-  document.getElementById('modPanel')?.remove();
-  document.getElementById('ownerSuite')?.remove();
-  const role=getMyRole();
-  if(role==='owner'&&typeof openOwnerSuite==='function'){
-    const pref=window.__fluxOwnerPrefTab;
-    window.__fluxOwnerPrefTab=null;
-    openOwnerSuite(pref,{mount,skipNav:true});
-  }else if(role==='dev'){
-    openModPanel({mount});
-  }
-}
-window.renderFluxControlTab=renderFluxControlTab;
-
-function openModPanel(opts){
-  opts=opts||{};
-  const role=getMyRole();
-  if(role==='user')return;
-  if(opts.mount){
-    opts.mount.innerHTML=`<div class="flux-mod-panel-embed" style="max-width:520px;margin:0 auto">${buildModPanelCardHtml(true)}</div>`;
-    return;
-  }
-  const existing=document.getElementById('modPanel');if(existing)existing.remove();
-  const panel=document.createElement('div');
-  panel.id='modPanel';
-  panel.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9800;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px);overflow-y:auto';
-  panel.innerHTML=buildModPanelCardHtml(false);
-  document.body.appendChild(panel);
-}
-
-function refreshDevAccountUI(){
-  if(document.getElementById('flux_control')?.classList.contains('active')&&typeof renderFluxControlTab==='function'){
-    renderFluxControlTab();
-    return;
-  }
-  if(typeof reopenOwnerSuite==='function'&&document.getElementById('ownerSuite'))reopenOwnerSuite();
-  else if(document.getElementById('ownerSuite')&&typeof openOwnerSuite==='function')openOwnerSuite(undefined,{overlay:true});
-  else openModPanel();
-}
-
-function addDevAccount(){
-  if(!isOwner())return;
-  const email=(document.getElementById('osNewDevEmail')||document.getElementById('newDevEmail'))?.value?.trim();
-  if(!email||!email.includes('@')){alert('Enter a valid email.');return;}
-  const devAccounts=load('flux_dev_accounts',[]);
-  if(devAccounts.find(d=>d.email===email)){alert('Already a dev account.');return;}
-  devAccounts.push({email,role:'viewer',perms:['view_users'],addedAt:Date.now()});
-  saveDevAccounts(devAccounts);
-  refreshDevAccountUI();
-}
-
-function removeDevAccount(idx){
-  if(!isOwner())return;
-  const devAccounts=load('flux_dev_accounts',[]);
-  devAccounts.splice(idx,1);
-  saveDevAccounts(devAccounts);
-  refreshDevAccountUI();
-}
-
-function toggleDevPerm(idx,perm,btn){
-  if(!isOwner())return;
-  const devAccounts=load('flux_dev_accounts',[]);
-  const acc=devAccounts[idx];if(!acc)return;
-  if(!acc.perms)acc.perms=[];
-  const has=acc.perms.includes(perm);
-  if(has)acc.perms=acc.perms.filter(p=>p!==perm);
-  else acc.perms.push(perm);
-  saveDevAccounts(devAccounts);
-  btn.style.background=!has?'rgba(var(--accent-rgb),.15)':'rgba(255,255,255,.04)';
-  btn.style.borderColor=!has?'rgba(var(--accent-rgb),.35)':'var(--border2)';
-  btn.style.color=!has?'var(--accent)':'var(--muted2)';
-  if(typeof ownerAuditAppend==='function')ownerAuditAppend('dev_perm_toggle',JSON.stringify({idx,perm,on:!has}));
-}
-
-function toggleDevMode(){
-  const cur=isDevMode();
-  save('flux_dev_mode',!cur);
-  if(!refreshFluxControlIfActive())openModPanel();
-}
-
-function toggleFeatureFlag(feature,btn){
-  const cur=load('flux_feat_'+feature,true);
-  save('flux_feat_'+feature,!cur);
-  btn.textContent=cur?'Disabled':'Enabled';
-  btn.style.background=cur?'rgba(255,255,255,.04)':'rgba(var(--accent-rgb),.15)';
-  btn.style.borderColor=cur?'var(--border2)':'rgba(var(--accent-rgb),.3)';
-  btn.style.color=cur?'var(--muted2)':'var(--accent)';
-  const tc=tabConfig.find(t=>t.id===feature);
-  if(tc){tc.visible=!cur;save('flux_tabs',tabConfig);renderSidebars();}
-  if(isOwner()&&typeof ownerAuditAppend==='function')ownerAuditAppend('feature_flag',feature+':'+(!cur));
-}
-
 /* ── Delete my data (Settings › Data & info) ─────────────────────────────────
    The Privacy Policy promises every user can delete their own data. Until this
-   existed the only route was clearMyPlannerData(), which is owner-gated and
-   lives in the dev panel — so for students and teachers the published promise
-   was simply untrue.
+   existed the only route was an owner-gated button, so for students and
+   teachers the published promise was simply untrue.
 
    Order matters. Cloud rows go first, while the session is still valid; local
    storage only after the server confirms. Doing it the other way round would,
@@ -8939,25 +8409,6 @@ async function fluxDeleteMyData(){
 }
 window.fluxDeleteMyData=fluxDeleteMyData;
 
-function clearMyPlannerData(){
-  if(!confirm('Clear ALL your planner data? This cannot be undone.'))return;
-  tasks=[];notes=[];habits=[];goals=[];colleges=[];moodHistory=[];extras=[];ecSchools=[];ecGoals=[];
-  save('tasks',tasks);save('flux_notes',notes);
-  save('flux_habits',habits);save('flux_goals',goals);save('flux_colleges',colleges);
-  save('flux_mood',moodHistory);
-  save('flux_extras',extras);save('flux_ec_schools',ecSchools);save('flux_ec_goals',ecGoals);
-  renderStats();renderTasks();renderNotesList();
-  renderExtrasList();renderSchoolsList();renderMoodHistory();
-  if(currentUser)syncToCloud();
-  document.getElementById('modPanel')?.remove();
-  refreshFluxControlIfActive();
-  const n=document.createElement('div');
-  n.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--green);color:#080a0f;padding:10px 20px;border-radius:10px;font-size:.82rem;font-weight:700;z-index:9999';
-  n.textContent='✓ Planner data cleared';
-  document.body.appendChild(n);setTimeout(()=>n.remove(),2500);
-}
-
-
 // ══════════════════════════════════════════
 // FEATURE ENHANCEMENTS v3
 // ══════════════════════════════════════════
@@ -9006,7 +8457,7 @@ function updateDynamicFocus(){
   const sugHtml=fitTask?`<div style="margin-top:12px;padding:10px;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid var(--border)">
     <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:4px">Suggested task for this gap</div>
     <div style="font-size:.85rem;font-weight:600">${esc(fitTask.name)}</div>
-    <div style="font-size:.7rem;color:var(--muted2)">⏱ ${fitTask.estTime}m — fits before ${nextClass.name}</div>
+    <div style="font-size:.7rem;color:var(--muted2)">Fits before ${esc(nextClass.name)}</div>
   </div>`:'';
 
   el.innerHTML=`<div class="focus-card">
@@ -9185,7 +8636,7 @@ function renderAIChatTabs(){
   if(!aiChats.length){el.innerHTML='';return;}
   el.innerHTML=aiChats.map(c=>`
     <div class="flux-ai-tab${c.id===aiCurrentChatId?' flux-ai-tab--active':''}" role="button" onclick="loadAIChat('${c.id}')">
-      <span class="flux-ai-tab__title">${c.title||'Chat'}</span>
+      <span class="flux-ai-tab__title">${esc(c.title||'Chat')}</span>
       <span class="flux-ai-tab__close" onclick="deleteAIChat('${c.id}',event)" title="Delete">×</span>
     </div>`).join('');
 }
@@ -9257,9 +8708,9 @@ function fmtAI(raw){
   }).join('');
 
   // 3. Markdown links [text](url)
-  t=t.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer" class="ai-link">$1</a>');
+  t=t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s"'<>\)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer" class="ai-link">$1</a>');
   // 4. Bare URLs not already in href
-  t=t.replace(/(?<!href=")(https?:\/\/[^\s<>")\]]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer" class="ai-link">$1</a>');
+  t=t.replace(/(?<!href=")(https?:\/\/[^\s<>"')\]]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer" class="ai-link">$1</a>');
 
   // 5. Horizontal rule
   t=t.replace(/^---+$/gm,'<hr style="border:none;border-top:1px solid var(--border);margin:10px 0">');
@@ -10467,12 +9918,6 @@ function setSyncStatus(status){
       el.title=ts?('Last sync: '+new Date(ts).toLocaleString(undefined,{dateStyle:'short',timeStyle:'short'})):'Cloud sync ready';
     }
   }else el.removeAttribute('title');
-  // Show guest banner in account settings if guest
-  const guestBanner=document.getElementById('guestAccountBanner');
-  const signedOutMsg=document.getElementById('accountSignedOutMsg');
-  const wasGuest=load('flux_was_guest',false);
-  if(guestBanner){guestBanner.style.display=wasGuest&&!currentUser?'block':'none';}
-  if(signedOutMsg){signedOutMsg.style.display=wasGuest&&!currentUser?'none':'block';}
 }
 function getIbProgramProgress(){
   return{
@@ -10637,6 +10082,8 @@ function getCloudPayload(){
     examPrepPlan:(window.FluxExamPrepPlan?.getCloudSlice?FluxExamPrepPlan.getCloudSlice():load('flux_exam_prep_plan_v1',{defaultReviewMin:90,overrides:{}})),
     syllabusWeekScaffold:(window.FluxSyllabusWeekScaffold?.getCloudSlice?FluxSyllabusWeekScaffold.getCloudSlice():load('flux_syllabus_week_scaffold_v1',{termStart:'',defaultSubject:'',scaffoldedWeeks:[]})),
     taskTemplateMarketplace:(window.FluxTaskTemplateMarketplace?.getCloudSlice?FluxTaskTemplateMarketplace.getCloudSlice():load('flux_task_template_marketplace_v1',{importedPacks:[],recentPackIds:[]})),
+    schoology:(window.FluxSchoology?.getCloudSlice?FluxSchoology.getCloudSlice():load('flux_schoology_v1',null)),
+    moodle:(window.FluxMoodle?.getCloudSlice?FluxMoodle.getCloudSlice():load('flux_moodle_v1',null)),
     emailTaskInbox:(window.FluxEmailTaskInbox?.getCloudSlice?FluxEmailTaskInbox.getCloudSlice():load('flux_email_task_inbox_v1',{queue:[]})),
     icalSubscribe:(window.FluxIcalSubscribe?.getCloudSlice?FluxIcalSubscribe.getCloudSlice():load('flux_ical_subscribe_v1',{includeFocus:true,token:'',lastPublishedAt:0})),
     icsTimetableImport:(window.FluxIcsTimetableImport?.getCloudSlice?FluxIcsTimetableImport.getCloudSlice():load('flux_ics_timetable_import_v1',{lastImportAt:0,lastFileName:'',importBlackouts:true,importWeekly:true})),
@@ -11291,6 +10738,12 @@ async function syncFromCloud(opts){
     if(d.taskTemplateMarketplace&&typeof d.taskTemplateMarketplace==='object'){
       try{if(window.FluxTaskTemplateMarketplace?.applyFromCloud)FluxTaskTemplateMarketplace.applyFromCloud(d.taskTemplateMarketplace);else save('flux_task_template_marketplace_v1',d.taskTemplateMarketplace);}catch(_){}
     }
+    if(d.schoology&&typeof d.schoology==='object'){
+      try{if(window.FluxSchoology?.applyFromCloud)FluxSchoology.applyFromCloud(d.schoology);else save('flux_schoology_v1',d.schoology);}catch(_){}
+    }
+    if(d.moodle&&typeof d.moodle==='object'){
+      try{if(window.FluxMoodle?.applyFromCloud)FluxMoodle.applyFromCloud(d.moodle);else save('flux_moodle_v1',d.moodle);}catch(_){}
+    }
     if(d.emailTaskInbox&&typeof d.emailTaskInbox==='object'){
       try{if(window.FluxEmailTaskInbox?.applyFromCloud)FluxEmailTaskInbox.applyFromCloud(d.emailTaskInbox);else save('flux_email_task_inbox_v1',d.emailTaskInbox);}catch(_){}
     }
@@ -11444,9 +10897,8 @@ async function syncFromCloud(opts){
       const legacyDone=tasks.length>0||notes.length>0||classes.length>0;
       if(legacyDone)save('flux_onboarded',true);
     }
-    // Load devAccounts — owner's list syncs to all dev accounts too
-    if(d.devAccounts)save('flux_dev_accounts',d.devAccounts);
     if(isOwner()){
+      if(d.devAccounts)save('flux_dev_accounts',d.devAccounts);
       if(d.platformConfig&&typeof d.platformConfig==='object')save('flux_platform_config',d.platformConfig);
       if(Array.isArray(d.ownerAuditLog))save('flux_owner_audit',d.ownerAuditLog.slice(-300));
       // Union, never replace. This device may have dismissed things the cloud
@@ -11512,7 +10964,6 @@ function fluxRenderAfterPull(){
   // Re-apply accent after renders in case sidebar was rebuilt
   updateLogoColor(fluxLoadStoredString('flux_accent','#00bfff'));
   if(typeof FluxPersonal!=='undefined')FluxPersonal.applyAll();
-  updateMasterBacklogCardVisibility();
 }
 
 /* A pull has been and gone: pushes may now go out. Until the first one of a
@@ -11880,45 +11331,6 @@ function initFluxFeedbackModal(){
     if(e.key==='Escape'&&m.classList.contains('flux-feedback-modal--open'))closeFluxFeedbackModal();
   });
 }
-
-window.ownerRefreshFeedbackInbox=async function(){
-  if(typeof isOwner!=='function'||!isOwner())return;
-  try{
-    await syncFromCloud();
-    if(typeof showToast==='function')showToast('Inbox refreshed','success');
-  }catch(e){}
-  const os=document.getElementById('ownerSuite');
-  if(os&&typeof window.__osSetTab==='function')window.__osSetTab('feedback');
-  else if(typeof reopenOwnerSuite==='function')reopenOwnerSuite('feedback');
-};
-
-window.ownerDismissFeedback=function(fid){
-  if(typeof isOwner!=='function'||!isOwner())return;
-  const ts=load('flux_feedback_tombstones',[]);
-  if(fid&&!ts.includes(fid)){
-    ts.push(fid);
-    save('flux_feedback_tombstones',ts.slice(-500));
-  }
-  const arr=(load('flux_feedback_inbox',[])||[]).filter(x=>x&&x.id!==fid);
-  save('flux_feedback_inbox',arr);
-  void syncToCloud();
-  try{if(typeof ownerAuditAppend==='function')ownerAuditAppend('feedback_dismiss',{id:fid});}catch(_){}
-  const os=document.getElementById('ownerSuite');
-  if(os&&typeof window.__osSetTab==='function')window.__osSetTab('feedback');
-  else if(typeof reopenOwnerSuite==='function')reopenOwnerSuite('feedback');
-};
-
-window.ownerExportFeedbackJson=function(){
-  if(typeof isOwner!=='function'||!isOwner())return;
-  const arr=load('flux_feedback_inbox',[]);
-  const blob=new Blob([JSON.stringify(arr,null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='flux-feedback-inbox.json';
-  a.click();
-  URL.revokeObjectURL(a.href);
-  try{if(typeof ownerAuditAppend==='function')ownerAuditAppend('feedback_export',{n:arr.length});}catch(_){}
-};
 
 // ══ OFFLINE BANNER · NOTIFICATIONS · DEEPLINKS ══
 let _fluxConnInit=false;
@@ -12838,7 +12250,7 @@ async function analyzeScheduleImg(){
     if(resultEl){
       resultEl.style.display='block';
       resultEl.innerHTML='<div style="color:var(--green);font-weight:700;margin-bottom:8px;font-size:.82rem">✓ Found '+obExtractedClasses.length+' classes</div>'+
-        obExtractedClasses.map(c=>`<div class="ob-class-row"><div class="ob-class-period">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.85rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${c.teacher}${c.room?' · Rm '+c.room:''}</div></div></div>`).join('');
+        obExtractedClasses.map(c=>`<div class="ob-class-row"><div class="ob-class-period">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.85rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${esc(c.teacher||'')}${c.room?' · Rm '+esc(c.room):''}</div></div></div>`).join('');
     }
   }catch(e){
     if(resultEl){resultEl.style.display='block';resultEl.innerHTML='<div style="color:var(--red);font-size:.82rem">Could not read schedule. Add classes manually in the School tab.</div>';}
@@ -12978,6 +12390,10 @@ function toggleAuthMode(){
   const sub=document.getElementById('loginAuthSub');
   if(_authMode==='signup'){
     if(nameRow)nameRow.style.display='block';
+    fluxSignupPolicy().then(mode=>{
+      const row=document.getElementById('loginInviteRow');
+      if(row)row.style.display=mode==='invite'&&_authMode==='signup'?'':'none';
+    });
     _setLoginEmailBtnText(btn,'Create account');
     if(toggleText)toggleText.textContent='Already have an account?';
     if(toggleAction)toggleAction.textContent='Sign in';
@@ -13114,12 +12530,17 @@ window.fluxWeakPasswordReason=fluxWeakPasswordReason;
 /** Turn an auth error into something a student can act on. */
 function fluxAuthErrorText(e,mode,name){
   const m=String(e&&e.message||'').toLowerCase();
+  /* What a sign-up refused by the owner's sign-up setting comes back as. */
+  if(mode==='signup'&&m.includes('database error saving new user')){
+    if(_fluxSignupPolicy==='invite')return'That invite code did not work. Check it, or ask for a new one.';
+    if(_fluxSignupPolicy==='closed')return'New accounts are not being made right now. Ask your teacher or school.';
+  }
   if(m.includes('already registered')||m.includes('already been registered')){
     return'"'+(name||'That name')+'" is taken. Try adding your last initial, or sign in if it\'s yours.';
   }
   if(m.includes('invalid login credentials')){
     return mode==='signin'
-      ?'That name and password don\'t match. Check the spelling, or ask Azfer to reset it.'
+      ?'That name and password don\'t match. Check the spelling, or request a reset below.'
       :'Could not sign you in. Please try again.';
   }
   /* Must come before the generic password branch. This is the alphabet
@@ -13211,8 +12632,30 @@ async function fluxChangePassword(){
 }
 window.fluxChangePassword=fluxChangePassword;
 
+/* Who may make an account, set by the owner in Owner Controls › Sign-ups:
+   'open', 'invite' or 'closed'. The database enforces it
+   (flux_enforce_signup_policy); this only lets the form ask for a code and
+   say why, since a refused sign-up comes back as "Database error saving new
+   user". Unknown counts as open: the database still has the last word. */
+let _fluxSignupPolicy=null;
+async function fluxSignupPolicy(){
+  if(_fluxSignupPolicy)return _fluxSignupPolicy;
+  try{
+    const sb=getSB();
+    const {data}=await sb.from('platform_settings').select('value').eq('key','signup_policy').maybeSingle();
+    _fluxSignupPolicy=(data&&data.value&&data.value.mode)||'open';
+  }catch(_){return'open';}
+  return _fluxSignupPolicy;
+}
+
+/** True when the hidden bot-trap field has been filled: a form-filling script. */
+function fluxLoginTrapped(){
+  return !!(document.getElementById('loginWebsite')?.value||'').trim();
+}
+
 /** Send the owner a note that someone is locked out. Works signed out. */
 async function fluxRequestPasswordHelp(){
+  if(fluxLoginTrapped()){showAuthError('Request sent. We\'ll get you back in as soon as we can.','ok');return;}
   const raw=document.getElementById('loginUsername')?.value.trim()||'';
   const username=fluxNormalizeUsername(raw);
   if(!username){showAuthError('Type your name above first, then ask for help.');return;}
@@ -13230,10 +12673,10 @@ async function fluxRequestPasswordHelp(){
       note:'Asked for help from the sign-in screen.'
     });
     if(error)throw error;
-    showAuthError('Sent. Azfer will get you back in — ask him next time you see him.','ok');
+    showAuthError('Request sent. We\'ll get you back in as soon as we can.','ok');
     if(btn){btn.textContent='Request sent';}
   }catch(e){
-    showAuthError('Could not send that just now. Tell Azfer directly and he can reset it.');
+    showAuthError('Could not send that just now. Please try again in a moment.');
     if(btn){btn.disabled=false;btn.textContent=prev;}
   }
 }
@@ -13260,6 +12703,20 @@ async function handleEmailAuth(){
     const weak=typeof window.fluxWeakPasswordReason==='function'
       ?window.fluxWeakPasswordReason(password,rawName):'';
     if(weak){showAuthError(weak);return;}
+    /* A bot gets the same silence a refused sign-up would, and no account. */
+    if(fluxLoginTrapped()){showAuthError('Could not create that account. Please try again later.');return;}
+    _fluxSignupPolicy=null;
+    const policy=await fluxSignupPolicy();
+    if(policy==='closed'){showAuthError('New accounts are not being made right now. Ask your teacher or school.');return;}
+    if(policy==='invite'){
+      const row=document.getElementById('loginInviteRow');
+      if(row)row.style.display='';
+      if(!(document.getElementById('loginInvite')?.value||'').trim()){
+        showAuthError('Type the invite code your teacher or school gave you.');
+        document.getElementById('loginInvite')?.focus();
+        return;
+      }
+    }
   }
   /* Sign-in is deliberately not gated on strength: an existing weak password
      must still get you in, or the person it belongs to can never change it. */
@@ -13276,14 +12733,17 @@ async function handleEmailAuth(){
            nothing can arrive at users.fluxplanner.app — the domain takes no
            mail. Email confirmation is off for this project, so signUp returns
            a session directly. */
-        options:{data:{full_name:rawName||username}}
+        options:{data:{
+          full_name:rawName||username,
+          invite_code:(document.getElementById('loginInvite')?.value||'').trim().toUpperCase()||undefined
+        }}
       });
       if(result.error)throw result.error;
       if(result.data?.user&&!result.data.session){
         /* Reachable only if email confirmation gets switched back on, which
            would strand every account created this way. Say so plainly rather
            than telling someone to check an inbox that does not exist. */
-        showAuthError('Your account was made, but Flux is waiting on a confirmation it cannot send. Tell Azfer.','ok');
+        showAuthError('Your account was made, but Flux is waiting on a confirmation it cannot send. Use "Forgot your password?" on the sign-in screen to get help.','ok');
         if(btn){_setLoginEmailBtnText(btn,'Create account');btn.disabled=false;}
         return;
       }
@@ -13544,12 +13004,8 @@ function renderCmdResults(){
       cmds.push({icon:'🔄',label:personalLbl,cat:'Workspace',id:'mode:personal',action:()=>{if(FluxRole.isWorkMode())toggleMode();else closeCommandPalette();}});
   }
 
-  const rNav=typeof getMyRole==='function'?getMyRole():'user';
-  if(rNav==='owner'||rNav==='dev'){
-    const pl=rNav==='owner'?'Owner control':'Dev panel';
-    if(cpMatch(pl,'',['admin','owner','dev']))
-      cmds.push({icon:rNav==='owner'?'👑':'⚡',label:pl,cat:'Navigate',id:'nav:flux_control',action:()=>{nav('flux_control');closeCommandPalette();}});
-  }
+  if(isOwner()&&cpMatch('Owner Controls','',['admin','owner','moderation']))
+    cmds.push({icon:'👑',label:'Owner Controls',cat:'Navigate',id:'nav:owner',action:()=>{location.href='owner.html';}});
 
   const refTools=[
     {icon:'📚',label:'Study Tools',action:()=>{nav('toolbox');closeCommandPalette();}},
@@ -14044,53 +13500,10 @@ async function signOut(){
 }
 
 // ── GUEST LOGIN ──
+/* Guest mode was removed after the 2026-11-05 incident: every account must be
+   signed in. Old links to this now just show the sign-in form. */
 function skipLogin(){
-  showGuestDisclaimer();
-}
-
-function showGuestDisclaimer(){
-  const existing=document.getElementById('guestModal');if(existing)existing.remove();
-  const modal=document.createElement('div');
-  modal.id='guestModal';
-  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9500;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
-  modal.innerHTML=`
-    <div style="background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:30px 24px;width:100%;max-width:380px;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.5)">
-      <div style="font-size:2.2rem;margin-bottom:14px"></div>
-      <div style="font-size:1.1rem;font-weight:800;margin-bottom:8px">Continuing as Guest</div>
-      <div style="font-size:.84rem;color:var(--muted2);line-height:1.75;margin-bottom:22px">
-        Your data will be saved <strong style="color:var(--gold)">on this device only</strong>.<br>
-        It won't sync across devices and could be lost if you clear your browser storage.<br><br>
-        <span style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace">You can sign in with Google anytime from Settings to back everything up.</span>
-      </div>
-      <button onclick="confirmGuestLogin()" style="width:100%;padding:13px;margin-bottom:10px;font-size:.92rem">Got it — Continue as Guest</button>
-      <button onclick="document.getElementById('guestModal').remove()" class="btn-sec" style="width:100%;padding:11px;font-size:.85rem">← Back to Sign In</button>
-    </div>`;
-  document.body.appendChild(modal);
-}
-
-function confirmGuestLogin(){
-  const modal=document.getElementById('guestModal');if(modal)modal.remove();
-  save('flux_was_guest',true);
-  document.getElementById('loginScreen').classList.remove('visible');
-  document.getElementById('loginScreen').style.display='none';
-  const splash=document.getElementById('splash');
-  if(splash)splash.style.display='block';
-  const finishGuestEntry=()=>{
-    const onboarded=load('flux_onboarded',false);
-    const hasData=tasks.length>0||notes.length>0||classes.length>0;
-    if(!onboarded&&!hasData){
-      showOnboarding();
-    }else{
-      showApp();
-      if(!isTourCompleted())setTimeout(()=>startOnboardingTour(),1600);
-    }
-    setSyncStatus('offline');
-  };
-  if(typeof window.runSplash==='function'){
-    window.runSplash(finishGuestEntry,true);
-  }else{
-    finishGuestEntry();
-  }
+  if(typeof showLoginScreen==='function')showLoginScreen();
 }
 
 const FLUX_SENSITIVE_STAFF_KEYS=[
@@ -14381,10 +13794,11 @@ async function initAuth(){
         // Hide login immediately
         const ls=document.getElementById('loginScreen');
         if(ls){ls.style.display='none';ls.classList.remove('visible');}
-        // Came from Synara's welcome page to sign in or sign up: go back there.
+        // Came from Synara's welcome page or the Aorta tracker to sign in or sign up: go back there.
         // Only a fixed list of pages, never a URL from the address bar.
         let back='';try{back=sessionStorage.getItem('flux_return_to')||'';sessionStorage.removeItem('flux_return_to');}catch(_){}
         if(back==='synara.html'){location.href='synara.html';return;}
+        if(back==='aorta-tracker.html'){location.href='aorta-tracker.html';return;}
         // Only do full sign-in flow if this is a new user or account switch
         if(!currentUser||currentUser.id!==s.user.id){
           await handleSignedIn(s.user,s);
@@ -14455,7 +13869,9 @@ function fluxExtAuthBroadcast(session){
 function showLoginOrApp(){
   const onboarded=load('flux_onboarded',false);
   const hasData=tasks.length>0||notes.length>0||classes.length>0;
-  const wasGuest=load('flux_was_guest',false);
+  // Only the e2e harness may enter without an account, and it refuses to run
+  // anywhere but this machine.
+  const wasGuest=load('flux_was_guest',false)&&!!window.FluxE2e?.active?.();
   if(wasGuest){
     const enterGuest=()=>{
       if(!onboarded&&!hasData){
@@ -14662,7 +14078,6 @@ function showApp(){
   try{if(typeof applyRoleUI==='function')applyRoleUI();}catch(_){}
   renderSidebars();
   populateSubjectSelects();
-  initModFeatures();
   initDashboardFeatures();
   renderStats();renderTasks();renderCalendar();renderCountdown();
   renderSmartSug();renderProfile();
@@ -14687,7 +14102,6 @@ function showApp(){
   if(currentUser){
     _updateUserUI(currentUser, currentUser.user_metadata?.full_name||currentUser.email?.split('@')[0]||'');
   }
-  updateMasterBacklogCardVisibility();
   syncFluxAIModeButtons();
   clearSvgLogoGradientStyles();
   if(typeof FluxRelease!=='undefined'&&FluxRelease&&typeof FluxRelease.applyGate==='function'){
@@ -15326,7 +14740,7 @@ function _updateUserUI(user,name){
   const fullName=name||firstName;
   fluxSaveStoredString('flux_user_name',firstName);
   const avatarHTML=avatarUrl
-    ?`<img src="${avatarUrl}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`
+    ?`<img src="${esc(avatarUrl)}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`
     :`<span style="font-size:.9rem;font-weight:700;line-height:1">${firstName.charAt(0).toUpperCase()}</span>`;
   // Update every user display element
   ['sidebarAv','mobAv'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=avatarHTML;});
@@ -15341,7 +14755,7 @@ function _updateUserUI(user,name){
   if(topMobAv){
     const initial=firstName.charAt(0).toUpperCase();
     topMobAv.innerHTML=avatarUrl
-      ?`<img src="${avatarUrl}" referrerpolicy="no-referrer" alt="${esc(firstName)}">`
+      ?`<img src="${esc(avatarUrl)}" referrerpolicy="no-referrer" alt="${esc(firstName)}">`
       :`<span id="topbarMobAvInitial">${initial}</span>`;
   }
   // Re-call after DOM fully ready in case elements weren't present
@@ -15364,7 +14778,6 @@ window._refreshUserUI=_refreshUserUI;
 
 function handleSignedOut(){
   try{if(typeof clearSensitiveStaffCache==='function')clearSensitiveStaffCache();}catch(_){}
-  try{if(window.FluxOwnerSuite?.teardownVerificationQueue)window.FluxOwnerSuite.teardownVerificationQueue();}catch(_){}
   try{if(window.FluxStaffPlatform?.teardownVerificationRealtime)window.FluxStaffPlatform.teardownVerificationRealtime();}catch(_){}
   try{if(window.FluxCounselorCaseload?.teardown)window.FluxCounselorCaseload.teardown();}catch(_){}
   try{if(window.FluxFeatureFlags?.clear)FluxFeatureFlags.clear();}catch(_){}
@@ -15418,8 +14831,8 @@ function buildFeatPillsHtml(){
   // (paused), no iCal feeds or what-if grades (switched off by default).
   const pills=[
     {label:'Study tools',c:'#6366f1'},
-    {label:'Flux Grapher',c:'#34d399'},
-    {label:'Flux Tutor',c:'#7c5cff'},
+    {label:'Flux Grapher',c:'#34d399',app:'grapher'},
+    {label:'Flux Tutor',c:'#7c5cff',app:'teacher'},
     {label:'Plan my week',c:'#22d3ee'},
     {label:'Reading log',c:'#f472b6'},
     {label:'Verb drill',c:'#ef6c4d'},
@@ -15439,7 +14852,7 @@ function buildFeatPillsHtml(){
     {label:'Themes & accent',c:'#38bdf8'},
   ];
   const all=[...pills,...pills];
-  return all.map(p=>`<div class="feat-pill" style="color:${p.c};border-color:${p.c}33;background:${p.c}11">${p.label}</div>`).join('');
+  return all.map(p=>`<div class="feat-pill"${p.app?` data-flux-app="${p.app}"`:''} style="color:${p.c};border-color:${p.c}33;background:${p.c}11">${p.label}</div>`).join('');
 }
 function initFeaturePills(){
   const html=buildFeatPillsHtml();
@@ -15732,7 +15145,7 @@ function renderPredictiveGapFill(){
             </div>
             <div class="flux-gap-row-task" title="${esc(task.name)}">
               <div class="flux-gap-row-name">${esc(task.name)}</div>
-              <div class="flux-gap-row-meta">${esc(task.subject||'no subject')} · est ${task.estTime||'?'}m</div>
+              <div class="flux-gap-row-meta">${esc(task.subject||'no subject')}</div>
             </div>
             <button type="button" class="flux-gap-row-cta" onclick="fluxStartGapTask(${task.id})">Start →</button>
           </div>`;
@@ -16072,7 +15485,7 @@ function showTemplateMenu(){
         <button type="button" onclick="applyTemplate(${JSON.stringify(t).replace(/"/g,'&quot;')})" style="padding:12px;background:var(--card2);border:1px solid var(--border);border-radius:12px;text-align:left;cursor:pointer;transition:all .15s;color:var(--text)">
           <div style="font-size:1.2rem;margin-bottom:4px">${t.icon}</div>
           <div style="font-size:.82rem;font-weight:700">${t.name}</div>
-          <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${t.estTime}min · Diff ${t.difficulty}</div>
+          <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace">Difficulty ${t.difficulty}</div>
         </button>`).join('')}
     </div>
     <div style="margin-top:14px;font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px">Multi-task packs</div>
@@ -16532,7 +15945,7 @@ function renderSubjectEfficiencyHeatmap(){
     ${days.map(d=>`<th style="padding:3px 5px;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:center;font-size:.6rem">${d}</th>`).join('')}</tr></thead>
     <tbody>${keys.map(k=>{
       const s=subjs[k];
-      return`<tr><td style="padding:3px 8px;white-space:nowrap;color:${s.color};font-weight:600;font-size:.7rem">${s.name.slice(0,12)}</td>
+      return`<tr><td style="padding:3px 8px;white-space:nowrap;color:${esc(s.color)};font-weight:600;font-size:.7rem">${esc(String(s.name||'').slice(0,12))}</td>
       ${grid[k].map(mins=>{
         const i=mins/maxVal;
         const bg=i>0.7?'var(--green)':i>0.3?'var(--accent)':i>0?'rgba(var(--accent-rgb),.25)':'var(--card2)';
@@ -16589,9 +16002,9 @@ function fluxTourSteps(){
       tab('calendar','Calendar','Tasks, classes and no-school days on one month. Pick a day to add something, or count down to it: the countdown then sits in the top bar.'),
       tab('timer','Time','Pomodoro focus sessions with a budget for each subject, plus a clock, stopwatch, countdown and alarms.'),
       tab('school','School Info','Your classes, bell schedule and locker. Upload a photo or PDF of your timetable and Flux fills in your periods.'),
-      tab('toolbox','Study tools','Tools for 16 subjects, sorted into units: a periodic table, an equation balancer, formula sheets, a verb drill and a full graphing calculator. Search finds a tool from a few words, even with a typo. The row at the top opens the other Flux apps: Flux Tutor, the 3D Grapher, Pixel, Flashcards and more.'),
+      tab('toolbox','Study tools','Tools for 16 subjects, sorted into units: a periodic table, an equation balancer, formula sheets, a verb drill and a full graphing calculator. Search finds a tool from a few words, even with a typo. The row at the top opens the other Flux apps.'),
       tab('readingLog','Reading log','Log what you read each day for English class, keep quotes, set a weekly goal and print a log to hand in.'),
-      tab('canvas','Canvas','Connect Canvas to bring your assignments in, then add the ones you want to your planner.'),
+      tab('canvas','Connect','Canvas, Schoology and Moodle in one place. Connect Canvas to pick assignments, or paste your Schoology or Moodle calendar link once and your work keeps arriving as tasks.'),
       tab('profile','Profile','Your details, study style, how confident you feel in each course, and your stats.'),
       tab('goals','College Prep','Activities, your college list with deadlines, and every test score: GPA, SAT, ACT and AP/IB results, with superscores worked out for you.'),
       tab('mood','Mood','A quick daily check-in and a one-line journal with a history to look back on, plus affirmations and a breathing exercise.'),
@@ -18003,7 +17416,6 @@ function showKanban(){
             ${s?`<span style="font-size:.62rem;padding:2px 7px;border-radius:20px;background:${c}22;color:${c}">${s.short}</span>`:''}
             ${due?`<span style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${due}</span>`:''}
             ${t.priority==='high'?'<span style="font-size:.6rem;color:var(--red)">●</span>':''}
-            ${t.estTime?`<span style="font-size:.62rem;color:var(--muted)">~${t.estTime}m</span>`:''}
           </div>
         </div>`;
       }).join('')||`<div style="padding:16px;text-align:center;color:var(--muted);font-size:.78rem;border:1px dashed var(--border);border-radius:10px">Drop tasks here</div>`;
@@ -18144,7 +17556,6 @@ function showDayTasksPopup(dateStr){
     ${dayTasks.map(t=>{const s=subjs[t.subject];return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
       <div style="width:8px;height:8px;border-radius:50%;background:${s?s.color:'var(--accent)'}"></div>
       <div style="flex:1;font-size:.83rem">${esc(t.name)}</div>
-      ${t.estTime?`<div style="font-size:.7rem;color:var(--muted)">~${t.estTime}m</div>`:''}
     </div>`}).join('')}
     <button type="button" class="flux-day-popup-close" style="width:100%;margin-top:12px;padding:8px">Close</button>
   </div>`;
@@ -19547,10 +18958,6 @@ function updateQuickAddPreview(raw){
   if(parsed.priority!=='med')chips+=`<span class="task-chip task-chip-priority ${parsed.priority}">${parsed.priority}</span>`;
   if(parsed.date)chips+=`<span class="task-chip task-chip-due">${fmtFluxDue(parsed.date)}</span>`;
   if(parsed.type&&parsed.type!=='hw')chips+=`<span class="task-chip" style="background:rgba(255,255,255,.03);color:var(--muted2);border:1px solid rgba(255,255,255,.06)">${parsed.type}</span>`;
-  if(parsed.estTime){
-    const tl=parsed.estTime>=60?`${Math.round(parsed.estTime/60)}h`:`${parsed.estTime}m`;
-    chips+=`<span class="task-chip task-chip-time">~${tl}</span>`;
-  }
   el.innerHTML=chips;
   if(titleEl)titleEl.textContent=parsed.name?`“${parsed.name}”`:'';
 }
@@ -22894,11 +22301,8 @@ async function selectAppointmentDate(btn,counselorId){
   }
   let booked=new Set();
   try{
-    const {data:b}=await sb.from('counselor_appointments')
-      .select('time_slot,status')
-      .eq('counselor_id',counselorId)
-      .eq('date',_selectedApptDate);
-    booked=new Set((b||[]).filter(x=>x.status!=='cancelled').map(x=>x.time_slot));
+    const {data:b}=await sb.rpc('flux_counselor_taken_slots',{p_counselor_id:counselorId,p_from:_selectedApptDate,p_to:_selectedApptDate});
+    booked=new Set((b||[]).map(x=>x.time_slot));
   }catch(_){}
 
   const container=document.getElementById('timeSlotContainer');

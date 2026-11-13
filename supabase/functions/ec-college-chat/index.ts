@@ -1,4 +1,5 @@
 import { verifyUserJWT, json, corsHeaders } from "../_shared/auth.ts";
+import { overDailyLimit } from "../_shared/rate-limit.ts";
 
 const UA = "FluxPlanner/1.0 (student planner; college admissions help)";
 
@@ -107,6 +108,13 @@ Deno.serve(async (req) => {
   const auth = await verifyUserJWT(req);
   if ("error" in auth) {
     return json({ error: auth.error }, auth.status, origin);
+  }
+
+  // The per-minute limit above lives in memory and resets on every cold
+  // start, so it cannot stop a slow drain of the Groq quota. This one is
+  // stored in the database.
+  if (await overDailyLimit("ec-college-chat", auth.userId, 150)) {
+    return json({ error: "Daily limit reached. Try again tomorrow." }, 429, origin);
   }
 
   if (!rateOk(auth.userId)) {

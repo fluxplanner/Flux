@@ -84,18 +84,23 @@
 /* Oversized brand lemniscate ghosted behind the hero */
 #loginScreen .lx-lemni{
   z-index:0;display:flex;align-items:flex-start;justify-content:center;
-  opacity:.5;
+  /* --fs-lift (flux-scroll-story.js) brings it to full strength while the
+     scroll story lifts it into the middle, then lets it sink back. */
+  opacity:calc(.5 + var(--fs-lift,0) * .5);
 }
 #loginScreen .lx-lemni svg{
-  /* Scale by BOTH width and height so the mark stays fully visible in short
-     browser tabs (the lemniscate is ~2:1, so cap height too) and sits a touch
-     higher than before. */
-  width:min(1100px,140vw);height:auto;max-height:46vh;margin-top:2vh;
-  filter:drop-shadow(0 0 50px rgba(0,194,255,.22));
+  /* Laid out at twice the size it shows at rest (46vh) and shrunk to half by
+     flux-scroll-story.css: the scroll story enlarges it, and a mark drawn
+     small then stretched up went blurry. Shrinking stays sharp. */
+  width:auto;height:92vh;aspect-ratio:1;margin-top:2vh;
+  /* No drop-shadow filter: the scroll story moves this mark, and a 50px
+     blur redrawn every frame made scrolling lag. */
 }
 #loginScreen .lx-lemni .lx-lemni-path{
   stroke-dasharray:1900;stroke-dashoffset:1900;
-  animation:lxDraw 2.8s cubic-bezier(.22,1,.36,1) .15s forwards,lxBreathe 9s ease-in-out 3s infinite;
+  /* Draws once. The endless "breathe" fade repainted the mark on every
+     frame, scrolling or not, so it is gone. */
+  animation:lxDraw 2.8s cubic-bezier(.22,1,.36,1) .15s forwards;
 }
 @keyframes lxDraw{to{stroke-dashoffset:0}}
 @keyframes lxBreathe{0%,100%{opacity:.85}50%{opacity:.45}}
@@ -417,7 +422,7 @@
   #loginScreen .lx-auth{order:-1}
   #loginScreen .lx-auth-card{margin:0 auto}
   #loginScreen .lx-feature-grid{grid-template-columns:repeat(2,1fr)}
-  #loginScreen .lx-lemni{opacity:.32}
+  #loginScreen .lx-lemni{opacity:calc(.32 + var(--fs-lift,0) * .68)}
 }
 @media (max-width:600px){
   #loginScreen .lx-main{padding-inline:16px}

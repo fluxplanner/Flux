@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <script src="public/js/flux-look.js?v=29c927bb"></script>
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
+<script src="public/js/flux-app-visibility.js?v=8ab1ae57" data-app="flashcards"></script>
+<script defer src="public/js/flux-site-notices.js?v=ba87f165"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flux Flashcards</title>
 <meta name="description" content="Free flashcards with no ads: spaced repetition that schedules every card for when you are about to forget it, flip cards, write, practice tests, a match game, cards from your notes, Quizlet import, share links and printing.">
@@ -22,7 +25,7 @@
 -->
 <link rel="stylesheet" href="public/css/flux-hub.css?v=6a462093">
 <link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
-<link rel="stylesheet" href="public/css/flux-flashcards.css?v=f74bc62b">
+<link rel="stylesheet" href="public/css/flux-flashcards.css?v=63d411ee">
 <style>
   :root { --bg: #0c0a14; --accent: #f472b6; } /* the rest: public/css/flux-standalone-dark.css */
   * { box-sizing: border-box; }
@@ -81,10 +84,11 @@
   <main id="ffHost" class="ff-app" aria-label="Flux Flashcards"></main>
 
   <!-- Plain script tags, not the app bundles: this page has to stand alone. -->
-  <script src="public/js/flux-hub.js?v=041f8224"></script>
-  <script src="public/js/flux-flash-core.js?v=4b8fcb32"></script>
+  <script src="public/js/flux-hub.js?v=bdbbb380"></script>
+  <script src="public/js/flux-flash-core.js?v=23848655"></script>
+  <script src="public/js/flux-quizlet.js?v=bc25f655"></script>
   <script src="public/js/flux-flash-samples.js?v=ecf2071f"></script>
-  <script src="public/js/flux-flashcards.js?v=cddd73c5"></script>
+  <script src="public/js/flux-flashcards.js?v=7afad59f"></script>
   <script>
     (function () {
       var host = document.getElementById('ffHost');

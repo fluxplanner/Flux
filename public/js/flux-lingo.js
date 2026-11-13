@@ -52,7 +52,7 @@
 
   function load() { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } }
   function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* private window */ } }
-  var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); };
 
   function speak(text, lang) {
     try {
@@ -212,6 +212,9 @@
         verbEl.querySelectorAll('#lgPrintPanel [data-ptense]').forEach(function (c) { c.checked = pick.indexOf(c.dataset.ptense) !== -1; });
       } else if (act === 'practice') {
         startPracticeWith([cur.infinitive], cur.lang);
+      } else if (act === 'find-chart') {
+        findChartOpen = !findChartOpen; showFound();
+        var mb = verbEl.querySelector('[data-act="find-chart"]'); if (mb) mb.focus({ preventScroll: true });
       } else if (act === 'view') {
         state.view = a.dataset.v; save(state); drawVerb();
       } else if (act === 'vosotros') {
@@ -303,7 +306,7 @@
       drawVerb(); drawChips(); writeHash();
       document.title = r.infinitive + ' — conjugation · Flux Lingo';
       if (flash) {
-        var cell = verbEl.querySelector('[data-cell="' + flash.tense + '-' + flash.person + '"]');
+        var cell = verbEl.querySelector('.lg-groups [data-cell="' + flash.tense + '-' + flash.person + '"]');
         if (cell) { cell.classList.add('is-flash'); cell.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
       }
     }
@@ -346,7 +349,7 @@
         + '<p class="lg-foot">Tap any form to hear it. ' + (r.lang === 'fr' ? 'With être, the participle agrees: (e) feminine, (s) plural.' : 'Forms in colour are irregular or change their spelling.') + '</p>'
         + '</article>';
       verbEl.innerHTML = h;
-      showFound(false);
+      showFound();
     }
 
     /* ── Find a form: who + which tense, with what each tense is for ───── */
@@ -376,7 +379,7 @@
         }).join('') + '</optgroup>';
       }).join('') + '</select>';
       return '<section class="lg-find" aria-labelledby="lgFindH"><h2 class="lg-find-h" id="lgFindH">Find the form you need</h2>'
-        + '<div class="lg-find-row">' + who + when + '</div><p class="lg-find-out" id="lgFindOut" aria-live="polite"></p></section>';
+        + '<div class="lg-find-row">' + who + when + '</div><p class="lg-find-out" id="lgFindOut" aria-live="polite"></p><div id="lgFindChart"></div></section>';
     }
     function showFound(jump) {
       var r = cur, out = verbEl.querySelector('#lgFindOut');
@@ -389,11 +392,20 @@
         ? '<span class="lg-find-who">' + esc(persons[who]) + ', ' + esc(info.name.toLowerCase()) + ':</span> <b class="lg-find-form" data-say="' + esc(withSubject(r.lang, tense, who, form).replace(/\(e\)|\(s\)/g, '')) + '">' + esc(form) + '</b>'
           + '<span class="lg-find-use">' + esc(info.use) + ' (' + esc(info.ex) + ')</span>'
         : 'This verb has no ' + esc(info.name.toLowerCase()) + ' form for ' + esc(persons[who] || 'that person') + '.';
-      if (!jump || !form) return;
-      var cell = verbEl.querySelector('[data-cell="' + tense + '-' + who + '"]');
-      if (!cell && state.view !== 'all') { state.view = 'all'; save(state); drawVerb(); cell = verbEl.querySelector('[data-cell="' + tense + '-' + who + '"]'); }
-      if (cell) { cell.classList.remove('is-flash'); void cell.offsetWidth; cell.classList.add('is-flash'); cell.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+      /* The answer stays right under the two menus — picking never moves the
+         page. The whole tense is one tap away, drawn here rather than by
+         scrolling down to the big chart. */
+      var chart = verbEl.querySelector('#lgFindChart');
+      if (!form) { chart.innerHTML = ''; return; }
+      var t = null;
+      C.groups(r.lang).forEach(function (g) { g.tenses.forEach(function (x) { if (x[0] === tense) t = x; }); });
+      chart.innerHTML = '<button type="button" class="lg-linkbtn lg-find-more" data-act="find-chart" aria-expanded="' + findChartOpen + '">'
+        + (findChartOpen ? 'Hide the ' : 'Want to see the whole ') + esc(info.name.toLowerCase()) + (findChartOpen ? ' chart' : ' chart?') + '</button>'
+        + (findChartOpen && t ? '<div class="lg-find-card">' + drawCard(r, t) + '</div>' : '');
+      var pick = chart.querySelector('[data-cell="' + tense + '-' + who + '"]');
+      if (pick) pick.classList.add('is-pick');
     }
+    var findChartOpen = false;
     verbEl.addEventListener('change', function (e) {
       if (!cur || !e.target.closest('.lg-find')) return;
       var f = state.find = state.find || {};
@@ -404,7 +416,7 @@
         var sel = verbEl.querySelector('.lg-find');
         sel.outerHTML = finderHtml(cur);
       }
-      showFound(true);
+      showFound();
     });
 
     /* ── Print: the tenses the student ticks, portrait, small, one page ── */

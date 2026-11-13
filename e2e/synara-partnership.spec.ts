@@ -82,7 +82,8 @@ test.describe('Flux Partners', () => {
   test('Flux Suite labels Synara a partner and links to the program', async ({ page }) => {
     await page.goto('/suite.html');
     await expect(page.locator('#apps a.app--synara .app-partner')).toHaveText('Partner');
-    await expect(page.locator('#apps .app-partner')).toHaveCount(1);
+    // Synara and the Aorta Project, the two partner apps.
+    await expect(page.locator('#apps .app-partner')).toHaveCount(2);
     await page.getByRole('tab', { name: /Partners/ }).click();
     await page.locator('.partners-strip a').click();
     await expect(page).toHaveURL(/partners/);
@@ -99,6 +100,9 @@ test.describe('Flux Partners', () => {
       const res = await request.get('/' + href);
       expect(res.status(), `${href} is missing`).toBe(200);
     }
+    // The screenshots load lazily and sit below the tall scroll-story cards,
+    // so bring them on screen first or decode() waits forever.
+    await page.locator('.shots').scrollIntoViewIfNeeded();
     const broken = await page.locator('.shot img').evaluateAll(async (imgs) => {
       await Promise.all(imgs.map((i) => (i as HTMLImageElement).decode().catch(() => null)));
       return imgs.filter((i) => !(i as HTMLImageElement).naturalWidth).length;

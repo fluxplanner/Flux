@@ -1,6 +1,8 @@
 import { verifyUserJWT, corsHeaders } from "../_shared/auth.ts";
+import { overDailyLimit } from "../_shared/rate-limit.ts";
 
 const MAX_BODY_BYTES = 5 * 1024 * 1024;
+const MAX_REQUEST_BYTES = 256 * 1024;
 const FETCH_TIMEOUT_MS = 15_000;
 
 type LegacyJsonBody = {
@@ -51,6 +53,30 @@ function isApiV1Path(pathWithQuery: string): boolean {
   return p.startsWith("/api/v1/");
 }
 
+async function readCapped(res: Response): Promise<Uint8Array<ArrayBuffer> | null> {
+  if (!res.body) return new Uint8Array();
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_BODY_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const all = new Uint8Array(total);
+  let at = 0;
+  for (const c of chunks) {
+    all.set(c, at);
+    at += c.byteLength;
+  }
+  return all;
+}
+
 function jsonErr(
   msg: string,
   status: number,
@@ -73,6 +99,9 @@ Deno.serve(async (req) => {
     return jsonErr(auth.error, auth.status, origin);
   }
   const userId = auth.userId;
+  if (await overDailyLimit("canvas-proxy", userId, 2000)) {
+    return jsonErr("rate_limited", 429, origin);
+  }
 
   let targetUrl: string | null = null;
   let canvasToken: string | null = null;
@@ -86,7 +115,15 @@ Deno.serve(async (req) => {
       if (!ct.includes("application/json")) {
         return jsonErr("POST requires application/json body", 400, origin);
       }
-      const raw = (await req.json()) as LegacyJsonBody & StructuredBody;
+      const declared = Number(req.headers.get("content-length") || 0);
+      if (declared > MAX_REQUEST_BYTES) {
+        return jsonErr("Request too large", 413, origin);
+      }
+      const text = await req.text();
+      if (text.length > MAX_REQUEST_BYTES) {
+        return jsonErr("Request too large", 413, origin);
+      }
+      const raw = JSON.parse(text) as LegacyJsonBody & StructuredBody;
 
       if (raw.host && raw.path && raw.canvasToken) {
         const host = normalizeHost(raw.host);
@@ -115,10 +152,15 @@ Deno.serve(async (req) => {
         if (!isAllowedCanvasHost(host)) {
           return jsonErr("Host not allowed", 403, origin);
         }
+        // The Canvas token rides on this request, so it only ever goes out
+        // encrypted, to the standard port, with no login tucked into the address.
+        if (u.protocol !== "https:" || u.username || u.password || (u.port && u.port !== "443")) {
+          return jsonErr("Host not allowed", 403, origin);
+        }
         if (!isApiV1Path(u.pathname + u.search)) {
           return jsonErr("Path must start with /api/v1/", 403, origin);
         }
-        targetUrl = String(raw.url);
+        targetUrl = u.toString();
         canvasToken = String(raw.token);
         const m = (raw.method || "GET").toUpperCase();
         if (m !== "GET" && m !== "POST") {
@@ -129,31 +171,6 @@ Deno.serve(async (req) => {
         forwardContentType = raw.contentType;
       } else {
         return jsonErr("Missing host/path/canvasToken or legacy url/token", 400, origin);
-      }
-    } else if (req.method === "GET") {
-      const url = new URL(req.url);
-      const legacyUrl = url.searchParams.get("url");
-      const legacyToken = url.searchParams.get("token");
-      if (!legacyUrl || !legacyToken) {
-        return jsonErr("Missing url or token", 400, origin);
-      }
-      let u: URL;
-      try {
-        u = new URL(legacyUrl);
-      } catch {
-        return jsonErr("Invalid url", 400, origin);
-      }
-      if (!isAllowedCanvasHost(u.hostname.toLowerCase())) {
-        return jsonErr("Host not allowed", 403, origin);
-      }
-      if (!isApiV1Path(u.pathname + u.search)) {
-        return jsonErr("Path must start with /api/v1/", 403, origin);
-      }
-      targetUrl = legacyUrl;
-      canvasToken = legacyToken;
-      method = (url.searchParams.get("method") || "GET").toUpperCase();
-      if (method !== "GET" && method !== "POST") {
-        return jsonErr("Method must be GET or POST", 403, origin);
       }
     } else {
       return jsonErr("Method not allowed", 405, origin);
@@ -191,13 +208,14 @@ Deno.serve(async (req) => {
       clearTimeout(tid);
     }
 
-    const buf = new Uint8Array(await res.arrayBuffer());
-    if (buf.byteLength > MAX_BODY_BYTES) {
+    const buf = await readCapped(res);
+    if (!buf) {
       return jsonErr("Canvas response too large", 413, origin);
     }
 
     const u = new URL(targetUrl);
-    const logPath = u.pathname + u.search;
+    // The query string can carry search terms and ids, so only the path is logged.
+    const logPath = u.pathname;
     console.log(
       JSON.stringify({
         t: new Date().toISOString(),
@@ -214,7 +232,8 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders(origin), "Content-Type": outCt },
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return jsonErr(msg, 500, origin);
+    if (e instanceof SyntaxError) return jsonErr("Invalid JSON body", 400, origin);
+    console.error("canvas-proxy", e instanceof Error ? e.name : "error");
+    return jsonErr("Could not complete that request", 500, origin);
   }
 });

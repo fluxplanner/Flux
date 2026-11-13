@@ -2,11 +2,24 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
+<script src="public/js/flux-app-visibility.js?v=8ab1ae57" data-app="synara"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Synara — epilepsy care for students, powered by Flux</title>
 <meta name="description" content="Synara keeps a student's medication, seizure log and school safety card in one place. Free, with encrypted sync through a Flux account. Part of Flux Suite.">
 <meta name="theme-color" content="#f6f5fa" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#121019" media="(prefers-color-scheme: dark)">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Project Synara">
+<meta property="og:title" content="Synara — epilepsy care for students, powered by Flux">
+<meta property="og:url" content="https://fluxplanner.github.io/Flux/synara-welcome.html">
+<!-- Link previews (iMessage, Discord…) use the Project Synara logo, not the app icon. -->
+<meta property="og:image" content="https://fluxplanner.github.io/Flux/public/partners/synara-logo.jpg">
+<meta property="og:image:width" content="3840">
+<meta property="og:image:height" content="3840">
+<meta property="og:image:alt" content="Project Synara logo">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://fluxplanner.github.io/Flux/public/partners/synara-logo.jpg">
 <link rel="icon" href="public/synara/icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="public/synara/icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -150,7 +163,79 @@ footer{padding:48px 0 40px;margin-top:56px;border-top:1px solid var(--line);colo
   .btn,.card{transition:none}
   .btn-pri:hover,.card:hover{transform:none}
 }
+  /* Scroll story: Synara's violet, light and dark. Kept calm: one line
+     drawing and words lighting up, no sideways motion. */
+  body{--fs-a:var(--v);--fs-b:#2f80ed;--fs-ink:var(--ink);--fs-mut:var(--ink3);--fs-card:var(--panel);--fs-line:var(--line)}
+  /* ── One school day: a calm timeline. The sky shifts slowly from morning
+     to evening and each moment settles in as you scroll. Nothing flashes,
+     nothing slides sideways. ── */
+  body{--sky1:#fff1e6;--sky2:#eaf2ff;--sky3:#efe9ff}
+  @media (prefers-color-scheme:dark){body{--sky1:#2a1d2b;--sky2:#14213a;--sky3:#1d1838}}
+  .sy-day{height:380vh}
+  .sy-day .fs-stage{grid-template-rows:auto 1fr;place-items:center;padding:84px 16px 20px;
+    background:linear-gradient(180deg,
+      color-mix(in srgb,var(--sky1) calc((1 - var(--p)) * 100%),var(--sky3)) 0%,
+      color-mix(in srgb,var(--sky2) calc((1 - clamp(0,calc(var(--p) * 2 - 1),1)) * 100%),var(--sky3)) 60%,
+      var(--bg) 100%)}
+  .sy-kicker{margin:0;text-align:center;font-size:.74rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--v-ink)}
+  .sy-day h2,.sy-lock h2{margin:8px 0 0;text-align:center;font-size:clamp(1.8rem,4.4vw,3rem);font-weight:800;letter-spacing:-.03em;line-height:1.08;color:var(--ink)}
+  .sy-day h2 em,.sy-lock h2 em{font-family:var(--fs-serif);font-weight:500;color:var(--v-ink)}
+  .sy-sun{position:absolute;width:30px;height:30px;border-radius:50%;
+    left:calc(8% + var(--p) * 84%);top:calc(70px + (2 * var(--p) - 1) * (2 * var(--p) - 1) * 70px);
+    background:radial-gradient(circle at 35% 35%,#fff7d6,#ffb84d);box-shadow:0 0 30px rgba(255,184,77,.6);
+    opacity:calc(1 - clamp(0,calc((var(--p) - .8) * 5),1))}
+  .sy-moon{position:absolute;right:8%;top:74px;width:22px;height:22px;border-radius:50%;box-shadow:-6px 2px 0 0 #b9a6ff;
+    opacity:clamp(0,calc((var(--p) - .82) * 6),1)}
+  .sy-line{position:relative;width:min(100%,760px);align-self:center;display:grid;gap:10px}
+  .sy-line::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;border-radius:2px;background:var(--line)}
+  .sy-line::after{content:'';position:absolute;left:50%;top:0;width:2px;margin-left:-1px;border-radius:2px;
+    height:calc(clamp(0,calc((var(--p) - .06) * 1.25),1) * 100%);background:linear-gradient(var(--v),#2f80ed)}
+  .sy-m{--k:clamp(0,calc((var(--p) - var(--at)) * 5),1);position:relative;width:calc(50% - 26px);padding:12px 16px;border-radius:16px;
+    background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);
+    opacity:var(--k);transform:translateY(calc((1 - var(--k)) * 16px))}
+  .sy-m+.sy-m{margin-top:-34px}
+  .sy-m:nth-child(odd){justify-self:start;text-align:right}
+  .sy-m:nth-child(even){justify-self:end}
+  .sy-m::after{content:'';position:absolute;top:18px;width:12px;height:12px;border-radius:50%;background:var(--panel);border:3px solid var(--c,var(--v))}
+  .sy-m:nth-child(odd)::after{right:-33px}
+  .sy-m:nth-child(even)::after{left:-33px}
+  .sy-m time{font-size:.74rem;font-weight:700;color:var(--ink3);letter-spacing:.04em}
+  .sy-m b{display:block;margin-top:2px;color:var(--ink);font-size:.98rem}
+  .sy-m span{display:block;color:var(--ink2);font-size:.86rem;line-height:1.45}
+  @media (max-width:700px){
+    .sy-line::before,.sy-line::after{left:10px}
+    .sy-m+.sy-m{margin-top:0}
+    .sy-m,.sy-m:nth-child(odd),.sy-m:nth-child(even){width:auto;justify-self:stretch;text-align:left;margin-left:30px;padding:9px 12px}
+    .sy-m:nth-child(odd)::after,.sy-m:nth-child(even)::after{left:-27px;right:auto;top:13px}
+    .sy-m span{font-size:.78rem}
+  }
+  @media (max-width:700px) and (max-height:760px){.sy-m span{display:none}}
+
+  /* ── Privacy: a padlock closes slowly as you scroll, then the promises
+     settle in beside it. ── */
+  .sy-lock{height:220vh}
+  .sy-lock .fs-stage{grid-template-columns:auto minmax(0,520px);gap:clamp(24px,6vw,72px);place-items:center;place-content:center;padding:72px 16px 24px}
+  .sy-pad{width:clamp(130px,20vw,210px)}
+  .sy-pad .shackle{transform:translateY(calc((1 - clamp(0,calc(var(--p) * 2.2),1)) * -26px));transition:none}
+  .sy-pad .body{fill:var(--v)}
+  .sy-pad .keyhole{fill:var(--panel)}
+  .sy-pad .glow{opacity:clamp(0,calc((var(--p) - .45) * 4),1)}
+  .sy-lock .lede{margin:10px 0 0;text-align:left}
+  .sy-lock h2{text-align:left}
+  .sy-lock .list li{--k:clamp(0,calc((var(--p) - var(--at)) * 6),1);opacity:var(--k);transform:translateY(calc((1 - var(--k)) * 12px))}
+  @media (max-width:760px){
+    .sy-lock .fs-stage{grid-template-columns:1fr;gap:16px;padding-top:64px}
+    .sy-pad{width:96px}
+    .sy-lock h2,.sy-lock .lede{text-align:center}
+    .sy-lock .list{gap:8px}
+    .sy-lock .list li{font-size:.86rem}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .sy-day,.sy-lock{height:auto!important}
+    .sy-m,.sy-lock .list li{opacity:1!important;transform:none!important}
+  }
 </style>
+<link rel="stylesheet" href="public/css/flux-scroll-story.css?v=cb163716">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -198,6 +283,24 @@ footer{padding:48px 0 40px;margin-top:56px;border-top:1px solid var(--line);colo
     </div>
   </section>
 
+  <!-- One school day (engine: flux-scroll-story.css/.js; styles above). -->
+  <section class="sy-day fs-bleed" data-fs aria-labelledby="dayTitle">
+    <div class="fs-stage">
+      <span class="sy-sun" aria-hidden="true"></span><span class="sy-moon" aria-hidden="true"></span>
+      <div>
+        <p class="sy-kicker">A day with Synara</p>
+        <h2 id="dayTitle">One school day, <em>gently held.</em></h2>
+      </div>
+      <div class="sy-line">
+        <div class="sy-m" style="--at:.08;--c:#0fb981"><time>7:52 AM</time><b>Morning dose, taken.</b><span>One tap, and it is in your history.</span></div>
+        <div class="sy-m" style="--at:.24;--c:#9c7aff"><time>10:30 AM</time><b>A quick check-in.</b><span>How you slept, how stressed you feel. It sits beside your log.</span></div>
+        <div class="sy-m" style="--at:.4;--c:#e5484d"><time>1:15 PM</time><b>If something happens in class.</b><span>A teacher opens your safety card: what to do, a seizure timer and who to call. It works offline.</span></div>
+        <div class="sy-m" style="--at:.56;--c:#2f80ed"><time>4:00 PM</time><b>Logged in seconds.</b><span>Synara looks for patterns with missed doses, sleep and stress, and says plainly what is a pattern and what isn’t.</span></div>
+        <div class="sy-m" style="--at:.72;--c:#b9a6ff"><time>8:00 PM</time><b>Evening dose reminder.</b><span>A gentle nudge, at the time you chose.</span></div>
+      </div>
+    </div>
+  </section>
+
   <section class="sec" id="features" aria-labelledby="f-h">
     <div class="rv">
       <div class="eyebrow">What it does</div>
@@ -224,20 +327,27 @@ footer{padding:48px 0 40px;margin-top:56px;border-top:1px solid var(--line);colo
     </div>
   </section>
 
-  <section class="sec" id="privacy" aria-labelledby="p-h">
-    <div class="split">
-      <div class="rv">
+  <section class="sy-lock fs-bleed" data-fs id="privacy" aria-labelledby="p-h">
+    <div class="fs-stage">
+      <svg class="sy-pad" viewBox="0 0 120 150" aria-hidden="true">
+        <defs><radialGradient id="syGlow"><stop offset="0" stop-color="#9c7aff" stop-opacity=".55"/><stop offset="1" stop-color="#9c7aff" stop-opacity="0"/></radialGradient></defs>
+        <circle class="glow" cx="60" cy="96" r="60" fill="url(#syGlow)"/>
+        <path class="shackle" d="M32 70 V44 a28 28 0 0 1 56 0 V70" fill="none" stroke="var(--ink3)" stroke-width="11" stroke-linecap="round"/>
+        <rect class="body" x="14" y="64" width="92" height="74" rx="18"/>
+        <path class="keyhole" d="M60 88 a9 9 0 0 1 5 16.5 V118 h-10 V104.5 A9 9 0 0 1 60 88z"/>
+      </svg>
+      <div>
         <div class="eyebrow">Private by design</div>
-        <h2 id="p-h">Your health record is yours</h2>
+        <h2 id="p-h">Your health record <em>is yours.</em></h2>
         <p class="lede">Synara works entirely on your device. Sign in with Flux and it syncs between your
           devices automatically, encrypted and tied to your Flux account.</p>
+        <ul class="list">
+        <li style="--at:.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span>Encrypted sync: sign in to Flux on a new device and your record is there. No codes to copy.</span></li>
+        <li style="--at:.6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span>No ads, no analytics, no selling data. Ever.</span></li>
+        <li style="--at:.7"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span>Calm by design: nothing flashes or flickers, for students who are photosensitive.</span></li>
+        <li style="--at:.8"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span>Optional: show dose times in your Flux Planner calendar.</span></li>
+        </ul>
       </div>
-      <ul class="list rv">
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span>Encrypted sync: sign in to Flux on a new device and your record is there. No codes to copy.</span></li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span>No ads, no analytics, no selling data. Ever.</span></li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span>Calm by design: nothing flashes or flickers, for students who are photosensitive.</span></li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span>Optional: show dose times in your Flux Planner calendar.</span></li>
-      </ul>
     </div>
   </section>
 
@@ -285,5 +395,6 @@ footer{padding:48px 0 40px;margin-top:56px;border-top:1px solid var(--line);colo
     els.forEach(function (e) { io.observe(e); });
   })();
 </script>
+<script defer src="public/js/flux-scroll-story.js?v=afe817fc"></script>
 </body>
 </html>

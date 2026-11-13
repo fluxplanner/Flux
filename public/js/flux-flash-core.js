@@ -330,6 +330,11 @@
     var between = opts.between || 'auto';
     var cardSep = opts.cards || 'newline';
 
+    if (between === 'auto' && cardSep === 'newline') {
+      var qz = quizletPageText(text);
+      if (qz) return qz.cards;
+    }
+
     if (cardSep === 'newline' && (between === 'comma' || (between === 'auto' && /^"|",|,"/m.test(text) && !/\t/.test(text)))) {
       return csvRows(text, ',').map(function (r) { return { term: (r[0] || '').trim(), def: r.slice(1).join(', ').trim() }; })
         .filter(function (c) { return c.term && c.def; });
@@ -347,6 +352,8 @@
       var id = detectSep(chunks);
       if (!id) {
         // Alternating lines: term, definition, term, definition.
+        // An odd count is almost always the set's title on top: skip it.
+        if (cardSep === 'newline' && chunks.length >= 3 && chunks.length % 2 === 1) chunks = chunks.slice(1);
         if (cardSep === 'newline' && chunks.length >= 2 && chunks.length % 2 === 0) {
           var pairs = [];
           for (var i = 0; i < chunks.length; i += 2) pairs.push({ term: chunks[i], def: chunks[i + 1] });
@@ -359,12 +366,19 @@
       var known = SEPS.filter(function (s) { return s.id === between; })[0];
       re = known ? known.re : new RegExp(between.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     }
-    return chunks.map(function (c) {
+    // A line with no separator is the rest of the previous definition (a
+    // definition with line breaks in it), not a card of its own.
+    var cards = [];
+    chunks.forEach(function (c) {
       var m = c.match(re);
-      if (!m) return null;
+      if (!m) {
+        if (cards.length && cardSep === 'newline') cards[cards.length - 1].def += ' ' + c;
+        return;
+      }
       var at = m.index;
-      return { term: c.slice(0, at).replace(/^[•*\-\d.)\s]+/, '').trim(), def: c.slice(at + m[0].length).trim() };
-    }).filter(function (c) { return c && c.term && c.def; });
+      cards.push({ term: c.slice(0, at).replace(/^[•*\-\d.)\s]+/, '').trim(), def: c.slice(at + m[0].length).trim() });
+    });
+    return cards.filter(function (c) { return c.term && c.def; });
   }
 
   /* ── Tests and games ────────────────────────────────────────────────── */
@@ -519,6 +533,26 @@
     return fromSharePayload(JSON.parse(new TextDecoder().decode(bytesFromB64url(code.slice(1)))));
   }
 
+  /**
+   * A whole Quizlet set page, selected and copied (Ctrl/⌘ + A, then C): the
+   * set's terms follow "Terms in this set (N)", term and definition on
+   * alternate lines. Works in any browser, no bookmark needed. Returns
+   * { cards: [{term, def}], count: N }, or null when the text is not one.
+   * A definition that runs over several lines puts the pairs out of step,
+   * so the count is a guide, not a promise.
+   */
+  function quizletPageText(text) {
+    text = String(text || '').replace(/\r\n?/g, '\n');
+    var m = text.match(/Terms in this set \((\d[\d,]*)\)[^\n]*\n/i);
+    if (!m) return null;
+    var n = parseInt(m[1].replace(/,/g, ''), 10) || 0;
+    var lines = text.slice(m.index + m[0].length).split('\n')
+      .map(function (l) { return l.trim(); }).filter(Boolean).slice(0, n * 2);
+    var cards = [];
+    for (var i = 0; i + 1 < lines.length; i += 2) cards.push({ term: lines[i], def: lines[i + 1] });
+    return cards.length ? { cards: cards, count: n } : null;
+  }
+
   /* ── Decks and the store ────────────────────────────────────────────── */
 
   function newCard(c) {
@@ -671,6 +705,7 @@
     sharePayload: sharePayload, fromSharePayload: fromSharePayload,
     creator: creator, relatedDeck: relatedDeck, diffDecks: diffDecks, mergeInto: mergeInto,
     encodeShare: encodeShare, decodeShare: decodeShare,
+    quizletPageText: quizletPageText,
     b64urlFromBytes: b64urlFromBytes, bytesFromB64url: bytesFromB64url,
     newDeck: newDeck, newCard: newCard,
     decks: decks, getDeck: getDeck, putDeck: putDeck, removeDeck: removeDeck,

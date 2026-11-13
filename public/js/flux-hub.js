@@ -29,6 +29,7 @@
     { id: 'planner', name: 'Planner' },
     { id: 'study', name: 'Study apps' },
     { id: 'partner', name: 'Partners' },
+    { id: 'owner', name: 'Owner Controls' },
   ];
   var PRODUCTS = [
     {
@@ -129,7 +130,44 @@
          directory's violet gradient (.app-icon--logo). */
       logo: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19h4l2.5-6.5L16.5 23l2.8-7H26"/></svg>',
     },
+    {
+      // A Flux Partner: the Aorta Project. The tile opens their app, the
+      // blood pressure tracker; their site (aorta.html) links to it too.
+      // Kept hidden from everyone but the owner with Owner Controls → Hide
+      // apps (flux-app-visibility.js) until it launches.
+      id: 'aorta',
+      group: 'partner',
+      name: 'Aorta Project',
+      tagline: 'Blood pressure and medicine tracker for families',
+      href: 'aorta-tracker.html',
+      free: true,
+      partner: true,
+      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></svg>',
+      // Their real logo, a photo, on the white tile it was drawn for.
+      logo: '<img src="public/partners/aorta/logo.png" alt="" width="54" height="54">',
+    },
+    {
+      // Only the owner sees this tile, and owner.html turns anyone else away.
+      // The database is what actually protects what is inside.
+      id: 'owner',
+      group: 'owner',
+      name: 'Flux Owner Controls',
+      tagline: 'Moderation, people, releases and every switch',
+      href: 'owner.html',
+      ownerOnly: true,
+      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>',
+    },
   ];
+
+  /** PRODUCTS minus any the owner has hidden from this viewer (flux-app-visibility.js).
+      PRODUCTS itself stays complete: the owner's control lists from it. */
+  function visibleProducts() {
+    var v = window.FluxAppVisibility;
+    return PRODUCTS.filter(function (p) {
+      if (p.ownerOnly) return !!(v && v.isOwner());
+      return !(v && v.isHidden(p.id));
+    });
+  }
 
   function mount(host) {
     if (!host || host.getAttribute('data-flux-hub-ready') === '1') return;
@@ -304,5 +342,5 @@
     return cv;
   }
 
-  window.FluxHub = { mount: mount, mountAll: mountAll, openPage: openPage, PRODUCTS: PRODUCTS, GROUPS: GROUPS, canPrint: canPrint, printImage: printImage, markCanvas: markCanvas, printMarkHTML: printMarkHTML };
+  window.FluxHub = { mount: mount, mountAll: mountAll, openPage: openPage, PRODUCTS: PRODUCTS, visibleProducts: visibleProducts, GROUPS: GROUPS, canPrint: canPrint, printImage: printImage, markCanvas: markCanvas, printMarkHTML: printMarkHTML };
 })();

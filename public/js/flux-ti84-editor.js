@@ -269,7 +269,7 @@
     return (nodes || []).some((n) => n.t === 'frac' || n.t === 'mixed' || (n.t !== 'tok' && n.b.some((b) => Editor.hasFraction(b))));
   };
 
-  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
   /**
    * HTML for a block. cur: the cursor ({ blk, i }) or null; mark: '2' / 'A' / '' for the
