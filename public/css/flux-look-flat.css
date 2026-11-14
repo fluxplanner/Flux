@@ -26,7 +26,7 @@ html[data-flux-look="flat"] :is(#filterChips, .stabs, .ftt-nav, .flg-seg, .dash-
   box-shadow: none !important;
 }
 /* Hide the sliding pill only inside tab switchers; the sidebar keeps its own. */
-html[data-flux-look="flat"] :is(#filterChips, .stabs, .ftt-nav, .flg-seg, .dash-toolbar-views, .tmode-toggle, .tmode-segmented, :has(> .tmode-btn), [role="tablist"]):not(#sidebar *) > :is(.flux-morph-pill, .flg-glide) { display: none !important; }
+html[data-flux-look="flat"] :is(#filterChips, .stabs, .ftt-nav, .flg-seg, .dash-toolbar-views, .tmode-toggle, .tmode-segmented, :has(> .tmode-btn), [role="tablist"]):not(#sidebar *) > :is(.flux-morph-pill, .flg-glide, .fsh-unit-glide) { display: none !important; }
 html[data-flux-look="flat"] :is(#filterChips, .stabs, .ftt-nav, .flg-seg, .dash-toolbar-views, .tmode-toggle, .tmode-segmented, :has(> .tmode-btn), [role="tablist"]:not(.flux-pulse-tier-grid)):not(#sidebar, #sidebar *) > :is(button, .tmode-btn, .stab, .flux-pill-item) {
   background: none !important;
   border: 0 !important;
@@ -131,6 +131,13 @@ html[data-flux-look="flat"] body :is(#filterChips, .stabs, .ftt-nav, .flg-seg, .
   box-shadow: none !important;
 }
 html[data-flux-look="flat"] :is(button, .tmode-btn, .stab, .flux-pill-item) { transition: color .2s; }
+/* Study Tools has its own highlight colour (--fsh-accent, a different one per
+   subject area). Its rows used to show that colour as a filled pill; with the
+   pill hidden above, the underline carries it instead. */
+html[data-flux-look="flat"] .fsh :is(.fsh-units, .fsh-group-row) > .fx-tab-line { background: var(--fsh-accent, var(--accent)); }
+html[data-flux-look="flat"] body .fsh :is(.fsh-units, .fsh-group-row):not(:has(> .fx-tab-line.is-on)) > :is(.active, [aria-selected="true"]):not(#fx-none) {
+  box-shadow: inset 0 -2px 0 var(--fsh-accent, var(--accent)) !important;
+}
 @media (prefers-reduced-motion: reduce) {
   html[data-flux-look="flat"] .fx-tab-line { transition: none; }
 }
