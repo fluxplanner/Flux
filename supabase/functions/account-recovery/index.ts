@@ -110,7 +110,10 @@ function emailBody(heading: string, line: string, button: string, link: string, 
     `<p style="margin:0 0 20px"><a href="${link}" style="display:inline-block;padding:12px 20px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">${button}</a></p>` +
     `<p style="margin:0 0 8px;font-size:13px;color:#555;line-height:1.5">${foot}</p>` +
     `<p style="margin:0;font-size:12px;color:#888;word-break:break-all">${link}</p></div>`;
-  const text = `${heading}\n\n${line.replace(/<[^>]+>/g, "")}\n\n${link}\n\n${foot}`;
+  // The plain-text copy is never rendered as HTML. `line` only ever carries
+  // <strong> around escaped values, so drop exactly that tag rather than
+  // pattern-stripping arbitrary markup.
+  const text = `${heading}\n\n${line.split("<strong>").join("").split("</strong>").join("")}\n\n${link}\n\n${foot}`;
   return { html, text };
 }
 
