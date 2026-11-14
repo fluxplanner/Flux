@@ -279,6 +279,11 @@ test('the highlight sits under the tab it highlights, on every sub-tab of every 
  * Asserted the same way and for the same reason: endpoints alone would pass
  * just as happily on a teleport, so this checks the node survived AND that it
  * was genuinely observed part-way there.
+ *
+ * In the new look the highlight is an underline, not a filled pill: the pill
+ * (#fshUnitGlide) is hidden and flux-look.js slides one .fx-tab-line under the
+ * chosen unit instead. That line is what you see move, so it is what this
+ * measures. It travels by transform rather than left.
  */
 test('the unit highlight slides between units rather than jumping', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
@@ -293,7 +298,7 @@ test('the unit highlight slides between units rather than jumping', async ({ pag
     await new Promise((r) => setTimeout(r, 800));
 
     const row = () => document.getElementById('fshUnits') as HTMLElement;
-    const glide = () => document.getElementById('fshUnitGlide') as HTMLElement;
+    const glide = () => document.querySelector('#fshUnits > .fx-tab-line') as HTMLElement;
     const chips = () => [...document.querySelectorAll('#fshUnits .fsh-unit[data-unit]')] as HTMLElement[];
     if (!row() || !glide() || chips().length < 2) return { skipped: true } as Record<string, unknown>;
     const glideLeft = () => glide().getBoundingClientRect().left - row().getBoundingClientRect().left;
@@ -333,7 +338,7 @@ test('the unit highlight slides between units rather than jumping', async ({ pag
   expect(res.sameNode, 'the unit highlight was replaced instead of moved').toBe(true);
   // A teleport suppresses the transition, so it fires no transitionstart at
   // all — this single event is the cleanest statement of the bug fixed here.
-  expect(res.events, 'the unit highlight jumped: no transition on left').toContain('left');
+  expect(res.events, 'the unit highlight jumped: no transition on transform').toContain('transform');
   expect(res.midFrames as number,
     'the unit highlight was never seen between the two chips').toBeGreaterThan(0);
   // And it still lands on the unit that was clicked.
