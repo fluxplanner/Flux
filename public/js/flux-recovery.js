@@ -46,7 +46,14 @@
         body: JSON.stringify(Object.assign({ action: action }, payload || {})),
       });
       var data = await res.json().catch(function () { return {}; });
-      if (!res.ok) return Object.assign({}, data, { ok: false, error: data.error || 'Something went wrong. Try again in a moment.' });
+      if (!res.ok) {
+        // A signed-in call refused as unauthorised: the browser is holding a
+        // sign-in the server has ended. Refreshing does not clear it.
+        if (signedIn && res.status === 401) {
+          return { ok: false, error: 'Your sign-in has expired. Sign out of Flux, sign back in, then try again.' };
+        }
+        return Object.assign({}, data, { ok: false, error: data.error || 'Something went wrong. Try again in a moment.' });
+      }
       return Object.assign({ ok: true }, data);
     } catch (e) {
       return { ok: false, error: 'Could not reach Flux. Check your internet connection.' };
