@@ -171,7 +171,10 @@ async function passwordMatches(signInEmail: string, password: unknown): Promise<
   });
   const { data, error } = await anon.auth.signInWithPassword({ email: signInEmail, password });
   if (error || !data?.session) return false;
-  await anon.auth.signOut().catch(() => {}); // the check must not leave a session behind
+  // End only the session this check just made. A plain signOut() is global
+  // scope: it signed the person out of every device, so the very next call
+  // from their browser failed with "Auth session missing!".
+  await serviceClient().auth.admin.signOut(data.session.access_token, "local").catch(() => {});
   return true;
 }
 
