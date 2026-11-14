@@ -251,10 +251,10 @@
   html[data-flux-look="flat"] .top-ig .ig-mark { width: 20px; height: 20px; background: none; }
 
   /* ── Colour and screenshots (plain look only) ───────────────────────────
-     Each app wears one solid colour of its own: the icon tile, a tinted
-     frame behind a real screenshot of the app (public/suite/, taken from
-     the live pages), the hover border and its Open link. No gradients or
-     glows. The classic look hides all of this. */
+     Each app wears one solid colour of its own: the icon tile, the hover
+     border and its Open link. The planner bar also shows a real screenshot
+     of the planner (public/suite/planner.jpg). No gradients or glows. The
+     classic look hides all of this. */
   .app-shot, .quick { display: none; }
   /* --app is set per card from COLOR in the script below. */
   html[data-flux-look="flat"] .app { overflow: hidden; }
@@ -385,14 +385,15 @@
         var v = window.FluxAppVisibility;
         return !!(v && (v.isOwner() || v.hasGrant(p.id)) && v.hiddenIds().indexOf(p.id) >= 0);
       };
-      /* Plain look: each app's own colour, and the screenshot on its card
-         (public/suite/<id>.jpg). An app missing from SHOT just has no picture. */
+      /* Plain look: each app's own colour, and a screenshot beside the
+         planner bar (public/suite/<id>.jpg). An app missing from SHOT just
+         has no picture. The study and partner cards have none. */
       var COLOR = {
         planner: '#00c2ff', teacher: '#818cf8', grapher: '#34d399', calculator: '#fbbf24',
         flashcards: '#f472b6', pixel: '#fb923c', periodic: '#2dd4bf', composer: '#c084fc',
         translate: '#f87171', owner: '#94a3b8', synara: '#9c7aff', aorta: '#e4776b',
       };
-      var SHOT = ['planner', 'teacher', 'grapher', 'calculator', 'flashcards', 'pixel', 'periodic', 'composer', 'translate', 'synara', 'aorta'];
+      var SHOT = ['planner'];
       var tint = function (p) { return ' style="--app:' + (COLOR[p.id] || 'var(--accent)') + '"'; };
       var shot = function (p) {
         return SHOT.indexOf(p.id) < 0 ? ''
@@ -403,7 +404,6 @@
       };
       var card = function (p) {
         return '<a class="app app--' + esc(p.id) + '" href="' + esc(p.href) + '"' + tint(p) + '>'
-          + shot(p)
           + '<div class="app-top">' + icon(p) + '<div>' + title(p) + '</div></div>'
           + '<p class="app-desc">' + esc(MORE[p.id] || p.tagline) + '</p>'
           + '<div class="app-foot"><span class="go">Open</span></div>'
