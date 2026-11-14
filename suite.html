@@ -242,19 +242,11 @@
   html[data-flux-look="flat"] .partners-strip a { color: var(--accent); font-weight: 600; }
   html[data-flux-look="flat"] .note { text-align: left; }
   html[data-flux-look="flat"] :is(.hero, .hero h1, .apps > *, .note, .apps-grid > .app) { animation: none; }
-  html[data-flux-look="flat"] .top-ig {
-    height: 36px; padding: 0 12px 0 8px; gap: 6px; border-radius: 8px; font-weight: 600;
-    color: var(--muted2); background: none; border: 1px solid var(--border2); box-shadow: none; transition: color .15s ease, border-color .15s ease;
-  }
-  html[data-flux-look="flat"] .top-ig::after { content: none; }
-  html[data-flux-look="flat"] .top-ig:hover { transform: none; box-shadow: none; color: var(--text); border-color: var(--muted2); }
-  html[data-flux-look="flat"] .top-ig .ig-mark { width: 20px; height: 20px; background: none; }
 
   /* ── Colour (plain look only) ───────────────────────────────────────────
      Each app wears one solid colour of its own: the icon tile, the hover
-     border and its Open link. No gradients or glows. The classic look hides
-     the quick links and keeps its own colours. */
-  .quick { display: none; }
+     border and its Open link. No gradients or glows, except the Instagram
+     button, which keeps Instagram's own colours and its pulse. */
   /* --app is set per card from COLOR in the script below. */
   html[data-flux-look="flat"] .app { overflow: hidden; }
   html[data-flux-look="flat"] .app:hover,
@@ -265,19 +257,6 @@
   html[data-flux-look="flat"] .go { color: var(--app); }
   html[data-flux-look="flat"] .app.app--feature .go { color: #061020; background: var(--app); }
 
-  /* Quick links under the headline: straight to any app. */
-  html[data-flux-look="flat"] .quick { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 0; padding: 0; list-style: none; }
-  .quick a {
-    display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px 0 6px;
-    border-radius: 8px; border: 1px solid var(--border); background: var(--card);
-    color: var(--text); font-size: .88rem; font-weight: 600; text-decoration: none; transition: border-color .15s ease;
-  }
-  .quick a:hover { border-color: var(--app); }
-  .quick a:focus-visible { outline: 2px solid var(--app); outline-offset: 2px; }
-  .quick i { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; color: #0b0f17; background: var(--app); }
-  .quick i svg { width: 16px; height: 16px; }
-  .quick i.logo { color: #fff; overflow: hidden; }
-  .quick i.logo :is(svg, img) { width: 100%; height: 100%; object-fit: cover; }
 </style>
 <script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
 <script src="public/js/flux-purple-day.js?v=1966eb3d"></script>
@@ -296,7 +275,6 @@
     <section class="hero">
       <h1>Every Flux app, <span style="white-space:nowrap">one tap away.</span></h1>
       <p>The planner for your whole school life, plus free study tools that open on any computer. No account needed.</p>
-      <ul class="quick" id="quick" aria-label="Go straight to an app"></ul>
     </section>
     <!-- Filled by flux-purple-day.js on March 26 only. -->
     <div class="pd-slot" data-purple-day-slot></div>
@@ -404,12 +382,6 @@
             return '<div class="apps-grid" role="tabpanel" id="apps-' + esc(g.id) + '" aria-labelledby="tab-' + esc(g.id) + '"' + (g.id === active ? '' : ' hidden') + '>'
               + inGroup(g.id).map(card).join('') + '</div>';
           }).join('');
-
-        var quick = document.getElementById('quick');
-        if (quick) quick.innerHTML = list.filter(function (p) { return p.id !== 'planner'; }).map(function (p) {
-          var mark = p.logo ? '<i class="logo" aria-hidden="true">' + p.logo + '</i>' : '<i aria-hidden="true">' + p.mark + '</i>';
-          return '<li><a href="' + esc(p.href) + '"' + tint(p) + '>' + mark + esc(p.name.replace(/^Flux /, '')) + '</a></li>';
-        }).join('');
 
         var partnerPanel = document.getElementById('apps-partner');
         if (strip && partnerPanel) partnerPanel.appendChild(strip);
