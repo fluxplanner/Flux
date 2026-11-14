@@ -59,8 +59,17 @@
       c.appendChild(line);
     }
     var a = c.querySelector(ACTIVE);
-    if (!a || !a.offsetWidth) { line.classList.remove('is-on'); line.style.opacity = '0'; return; }
+    if (!a || !a.offsetWidth) {
+      if (line._fxKey !== 'off') { line.classList.remove('is-on'); line.style.opacity = '0'; line._fxKey = 'off'; }
+      return;
+    }
     var x = a.offsetLeft, w = a.offsetWidth, y = a.offsetTop + a.offsetHeight - 2;
+    // Already exactly there: touch nothing. This runs after every change of a
+    // class anywhere in the app, and rewriting ~25 lines each time (with a
+    // forced layout apiece) was most of what a tab switch cost.
+    var key = x + ',' + y + ',' + w;
+    if (!fresh && line._fxTab === a && line._fxKey === key) return;
+    line._fxKey = key;
     // Slide only when the choice moves to another tab. A new line (the row
     // was just re-rendered, as Connect does on every switch) or a reflow of
     // the same tab snaps into place — animating those flung the line in

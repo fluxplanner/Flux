@@ -333,7 +333,7 @@
       const size = Math.random() * 2 + 1;
       const dur = Math.random() * 3 + 2;
       const del = Math.random() * 4;
-      star.style.cssText = `position:absolute;width:${size}px;height:${size}px;border-radius:50%;background:rgba(255,255,255,${Math.random() * 0.4 + 0.1});left:${Math.random() * 100}%;top:${Math.random() * 100}%;pointer-events:none;animation:star-twinkle ${dur}s ease-in-out ${del}s infinite alternate`;
+      star.style.cssText = `position:absolute;width:${size}px;height:${size}px;border-radius:50%;background:rgba(255,255,255,${Math.random() * 0.4 + 0.1});left:${Math.random() * 100}%;top:${Math.random() * 100}%;pointer-events:none;animation:star-twinkle ${dur}s ease-in-out ${del}s 1 both`;
       host.appendChild(star);
     }
   }

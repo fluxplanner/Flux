@@ -431,8 +431,14 @@ function activeSelectorFor(group) {
    entire animation. With a marker class on each, adding a strip is one line
    in the list above and nothing else. */
 function tagPillGroup(host, group) {
-  host.classList.add('flux-pill-host');
-  host.querySelectorAll(group.item).forEach((el) => el.classList.add('flux-pill-item'));
+  // Only where it is missing. classList.add() rewrites the class attribute
+  // even when the class is already there, and with ~240 items that was 240
+  // "something changed" notices on every sync — which woke every observer
+  // watching classes, which re-ran this.
+  if (!host.classList.contains('flux-pill-host')) host.classList.add('flux-pill-host');
+  host.querySelectorAll(group.item).forEach((el) => {
+    if (!el.classList.contains('flux-pill-item')) el.classList.add('flux-pill-item');
+  });
 }
 
 function syncPillGroup(group, opts) {
