@@ -80,8 +80,10 @@
   background-clip: text;
 }
 @media (prefers-reduced-motion: no-preference) {
+  /* One pass as it appears, then still: looping it for ever kept the page
+     busy at rest (see e2e/idle-work.spec.ts). */
   .gradient-animate {
-    animation: gradient-shift 4s ease infinite;
+    animation: gradient-shift 4s ease 1;
   }
   @keyframes gradient-shift {
     0%,
@@ -164,8 +166,8 @@ body[data-flux-mesh='off']::before {
       radial-gradient(ellipse 60% 80% at 80% 80%, rgba(108, 99, 255, 0.05) 0%, transparent 60%),
       radial-gradient(ellipse 50% 50% at 60% 40%, rgba(0, 217, 163, 0.03) 0%, transparent 50%);
     background-color: var(--bg);
-    animation: mesh-drift 20s ease-in-out infinite alternate;
-    will-change: background-position;
+    /* Still. Sliding the gradients for ever repainted the whole screen on
+       every frame, on every page, whether or not anything was happening. */
   }
   @keyframes mesh-drift {
     0% {
@@ -546,9 +548,11 @@ body[data-flux-mesh='off']::before {
   box-shadow: 0 4px 20px rgba(var(--accent-rgb), 0.4);
 }
 @media (prefers-reduced-motion: no-preference) {
+  /* Pulses twice when it appears, then rests on the static glow above. An
+     endless box-shadow animation repaints on every frame for as long as the
+     dashboard is open. */
   .flux-fab-glow {
-    animation: fab-glow 2s ease-in-out infinite;
-    will-change: box-shadow;
+    animation: fab-glow 2s ease-in-out 2;
   }
   @keyframes fab-glow {
     0%,

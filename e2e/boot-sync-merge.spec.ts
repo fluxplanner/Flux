@@ -45,6 +45,64 @@ test.describe('Opening Flux signed in', () => {
     expect(boot.state.pushedBeforeFirstPull).toBe(false);
   });
 
+  test('a habit, an event and a look setting changed before the first pull lands are kept', async ({ page }) => {
+    // Only tasks and notes were merged. Everything else was taken from the
+    // cloud as it stood when the request left, because the first pull of a
+    // session had no record of what this device opened with — so whatever was
+    // done in the second or two before it came back was put back.
+    const H1 = { id: 'h1', name: 'Water', icon: '💧', streak: 0, log: {} };
+    const E1 = { id: 'e1', title: 'Dentist', date: day(2), time: '10:00' };
+    const boot = await bootSignedIn(page, {
+      tasks: TASKS, holdFirstPull: true,
+      cloud: { tasks: TASKS, onboarded: true, habits: [H1], events: [E1], flux_ui_density: 'comfortable' },
+      extraLocal: { flux_habits: [H1], flux_events: [E1], flux_ui_density: 'comfortable' },
+    });
+    await page.goto('/');
+    await expect(page.locator('#app')).toHaveClass(/visible/);
+    await expect.poll(() => boot.state.pulls, { message: 'the boot pull never went out' }).toBe(1);
+
+    await page.evaluate((ev) => {
+      const w = window as any;
+      w.setFluxHabits([...(w.getFluxHabits() || []), { id: 'h2', name: 'Read 20 min', icon: '📖', streak: 0, log: {} }]);
+      const list = w.load('flux_events', []);
+      list.push(ev);
+      w.save('flux_events', list);
+      w.syncKey('events', list);
+      w.save('flux_ui_density', 'compact');
+    }, { id: 'e2', title: 'Maths test', date: day(3), time: '09:00' });
+    await page.waitForTimeout(400);
+
+    boot.releasePull();   // the row comes back as it was before any of that
+    await expect.poll(() => ((boot.state.cloud as any).habits || []).map((h: any) => h.id), { message: 'the habit never reached the cloud', timeout: 10_000 })
+      .toEqual(['h1', 'h2']);
+    const here = await page.evaluate(() => {
+      const w = window as any;
+      return {
+        habits: (w.getFluxHabits() || []).map((h: any) => h.id),
+        events: (w.load('flux_events', []) || []).map((e: any) => e.id),
+        density: w.load('flux_ui_density', null),
+      };
+    });
+    expect(here, 'the first pull undid what was done before it landed').toEqual({ habits: ['h1', 'h2'], events: ['e1', 'e2'], density: 'compact' });
+    const cloud: any = boot.state.cloud;
+    expect({ events: (cloud.events || []).map((e: any) => e.id), density: cloud.flux_ui_density }).toEqual({ events: ['e1', 'e2'], density: 'compact' });
+    expect(boot.state.pushedBeforeFirstPull).toBe(false);
+  });
+
+  test('a field another device changed still wins over this device\'s untouched copy on open', async ({ page }) => {
+    const H1 = { id: 'h1', name: 'Water', icon: '💧', streak: 0, log: {} };
+    const H9 = { id: 'h9', name: 'Added on my phone', icon: '📱', streak: 0, log: {} };
+    await bootSignedIn(page, {
+      tasks: TASKS,
+      cloud: { tasks: TASKS, onboarded: true, habits: [H1, H9] },
+      extraLocal: { flux_habits: [H1] },
+    });
+    await page.goto('/');
+    await expect(page.locator('#app')).toHaveClass(/visible/);
+    await expect.poll(() => page.evaluate(() => ((window as any).getFluxHabits() || []).map((h: any) => h.id)), { timeout: 10_000 })
+      .toEqual(['h1', 'h9']);
+  });
+
   test('a task deleted before the first pull lands stays deleted', async ({ page }) => {
     const boot = await bootSignedIn(page, { tasks: TASKS, holdFirstPull: true });
     await page.goto('/');

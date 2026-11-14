@@ -9901,9 +9901,15 @@ function setSyncStatus(status){
   const showActivity=syncUiWantsActivity();
   if(status==='syncing'&&!showActivity)return;
   if(status==='synced'&&el.classList.contains('synced')&&!showActivity){
-    el.style.display=currentUser?'flex':'none';
-    const ts=load('flux_last_sync',0);
-    if(currentUser)el.title=ts?('Last sync: '+new Date(ts).toLocaleString(undefined,{dateStyle:'short',timeStyle:'short'})):'Cloud sync ready';
+    // Only what differs: this runs every 2.5s, and rewriting the same values
+    // counted as a page change that set the tab underlines and pills re-measuring.
+    const _disp=currentUser?'flex':'none';
+    if(el.style.display!==_disp)el.style.display=_disp;
+    if(currentUser){
+      const ts=load('flux_last_sync',0);
+      const _title=ts?('Last sync: '+new Date(ts).toLocaleString(undefined,{dateStyle:'short',timeStyle:'short'})):'Cloud sync ready';
+      if(el.title!==_title)el.title=_title;
+    }
     return;
   }
   if(status==='synced'){el.className='sync-badge synced sync-badge--quiet topbar-sync-pill';el.textContent='Synced';if(sl)sl.textContent='All data synced to cloud';if(bh)bh.innerHTML='<span class="sync-badge synced sync-badge--quiet">Synced</span>';}
@@ -14439,7 +14445,18 @@ async function handleSignedIn(user,session){
     try{if(fluxListSync)fluxListSync.startSession({tasks,flux_notes:notes});}catch(_){}
     window._fluxLastCloudFingerprint=undefined;
   }
+  const _fluxNewSession=!currentUser||currentUser.id!==user.id;
   currentUser=user;
+  /* What this device held as the app opened, field by field. The first pull
+     of a session had nothing to compare against, so it took the cloud's copy
+     of everything but tasks and notes — and a habit ticked, an event added or
+     a setting changed in the second or two before it landed was put back.
+     With this, that pull keeps a field changed here since opening whenever
+     the cloud's copy is still the one this device opened with. A field the
+     cloud holds differently is still taken from the cloud, as before. */
+  if(_fluxNewSession){
+    try{if(!(window.FluxImpersonate&&FluxImpersonate.active()))_fluxAgreed=fluxFieldCanon(getCloudPayload());}catch(_){_fluxAgreed=null;}
+  }
   let _signInFailed=false;
   try{
   // If a non-owner account is signing in, wipe any leftover impersonation

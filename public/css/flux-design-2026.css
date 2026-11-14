@@ -629,3 +629,16 @@ html.flux-lowend #app * { transition: none !important; }
   html, body { background: #ffffff !important; color: #1f2328 !important; }
   body::before, body::after { display: none !important; }
 }
+
+/* The page background holds still.
+   body::before / ::after carry the ambient wash, and four different
+   stylesheets each gave it a never-ending drift (mesh-drift, fluxMeshDrift,
+   fluxAuroraDrift, ...), one stacked over the next — taking one away only
+   uncovered the one beneath. A full-screen layer that never stops moving
+   makes the browser restyle and redraw the page 60 times a second while
+   nobody is touching it, which is what made everything else feel slow.
+   e2e/idle-work.spec.ts fails if anything on the dashboard loops for ever. */
+html body::before,
+html body::after {
+  animation: none !important;
+}

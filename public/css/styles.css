@@ -840,8 +840,7 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
   width:100%;
   height:100%;
   transform-origin:50% 100%;
-  animation:fluxDashLineMove 26s ease-in-out infinite alternate;
-  will-change:transform;
+  /* Still: it swayed for ever, which kept the dashboard working at rest. */
 }
 .flux-dash-scroll-paths-mover svg{
   display:block;
