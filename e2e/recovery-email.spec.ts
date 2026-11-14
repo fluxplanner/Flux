@@ -135,7 +135,7 @@ test('Settings: saving a recovery email needs the current password and shows it 
 
   await page.evaluate(() => { (document.querySelector('#recPassword') as HTMLInputElement).value = 'Current-Pass-9'; });
   await page.evaluate(() => (window as any).FluxRecovery.save());
-  await expect(page.locator('#recMsg')).toHaveText('Check jane@example.com and click the link to confirm it.');
+  await expect(page.locator('#recMsg')).toHaveText('Check jane@example.com and click the link to confirm it. If it is not in your inbox, look in your spam folder.');
   await expect(page.locator('#recStatus')).toContainText('Waiting for you to click the link sent to jane@example.com');
   expect(calls.find((c) => c.action === 'set_email')).toMatchObject({ email: 'jane@example.com', password: 'Current-Pass-9' });
   // The password is not left sitting in the field.

@@ -46,7 +46,14 @@
         body: JSON.stringify(Object.assign({ action: action }, payload || {})),
       });
       var data = await res.json().catch(function () { return {}; });
-      if (!res.ok) return Object.assign({}, data, { ok: false, error: data.error || 'Something went wrong. Try again in a moment.' });
+      if (!res.ok) {
+        // A signed-in call refused as unauthorised: the browser is holding a
+        // sign-in the server has ended. Refreshing does not clear it.
+        if (signedIn && res.status === 401) {
+          return { ok: false, error: 'Your sign-in has expired. Sign out of Flux, sign back in, then try again.' };
+        }
+        return Object.assign({}, data, { ok: false, error: data.error || 'Something went wrong. Try again in a moment.' });
+      }
       return Object.assign({ ok: true }, data);
     } catch (e) {
       return { ok: false, error: 'Could not reach Flux. Check your internet connection.' };
@@ -76,7 +83,7 @@
     } else if (st.canSend === false || st.sent === false) {
       status.textContent = 'Saved: ' + st.email + '. A link to confirm it will be sent soon; save again here to send it.';
     } else {
-      status.textContent = 'Waiting for you to click the link sent to ' + st.email + '. Until then it cannot be used. Save again to send a new link.';
+      status.textContent = 'Waiting for you to click the link sent to ' + st.email + '. Not there? Check your spam folder. Until then it cannot be used. Save again to send a new link.';
     }
     if (has && document.activeElement !== input) input.value = st.email;
     if (save) save.textContent = has ? 'Save and send a new link' : 'Save and send confirmation';
@@ -110,7 +117,7 @@
       paint(r);
       if (r.ok && r.verified) setMsg('That address is already confirmed.', 'ok');
       else if (r.ok && r.sent === false) setMsg('Saved.', 'ok');
-      else if (r.ok) setMsg('Check ' + r.email + ' and click the link to confirm it.', 'ok');
+      else if (r.ok) setMsg('Check ' + r.email + ' and click the link to confirm it. If it is not in your inbox, look in your spam folder.', 'ok');
       else setMsg(r.error, 'bad');
     });
   }
@@ -165,7 +172,7 @@
       // send_failed still saved the address; the Settings card can resend.
       if (!r.ok && r.code !== 'send_failed') { msg.textContent = r.error; return; }
       lastStatusAt = 0;
-      if (r.sent) note('Check your email', 'We sent a link to ' + email + '. Click it to confirm the address.');
+      if (r.sent) note('Check your email', 'We sent a link to ' + email + '. Click it to confirm the address. If it is not in your inbox, look in your spam folder.');
       else closeModal();
     }
     btn.addEventListener('click', submit);

@@ -12786,7 +12786,7 @@ async function handleEmailAuth(){
       if(recEmail&&window.FluxRecovery){
         window.FluxRecovery.setAfterSignup(recEmail,password).then(r=>{
           if(typeof showToast!=='function')return;
-          if(r&&r.ok&&r.sent)showToast('Check '+recEmail+' and click the link to confirm your recovery email.','info');
+          if(r&&r.ok&&r.sent)showToast('Check '+recEmail+' (and your spam folder) and click the link to confirm your recovery email.','info');
           else if(r&&r.ok)return;
           else showToast('Your account is ready, but the recovery email was not saved. Add it in Settings, under Account.','warning');
         }).catch(()=>{});

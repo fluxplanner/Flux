@@ -42,13 +42,18 @@ import {
  *   · The owner's account is never reset by email: that inbox would become a
  *     way round the owner's authenticator.
  *
- * Secrets: RESEND_API_KEY, RECOVERY_FROM_EMAIL (a sender on a domain verified
- * in Resend — the resend.dev test sender only delivers to the account owner),
- * FLUX_SITE_URL (optional).
+ * Mail goes out through a Gmail account over SMTP (Flux has no domain of its
+ * own to send from). Port 465: Supabase Edge blocks outbound 25 and 587.
+ *
+ * Secrets: GMAIL_USER, GMAIL_APP_PASSWORD (a Google app password, which needs
+ * 2-Step Verification on that account), FLUX_SITE_URL (optional).
  */
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
-const FROM_EMAIL = Deno.env.get("RECOVERY_FROM_EMAIL") ?? "";
+import nodemailer from "npm:nodemailer@6.9.16";
+
+const GMAIL_USER = (Deno.env.get("GMAIL_USER") ?? "").trim();
+// Google shows app passwords in groups of four; the spaces are not part of it.
+const GMAIL_APP_PASSWORD = (Deno.env.get("GMAIL_APP_PASSWORD") ?? "").replace(/\s+/g, "");
 const SITE_URL = (Deno.env.get("FLUX_SITE_URL") ?? "https://fluxplanner.github.io/Flux/").replace(/\/?$/, "/");
 const OWNER_UID = (Deno.env.get("FLUX_OWNER_UID") ||
   "eabe2b1f-e428-4181-8530-8e5366eb3975").trim();
@@ -57,7 +62,18 @@ const RESET_MINUTES = 60;
 const VERIFY_HOURS = 24;
 const BAD_LINK = "This link has expired or was already used. Ask for a new one.";
 
-const canSend = () => !!(RESEND_API_KEY && FROM_EMAIL);
+const canSend = () => !!(GMAIL_USER && GMAIL_APP_PASSWORD);
+
+let mailer: ReturnType<typeof nodemailer.createTransport> | null = null;
+function transport() {
+  mailer ??= nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD },
+  });
+  return mailer;
+}
 
 function clientIp(req: Request): string {
   return (req.headers.get("cf-connecting-ip") ||
@@ -89,13 +105,8 @@ const escapeHtml = (s: string) =>
 async function sendEmail(to: string, subject: string, html: string, text: string): Promise<boolean> {
   if (!canSend()) return false;
   try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: FROM_EMAIL, to: [to], subject, html, text }),
-    });
-    if (!res.ok) console.error("account-recovery: email", res.status, (await res.text()).slice(0, 300));
-    return res.ok;
+    await transport().sendMail({ from: `Flux <${GMAIL_USER}>`, to, subject, html, text });
+    return true;
   } catch (e) {
     console.error("account-recovery: email", e);
     return false;
@@ -160,7 +171,10 @@ async function passwordMatches(signInEmail: string, password: unknown): Promise<
   });
   const { data, error } = await anon.auth.signInWithPassword({ email: signInEmail, password });
   if (error || !data?.session) return false;
-  await anon.auth.signOut().catch(() => {}); // the check must not leave a session behind
+  // End only the session this check just made. A plain signOut() is global
+  // scope: it signed the person out of every device, so the very next call
+  // from their browser failed with "Auth session missing!".
+  await serviceClient().auth.admin.signOut(data.session.access_token, "local").catch(() => {});
   return true;
 }
 
