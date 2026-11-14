@@ -3,7 +3,7 @@
  *
  * The browser side of supabase/functions/account-recovery. Three jobs:
  *
- *   1. Settings → Account → "Recovery email": add, change or remove the one
+ *   1. Settings → Account → "Recovery email": add or change the one
  *      real address kept beside an account. It is used for a reset link and
  *      nothing else, and it only counts once the person has clicked the
  *      confirmation link sent to it.
@@ -66,7 +66,6 @@
   function paint(st) {
     var status = el('recStatus');
     var input = el('recEmail');
-    var remove = el('recRemoveBtn');
     var save = el('recSaveBtn');
     if (!status || !input) return;
     var has = !!(st && st.email);
@@ -74,11 +73,12 @@
       status.textContent = 'Add an email so you can reset a forgotten password yourself. It is used for that and nothing else.';
     } else if (st.verified) {
       status.textContent = 'Reset links go to ' + st.email + '. Confirmed.';
+    } else if (st.canSend === false || st.sent === false) {
+      status.textContent = 'Saved: ' + st.email + '. A link to confirm it will be sent soon; save again here to send it.';
     } else {
       status.textContent = 'Waiting for you to click the link sent to ' + st.email + '. Until then it cannot be used. Save again to send a new link.';
     }
     if (has && document.activeElement !== input) input.value = st.email;
-    if (remove) remove.hidden = !has;
     if (save) save.textContent = has ? 'Save and send a new link' : 'Save and send confirmation';
   }
 
@@ -109,22 +109,9 @@
       if (!r.ok && r.code !== 'send_failed') { setMsg(r.error, 'bad'); return; }
       paint(r);
       if (r.ok && r.verified) setMsg('That address is already confirmed.', 'ok');
+      else if (r.ok && r.sent === false) setMsg('Saved.', 'ok');
       else if (r.ok) setMsg('Check ' + r.email + ' and click the link to confirm it.', 'ok');
       else setMsg(r.error, 'bad');
-    });
-  }
-
-  function remove() {
-    var password = el('recPassword') ? el('recPassword').value : '';
-    if (!password) { setMsg('Type your current password to remove the email.', 'bad'); return; }
-    setMsg('');
-    return withButton('recRemoveBtn', 'Removing…', async function () {
-      var r = await call('remove_email', { password: password }, true);
-      if (el('recPassword')) el('recPassword').value = '';
-      if (!r.ok) { setMsg(r.error, 'bad'); return; }
-      if (el('recEmail')) el('recEmail').value = '';
-      paint(r);
-      setMsg('Removed. Flux no longer has an email for you.', 'ok');
     });
   }
 
@@ -133,6 +120,57 @@
     email = String(email || '').trim();
     if (!email) return { ok: false, skipped: true };
     return call('set_email', { email: email, password: password }, true);
+  }
+
+  /* ── 4. Asking accounts that have no email yet ───────────────────────── */
+
+  var promptedFor = '';
+
+  /**
+   * Called on every sign-in and app open. Accounts made before an email was
+   * required (and any sign-up whose email did not save) get a dialog asking
+   * for one. It has no "later" button: the email is required. If Flux cannot
+   * be reached the dialog is not shown, so an outage never locks anyone out.
+   */
+  function promptIfMissing(userId) {
+    if (!userId || promptedFor === userId) return;
+    promptedFor = userId;
+    // Let sign-up finish saving the address it was given first.
+    setTimeout(async function () {
+      if (el(MODAL_ID)) return;
+      var r = await call('status', null, true);
+      if (!r.ok || r.email) return;
+      showAddEmail();
+    }, 4000);
+  }
+
+  function showAddEmail() {
+    var ov = modal('Add an email to your account',
+      '<p class="frc-text">Flux now needs an email for every account. It is only used to send you a link if you forget your password — never for anything else.</p>' +
+      '<label class="frc-field">Email<input type="email" class="frc-input" id="frcEmail" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com"></label>' +
+      '<label class="frc-field">Your Flux password<input type="password" class="frc-input" id="frcPw" autocomplete="current-password"></label>' +
+      '<div class="frc-msg" id="frcMsg" role="status" aria-live="polite"></div>' +
+      '<div class="frc-foot"><button type="button" class="frc-btn frc-btn--primary" id="frcSave">Save email</button></div>');
+    var msg = ov.querySelector('#frcMsg');
+    var btn = ov.querySelector('#frcSave');
+    async function submit() {
+      var email = ov.querySelector('#frcEmail').value.trim();
+      var pw = ov.querySelector('#frcPw').value;
+      if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email)) { msg.textContent = 'Type a real email address.'; return; }
+      if (!pw) { msg.textContent = 'Type your password too, so we know it is you.'; return; }
+      msg.textContent = '';
+      btn.disabled = true; btn.textContent = 'Saving…';
+      var r = await call('set_email', { email: email, password: pw }, true);
+      btn.disabled = false; btn.textContent = 'Save email';
+      // send_failed still saved the address; the Settings card can resend.
+      if (!r.ok && r.code !== 'send_failed') { msg.textContent = r.error; return; }
+      lastStatusAt = 0;
+      if (r.sent) note('Check your email', 'We sent a link to ' + email + '. Click it to confirm the address.');
+      else closeModal();
+    }
+    btn.addEventListener('click', submit);
+    ov.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
+    try { ov.querySelector('#frcEmail').focus(); } catch (e) {}
   }
 
   /* The card asks for its status when it scrolls into view, so it needs no
@@ -266,7 +304,7 @@
   else boot();
 
   window.FluxRecovery = {
-    save: save, remove: remove, refresh: refresh,
+    save: save, refresh: refresh, promptIfMissing: promptIfMissing,
     requestReset: requestReset, setAfterSignup: setAfterSignup,
   };
 })();

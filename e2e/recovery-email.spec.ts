@@ -86,7 +86,7 @@ test('"Forgot your password?" asks the server and gives the same answer either w
   await page.evaluate(() => (window as any).showLoginScreen());
   await page.locator('#loginUsername').waitFor({ state: 'attached', timeout: 20000 });
 
-  // Sign-up offers the optional email; sign-in does not show it.
+  // Sign-up asks for the email.
   await expect(page.locator('#loginRecoveryEmail')).toHaveAttribute('type', 'email');
 
   await page.evaluate(() => {
@@ -97,6 +97,26 @@ test('"Forgot your password?" asks the server and gives the same answer either w
   const said = await page.locator('#loginAuthError').textContent();
   expect(said).toContain('If that account has a recovery email');
   expect(said).toContain('If it does not');
+});
+
+test('sign-up refuses to make an account without an email', async ({ page }) => {
+  const signups: unknown[] = [];
+  await page.route('**/auth/v1/signup**', (route) => { signups.push(1); return route.abort(); });
+  await page.goto('/?e2e=1&scenario=guest');
+  await page.waitForFunction(() => typeof (window as any).showLoginScreen === 'function');
+  await page.waitForTimeout(800);
+  await page.evaluate(() => (window as any).showLoginScreen());
+  await page.locator('#loginUsername').waitFor({ state: 'attached', timeout: 20000 });
+  await page.evaluate(() => {
+    (window as any).toggleAuthMode(); // the screen opens on sign-in
+    (document.querySelector('#loginUsername') as HTMLInputElement).value = 'Jane Doe';
+    (document.querySelector('#loginPassword') as HTMLInputElement).value = 'Harbor-Lantern-42';
+    (document.querySelector('#loginPassword2') as HTMLInputElement).value = 'Harbor-Lantern-42';
+    (document.querySelector('#loginRecoveryEmail') as HTMLInputElement).value = '';
+    return (window as any).handleEmailAuth();
+  });
+  await expect(page.locator('#loginAuthError')).toContainText('Add an email address');
+  expect(signups).toHaveLength(0);
 });
 
 test('Settings: saving a recovery email needs the current password and shows it is waiting', async ({ page }) => {
@@ -120,5 +140,44 @@ test('Settings: saving a recovery email needs the current password and shows it 
   expect(calls.find((c) => c.action === 'set_email')).toMatchObject({ email: 'jane@example.com', password: 'Current-Pass-9' });
   // The password is not left sitting in the field.
   expect(await page.evaluate(() => (document.querySelector('#recPassword') as HTMLInputElement).value)).toBe('');
-  expect(await page.evaluate(() => (document.querySelector('#recRemoveBtn') as HTMLElement).hidden)).toBe(false);
+  // The email is required, so there is no way to remove it.
+  await expect(page.locator('#recRemoveBtn')).toHaveCount(0);
+});
+
+test('an account with no email is asked for one on open, and cannot skip it', async ({ page }) => {
+  let saved = '';
+  const calls = await mockRecovery(page, (c) => {
+    if (c.action === 'status') return { body: { ok: true, email: saved, verified: false, canSend: true } };
+    if (c.action === 'set_email') { saved = String(c.email); return { body: { ok: true, email: saved, verified: false, sent: true } }; }
+    return { body: { ok: true } };
+  });
+  await page.goto('/?e2e=1&scenario=teacher-workflow');
+  // The e2e scenario signs in without handleSignedIn, which is what calls this.
+  await page.waitForFunction(() => !!(window as any).FluxRecovery && !!(window as any).currentUser?.id, null, { timeout: 20000 });
+  await page.evaluate(() => (window as any).FluxRecovery.promptIfMissing((window as any).currentUser.id));
+  const modal = page.locator('#fluxRecoveryModal');
+  await expect(modal).toContainText('Add an email to your account', { timeout: 20000 });
+  // No "later" or close button: the only way out is to add one.
+  await expect(modal.locator('button')).toHaveCount(1);
+
+  await page.fill('#frcEmail', 'not-an-email');
+  await page.fill('#frcPw', 'Current-Pass-9');
+  await page.click('#frcSave');
+  await expect(page.locator('#frcMsg')).toHaveText('Type a real email address.');
+  expect(calls.filter((c) => c.action === 'set_email')).toHaveLength(0);
+
+  await page.fill('#frcEmail', 'jane@example.com');
+  await page.click('#frcSave');
+  await expect(modal).toContainText('We sent a link to jane@example.com');
+  expect(calls.find((c) => c.action === 'set_email')).toMatchObject({ email: 'jane@example.com', password: 'Current-Pass-9' });
+});
+
+test('an account that already has an email is not asked', async ({ page }) => {
+  const calls = await mockRecovery(page, () => ({ body: { ok: true, email: 'jane@example.com', verified: true, canSend: true } }));
+  await page.goto('/?e2e=1&scenario=teacher-workflow');
+  await page.waitForFunction(() => !!(window as any).FluxRecovery && !!(window as any).currentUser?.id, null, { timeout: 20000 });
+  await page.evaluate(() => (window as any).FluxRecovery.promptIfMissing((window as any).currentUser.id));
+  await expect.poll(() => calls.filter((c) => c.action === 'status').length, { timeout: 20000 }).toBeGreaterThan(0);
+  await page.waitForTimeout(500);
+  await expect(page.locator('#fluxRecoveryModal')).toHaveCount(0);
 });

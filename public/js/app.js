@@ -12719,11 +12719,17 @@ async function handleEmailAuth(){
     const weak=typeof window.fluxWeakPasswordReason==='function'
       ?window.fluxWeakPasswordReason(password,rawName):'';
     if(weak){showAuthError(weak);return;}
-    /* Optional. Checked before the account is made, so a typo is caught while
-       the person is still looking at the form. */
+    /* Required: it is the only way to reset a forgotten password. Checked
+       before the account is made, so a typo is caught while the person is
+       still looking at the form. */
     const recEmailTyped=(document.getElementById('loginRecoveryEmail')?.value||'').trim();
-    if(recEmailTyped&&!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(recEmailTyped)){
-      showAuthError('That email address does not look right. Fix it, or leave it empty.');
+    if(!recEmailTyped){
+      showAuthError('Add an email address. It is only used to send you a link if you forget your password.');
+      document.getElementById('loginRecoveryEmail')?.focus();
+      return;
+    }
+    if(!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(recEmailTyped)){
+      showAuthError('That email address does not look right. Check it and try again.');
       document.getElementById('loginRecoveryEmail')?.focus();
       return;
     }
@@ -12772,14 +12778,16 @@ async function handleEmailAuth(){
         return;
       }
       fluxShowPasswordKeepsafe(username);
-      /* The recovery email, if one was typed. Sent after the account exists
-         because the address is stored against the signed-in account; never
-         allowed to hold up or fail the sign-up itself. */
+      /* The recovery email. Sent after the account exists because the
+         address is stored against the signed-in account; never allowed to
+         hold up or fail the sign-up itself. If it does not save, the prompt
+         from FluxRecovery.promptIfMissing asks again on the next open. */
       const recEmail=(document.getElementById('loginRecoveryEmail')?.value||'').trim();
       if(recEmail&&window.FluxRecovery){
         window.FluxRecovery.setAfterSignup(recEmail,password).then(r=>{
           if(typeof showToast!=='function')return;
-          if(r&&r.ok)showToast('Check '+recEmail+' and click the link to confirm your recovery email.','info');
+          if(r&&r.ok&&r.sent)showToast('Check '+recEmail+' and click the link to confirm your recovery email.','info');
+          else if(r&&r.ok)return;
           else showToast('Your account is ready, but the recovery email was not saved. Add it in Settings, under Account.','warning');
         }).catch(()=>{});
       }
@@ -14218,6 +14226,9 @@ function syncTokenToExtension(){
 }
 
 async function handleSignedIn(user,session){
+  /* Every account needs a recovery email. Accounts made before it was
+     required are asked for one on their next open (flux-recovery.js). */
+  try{window.FluxRecovery&&window.FluxRecovery.promptIfMissing(user&&user.id);}catch(_){}
   if(currentUser&&currentUser.id===user.id){
     const ls=document.getElementById('loginScreen');
     if(ls){ls.style.display='none';ls.classList.remove('visible');}

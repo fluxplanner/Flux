@@ -320,8 +320,8 @@
               <div id="loginKeepsafe" class="lx-keepsafe" style="display:none" role="status">
                 <div class="lx-keepsafe-title">Write your password down somewhere safe</div>
                 <div class="lx-keepsafe-body">
-                  You sign in as <strong id="loginKeepsafeName"></strong>. Unless you add a recovery email and confirm it
-                  (Settings, under Account), there is no reset link — if you forget this password, you'll have to request a reset from this screen and wait.
+                  You sign in as <strong id="loginKeepsafeName"></strong>. If you forget this password, "Forgot your password?" sends a reset link to
+                  your email once you have clicked the confirmation link in it.
                 </div>
               </div>
               <!-- This row held a second "Name (optional)" box, left over from
@@ -337,11 +337,11 @@
                 <label class="lx-field" for="loginPassword2">Confirm password
                   <input type="password" id="loginPassword2" name="loginPassword2" autocomplete="new-password" placeholder="Type it again">
                 </label>
-                <!-- Optional, and not how you sign in. It is kept beside the
+                <!-- Required, but not how you sign in. It is kept beside the
                      account for one purpose: sending a link to set a new
                      password (flux-recovery.js). It counts only after the
                      person clicks the confirmation link sent to it. -->
-                <label class="lx-field" for="loginRecoveryEmail">Email (optional)
+                <label class="lx-field" for="loginRecoveryEmail">Email
                   <input type="email" id="loginRecoveryEmail" name="loginRecoveryEmail" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="Only used to reset your password">
                 </label>
                 <!-- Shown only while the owner has sign-ups set to invite code. -->
@@ -1626,8 +1626,8 @@
         <div class="lx-keepsafe" style="margin-bottom:14px">
           <div class="lx-keepsafe-title">Write it down somewhere safe</div>
           <div class="lx-keepsafe-body">
-            Unless you add a recovery email (Settings, under Account), there is no reset link. If you forget this,
-            you'll have to request a reset from the sign-in screen.
+            If you forget it, "Forgot your password?" on the sign-in screen sends a reset link
+            to your confirmed recovery email (Settings, under Account).
           </div>
         </div>
         <div class="mactions">
@@ -2656,7 +2656,7 @@
                  an account that has no recovery route. -->
             <div class="fx-pw" style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
               <div class="slabel" style="margin-bottom:2px">Change your password</div>
-              <div class="ssub" style="margin-bottom:10px">Pick something you'll remember. Write the new one down, or add a recovery email below.</div>
+              <div class="ssub" style="margin-bottom:10px">Pick something you'll remember. If you forget it, a reset link goes to your recovery email below.</div>
               <div class="fx-pw-row"><input type="password" id="pwCurrent" autocomplete="current-password" placeholder="Current password"></div>
               <div class="fx-pw-row"><input type="password" id="pwNew" autocomplete="new-password" placeholder="New password"></div>
               <div class="fx-pw-row"><input type="password" id="pwNew2" autocomplete="new-password" placeholder="Type the new one again"></div>
@@ -2675,7 +2675,6 @@
               <div class="fx-pw-row"><input type="password" id="recPassword" autocomplete="current-password" placeholder="Current password" aria-label="Current password"></div>
               <div id="recMsg" class="fx-pw-msg" role="status" aria-live="polite"></div>
               <button type="button" id="recSaveBtn" class="btn-sec" style="width:100%;margin-top:8px" onclick="FluxRecovery.save()">Save and send confirmation</button>
-              <button type="button" id="recRemoveBtn" class="btn-sec" style="width:100%;margin-top:8px" onclick="FluxRecovery.remove()" hidden>Remove email</button>
             </div>
           </div>
         </div>
@@ -3075,8 +3074,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.bf294322.js"></script>
-<script defer src="public/bundles/flux-core.46e7c219.js"></script>
-<script defer src="public/bundles/flux-features.252e6b76.js"></script>
+<script defer src="public/bundles/flux-core.08b379f4.js"></script>
+<script defer src="public/bundles/flux-features.c47e4278.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->

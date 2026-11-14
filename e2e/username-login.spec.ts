@@ -216,18 +216,17 @@ test.describe('Name + password sign-in', () => {
       if (!el) return null;
       return {
         display: getComputedStyle(el).display,
-        mentionsNoReset: /no reset link/i.test(el.textContent || ''),
-        saysHowToRecover: /request a reset/i.test(el.textContent || ''),
+        mentionsResetLink: /reset link/i.test(el.textContent || ''),
+        saysHowToRecover: /forgot your password/i.test(el.textContent || ''),
       };
     });
 
     expect(keepsafe, 'the keepsafe notice is missing').not.toBeNull();
     // Hidden on arrival — it is for the moment just after an account is made.
     expect(keepsafe!.display).toBe('none');
-    /* The whole reason the notice exists: without a confirmed recovery email
-       there is no reset link, so the copy has to say that, not just "keep it
-       safe". */
-    expect(keepsafe!.mentionsNoReset, 'the notice must explain there is no reset').toBe(true);
+    /* The notice has to say how a forgotten password comes back (a reset
+       link to the recovery email), not just "keep it safe". */
+    expect(keepsafe!.mentionsResetLink, 'the notice must mention the reset link').toBe(true);
     expect(keepsafe!.saysHowToRecover, 'the notice must say how to get back in').toBe(true);
   });
 

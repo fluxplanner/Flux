@@ -21,7 +21,7 @@ import {
  *   Signed in (the account always comes from the verified JWT, never the body):
  *     status        → { email, verified }
  *     set_email     → stores the address unconfirmed and emails a confirm link
- *     remove_email  → forgets the address
+ *     remove_email  → refused: every account must keep one (it can be changed)
  *   Signed out (the emailed token is the proof):
  *     verify_email  { token }            → confirms the address
  *     request_reset { username }         → emails a reset link, or tells the owner
@@ -293,18 +293,14 @@ Deno.serve(async (req) => {
     return json({ error: "That is not your current password.", code: "wrong_password" }, 403, origin);
   }
 
+  // Every account must keep a recovery email, so it can be changed but not removed.
   if (action === "remove_email") {
-    await sb.from("flux_recovery_tokens").delete().eq("user_id", userId);
-    await sb.from("flux_recovery_emails").delete().eq("user_id", userId);
-    return json({ ok: true, email: "", verified: false }, 200, origin);
+    return json({ error: "Every Flux account needs a recovery email. You can change it, but not remove it.", code: "required" }, 400, origin);
   }
 
   if (action === "set_email") {
     const email = cleanEmail(body.email);
     if (!email) return json({ error: "That does not look like an email address. Check it and try again." }, 400, origin);
-    if (!canSend()) {
-      return json({ error: "Flux cannot send email yet, so there is nothing to confirm that address with. Try again later.", code: "email_off" }, 503, origin);
-    }
     const { data: current } = await sb.from("flux_recovery_emails").select("email, verified_at").eq("user_id", userId).maybeSingle();
     if (current?.email === email && current.verified_at) {
       return json({ ok: true, email, verified: true }, 200, origin);
@@ -319,6 +315,9 @@ Deno.serve(async (req) => {
       console.error("account-recovery: save", error.message);
       return json({ error: "Could not save that address." }, 500, origin);
     }
+    // Until a sender is set up the address is kept unconfirmed; the Settings
+    // card sends the confirmation link once it can.
+    if (!canSend()) return json({ ok: true, email, verified: false, sent: false }, 200, origin);
     const token = await issueToken(sb, userId, "verify", email, VERIFY_HOURS * 60);
     const link = `${SITE_URL}index.html#flux-verify=${token}`;
     const { html, text } = emailBody(
