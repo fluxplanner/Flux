@@ -7,8 +7,8 @@
 <script src="public/js/flux-app-visibility.js?v=8ab1ae57" data-app="suite"></script>
 <script defer src="public/js/flux-site-notices.js?v=ba87f165"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Flux Suite — every Flux app</title>
-<meta name="description" content="Flux Suite: every Flux app in one place — the Flux Planner, Grapher, Periodic Table, Composer and Calculator. The tools are free and need no account.">
+<title>Flux Suite: every Flux app</title>
+<meta name="description" content="Flux Suite: every Flux app in one place. The Flux Planner, Grapher, Periodic Table, Composer and Calculator. The tools are free and need no account.">
 <meta name="theme-color" content="#070b14">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -193,6 +193,62 @@
   .top-ig:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
   .top-ig .ig-mark { width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,.18); }
   @media (max-width: 420px) { .top-ig .ig-follow { display: none; } }
+  .site-foot { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 18px; font-size: .85rem; }
+  .site-foot a { color: var(--muted2); text-decoration: none; }
+  .site-foot a:hover { color: var(--text); text-decoration: underline; }
+
+  /* ── Plain look (html[data-flux-look="flat"], public/js/flux-look.js) ─────
+     The gradients, glows, coloured shadows, rainbow icon tiles, lift-on-hover,
+     rise-in animation and the pulsing Instagram pill all read as AI-made.
+     Here: one flat background, one accent colour, thin borders, small
+     corners, and hover that only changes the border. Partner cards keep a
+     border in their own colour; Synara's violet is its brand. ?look=classic
+     still shows the old Suite exactly. */
+  html[data-flux-look="flat"] body { background: var(--bg); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  html[data-flux-look="flat"] body::after { content: none; }
+  html[data-flux-look="flat"] header.top { background: var(--bg); }
+  html[data-flux-look="flat"] .hero { text-align: left; margin-left: 0; max-width: 680px; }
+  html[data-flux-look="flat"] .hero h1 { font-size: clamp(1.8rem, 4.5vw, 2.5rem); font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
+  html[data-flux-look="flat"] .hero h1 span { background: none; color: inherit; -webkit-text-fill-color: currentColor; }
+  html[data-flux-look="flat"] .app,
+  html[data-flux-look="flat"] .app.app--feature {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: none; transform: none; transition: border-color .15s ease;
+  }
+  html[data-flux-look="flat"] .app:hover { transform: none; box-shadow: none; border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+  html[data-flux-look="flat"] .app:focus-visible { outline-color: var(--accent); }
+  html[data-flux-look="flat"] .app--synara::before,
+  html[data-flux-look="flat"] .app--aorta::before { content: none; }
+  html[data-flux-look="flat"] .app.app--synara { border-color: rgba(156,122,255,.4); }
+  html[data-flux-look="flat"] .app.app--synara:hover { border-color: rgba(156,122,255,.75); }
+  html[data-flux-look="flat"] .app.app--aorta { border-color: rgba(228,119,107,.4); }
+  html[data-flux-look="flat"] .app.app--aorta:hover { border-color: rgba(228,119,107,.75); }
+  html[data-flux-look="flat"] .app-icon {
+    width: 44px; height: 44px; border-radius: 8px; box-shadow: none;
+    color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+  html[data-flux-look="flat"] .app-icon svg { width: 22px; height: 22px; }
+  html[data-flux-look="flat"] .app.app--feature .app-icon { width: 52px; height: 52px; border-radius: 10px; }
+  html[data-flux-look="flat"] .app.app--feature .app-icon svg { width: 26px; height: 26px; }
+  html[data-flux-look="flat"] .app-icon--logo { color: #fff; background: #6d3fe0; }
+  html[data-flux-look="flat"] .app-icon--logo svg { width: 100%; height: 100%; }
+  html[data-flux-look="flat"] .app--aorta .app-icon--logo { background: #f5f5f2; box-shadow: none; }
+  html[data-flux-look="flat"] .app-name { font-weight: 650; }
+  html[data-flux-look="flat"] .go { color: var(--accent); font-weight: 600; }
+  html[data-flux-look="flat"] .app.app--feature .go { border-radius: 8px; padding: 10px 18px; color: #061020; background: var(--accent); }
+  html[data-flux-look="flat"] .app-partner { border-radius: 4px; font-weight: 700; letter-spacing: .04em; color: var(--muted2); background: none; border-color: var(--border2); }
+  html[data-flux-look="flat"] .hub-tab-n { padding: 0; background: none !important; color: var(--muted2); font-weight: 500; }
+  html[data-flux-look="flat"] .partners-strip { border-radius: 8px; }
+  html[data-flux-look="flat"] .partners-strip a { color: var(--accent); font-weight: 600; }
+  html[data-flux-look="flat"] .note { text-align: left; }
+  html[data-flux-look="flat"] :is(.hero, .hero h1, .apps > *, .note, .apps-grid > .app) { animation: none; }
+  html[data-flux-look="flat"] .top-ig {
+    height: 36px; padding: 0 12px 0 8px; gap: 6px; border-radius: 8px; font-weight: 600;
+    color: var(--muted2); background: none; border: 1px solid var(--border2); box-shadow: none; transition: color .15s ease, border-color .15s ease;
+  }
+  html[data-flux-look="flat"] .top-ig::after { content: none; }
+  html[data-flux-look="flat"] .top-ig:hover { transform: none; box-shadow: none; color: var(--text); border-color: var(--muted2); }
+  html[data-flux-look="flat"] .top-ig .ig-mark { width: 20px; height: 20px; background: none; }
 </style>
 <script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
 <script src="public/js/flux-purple-day.js?v=1966eb3d"></script>
@@ -210,7 +266,7 @@
   <main>
     <section class="hero">
       <h1>Every Flux app, <span style="white-space:nowrap">one tap away.</span></h1>
-      <p>The planner for your whole school life, and free study tools that open on any computer — no account needed.</p>
+      <p>The planner for your whole school life, plus free study tools that open on any computer. No account needed.</p>
     </section>
     <!-- Filled by flux-purple-day.js on March 26 only. -->
     <div class="pd-slot" data-purple-day-slot></div>
@@ -218,9 +274,15 @@
     <!-- Moved into the Partners tab by the script below. -->
     <aside class="partners-strip" id="partnersStrip" aria-label="Flux Partners" data-flux-app="synara">
       <p><strong>Flux Partners.</strong> Synara is built and hosted by Flux for the team behind it. Want Flux to build your organization’s app?</p>
-      <a href="partners.html">See Flux Partners →</a>
+      <a href="partners.html">See Flux Partners</a>
     </aside>
     <p class="note">Bookmark this page, or add it to your home screen, to get to every Flux app.</p>
+    <nav class="site-foot" aria-label="About Flux">
+      <a href="landing.html">About Flux</a>
+      <a href="partners.html">Partners</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+    </nav>
   </main>
 
 
@@ -271,7 +333,7 @@
         return '<a class="app app--' + esc(p.id) + '" href="' + esc(p.href) + '">'
           + '<div class="app-top">' + icon(p) + '<div>' + title(p) + '</div></div>'
           + '<p class="app-desc">' + esc(MORE[p.id] || p.tagline) + '</p>'
-          + '<div class="app-foot"><span class="go">Open →</span></div>'
+          + '<div class="app-foot"><span class="go">Open</span></div>'
           + '</a>';
       };
       /* The planner: one wide bar across the top, above the tabs. */
@@ -279,7 +341,7 @@
         return '<a class="app app--feature app--' + esc(p.id) + '" href="' + esc(p.href) + '">'
           + '<div class="app-head">' + icon(p) + '<div class="app-head-t">' + title(p) + '</div></div>'
           + '<div class="app-main"><p class="app-desc">' + esc(MORE[p.id] || p.tagline) + '</p></div>'
-          + '<span class="go">Open the planner →</span>'
+          + '<span class="go">Open the planner</span>'
           + '</a>';
       };
       var inGroup = function (id) { return list.filter(function (p) { return groupOf(p) === id; }); };
