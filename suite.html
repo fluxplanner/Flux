@@ -250,12 +250,11 @@
   html[data-flux-look="flat"] .top-ig:hover { transform: none; box-shadow: none; color: var(--text); border-color: var(--muted2); }
   html[data-flux-look="flat"] .top-ig .ig-mark { width: 20px; height: 20px; background: none; }
 
-  /* ── Colour and screenshots (plain look only) ───────────────────────────
+  /* ── Colour (plain look only) ───────────────────────────────────────────
      Each app wears one solid colour of its own: the icon tile, the hover
-     border and its Open link. The planner bar also shows a real screenshot
-     of the planner (public/suite/planner.jpg). No gradients or glows. The
-     classic look hides all of this. */
-  .app-shot, .quick { display: none; }
+     border and its Open link. No gradients or glows. The classic look hides
+     the quick links and keeps its own colours. */
+  .quick { display: none; }
   /* --app is set per card from COLOR in the script below. */
   html[data-flux-look="flat"] .app { overflow: hidden; }
   html[data-flux-look="flat"] .app:hover,
@@ -265,34 +264,6 @@
   html[data-flux-look="flat"] .app-icon:not(.app-icon--logo) { color: #0b0f17; background: var(--app); }
   html[data-flux-look="flat"] .go { color: var(--app); }
   html[data-flux-look="flat"] .app.app--feature .go { color: #061020; background: var(--app); }
-
-  html[data-flux-look="flat"] .app-shot {
-    display: flex; align-items: flex-end; margin: -20px -20px 2px; padding: 16px 16px 0;
-    aspect-ratio: 16 / 9; background: color-mix(in srgb, var(--app) 22%, var(--card));
-    border-bottom: 1px solid var(--border);
-  }
-  html[data-flux-look="flat"] .app-shot img {
-    display: block; width: 100%; height: 100%; object-fit: cover; object-position: left top;
-    border-radius: 6px 6px 0 0; border: 1px solid rgba(255,255,255,.12); border-bottom: 0;
-  }
-  [data-theme='light'] .app-shot img { border-color: rgba(0,0,0,.12); }
-  html[data-flux-look="flat"] .app.app--feature {
-    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-    grid-template-rows: auto auto 1fr; column-gap: 32px; row-gap: 14px; align-items: start; padding: 28px 0 0 28px;
-  }
-  html[data-flux-look="flat"] .app.app--feature :is(.app-head, .app-main, .go) { grid-column: 1; }
-  html[data-flux-look="flat"] .app.app--feature .go { justify-self: start; align-self: start; margin-bottom: 28px; }
-  html[data-flux-look="flat"] .app.app--feature .app-shot {
-    grid-column: 2; grid-row: 1 / span 3; align-self: stretch; margin: 0; padding: 0;
-    aspect-ratio: auto; min-height: 260px; border: 0; border-left: 0;
-    background: none;
-  }
-  html[data-flux-look="flat"] .app.app--feature .app-shot img { border-radius: 8px 0 0 0; border-right: 0; }
-  @media (max-width: 760px) {
-    html[data-flux-look="flat"] .app.app--feature { grid-template-columns: 1fr; padding: 20px 20px 0; }
-    html[data-flux-look="flat"] .app.app--feature .go { justify-self: stretch; margin-bottom: 4px; }
-    html[data-flux-look="flat"] .app.app--feature .app-shot { grid-column: 1; grid-row: auto; min-height: 0; aspect-ratio: 16 / 10; margin: 6px -20px 0 0; }
-  }
 
   /* Quick links under the headline: straight to any app. */
   html[data-flux-look="flat"] .quick { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 0; padding: 0; list-style: none; }
@@ -385,20 +356,13 @@
         var v = window.FluxAppVisibility;
         return !!(v && (v.isOwner() || v.hasGrant(p.id)) && v.hiddenIds().indexOf(p.id) >= 0);
       };
-      /* Plain look: each app's own colour, and a screenshot beside the
-         planner bar (public/suite/<id>.jpg). An app missing from SHOT just
-         has no picture. The study and partner cards have none. */
+      /* Plain look: each app's own colour. */
       var COLOR = {
         planner: '#00c2ff', teacher: '#818cf8', grapher: '#34d399', calculator: '#fbbf24',
         flashcards: '#f472b6', pixel: '#fb923c', periodic: '#2dd4bf', composer: '#c084fc',
         translate: '#f87171', owner: '#94a3b8', synara: '#9c7aff', aorta: '#e4776b',
       };
-      var SHOT = ['planner'];
       var tint = function (p) { return ' style="--app:' + (COLOR[p.id] || 'var(--accent)') + '"'; };
-      var shot = function (p) {
-        return SHOT.indexOf(p.id) < 0 ? ''
-          : '<span class="app-shot" aria-hidden="true"><img src="public/suite/' + esc(p.id) + '.jpg" alt="" width="880" height="550" loading="lazy" decoding="async"></span>';
-      };
       var title = function (p) {
         return '<div class="app-name">' + esc(p.name) + (p.partner ? '<span class="app-partner">Partner</span>' : '') + (isHiddenFromOthers(p) ? '<span class="app-partner">Hidden</span>' : '') + '</div><div class="app-tag">' + esc(p.tagline) + '</div>';
       };
@@ -415,7 +379,6 @@
           + '<div class="app-head">' + icon(p) + '<div class="app-head-t">' + title(p) + '</div></div>'
           + '<div class="app-main"><p class="app-desc">' + esc(MORE[p.id] || p.tagline) + '</p></div>'
           + '<span class="go">Open the planner</span>'
-          + shot(p)
           + '</a>';
       };
       var inGroup = function (id) { return list.filter(function (p) { return groupOf(p) === id; }); };
