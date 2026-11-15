@@ -194,8 +194,11 @@
 
 /* ── CONTENT SHELL ─────────────────────────────────────────────────────── */
 .fsh-stage { padding:8px 26px 40px; min-height:200px; }
-.fsh-panel { animation:fshFade .45s cubic-bezier(.2,.8,.2,1); }
-@keyframes fshFade { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+/* A short opacity-only fade. It used to slide the whole panel up 10px over
+   .45s, which on a big panel (the periodic table is ~1,000 elements) made
+   every subject-area switch feel slow to land. */
+.fsh-panel { animation:fshFade .15s ease-out; }
+@keyframes fshFade { from { opacity:0; } to { opacity:1; } }
 .fsh-section-head { display:flex; align-items:center; gap:12px; margin:18px 2px 14px; }
 .fsh-section-head .fsh-sh-ico { width:38px; height:38px; border-radius:12px; display:grid; place-items:center; font-size:19px; background:var(--fsh-glass); border:1px solid var(--fsh-line); box-shadow:var(--fsh-neu); }
 .fsh-section-head h2 { margin:0; font-size:18px; font-weight:680; letter-spacing:-.01em; }
