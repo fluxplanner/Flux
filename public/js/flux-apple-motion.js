@@ -327,6 +327,15 @@ function ensurePillFor(host, shape) {
 
 const _close = (a, b) => Math.abs(a - b) < 0.5;
 
+/* A strip inside the panel you just opened (Calendar's view switch, Settings'
+   tabs) has its highlight in the right place already; it only *looks* like it
+   needs to travel because the pill was last measured while the panel was
+   hidden. Gliding it there was a second of animation nobody asked for on
+   every tab switch, so for a moment after navigation pills are placed, not
+   tweened. A click on the strip itself still glides. */
+let _navAt = -1e9;
+const _justNavigated = () => performance.now() - _navAt < 600;
+
 function placePill(host, target, shape, opts) {
   if (!host || !target) return;
   const entry = ensurePillFor(host, shape);
@@ -370,7 +379,11 @@ function placePill(host, target, shape, opts) {
   // tween would be started, never advance, and strand the highlight on the
   // previous tab — the whole point of the phone-lock/app-switch case. Snap
   // instead, so the pill is already correct when the user looks again.
-  if (motionAllowed() && !document.hidden) {
+  // The sidebar and bottom-nav highlight ('rect') does not glide. It moves on
+  // every tab click, at the same moment the new panel is being built, and the
+  // tween resized the pill (width/height, so a layout) every frame of that
+  // busiest third of a second. The owner reported it as lag, so it jumps.
+  if (shape !== 'rect' && !_justNavigated() && motionAllowed() && !document.hidden) {
     try {
       // Cancel any in-flight animation on this pill so we don't stack tweens.
       if (entry.currentAnim?.pause) entry.currentAnim.pause();
@@ -506,7 +519,7 @@ function initPillMorph() {
   syncAllPills();
 
   // One coalesced sync per frame, regardless of how many triggers fire.
-  document.addEventListener('flux-nav', scheduleSyncAllPills);
+  document.addEventListener('flux-nav', () => { _navAt = performance.now(); scheduleSyncAllPills(); });
   document.addEventListener('flux-dash-board-rendered', scheduleSyncAllPills);
 
   /* Strips that are built after the navigation that revealed them.
@@ -616,58 +629,22 @@ function staggerPanelContent(panel) {
     el.style.removeProperty('opacity');
     el.style.removeProperty('transform');
   });
-  if (!els2.length) return;
-  motion(() => {
-    animate(els2, {
-      opacity: [0, 1],
-      translateY: [18, 0],
-      scale: [0.97, 1],
-      // 28ms x 42 cards (Settings) meant the last card landed ~1.6s after the
-      // click, which reads as lag rather than polish. Halved once, then tuned
-      // again: 6 cards x 10ms + 200ms lands the last one at ~250ms, in the same
-      // band as the login screen the owner points to as the target feel. The
-      // element list is capped above so a long panel cannot stretch the reveal.
-      delay: stagger(10, { from: 'first' }),
-      duration: 200,
-      ease: spring('smooth'),
-      // Clear inline styles so an interrupted tween can't leave the card
-      // stuck. Without this, switching panels mid-animation freezes the card
-      // at e.g. opacity 0.44, translateY 18px.
-      onComplete: () => {
-        els2.forEach((el) => {
-          el.style.removeProperty('opacity');
-          el.style.removeProperty('transform');
-        });
-      },
-    });
+  // No reveal tween. The cards used to fade and rise one after another on
+  // every tab switch (and again whenever a panel re-rendered). Each frame of
+  // that rewrote inline styles on six cards while the panel was still being
+  // built, which measured as roughly half of the work in a tab switch. The
+  // class is still set because flux-apple-motion-pro's scroll reveal skips
+  // cards that carry it.
+  els2.forEach((el) => {
+    el.style.removeProperty('opacity');
+    el.style.removeProperty('transform');
   });
 }
 
 function panelEnter(panel) {
+  // Panels appear in place: no fade, slide or scale. See staggerPanelContent.
   if (!panel) return;
-  motion(() => {
-    // Cancel any CSS animation collision — JS takes over
-    panel.style.animation = 'none';
-    animate(panel, {
-      // No `filter` here. Animating blur meant writing style.filter on the
-      // panel every frame for 460ms, and each write re-rasterizes the whole
-      // panel subtree — Settings alone is ~1,100 nodes. That was the stutter on
-      // every tab click. opacity/translateY/scale are composited, so the motion
-      // reads the same but costs the GPU almost nothing.
-      opacity: [0, 1],
-      translateY: [14, 0],
-      scale: [0.99, 1],
-      // 460ms was long enough to read as waiting. Study Tools feels instant
-      // because its subject swap is ~320ms on one small element; this brings the
-      // panel closer to that without losing the movement.
-      duration: 300,
-      ease: spring('smooth'),
-      onComplete: () => {
-        panel.style.animation = '';
-      },
-    });
-    staggerPanelContent(panel);
-  });
+  staggerPanelContent(panel);
 }
 
 function hideDashboardChromeForTransition(nextPanelId) {

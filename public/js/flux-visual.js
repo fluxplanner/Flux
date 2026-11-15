@@ -725,14 +725,6 @@
         const panelId = e.detail?.panel;
         if (panelId) syncToolsStill(panelId);
         if (panelId) setTimeout(() => initPanelStarField(panelId), 120);
-        if (panelId === 'dashboard' && typeof window.renderStats === 'function') {
-          setTimeout(() => {
-            document.querySelectorAll('#dashboard .stat .num, #dashMobStats .dash-mob-stat-num').forEach((el) => {
-              const t = el.textContent;
-              countUp(el, parseInt(t, 10) || 0, 700);
-            });
-          }, 80);
-        }
       },
       false
     );

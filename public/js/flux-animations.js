@@ -424,7 +424,13 @@ function initPanelScrollPathDraw(mainEl, panelId) {
     } else if (mainEl.scrollHeight > mainEl.clientHeight + 48) {
       scrollCtl = onScroll({ target: mainEl, container: mainEl, sync: true });
     }
-    const useLoop = scrollCtl === null;
+    const useLoop = false;
+    if (scrollCtl === null) {
+      // Nothing to scroll, so nothing to tie the drawing to. This used to
+      // fall back to an endless loop instead; see fluxAnimeNavAfter.
+      teardownScrollPathArt();
+      return;
+    }
     track(
       scrollArtRevertibles,
       animate(drawables, {
@@ -492,11 +498,12 @@ function teardownFluxAnimeApp() {
 }
 
 function fluxAnimeNavAfter(panelId) {
-  animateActivePanelCards();
-  try {
-    const main = document.getElementById('flux-main');
-    if (main) initPanelScrollPathDraw(main, panelId);
-  } catch (_) {}
+  // Tab switches are instant: no card cascade, and the decorative lines are
+  // only cleared here, never redrawn. Redrawing them started a tween on four
+  // full-width SVG paths that, on a panel too short to scroll, looped for
+  // ever, repainting the whole background 60 times a second at rest.
+  void panelId;
+  try { teardownScrollPathArt(); } catch (_) {}
 }
 
 /** Particle burst — uses utils.random from anime */

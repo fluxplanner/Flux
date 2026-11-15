@@ -642,3 +642,32 @@ html body::before,
 html body::after {
   animation: none !important;
 }
+
+/* The sidebar and bottom nav change instantly.
+   A tab click used to start five things on the nav at once: the highlight
+   gliding to the new item, its text fading colour for a third of a second,
+   the icon growing, an icon "pop", and a wiggle on hover. They all ran while
+   the new panel was being built, which is the one moment the browser has no
+   time to spare. The owner reported the switch as laggy, so none of them run:
+   the highlight, colour and icon are simply in their new state. */
+#sidebar .nav-item,
+#sidebar .nav-item .ni,
+#sidebar .nav-item .ni-svg-wrap,
+#sidebar .school-work-tab,
+.bottom-nav .bnav-item {
+  transition: none !important;
+  animation: none !important;
+}
+html.flux-apple-motion #sidebar .nav-item.active .ni {
+  transform: none;
+}
+
+/* A tab's content appears in place.
+   Five stylesheets each define an entry animation for .flux-panel-enter and
+   the script layer added a tween on top. All of it ran on the whole panel
+   while the panel was being built. nav() still sets the class (other code
+   watches for it); it just no longer moves anything. */
+html .panel.flux-panel-enter,
+html .main-content .panel.active {
+  animation: none !important;
+}
