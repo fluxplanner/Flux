@@ -138,6 +138,16 @@ html[data-flux-look="flat"] .fsh :is(.fsh-units, .fsh-group-row) > .fx-tab-line 
 html[data-flux-look="flat"] body .fsh :is(.fsh-units, .fsh-group-row):not(:has(> .fx-tab-line.is-on)) > :is(.active, [aria-selected="true"]):not(#fx-none) {
   box-shadow: inset 0 -2px 0 var(--fsh-accent, var(--accent)) !important;
 }
+/* The subject-area row is a tablist, so the underline rules above zero its
+   padding and it sat flush against the left edge. Line it up with the subject
+   row and the tools below it instead (26px, 16px on a phone). */
+html[data-flux-look="flat"] .fsh .fsh-group-row:not(#fx-none) { margin-left: 26px; margin-right: 26px; }
+@media (max-width: 768px) {
+  html[data-flux-look="flat"] .fsh .fsh-group-row:not(#fx-none) { margin-left: 16px; margin-right: 16px; }
+}
+/* The subject row keeps its sliding highlight, but that highlight is still a
+   999px pill while the subject buttons around it are 10px boxes. Match it. */
+html[data-flux-look="flat"] #fshRail > .flux-morph-pill { border-radius: 10px !important; }
 @media (prefers-reduced-motion: reduce) {
   html[data-flux-look="flat"] .fx-tab-line { transition: none; }
 }
