@@ -3929,10 +3929,6 @@ function nav(id,btn,navOpt){
   if(window.Flux100&&typeof Flux100.onNavAfter==='function')try{Flux100.onNavAfter(id);}catch(e){}
   if(typeof window.fluxAnimeNavAfter==='function'){try{window.fluxAnimeNavAfter(id);}catch(e){}}
   try{
-    const np=document.getElementById(id);
-    if(np&&window.FluxAnim?.panelFlash)FluxAnim.panelFlash(np);
-  }catch(e){}
-  try{
     if(window.FluxDebug&&FluxDebug.navEnd&&(FluxDebug.on('NAV')||FluxDebug.on())){
       const direct=[...document.querySelectorAll('.main-content > .panel.active')];
       const any=[...document.querySelectorAll('.panel.active')];
