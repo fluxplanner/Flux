@@ -383,19 +383,6 @@ body[data-flux-mesh='off']::before {
   z-index: 1;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  @keyframes star-twinkle {
-    from {
-      opacity: 0;
-      transform: scale(0.5);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-}
-
 #timer {
   background-image: radial-gradient(circle at 50% 35%, rgba(var(--accent-rgb), 0.08) 0%, transparent 40%),
     radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px);

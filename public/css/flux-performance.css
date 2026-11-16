@@ -27,9 +27,7 @@ html[data-flux-perf="on"] #fluxCursorAmbient{
   pointer-events:none!important;
 }
 html.flux-reduce-motion #cursorSpotlight,
-html[data-flux-perf="on"] #cursorSpotlight,
-html.flux-reduce-motion #fluxMeshCanvas,
-html[data-flux-perf="on"] #fluxMeshCanvas{
+html[data-flux-perf="on"] #cursorSpotlight{
   display:none!important;
   visibility:hidden!important;
   pointer-events:none!important;
