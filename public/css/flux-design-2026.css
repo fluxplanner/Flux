@@ -47,8 +47,6 @@ body:not([data-theme="light"]) #app {
     radial-gradient(1100px 620px at 88% -12%, rgba(var(--accent-rgb), .09), transparent 62%),
     radial-gradient(900px 560px at 8% 112%, color-mix(in oklab, var(--fx-accent-2) 22%, transparent), transparent 64%);
 }
-#fluxMeshCanvas { opacity: .32 !important; }
-body[data-theme="light"] #fluxMeshCanvas { opacity: .5 !important; }
 /* The drifting lines at the foot of each tab showed through the cards
    above them; they stay, but as a faint texture. */
 #app .panel .flux-dash-scroll-paths,

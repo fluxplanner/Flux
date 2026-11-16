@@ -37,7 +37,7 @@ html[data-flux-look="flat"] :is(#filterChips, .stabs, .ftt-nav, .flg-seg, .dash-
   width: auto !important;
   flex: 0 0 auto !important;
   font-weight: 500 !important;
-  color: var(--muted) !important;
+  color: var(--muted2, var(--muted)) !important; /* --muted is 4.1:1 on the page background, under the 4.5:1 minimum */
   box-shadow: none !important;
   text-shadow: none !important;
   transform: none !important;

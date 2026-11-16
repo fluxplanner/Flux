@@ -377,7 +377,7 @@ test.describe('Periodic table: nothing repaints the screen behind it', () => {
     expect(glow).toContain('radial-gradient');
   });
 
-  test('in the planner, the backdrop is small and Study tools runs no endless decorations', async ({ page }) => {
+  test('in the planner, Study tools runs no endless decorations', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoScenario(page, 'student-semester');
     await page.evaluate(() => (window as unknown as { nav: (t: string) => void }).nav('toolbox'));
@@ -385,16 +385,17 @@ test.describe('Periodic table: nothing repaints the screen behind it', () => {
     await expect(page.locator('.fsh-ptable-host .fpt-el')).toHaveCount(118);
     await page.waitForTimeout(600);
     const r = await page.evaluate(() => {
-      const c = document.getElementById('fluxMeshCanvas') as HTMLCanvasElement | null;
       const panel = document.getElementById('toolbox')!;
       const endless = document.getAnimations()
         .filter((a) => (a.effect as KeyframeEffect | null)?.target instanceof Element
           && panel.contains((a.effect as KeyframeEffect).target as Element)
           && a.effect!.getTiming().iterations === Infinity)
         .map((a) => (a as CSSAnimation).animationName || 'animation');
-      return { canvas: c ? c.width * c.height : 0, window: innerWidth * innerHeight, endless };
+      return { canvas: !!document.getElementById('fluxMeshCanvas'), endless };
     });
-    if (r.canvas) expect(r.canvas, 'the backdrop canvas is drawn at full size').toBeLessThanOrEqual(r.window / 8);
+    // The drifting backdrop canvas redrew the whole screen ten times a second
+    // and is gone for good.
+    expect(r.canvas, 'the animated backdrop canvas is back').toBe(false);
     expect(r.endless, 'endless animations behind the table').toEqual([]);
   });
 
@@ -406,42 +407,28 @@ test.describe('Periodic table: nothing repaints the screen behind it', () => {
     expect(filter).toBe('none');
   });
 
-  test('Study tools holds the background still, and it moves again after', async ({ page }) => {
+  test('Study tools holds the background still, and lets go after', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    // Count what the backdrop canvas draws.
-    await page.addInitScript(() => {
-      const fill = CanvasRenderingContext2D.prototype.fillRect;
-      (window as any).__meshDraws = 0;
-      CanvasRenderingContext2D.prototype.fillRect = function (x: number, y: number, w: number, h: number) {
-        if (this.canvas && this.canvas.id === 'fluxMeshCanvas') (window as any).__meshDraws++;
-        return fill.call(this, x, y, w, h);
-      };
-    });
     await gotoScenario(page, 'student-semester');
     const nav = (t: string) => page.evaluate((x) => (window as unknown as { nav: (t: string) => void }).nav(x), t);
     const watch = () => page.evaluate(async () => {
-      const w = window as any;
-      const before = w.__meshDraws;
       await new Promise((r) => setTimeout(r, 700));
       const running = document.getAnimations()
         .filter((a) => a.playState === 'running' && a.effect!.getTiming().iterations === Infinity)
         .map((a) => (a as CSSAnimation).animationName || 'animation');
-      return { still: document.documentElement.classList.contains('flux-tools-still'), draws: w.__meshDraws - before, running };
+      return { still: document.documentElement.classList.contains('flux-tools-still'), running };
     });
-    const hasCanvas = async () => (await page.locator('#fluxMeshCanvas').count()) > 0;
 
     await nav('toolbox');
     await page.evaluate(() => (window as any).fluxStudyHub.selectSubject('chemistry'));
     await expect(page.locator('.fsh-ptable-host .fpt-el')).toHaveCount(118);
     const inTools = await watch();
     expect(inTools.still).toBe(true);
-    expect(inTools.draws, 'the backdrop redrawn behind the table').toBe(0);
     expect(inTools.running, 'endless animations anywhere on the screen').toEqual([]);
 
     await nav('dashboard');
     const after = await watch();
     expect(after.still).toBe(false);
-    if (await hasCanvas()) expect(after.draws, 'the backdrop drifts again').toBeGreaterThan(0);
   });
 
   test('picking an element, or moving the temperature, touches only the cells that change', async ({ page }) => {
