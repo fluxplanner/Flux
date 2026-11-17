@@ -165,10 +165,22 @@
   // Opening a link in a new tab leaves this page open: put the menu away.
   document.addEventListener('visibilitychange', function () { if (document.hidden) closeMenu(false); });
 
+  /* The planner has two hosts (desktop top bar, phone avatar row) and shows
+     one at a time: mount only the one on screen, and look again when the
+     window is resized across the breakpoint. */
   function mountAll() {
     var hosts = document.querySelectorAll('[data-flux-hub]');
-    for (var i = 0; i < hosts.length; i++) mount(hosts[i]);
+    for (var i = 0; i < hosts.length; i++) {
+      var shown = true;
+      try { shown = getComputedStyle(hosts[i]).display !== 'none'; } catch (e) { /* no layout yet */ }
+      if (shown) mount(hosts[i]);
+    }
   }
+  var resizeTimer = 0;
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(mountAll, 200);
+  });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', mountAll);

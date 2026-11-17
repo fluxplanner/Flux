@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <script src="public/js/flux-frame-guard.js?v=9afa87b3"></script>
-<script src="public/js/flux-look.js?v=4da4941b"></script>
+<script src="public/js/flux-look.js?v=81a3e0d1"></script>
 <script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
 <script src="public/js/flux-app-visibility.js?v=ade4d827"></script>
 <script defer src="public/js/flux-site-notices.js?v=5e36c924"></script>
@@ -15,9 +15,9 @@
 <style>
 /* Hide main shell until JS adds .visible — must beat layout media queries; also covers first paint before CSS loads */
 #app{display:none!important}
-#app.visible{display:flex!important;min-height:100vh}
+#app.visible{display:flex!important;min-height:100vh;min-height:100dvh}
 @media(max-width:768px){
-  #app.visible{display:block!important;min-height:100vh!important}
+  #app.visible{display:block!important;min-height:100vh!important;min-height:100dvh!important}
 }
 </style>
 <script>
@@ -122,7 +122,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.42dbfaf2.css">
+<link rel="stylesheet" href="public/bundles/flux.a3c59c18.css">
 <!-- Scroll story on the sign-in screen (kept out of the bundle: landing pages load it too). -->
 <link rel="stylesheet" href="public/css/flux-scroll-story.css?v=cb163716">
 </head>
@@ -139,56 +139,9 @@
 <!-- Built dynamically by splash.js, just needs the container -->
 <div id="splash" style="display:none"></div>
 
-<!-- ══ ROLE SELECT SCREEN (legacy — never shown pre-login now) ══ -->
-<!-- Kept in DOM so any deep-links / legacy onclick="selectRole(...)" still resolve. -->
-<div id="roleSelectScreen" style="display:none !important" aria-hidden="true">
-  <div class="role-select-bg" aria-hidden="true"></div>
-  <div class="role-select-wrap">
-    <div class="role-select-logo">
-      <svg width="48" height="28" viewBox="0 0 60 32" fill="none" aria-hidden="true">
-        <path d="M30,16 C32,5 46,5 46,16 C46,27 32,27 30,16 C28,27 14,27 14,16 C14,5 28,5 30,16 Z"
-          fill="none" stroke="url(#rsg)" stroke-width="3.5" stroke-linecap="round"/>
-        <circle cx="30" cy="16" r="2.5" fill="#00bfff"/>
-        <defs>
-          <linearGradient id="rsg" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stop-color="#00bfff" stop-opacity="0"/>
-            <stop offset="25%" stop-color="#00bfff"/>
-            <stop offset="75%" stop-color="#7c5cff"/>
-            <stop offset="100%" stop-color="#7c5cff" stop-opacity="0"/>
-          </linearGradient>
-        </defs>
-      </svg>
-      <span class="role-logo-text">Flux Planner</span>
-    </div>
-
-    <h1 class="role-select-heading">I am a…</h1>
-    <p class="role-select-sub">Choose your role to get started</p>
-
-    <div class="role-cards">
-      <button type="button" class="role-card" onclick="selectRole('student')" aria-label="Student account">
-        <div class="role-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2 M8 21v-5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v5 M8 10h8"/></svg></div>
-        <div class="role-card-title">Student</div>
-        <div class="role-card-desc">Manage assignments, study plans, and connect with your teachers and counselor.</div>
-        <div class="role-card-arrow" aria-hidden="true">→</div>
-      </button>
-
-      <button type="button" class="role-card role-card-staff" onclick="selectRole('staff')" aria-label="Staff account">
-        <div class="role-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 22h20 M6 22V10l6-6 6 6v12 M10 22v-5h4v5 M12 9h.01"/></svg></div>
-        <div class="role-card-title">Staff</div>
-        <div class="role-card-desc" data-copy-no-student-links="Your classes bell by bell, classroom tools, messages with colleagues and a planner of your own.">Post assignments, view student progress, and communicate with your class.</div>
-        <div class="role-card-arrow" aria-hidden="true">→</div>
-        <div class="role-card-subroles">
-          <span>Teacher</span><span>Counselor</span><span>Admin</span>
-        </div>
-      </button>
-    </div>
-
-    <div class="role-already-have">
-      Already have an account?
-      <span class="role-login-link" onclick="showLoginScreen()" role="button" tabindex="0">Sign in</span>
-    </div>
-  </div>
-</div>
+<!-- #roleSelectScreen (the pre-2026 role picker) was removed: unreachable since the
+     login split, and every script that looked it up already checks for null.
+     window.selectRole still exists and opens the login screen. -->
 
 <!-- ══ LOGIN SCREEN ══ -->
 
@@ -3078,7 +3031,7 @@
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.7eadd903.js"></script>
 <script defer src="public/bundles/flux-core.8055abb2.js"></script>
-<script defer src="public/bundles/flux-features.11dd73ce.js"></script>
+<script defer src="public/bundles/flux-features.79da825b.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->

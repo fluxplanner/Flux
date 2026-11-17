@@ -56,9 +56,9 @@
 
 /* A second planner mount sits beside the avatar on phones, where the desktop
    top-bar cluster is hidden. */
-.fxhub.topbar-mob-hub { display: none; }
+.fxhub.topbar-mob-hub, [data-flux-hub].topbar-mob-hub { display: none; }
 @media (max-width: 768px) {
-  .fxhub.topbar-mob-hub { display: inline-flex; }
+  .fxhub.topbar-mob-hub, [data-flux-hub].topbar-mob-hub { display: inline-flex; }
   .topbar-mob-hub .fxhub-btn-label { display: none; }
   .topbar-mob-hub .fxhub-btn { padding: 8px 9px; }
 }
