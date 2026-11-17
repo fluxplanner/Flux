@@ -138,6 +138,16 @@ window.FluxProducts = {
       "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M3 9h18M3 15h18M9 3v18M15 3v18\"/></svg>"
     },
     {
+      "id": "cite",
+      "group": "writing",
+      "name": "Flux Cite",
+      "tagline": "MLA, APA, Chicago and Harvard",
+      "blurb": "Citations for websites, books and journal articles in MLA 9, APA 7, Chicago and Harvard, with the in-text citation, a bibliography kept in alphabetical order, and BibTeX or text export. Nothing leaves your device.",
+      "href": "cite.html",
+      "free": true,
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M7 7h4v6H5V9a2 2 0 0 1 2-2Z\"/><path d=\"M15 7h4v6h-6V9a2 2 0 0 1 2-2Z\"/><path d=\"M5 13c0 2.5 1 4 3 5M13 13c0 2.5 1 4 3 5\"/></svg>"
+    },
+    {
       "id": "units",
       "group": "science",
       "name": "Flux Units",
@@ -148,14 +158,14 @@ window.FluxProducts = {
       "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 7h18M3 17h18\"/><path d=\"m7 3-4 4 4 4M17 13l4 4-4 4\"/></svg>"
     },
     {
-      "id": "cite",
-      "group": "writing",
-      "name": "Flux Cite",
-      "tagline": "MLA, APA, Chicago and Harvard",
-      "blurb": "Citations for websites, books and journal articles in MLA 9, APA 7, Chicago and Harvard, with the in-text citation, a bibliography kept in alphabetical order, and BibTeX or text export. Nothing leaves your device.",
-      "href": "cite.html",
+      "id": "balance",
+      "group": "science",
+      "name": "Flux Balance",
+      "tagline": "Balance equations, molar mass, yield",
+      "blurb": "Balance any equation exactly, ions and electrons included, with the atom count checked on both sides; molar mass with hydrates and brackets; empirical and molecular formulas with every step; and the limiting reagent with the theoretical yield.",
+      "href": "balance.html",
       "free": true,
-      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M7 7h4v6H5V9a2 2 0 0 1 2-2Z\"/><path d=\"M15 7h4v6h-6V9a2 2 0 0 1 2-2Z\"/><path d=\"M5 13c0 2.5 1 4 3 5M13 13c0 2.5 1 4 3 5\"/></svg>"
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 3v18M5 21h14\"/><path d=\"M5 7h14\"/><path d=\"m5 7-3 7a3 3 0 0 0 6 0Z\"/><path d=\"m19 7-3 7a3 3 0 0 0 6 0Z\"/></svg>"
     },
     {
       "id": "synara",

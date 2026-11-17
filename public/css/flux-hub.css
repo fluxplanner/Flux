@@ -121,6 +121,7 @@
 .app--paper { --c1: #6ee7b7; --c2: #22d3ee; }
 .app--units { --c1: #7dd3fc; --c2: #818cf8; }
 .app--cite { --c1: #fde68a; --c2: #f59e0b; }
+.app--balance { --c1: #a7f3d0; --c2: #34d399; }
 .app--owner { --c1: #fca5a5; --c2: #a78bfa; }
 .hub-tab--owner[aria-selected="true"] { color: #fff; background: linear-gradient(135deg, #fca5a5, #a78bfa); }
 
