@@ -138,6 +138,16 @@ window.FluxProducts = {
       "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M3 9h18M3 15h18M9 3v18M15 3v18\"/></svg>"
     },
     {
+      "id": "units",
+      "group": "science",
+      "name": "Flux Units",
+      "tagline": "Conversions with the working shown",
+      "blurb": "Convert length, mass, volume, time, speed, area, energy, pressure and temperature with the factors written out, keep the right significant figures, and practise with a quick units quiz.",
+      "href": "units.html",
+      "free": true,
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 7h18M3 17h18\"/><path d=\"m7 3-4 4 4 4M17 13l4 4-4 4\"/></svg>"
+    },
+    {
       "id": "synara",
       "group": "partner",
       "name": "Synara",
