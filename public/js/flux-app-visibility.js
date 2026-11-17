@@ -262,7 +262,10 @@
      the first visit on this device, or the last answer said hidden. Asking
      rather than trusting that answer means nobody is bounced once it is shown again.
      Everyone else opens at once and is re-checked behind the scenes. */
-  var mustAsk = declaresPage && !isOwner() && (!known || (pageApp && isHidden(pageApp)));
+  /* A page whose app can never be hidden (the Suite directory) has nothing to
+     wait for: asking would only blank it. data-no-hold says so. */
+  var holdsPage = declaresPage && !(script && script.hasAttribute('data-no-hold'));
+  var mustAsk = holdsPage && !isOwner() && (!known || (pageApp && isHidden(pageApp)));
   var timer = 0;
   if (mustAsk) {
     hold();

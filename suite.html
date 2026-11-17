@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <script src="public/js/flux-look.js?v=4da4941b"></script>
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
-<script src="public/js/flux-app-visibility.js?v=8ab1ae57" data-app="suite"></script>
+<script src="public/js/flux-app-visibility.js?v=9cb46a64" data-app="suite" data-no-hold></script>
 <script defer src="public/js/flux-site-notices.js?v=ba87f165"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flux Suite — every Flux app</title>
@@ -231,8 +231,9 @@
     <!-- Filled by flux-purple-day.js on March 26 only. -->
     <div class="pd-slot" data-purple-day-slot></div>
     <div class="apps" id="apps" aria-label="Flux apps"></div>
-    <!-- Moved into the Partners tab by the script below. -->
-    <aside class="partners-strip" id="partnersStrip" aria-label="Flux Partners" data-flux-app="synara">
+    <!-- Moved into the Partners tab by the script below, or left here under the
+         grid when there is no Partners tab. -->
+    <aside class="partners-strip" id="partnersStrip" aria-label="Flux Partners">
       <p><strong>Flux Partners.</strong> Synara is built and hosted by Flux for the team behind it. Want Flux to build your organization’s app?</p>
       <a href="partners.html">See Flux Partners →</a>
     </aside>
@@ -302,11 +303,27 @@
       var inGroup = function (id) { return list.filter(function (p) { return groupOf(p) === id; }); };
       /* Held before the first render: redrawing the tabs would otherwise lose it. */
       var strip = document.getElementById('partnersStrip');
+      var lastSig = '';
       var render = function () {
+        /* suite.html#partners (or any group id) opens on that tab; read before
+           the early return so a redraw keeps the tab the reader is on. */
+        var want = (location.hash || '').replace(/^#/, '');
+        /* Redraw only when the visible set changed: every redraw replays the
+           rise-in animation on every card. */
+        var sig = window.FluxHub.visibleProducts().map(function (p) { return p.id; }).join();
+        if (sig === lastSig) return;
+        lastSig = sig;
         list = window.FluxHub.visibleProducts();
         var tabbed = groups.filter(function (g) { return g.id !== 'planner' && inGroup(g.id).length; });
-        /* suite.html#partners (or any group id) opens on that tab. */
-        var want = (location.hash || '').replace(/^#/, '');
+        /* Nothing to tab between: draw one plain grid instead of an empty tablist. */
+        if (!tabbed.length) {
+          host.innerHTML = inGroup('planner').map(bar).join('')
+            + '<div class="apps-grid">'
+            + list.filter(function (p) { return groupOf(p) !== 'planner'; }).map(card).join('')
+            + '</div>';
+          if (strip) host.parentNode.insertBefore(strip, host.nextSibling);
+          return;
+        }
         if (want === 'partners') want = 'partner';
         var active = tabbed.some(function (g) { return g.id === want; }) ? want : (tabbed[0] && tabbed[0].id);
 
@@ -323,8 +340,13 @@
               + inGroup(g.id).map(card).join('') + '</div>';
           }).join('');
 
+        /* Into the Partners tab when there is one. Otherwise it sits under the grid:
+           the strip is hoisted out of #apps so a redraw cannot take it with it. */
         var partnerPanel = document.getElementById('apps-partner');
-        if (strip && partnerPanel) partnerPanel.appendChild(strip);
+        if (strip) {
+          if (partnerPanel) partnerPanel.appendChild(strip);
+          else host.parentNode.insertBefore(strip, host.nextSibling);
+        }
 
         var tabs = [].slice.call(host.querySelectorAll('.hub-tab'));
         var select = function (tab, focus) {
