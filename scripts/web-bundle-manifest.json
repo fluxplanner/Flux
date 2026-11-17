@@ -231,6 +231,7 @@
     "public/js/flux-study-rhetoric.js",
     "public/js/flux-study-literature.js",
     "public/js/flux-study-history.js",
+    "public/js/flux-study-history-map.js",
     "public/js/flux-study-civics.js",
     "public/js/flux-study-psych.js",
     "public/js/flux-study-art.js",
