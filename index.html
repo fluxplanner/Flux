@@ -121,7 +121,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.b68570ce.css">
+<link rel="stylesheet" href="public/bundles/flux.d368d6e7.css">
 <!-- Scroll story on the sign-in screen (kept out of the bundle: landing pages load it too). -->
 <link rel="stylesheet" href="public/css/flux-scroll-story.css?v=cb163716">
 </head>
@@ -2611,16 +2611,6 @@
           </select>
           <script>(function(){var s=document.getElementById('fluxLookSelect');if(s&&window.FluxLook)s.value=FluxLook.get();})();</script>
         </div>
-        <div class="card" id="fluxFontCard">
-          <h3>Font</h3>
-          <p style="font-size:.75rem;color:var(--muted2);margin:0 0 12px;line-height:1.55">Changes the lettering across Flux. Synced to your other devices.</p>
-          <select id="fluxFontSelect" aria-label="Font" onchange="window.fluxSetFont&&fluxSetFont(this.value)"></select>
-        </div>
-        <div class="card" id="fluxTextureCard">
-          <h3>Background texture</h3>
-          <p style="font-size:.75rem;color:var(--muted2);margin:0 0 12px;line-height:1.55">A textured backdrop behind your cards. It is tinted to your theme so text stays easy to read.</p>
-          <div class="fx-tex-grid" id="fluxTextureGrid" role="group" aria-label="Background texture"></div>
-        </div>
         <div class="card">
           <h3>Panel layout</h3>
           <p style="font-size:.75rem;color:var(--muted2);margin:0 0 12px;line-height:1.55">Reorder major blocks on the <strong>Dashboard</strong> and <strong>Calendar</strong>. Preference is saved on this device.</p>
@@ -3077,7 +3067,7 @@
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.23f0b5fe.js"></script>
 <script defer src="public/bundles/flux-core.5a37131c.js"></script>
-<script defer src="public/bundles/flux-features.a47c831b.js"></script>
+<script defer src="public/bundles/flux-features.818b30bb.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->

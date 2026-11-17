@@ -419,6 +419,8 @@
 .t84k-lab { display: flex; justify-content: space-between; align-items: flex-end; height: 2.9cqw; padding: 0 .6cqw; font-size: 2.35cqw; font-weight: 700; line-height: 1; white-space: nowrap; }
 .t84k-sec { color: var(--t84-sec); }
 .t84k-al { color: var(--t84-al); }
+/* The top keys carry two labels each (stat plot / f1 frac): stack them so neither runs into its neighbour. */
+.t84-row--top .t84k-lab { flex-direction: column; align-items: center; justify-content: flex-end; gap: .4cqw; height: 5.4cqw; }
 .t84.is-second .t84k-sec { color: #bfe0ff; text-shadow: 0 0 6px rgba(108, 184, 255, .8); }
 .t84.is-alpha .t84k-al { color: #d2ffd2; text-shadow: 0 0 6px rgba(127, 217, 127, .8); }
 
