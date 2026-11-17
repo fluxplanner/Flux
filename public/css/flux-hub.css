@@ -109,3 +109,22 @@
 .fxhub-split { margin-top: 4px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, .1); color: #7fe3ff; }
 .fxhub-all { color: #9fb0cc; font-weight: 600; }
 @media (max-width: 768px) { .topbar-mob-hub .fxhub-more { width: 34px; height: 34px; } }
+
+/* ── Suite card colours ──
+   A new PRODUCTS entry needs a --c1/--c2 pair here, a blurb, and a static
+   card. Miss one and the card falls back to the default blue with no error.
+   suite.html carries the cards' layout; the pairs live here so every page
+   that draws a product tile agrees on its colour. */
+.app--translate { --c1: #86efac; --c2: #22d3ee; }
+.app--owner { --c1: #fca5a5; --c2: #a78bfa; }
+.hub-tab--owner[aria-selected="true"] { color: #fff; background: linear-gradient(135deg, #fca5a5, #a78bfa); }
+
+/* ── Product marks in the switcher ──
+   Synara's violet tile is a CSS gradient rather than an SVG <linearGradient>:
+   the planner mounts this menu's host twice, and a gradient defined inside a
+   hidden SVG draws nothing where it is referenced from elsewhere. */
+.fxhub-item-mark { flex: none; width: 22px; height: 22px; align-items: center; justify-content: center; }
+.fxhub-item-mark svg, .fxhub-item-mark img { width: 18px; height: 18px; display: block; }
+.fxhub-item--synara .fxhub-item-mark { padding: 2px; border-radius: 6px; color: #fff; background: linear-gradient(135deg, #9c7aff, #5926d4); }
+.fxhub-item--aorta .fxhub-item-mark { overflow: hidden; border-radius: 6px; background: #f5f5f2; }
+.fxhub-item--aorta .fxhub-item-mark img { width: 22px; height: 22px; object-fit: cover; }

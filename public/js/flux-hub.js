@@ -230,9 +230,11 @@
     var newTab = !installed();
     var rows = visibleProducts().map(function (p) {
       var here = p.id === current;
-      return '<div class="fxhub-row">'
-        + '<a class="fxhub-item" role="menuitem" href="' + esc(p.href) + '"' + (here ? ' aria-current="page"' : '') + '>'
-        + '<span class="fxhub-item-mark" aria-hidden="true">' + p.mark + '</span>'
+      /* A product's own logo where it has one (Synara, Aorta), and a class per
+         product so its tile can be framed in its own colours. */
+      return '<div class="fxhub-row fxhub-row--' + esc(p.id) + '">'
+        + '<a class="fxhub-item fxhub-item--' + esc(p.id) + '" role="menuitem" href="' + esc(p.href) + '"' + (here ? ' aria-current="page"' : '') + '>'
+        + '<span class="fxhub-item-mark" aria-hidden="true">' + (p.logo || p.mark) + '</span>'
         + '<span class="fxhub-item-name">' + esc(p.name) + '</span></a>'
         + (newTab ? '<a class="fxhub-newtab" role="menuitem" href="' + esc(p.href) + '" target="_blank" rel="noopener" aria-label="Open ' + esc(p.name) + ' in a new tab" title="Open in new tab">' + NEWTAB_SVG + '</a>' : '')
         + '</div>';
@@ -315,12 +317,20 @@
         || window.navigator.standalone === true;
     } catch (e) { return false; }
   }
+  /* Other ways of linking to an app, beyond <id>.html. Shared in spirit with
+     flux-app-visibility.js's ALSO; keep the two in step. */
+  var ALIAS = { grapher: ['graph/'], synara: ['synara-welcome.html'], aorta: ['aorta-tracker.html'] };
   function isFluxPage(href) {
     try {
       var u = new URL(href, location.href);
       if (u.origin !== location.origin) return false;
-      var path = u.pathname.replace(/\.html$/, '');
-      return PRODUCTS.some(function (p) { var n = '/' + p.href.replace(/\.html$/, ''); return path.slice(-n.length) === n; });
+      var path = u.pathname.replace(/\.html$/, '').replace(/\/$/, '');
+      return PRODUCTS.some(function (p) {
+        return [p.href].concat(ALIAS[p.id] || []).some(function (n) {
+          var t = '/' + n.replace(/\/$/, '').replace(/\.html$/, '');
+          return path.slice(-t.length) === t;
+        });
+      });
     } catch (e) { return false; }
   }
   function openPage(href) {

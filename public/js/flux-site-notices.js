@@ -28,6 +28,9 @@
   var SESSION_KEY = 'sb-lfigdijuqmbensebnevo-auth-token';
   var OWNER_UID = 'eabe2b1f-e428-4181-8530-8e5366eb3975';
   var CLOSED_KEY = 'flux_closed_announcements_v1';
+  /* Announcements this device has already counted as read. In memory alone,
+     every reload posted the read again and the owner's counts meant nothing. */
+  var SEEN_KEY = 'flux_seen_announcements_v1';
   var REFRESH_MS = 2 * 60 * 1000;
 
   var host = location.hostname;
@@ -226,12 +229,12 @@
   /* ---------- Announcements ---------- */
 
   function closedIds() { var c = readJSON(CLOSED_KEY); return Array.isArray(c) ? c : []; }
-  var _counted = {};
-
   function markSeen(id) {
     var s = session();
-    if (!s.access_token || !s.user || _counted[id]) return;
-    _counted[id] = true;
+    if (!s.access_token || !s.user) return;
+    var seen = readJSON(SEEN_KEY);
+    if (Array.isArray(seen) && seen.indexOf(id) >= 0) return;
+    try { localStorage.setItem(SEEN_KEY, JSON.stringify((Array.isArray(seen) ? seen : []).concat(id).slice(-200))); } catch (e) { /* storage blocked */ }
     fetch(SB_URL + '/rest/v1/rpc/flux_mark_announcement_read', {
       method: 'POST',
       headers: { apikey: SB_ANON, Authorization: 'Bearer ' + s.access_token, 'Content-Type': 'application/json' },
@@ -241,12 +244,20 @@
 
   function applyAnnouncements(rows) {
     var s = stack();
-    Array.prototype.forEach.call(s.querySelectorAll('[data-notice^="ann-"]'), function (n) { n.remove(); });
     var closed = closedIds();
-    rows.filter(function (a) {
+    var shown = rows.filter(function (a) {
       return (!a.app || a.app === APP) && (a.level === 'urgent' || closed.indexOf(a.id) < 0);
-    }).slice(0, 3).forEach(function (a) {
-      s.appendChild(banner('ann-' + a.id, a.level, a.title, a.body, a.level === 'urgent' ? null : function () {
+    }).slice(0, 3);
+    var keep = shown.map(function (a) { return 'ann-' + a.id; });
+    /* Only banners no longer wanted go: urgent banners cannot be dismissed, so
+       removing and re-adding them every two minutes read as a flicker. */
+    Array.prototype.forEach.call(s.querySelectorAll('[data-notice^="ann-"]'), function (n) {
+      if (keep.indexOf(n.getAttribute('data-notice')) < 0) n.remove();
+    });
+    shown.forEach(function (a) {
+      var noticeId = 'ann-' + a.id;
+      if (s.querySelector('[data-notice="' + noticeId + '"]')) return;
+      s.appendChild(banner(noticeId, a.level, a.title, a.body, a.level === 'urgent' ? null : function () {
         var c = closedIds();
         c.push(a.id);
         try { localStorage.setItem(CLOSED_KEY, JSON.stringify(c.slice(-200))); } catch (e) { /* storage blocked */ }

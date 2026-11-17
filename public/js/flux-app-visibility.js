@@ -36,7 +36,8 @@
    answer cannot be fetched, the cached grants for that same account are used.
 
    ONE DELIBERATE EXCEPTION
-   A device with Synara medicines or seizures saved on it keeps Synara. That
+   A device with Synara medicines or seizures saved on it keeps Synara, and one
+   with Aorta readings or medicines keeps Aorta. That
    person already uses it, so there is no secret to keep from them, and locking
    them out of their emergency card could hurt someone.
    ========================================================================== */
@@ -124,10 +125,21 @@
     return can('apps:all') || can('app:' + id);
   }
 
+  /* Synara has the emergency card; Aorta has a family's logged readings and
+     medicines (aorta_bp_v1, one entry per person in `people`). A device that
+     already holds either keeps the app. */
   function hasOwnRecords(id) {
-    if (id !== 'synara') return false;
-    var d = readJSON('synara.v2');
-    return !!(d && ((d.meds && d.meds.length) || (d.seizures && d.seizures.length)));
+    if (id === 'synara') {
+      var d = readJSON('synara.v2');
+      return !!(d && ((d.meds && d.meds.length) || (d.seizures && d.seizures.length)));
+    }
+    if (id === 'aorta') {
+      var a = readJSON('aorta_bp_v1');
+      return !!(a && Array.isArray(a.people) && a.people.some(function (p) {
+        return p && ((p.readings && p.readings.length) || (p.meds && p.meds.length));
+      }));
+    }
+    return false;
   }
 
   /** Hidden from the person looking at this page? */
