@@ -44,10 +44,10 @@
 (function () {
   'use strict';
 
-  var SB_URL = 'https://lfigdijuqmbensebnevo.supabase.co';
-  var SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaWdkaWp1cW1iZW5zZWJuZXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjEzMDgsImV4cCI6MjA4ODkzNzMwOH0.qG1d9DLKrs0qqLgAp-6UGdaU7xWvlg2sWq-oD-y2kVo';
-  var SESSION_KEY = 'sb-lfigdijuqmbensebnevo-auth-token';
-  var OWNER_UID = 'eabe2b1f-e428-4181-8530-8e5366eb3975';
+  var SB_URL = window.FluxSB.url;
+  var SB_ANON = window.FluxSB.anon;
+  var SESSION_KEY = window.FluxSB.sessionKey;
+  var OWNER_UID = window.FluxSB.ownerUid;
   var CACHE_KEY = 'flux_hidden_apps_v1';
   var GRANTS_KEY = 'flux_my_permissions_v1';
   var HOLD_MS = 1500;
@@ -147,10 +147,15 @@
     return ids.indexOf(id) >= 0 && !isOwner() && !hasGrant(id) && !hasOwnRecords(id);
   }
 
-  function selectorsFor(id) {
-    var also = ALSO[id] || { pages: [], hashes: [] };
+  /* Ids and page names become CSS attribute values: escape quotes and
+     backslashes so a bad id from the database cannot break out of the rule. */
+  function cssAttr(s) { return String(s).replace(/(["\\])/g, '\\$1'); }
+
+  function selectorsFor(rawId) {
+    var id = cssAttr(rawId);
+    var also = ALSO[rawId] || { pages: [], hashes: [] };
     var out = ['[data-flux-app~="' + id + '"]'];
-    [id + '.html'].concat(also.pages).forEach(function (page) {
+    [rawId + '.html'].concat(also.pages).map(cssAttr).forEach(function (page) {
       out.push(
         'a[href="' + page + '"]',
         'a[href^="' + page + '?"]',

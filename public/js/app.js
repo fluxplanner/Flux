@@ -3433,8 +3433,8 @@ let sidebarCollapsed=load('flux_sidebar_collapsed',false);
 })();
 
 // ══ SUPABASE + API ══
-const SB_URL='https://lfigdijuqmbensebnevo.supabase.co';
-const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaWdkaWp1cW1iZW5zZWJuZXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjEzMDgsImV4cCI6MjA4ODkzNzMwOH0.qG1d9DLKrs0qqLgAp-6UGdaU7xWvlg2sWq-oD-y2kVo';
+const SB_URL= window.FluxSB.url;
+const SB_ANON= window.FluxSB.anon;
 const API={
   ai:`${SB_URL}/functions/v1/ai-proxy`,
   gemini:`${SB_URL}/functions/v1/gemini-proxy`,
@@ -8460,7 +8460,7 @@ const OWNER_EMAIL='azfermohammed21@gmail.com';
    conversion (release-admin's isOwnerCaller, and account-setup); this is the
    client catching up. The email stays as a fallback so a fresh database or a
    restored backup still recognises the owner before any conversion. */
-const OWNER_UID='eabe2b1f-e428-4181-8530-8e5366eb3975';
+const OWNER_UID= window.FluxSB.ownerUid;
 
 // Permission levels: owner > user.
 // The dev tier was switched off in the 2026-11-05 incident. It was read from

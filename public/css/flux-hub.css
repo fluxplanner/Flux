@@ -130,3 +130,12 @@
 .fxhub-item--synara .fxhub-item-mark { padding: 2px; border-radius: 6px; color: #fff; background: linear-gradient(135deg, #9c7aff, #5926d4); }
 .fxhub-item--aorta .fxhub-item-mark { overflow: hidden; border-radius: 6px; background: #f5f5f2; }
 .fxhub-item--aorta .fxhub-item-mark img { width: 22px; height: 22px; object-fit: cover; }
+
+/* ── Light themes ── The menu was always the dark navy, glaring on Cloud
+   and the other light themes. */
+[data-theme="light"] .fxhub-menu { background: #fff; color: #1f2328; border-color: #d0d7de; box-shadow: 0 18px 48px -12px rgba(0,0,0,.25); }
+[data-theme="light"] .fxhub-menu a:hover, [data-theme="light"] .fxhub-menu a:focus-visible { background: rgba(0,120,180,.1); }
+[data-theme="light"] .fxhub-item[aria-current="page"] { background: rgba(0,120,180,.08); color: #0b6c8f; }
+[data-theme="light"] .fxhub-item-mark { color: #0b6c8f; }
+[data-theme="light"] .fxhub-newtab, [data-theme="light"] .fxhub-all { color: #57606a; }
+[data-theme="light"] .fxhub-split { color: #0b6c8f; border-top-color: #d0d7de; }

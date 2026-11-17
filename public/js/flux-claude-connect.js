@@ -8,7 +8,7 @@
 (function () {
   "use strict";
 
-  const SB_URL = "https://lfigdijuqmbensebnevo.supabase.co";
+  const SB_URL = window.FluxSB.url;
   const MCP_URL = SB_URL + "/functions/v1/mcp";
   const MOUNT_ID = "fluxClaudeConnectMount";
 

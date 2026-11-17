@@ -23,10 +23,10 @@
   'use strict';
   if (window.FluxSiteNotices) return;
 
-  var SB_URL = 'https://lfigdijuqmbensebnevo.supabase.co';
-  var SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaWdkaWp1cW1iZW5zZWJuZXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjEzMDgsImV4cCI6MjA4ODkzNzMwOH0.qG1d9DLKrs0qqLgAp-6UGdaU7xWvlg2sWq-oD-y2kVo';
-  var SESSION_KEY = 'sb-lfigdijuqmbensebnevo-auth-token';
-  var OWNER_UID = 'eabe2b1f-e428-4181-8530-8e5366eb3975';
+  var SB_URL = window.FluxSB.url;
+  var SB_ANON = window.FluxSB.anon;
+  var SESSION_KEY = window.FluxSB.sessionKey;
+  var OWNER_UID = window.FluxSB.ownerUid;
   var CLOSED_KEY = 'flux_closed_announcements_v1';
   /* Announcements this device has already counted as read. In memory alone,
      every reload posted the read again and the owner's counts meant nothing. */
@@ -275,7 +275,11 @@
     get('flux_announcements?select=id,title,body,app,level&order=created_at.desc&limit=10').then(applyAnnouncements, function () {});
   }
 
+  /* Coming back to a tab refetches, but not more than every 30 seconds:
+     flicking between tabs was a request each time. */
+  var lastRefresh = 0;
   function start() {
+    lastRefresh = Date.now();
     refresh();
     setInterval(refresh, REFRESH_MS);
     // This viewer's role permissions arrived or changed.
@@ -283,7 +287,10 @@
       if (_lastSiteMode) applySiteMode(_lastSiteMode);
     });
     document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState === 'visible') refresh();
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastRefresh < 30000) return;
+      lastRefresh = Date.now();
+      refresh();
     });
   }
 

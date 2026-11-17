@@ -2803,8 +2803,8 @@
      this stays off until that switch is turned back on here too. When on, it
      goes through the same ai-proxy as the planner, with the planner's session. */
   const TUTOR_AI_ENABLED = false;
-  const SB_URL = 'https://lfigdijuqmbensebnevo.supabase.co';
-  const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaWdkaWp1cW1iZW5zZWJuZXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjEzMDgsImV4cCI6MjA4ODkzNzMwOH0.qG1d9DLKrs0qqLgAp-6UGdaU7xWvlg2sWq-oD-y2kVo';
+  const SB_URL = window.FluxSB.url;
+  const SB_ANON = window.FluxSB.anon;
   const PLANNER_KEY = 'sb-lfigdijuqmbensebnevo-auth-token';
   function tutorAiOn() { return TUTOR_AI_ENABLED || window.FLUX_TUTOR_AI === true; }
   function plannerToken() {

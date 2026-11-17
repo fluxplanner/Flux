@@ -23,8 +23,8 @@
   if (window.FluxFlashcards) return;
   var F = window.FluxFlash;
 
-  var SB_URL = 'https://lfigdijuqmbensebnevo.supabase.co';
-  var SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaWdkaWp1cW1iZW5zZWJuZXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjEzMDgsImV4cCI6MjA4ODkzNzMwOH0.qG1d9DLKrs0qqLgAp-6UGdaU7xWvlg2sWq-oD-y2kVo';
+  var SB_URL = window.FluxSB.url;
+  var SB_ANON = window.FluxSB.anon;
   var PLANNER_KEY = 'sb-lfigdijuqmbensebnevo-auth-token';
   var PREFS = 'flux_flash_prefs_v1';
 

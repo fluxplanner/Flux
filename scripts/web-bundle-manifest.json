@@ -1,5 +1,6 @@
 {
   "vendor": [
+    "public/js/flux-sb-config.js",
     "public/js/flux-supabase-vendor.js",
     "public/js/core/dom-walker.js",
     "public/js/flux-anime-catalog.js",
@@ -447,6 +448,7 @@
     "public/css/flux-look-flat.css"
   ],
   "ownerVendor": [
+    "public/js/flux-sb-config.js",
     "public/js/flux-supabase-vendor.js"
   ],
   "owner": [

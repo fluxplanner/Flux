@@ -24,8 +24,8 @@
 (function () {
   'use strict';
 
-  const SB_URL = 'https://lfigdijuqmbensebnevo.supabase.co';
-  const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaWdkaWp1cW1iZW5zZWJuZXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjEzMDgsImV4cCI6MjA4ODkzNzMwOH0.qG1d9DLKrs0qqLgAp-6UGdaU7xWvlg2sWq-oD-y2kVo';
+  const SB_URL = window.FluxSB.url;
+  const SB_ANON = window.FluxSB.anon;
   const OWN_KEY = 'flux_grapher_session';
   const PLANNER_KEY = 'sb-lfigdijuqmbensebnevo-auth-token';
   const OPTED_OUT_KEY = 'flux_grapher_signed_out';
