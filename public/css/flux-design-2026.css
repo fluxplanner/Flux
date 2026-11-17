@@ -726,3 +726,7 @@ html[data-flux-texture] body[data-theme="light"] #app {
 .fx-tex-tile[data-tex="slate"] .fx-tex-swatch { --fx-tex: #2f3a44; }
 .fx-tex-tile[data-tex="checker"] .fx-tex-swatch { --fx-tex: repeating-conic-gradient(#b58863 0 25%, #f0d9b5 0 50%) 0 0 / 22px 22px; }
 .fx-tex-tile:not([data-tex=""]) .fx-tex-swatch { background: var(--fx-tex); }
+
+/* The dashboard date became an h2 (#dashGreeting is the page's one h1); keep
+   the size and spacing it had as an h1. */
+h2.fx-head-date { font-size: 2em; margin: .67em 0; }

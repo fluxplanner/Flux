@@ -17,7 +17,9 @@ test.describe('Keyboard & focus a11y', () => {
   });
 
   test('New Task modal traps Tab and returns focus to the invoker', async ({ page }) => {
-    const invoker = page.locator('.topbar-new-task-btn:visible').first();
+    // The top bar's New task button was removed; the dashboard's + Add task
+    // opens the same modal.
+    const invoker = page.locator('#dashAddTaskBtn');
     await invoker.click();
     await expect(page.locator('#dashAddTaskModal')).toBeVisible();
     // Focus lands inside the modal.
@@ -31,7 +33,7 @@ test.describe('Keyboard & focus a11y', () => {
     await page.keyboard.press('Escape');
     await expect(page.locator('#dashAddTaskModal')).toBeHidden();
     const returned = await page.evaluate(() =>
-      document.activeElement?.classList.contains('topbar-new-task-btn'));
+      document.activeElement?.id === 'dashAddTaskBtn');
     expect(returned).toBe(true);
   });
 
@@ -66,7 +68,7 @@ test.describe('Keyboard & focus a11y', () => {
   });
 
   test('axe: New Task modal has no critical violations', async ({ page }) => {
-    await page.locator('.topbar-new-task-btn:visible').first().click();
+    await page.locator('#dashAddTaskBtn').click();
     await expect(page.locator('#dashAddTaskModal')).toBeVisible();
     const results = await new AxeBuilder({ page })
       .include('#dashAddTaskModal')

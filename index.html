@@ -122,7 +122,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.a3c59c18.css">
+<link rel="stylesheet" href="public/bundles/flux.208319e1.css">
 <!-- Scroll story on the sign-in screen (kept out of the bundle: landing pages load it too). -->
 <link rel="stylesheet" href="public/css/flux-scroll-story.css?v=cb163716">
 </head>
@@ -696,20 +696,20 @@
         </div>
 
         <div class="ob-avatar-wrap">
-          <div class="ob-avatar" id="obAvatar" onclick="document.getElementById('obPicInput').click()">?
+          <div class="ob-avatar" id="obAvatar" role="button" tabindex="0" aria-label="Add a profile photo" onclick="document.getElementById('obPicInput').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">?
             <input type="file" id="obPicInput" accept="image/*" style="display:none" onchange="handleObPic(event)">
           </div>
           <div style="font-size:.8rem;color:var(--muted2)">Tap to add a photo<br><span style="font-size:.72rem;font-family:'JetBrains Mono',monospace">optional</span></div>
         </div>
         <span class="ob-label" id="obNameLabel">Your first name</span>
-        <input type="text" id="obName" placeholder="e.g. Jordan" style="margin:0" oninput="updateObPreview()">
+        <input type="text" id="obName" aria-label="Your name" placeholder="e.g. Jordan" style="margin:0" oninput="updateObPreview()">
         <div id="obGradeSection" data-ob-role="student">
           <span class="ob-label">Grade</span>
-          <div class="ob-chip-wrap" id="obGradeChips">
-            <div class="ob-chip" onclick="selectObChip(this,'obGrade','9')">9th</div>
-            <div class="ob-chip active" onclick="selectObChip(this,'obGrade','10')">10th</div>
-            <div class="ob-chip" onclick="selectObChip(this,'obGrade','11')">11th</div>
-            <div class="ob-chip" onclick="selectObChip(this,'obGrade','12')">12th</div>
+          <div class="ob-chip-wrap" id="obGradeChips" role="radiogroup" aria-label="Grade">
+            <div class="ob-chip" role="radio" aria-checked="false" tabindex="0" onclick="selectObChip(this,'obGrade','9')">9th</div>
+            <div class="ob-chip active" role="radio" aria-checked="true" tabindex="0" onclick="selectObChip(this,'obGrade','10')">10th</div>
+            <div class="ob-chip" role="radio" aria-checked="false" tabindex="0" onclick="selectObChip(this,'obGrade','11')">11th</div>
+            <div class="ob-chip" role="radio" aria-checked="false" tabindex="0" onclick="selectObChip(this,'obGrade','12')">12th</div>
           </div>
         </div>
         <div id="obStaffRoleSection" data-ob-role="staff" style="display:none">
@@ -799,7 +799,7 @@
         </div>
         <div class="ob-or" data-ob-role="student"><span>or type it in</span></div>
         <span class="ob-label">School name <span style="color:var(--muted);font-weight:400" data-ob-role="staff">(optional)</span></span>
-        <input type="text" id="obSchool" placeholder="e.g. Lincoln High School" style="margin:0">
+        <input type="text" id="obSchool" aria-label="Your school" placeholder="e.g. Lincoln High School" style="margin:0">
         <div class="ob-need" id="obSchoolNeed" aria-live="polite"></div>
 
         <!-- STUDENT school details -->
@@ -1076,7 +1076,7 @@
 
   <!-- ── MOBILE DRAWER OVERLAY ── -->
   <div class="mob-drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
-  <div class="mob-drawer" id="mobDrawer">
+  <div class="mob-drawer" id="mobDrawer" role="dialog" aria-modal="true" aria-label="Menu" aria-hidden="true">
     <div class="mob-drawer-header">
       <span class="mob-drawer-logo" style="-webkit-text-fill-color:initial;background:none;line-height:1"><svg class="flux-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 52" width="198" height="50" aria-hidden="true" overflow="visible" text-rendering="geometricPrecision">
   <defs>
@@ -1259,7 +1259,7 @@
     </div><!-- /.flux-main-chrome -->
 
     <!-- Notices sub-bar — sits below topbar, never overlaps controls -->
-    <div class="notices-subbar" id="noticesSubbar" aria-live="polite">
+    <div class="notices-subbar" id="noticesSubbar">
       <div id="connectivityBanner" class="connectivity-banner" style="display:none" role="status"></div>
       <div id="examConflictBanner" class="exam-conflict-banner" style="display:none" role="status"></div>
       <div id="gcalBusyBanner" role="status"></div>
@@ -1493,7 +1493,7 @@
               <input type="checkbox" id="cycleEnabled" style="margin:0"> Show cycle labels on calendar (A / B / …)
             </label>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-              <div><label style="font-size:.7rem;color:var(--muted)">Pattern (comma-separated)</label><input type="text" id="cyclePatternInput" placeholder="A, B" style="margin:4px 0 0"></div>
+              <div><label style="font-size:.7rem;color:var(--muted)">Pattern (comma-separated)</label><input type="text" id="cyclePatternInput" aria-label="Day cycle pattern" placeholder="A, B" style="margin:4px 0 0"></div>
               <div><label style="font-size:.7rem;color:var(--muted)">Anchor date (first “A” or first day in pattern)</label><input type="date" id="cycleAnchorInput" style="margin:4px 0 0"></div>
             </div>
             <label style="display:flex;align-items:center;gap:8px;font-size:.82rem;margin-bottom:10px;cursor:pointer">
@@ -1511,7 +1511,7 @@
               </select>
             </div>
             <div style="display:grid;grid-template-columns:1fr 120px;gap:10px;margin-bottom:10px;align-items:end">
-              <div><label style="font-size:.7rem;color:var(--muted)">Title</label><input type="text" id="weeklyTitleInput" placeholder="e.g. Taekwondo" style="margin:4px 0 0"></div>
+              <div><label style="font-size:.7rem;color:var(--muted)">Title</label><input type="text" id="weeklyTitleInput" aria-label="Weekly event name" placeholder="e.g. Taekwondo" style="margin:4px 0 0"></div>
               <div><label style="font-size:.7rem;color:var(--muted)">Time (optional)</label><input type="time" id="weeklyTimeInput" style="margin:4px 0 0"></div>
             </div>
             <div style="margin-bottom:10px">
@@ -1583,7 +1583,7 @@
       </div>
     </div>
 
-    <div id="addEventModal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeAddEventModal()">
+    <div id="addEventModal" role="dialog" aria-modal="true" aria-labelledby="addEventModalTitle" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeAddEventModal()">
       <div class="modal-card">
         <div class="modal-title" id="addEventModalTitle">Add to Calendar</div>
         <div id="addEventTypeRow" style="display:flex;gap:8px;margin-bottom:16px">
@@ -1621,7 +1621,7 @@
 
 
     <!-- EC SCHEDULE MODAL -->
-    <div id="ecScheduleModal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeEcScheduleModal()">
+    <div id="ecScheduleModal" role="dialog" aria-modal="true" aria-labelledby="ecScheduleModalTitle" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeEcScheduleModal()">
       <div class="modal-card">
         <div class="modal-title" id="ecScheduleModalTitle">Add to calendar</div>
         <p id="ecScheduleModalSub" style="font-size:.82rem;color:var(--muted2);margin:-8px 0 14px;line-height:1.45"></p>
@@ -1682,9 +1682,9 @@
         </div>
         <div id="classesList"></div>
         <div class="sch-add-class-row" style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:8px;align-items:end;margin-top:10px">
-          <div><label style="font-size:.7rem;color:var(--muted)">Period <span style="color:var(--muted2);font-weight:400">(A4, B4…)</span></label><input type="text" id="classPeriod" inputmode="text" autocomplete="off" placeholder="4 or B4" style="width:76px;min-width:64px;margin:0;padding:8px 6px" title="Type a number, or A3 / B4 for A-day or B-day period"></div>
-          <div><label style="font-size:.7rem;color:var(--muted)">Class Name</label><input type="text" id="className" placeholder="e.g. Chemistry" style="margin:0"></div>
-          <div><label style="font-size:.7rem;color:var(--muted)">Teacher</label><input type="text" id="classTeacher" placeholder="e.g. Mr. Smith" style="margin:0"></div>
+          <div><label style="font-size:.7rem;color:var(--muted)">Period <span style="color:var(--muted2);font-weight:400">(A4, B4…)</span></label><input type="text" id="classPeriod" aria-label="Period" inputmode="text" autocomplete="off" placeholder="4 or B4" style="width:76px;min-width:64px;margin:0;padding:8px 6px" title="Type a number, or A3 / B4 for A-day or B-day period"></div>
+          <div><label style="font-size:.7rem;color:var(--muted)">Class Name</label><input type="text" id="className" aria-label="Class name" placeholder="e.g. Chemistry" style="margin:0"></div>
+          <div><label style="font-size:.7rem;color:var(--muted)">Teacher</label><input type="text" id="classTeacher" aria-label="Teacher" placeholder="e.g. Mr. Smith" style="margin:0"></div>
           <button onclick="addClass()" style="padding:10px 14px;align-self:end" aria-label="Add class">+</button>
         </div>
         <div class="sch-class-meta-row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
@@ -2009,11 +2009,11 @@
       <div class="card" data-student-profile-only>
         <h3>Profile Info</h3>
         <label style="font-size:.72rem;color:var(--muted)">Name</label>
-        <input type="text" id="name" placeholder="Your name">
+        <input type="text" id="name" aria-label="Your name" placeholder="Your name">
         <label style="font-size:.72rem;color:var(--muted)">Grade</label>
-        <select id="grade"><option value="9">9th Grade</option><option value="10" selected>10th Grade</option><option value="11">11th Grade</option><option value="12">12th Grade</option></select>
+        <select id="grade" aria-label="Grade"><option value="9">9th Grade</option><option value="10" selected>10th Grade</option><option value="11">11th Grade</option><option value="12">12th Grade</option></select>
         <label style="font-size:.72rem;color:var(--muted)">School</label>
-        <input type="text" id="profileSchool" placeholder="e.g. Lincoln High School">
+        <input type="text" id="profileSchool" aria-label="School" placeholder="e.g. Lincoln High School">
         <label style="font-size:.72rem;color:var(--muted)">Academic Program</label>
         <div id="programOptions" style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-bottom:10px;font-size:.82rem;line-height:1.35">
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none"><input type="checkbox" name="programOpt" value="General"> General</label>
@@ -2083,13 +2083,13 @@
            the Profile tab, four cards down under "Academic Stats", where
            nobody found them. They belong with the rest of the application. -->
       <div class="stabs flux-ec-stabs" role="tablist" aria-label="College prep sections">
-        <button type="button" class="stab active" role="tab" aria-selected="true" onclick="switchEcSection(&#39;activities&#39;,this)">Activities</button>
-        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchEcSection(&#39;colleges&#39;,this)">Colleges</button>
-        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchEcSection(&#39;scores&#39;,this)">Test scores</button>
+        <button type="button" class="stab active" role="tab" aria-selected="true" id="ectab-activities" aria-controls="ecpane-activities" onclick="switchEcSection(&#39;activities&#39;,this)">Activities</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="ectab-colleges" aria-controls="ecpane-colleges" onclick="switchEcSection(&#39;colleges&#39;,this)">Colleges</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="ectab-scores" aria-controls="ecpane-scores" onclick="switchEcSection(&#39;scores&#39;,this)">Test scores</button>
       </div>
       <div class="flux-stack">
 
-      <div class="spane active" id="ecpane-activities">
+      <div class="spane active" id="ecpane-activities" role="tabpanel" aria-labelledby="ectab-activities">
       <!-- Activity list -->
       <div class="card">
         <h3>My Activities</h3>
@@ -2125,7 +2125,7 @@
       </div>
       </div>
 
-      <div class="spane" id="ecpane-colleges">
+      <div class="spane" id="ecpane-colleges" role="tabpanel" aria-labelledby="ectab-colleges">
       <!-- Target Schools -->
       <div class="card">
         <h3>Target Schools</h3>
@@ -2162,7 +2162,7 @@
       </div>
       </div>
 
-      <div class="spane" id="ecpane-scores">
+      <div class="spane" id="ecpane-scores" role="tabpanel" aria-labelledby="ectab-scores">
       <!-- GPA, SAT, ACT and AP/IB results. Filled by flux-academic-scores.js;
            left empty here so there is no flash of markup the module replaces. -->
       <div id="academicScoresMount"></div>
@@ -2208,14 +2208,14 @@
           <button class="mood-btn" onclick="setMood(5,this)" aria-label="Great" aria-pressed="false" title="Great">😄</button>
         </div>
         <div style="font-size:.78rem;color:var(--muted2);margin-bottom:4px">Stress level:</div>
-        <input type="range" id="stressSlider" min="1" max="10" value="3" oninput="setStress(this.value)" style="margin-bottom:0">
+        <input type="range" id="stressSlider" aria-label="Stress level, 1 to 10" min="1" max="10" value="3" oninput="setStress(this.value)" style="margin-bottom:0">
         <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px;margin-bottom:10px"><span>Low</span><span id="stressVal">3</span><span>High</span></div>
-        <input type="number" id="sleepHours" placeholder="Hours slept last night" min="0" max="14" step="0.5">
+        <input type="number" id="sleepHours" aria-label="Hours slept last night" placeholder="Hours slept last night" min="0" max="14" step="0.5">
         <button onclick="saveMoodEntry()" style="width:100%">Save Check-In</button>
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border2)">
           <div style="font-size:.78rem;font-weight:600;margin-bottom:6px">Journal line</div>
           <div style="font-size:.72rem;color:var(--muted2);margin-bottom:8px">One sentence for today — saved per day on this device.</div>
-          <input type="text" id="journalLine" placeholder="e.g. Grateful for clear skies" style="width:100%;margin-bottom:8px" maxlength="500">
+          <input type="text" id="journalLine" aria-label="One line about today" placeholder="e.g. Grateful for clear skies" style="width:100%;margin-bottom:8px" maxlength="500">
           <button type="button" onclick="saveJournalLine()" style="width:100%" class="btn-sec">Save line</button>
         </div>
         <div id="burnoutAlert" style="display:none;margin-top:10px;padding:10px 14px;background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);border-radius:8px;font-size:.82rem;color:var(--red)">Burnout warning: high stress + low sleep. Take it easy today.</div>
@@ -2237,7 +2237,7 @@
       <div class="pt-top">
         <h1 class="pt-title">Periodic Table <span class="pt-sub">— all 118 elements · click any cell</span></h1>
         <div class="pt-tools">
-          <input type="text" id="ptSearch" placeholder="Search element, symbol or #" autocomplete="off">
+          <input type="text" id="ptSearch" aria-label="Search the periodic table" placeholder="Search element, symbol or #" autocomplete="off">
         </div>
       </div>
 
@@ -2384,7 +2384,7 @@
                 <button type="button" class="ai-attach" id="aiAttachBtn" onclick="document.getElementById('aiImgUpload')?.click()" aria-label="Attach image">
                   <svg class="ai-attach__ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05 12.25 20.24a5.47 5.47 0 0 1-7.73-7.73L15.91 4.12a3.65 3.65 0 0 1 5.16 5.16l-8.72 8.72a2.43 2.43 0 0 1-3.44-3.44l8.09-8.09"/></svg>
                 </button>
-                <textarea id="aiInput" class="ai-input-field" rows="1" placeholder="Ask anything about your planner…"></textarea>
+                <textarea id="aiInput" aria-label="Message Flux AI" class="ai-input-field" rows="1" placeholder="Ask anything about your planner…"></textarea>
                 <button type="button" class="ai-send" id="aiSendBtn" onclick="sendAI()" title="Send (Enter)" aria-label="Send message">
                   <svg class="ai-send__ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
                 </button>
@@ -2428,22 +2428,22 @@
       <div class="stabs flux-settings-stabs" role="tablist" aria-label="Settings sections">
         <!-- Look was eleven cards doing three jobs. Split three ways: what the
              app looks like, what makes it readable, and where things sit. -->
-        <button type="button" class="stab active" role="tab" aria-selected="true" onclick="switchStab('theme',this)">Theme</button>
-        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('text',this)">Text &amp; reading</button>
+        <button type="button" class="stab active" role="tab" aria-selected="true" id="stab-theme" aria-controls="spane-theme" onclick="switchStab(\'theme\',this)">Theme</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-text" aria-controls="spane-text" onclick="switchStab(\'text\',this)">Text &amp; reading</button>
         <!-- id stays `appearance`: eight modules inject their settings card
              into #spane-appearance and none of them throw when it is missing,
              so a rename would quietly lose six features' settings. -->
-        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('appearance',this)">Layout</button>
-        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('account',this)">Account</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-appearance" aria-controls="spane-appearance" onclick="switchStab(\'appearance\',this)">Layout</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-account" aria-controls="spane-account" onclick="switchStab(\'account\',this)">Account</button>
         <!-- `data` id kept for the same reason as `appearance`:
              flux-email-task-inbox and flux-automation-hooks both call
              switchStab('data') to reveal their own injected card. -->
-        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('data',this)">Your data</button>
-        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('help',this)">Help</button>
-        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('about',this)">About</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-data" aria-controls="spane-data" onclick="switchStab(\'data\',this)">Your data</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-help" aria-controls="spane-help" onclick="switchStab(\'help\',this)">Help</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-about" aria-controls="spane-about" onclick="switchStab(\'about\',this)">About</button>
       </div>
       <div class="flux-stack flux-settings-panes">
-      <div class="spane active" id="spane-theme">
+      <div class="spane active" id="spane-theme" role="tabpanel" aria-labelledby="stab-theme">
         <div class="card">
           <h3>Themes</h3>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px">
@@ -2475,7 +2475,7 @@
             <div class="swatch" style="background:#f59e0b" onclick="setAccent('#f59e0b','245,158,11',this)"></div>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
-            <input type="color" id="customColor" value="#00bfff" style="flex:0 0 44px;width:44px;height:38px;margin:0;padding:2px;border-radius:8px;cursor:pointer">
+            <input type="color" id="customColor" aria-label="Custom accent colour" value="#00bfff" style="flex:0 0 44px;width:44px;height:38px;margin:0;padding:2px;border-radius:8px;cursor:pointer">
             <button id="setCustomAccentBtn" onclick="applyCustomColor()" style="flex:1">Set custom accent</button>
           </div>
         </div>
@@ -2486,27 +2486,27 @@
           <div style="display:flex;flex-direction:column;gap:10px">
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div><div style="font-size:.85rem;font-weight:600">Background</div><div style="font-size:.7rem;color:var(--muted)">Main page bg</div></div>
-              <input type="color" id="cc-bg" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--bg',this.value)">
+              <input type="color" id="cc-bg" aria-label="Background colour" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--bg',this.value)">
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div><div style="font-size:.85rem;font-weight:600">Card background</div><div style="font-size:.7rem;color:var(--muted)">Cards &amp; panels</div></div>
-              <input type="color" id="cc-card" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--card-solid',this.value)">
+              <input type="color" id="cc-card" aria-label="Card colour" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--card-solid',this.value)">
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div><div style="font-size:.85rem;font-weight:600">Text color</div><div style="font-size:.7rem;color:var(--muted)">Main text</div></div>
-              <input type="color" id="cc-text" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--text',this.value)">
+              <input type="color" id="cc-text" aria-label="Text colour" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--text',this.value)">
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div><div style="font-size:.85rem;font-weight:600">Green / Success</div><div style="font-size:.7rem;color:var(--muted)">Done states, streaks</div></div>
-              <input type="color" id="cc-green" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--green',this.value)">
+              <input type="color" id="cc-green" aria-label="Success colour" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--green',this.value)">
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div><div style="font-size:.85rem;font-weight:600">Red / Danger</div><div style="font-size:.7rem;color:var(--muted)">Overdue, high priority</div></div>
-              <input type="color" id="cc-red" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--red',this.value)">
+              <input type="color" id="cc-red" aria-label="Warning colour" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--red',this.value)">
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div><div style="font-size:.85rem;font-weight:600">Gold / Warning</div><div style="font-size:.7rem;color:var(--muted)">Badges, goals</div></div>
-              <input type="color" id="cc-gold" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--gold',this.value)">
+              <input type="color" id="cc-gold" aria-label="Highlight colour" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--gold',this.value)">
             </div>
           </div>
           <button onclick="resetCustomColors()" class="btn-sec" style="width:100%;margin-top:14px;font-size:.78rem">↺ Reset colors</button>
@@ -2517,7 +2517,7 @@
            motion and the accessibility suite are the settings someone changes
            because they need to read the app, not because they want it to look
            a particular way, so they are no longer mixed in with themes. -->
-      <div class="spane" id="spane-text">
+      <div class="spane" id="spane-text" role="tabpanel" aria-labelledby="stab-text">
         <div class="card" style="margin-bottom:10px">
           <div class="srow" style="border:none">
             <div><div class="slabel">High Contrast Mode</div><div class="ssub">Boost text and border contrast for accessibility</div></div>
@@ -2528,7 +2528,7 @@
           <h3>Text &amp; motion</h3>
           <div class="srow" style="border:none;flex-direction:column;align-items:stretch;gap:10px">
             <div><div class="slabel">Font size</div><div class="ssub">Scales the whole app (85–125%)</div></div>
-            <input type="range" id="fontScaleSlider" min="85" max="125" value="100" style="width:100%;margin:0" oninput="setFontScale(this.value)">
+            <input type="range" id="fontScaleSlider" aria-label="Text size" min="85" max="125" value="100" style="width:100%;margin:0" oninput="setFontScale(this.value)">
             <div style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace" id="fontScaleLabel">100%</div>
           </div>
           <div class="srow" style="border:none;margin-top:8px">
@@ -2556,7 +2556,7 @@
            they simply find nothing and inject nowhere. Renaming this pane
            would have made six features' settings silently disappear, which is
            exactly the kind of break that ships unnoticed. -->
-      <div class="spane" id="spane-appearance">
+      <div class="spane" id="spane-appearance" role="tabpanel" aria-labelledby="stab-appearance">
         <div class="card" id="fluxLookCard">
           <h3>Look</h3>
           <p style="font-size:.75rem;color:var(--muted2);margin:0 0 12px;line-height:1.55">New uses underline tabs, rounded-box buttons and the numbers header on the dashboard. Classic brings back the pill buttons and greeting.</p>
@@ -2589,7 +2589,7 @@
           <button onclick="resetTabs()" class="btn-sec" style="width:100%;margin-top:14px;font-size:.78rem">↺ Reset to defaults</button>
         </div>
       </div>
-      <div class="spane" id="spane-account">
+      <div class="spane" id="spane-account" role="tabpanel" aria-labelledby="stab-account">
         <div class="card">
           <h3>Account</h3>
           <div id="accountSignedOut" style="text-align:center;padding:10px 0">
@@ -2667,7 +2667,7 @@
           </div>
         </div>
       </div>
-      <div class="spane" id="spane-data">
+      <div class="spane" id="spane-data" role="tabpanel" aria-labelledby="stab-data">
         <!-- Your data — the export/delete rights the Privacy Policy promises.
              Until this card existed the only delete path was owner-gated inside
              the dev panel, so the published policy pointed at a button no
@@ -2716,7 +2716,7 @@
           </div>
         </div>
       </div>
-      <div class="spane" id="spane-help">
+      <div class="spane" id="spane-help" role="tabpanel" aria-labelledby="stab-help">
         <div class="card">
           <h3>Planner tour</h3>
           <div class="srow" style="border:none">
@@ -2761,7 +2761,7 @@
           </div>
         </div>
       </div>
-      <div class="spane" id="spane-about">
+      <div class="spane" id="spane-about" role="tabpanel" aria-labelledby="stab-about">
         <div class="card" style="background:linear-gradient(135deg,rgba(var(--accent-rgb),.08),rgba(var(--purple-rgb),.04));border-color:rgba(var(--accent-rgb),.2)">
           <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap">
             <div style="flex-shrink:0;line-height:0;display:flex;align-items:center;gap:9px"><svg viewBox="0 0 680 680" width="30" height="30" aria-hidden="true" style="flex:0 0 auto;display:block;overflow:visible"><defs><linearGradient id="fluxMarkAi" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#00C2FF" stop-opacity="0.12"/><stop offset="40%" stop-color="#00C2FF"/><stop offset="60%" stop-color="#7C5CFF"/><stop offset="100%" stop-color="#7C5CFF" stop-opacity="0.12"/></linearGradient></defs><g transform="translate(392,340)"><path d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z" fill="none" stroke="url(#fluxMarkAi)" stroke-width="30" stroke-linecap="round"/></g><circle cx="392" cy="340" r="17" fill="#00C2FF"/><circle cx="612" cy="300" r="14" fill="#00C2FF"/></svg><svg class="flux-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 52" width="140" height="36" style="max-width:min(160px,42vw);height:auto;display:block;overflow:visible;filter:drop-shadow(0 4px 16px rgba(0,0,0,.2))" aria-hidden="true" text-rendering="geometricPrecision">
@@ -2905,9 +2905,9 @@
 </div><!-- /app -->
 
 <!-- NEW TASK (full form) — opened from top bar ＋ -->
-<div id="dashAddTaskModal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeDashAddTaskModal()">
+<div id="dashAddTaskModal" role="dialog" aria-modal="true" aria-labelledby="dashAddTaskModalTitle" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeDashAddTaskModal()">
   <div class="modal-card" onclick="event.stopPropagation()">
-    <div class="modal-title">New task</div>
+    <div class="modal-title" id="dashAddTaskModalTitle">New task</div>
     <!-- Shown only when "Task" was picked in the calendar's Add dialog, so the
          other two types stay one tap away instead of vanishing with it. -->
     <div id="taskCalTypeRow" style="display:none;gap:8px;margin-bottom:16px">
@@ -2964,9 +2964,9 @@
 </div>
 
 <!-- EDIT TASK MODAL -->
-<div id="editModal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeEdit()">
+<div id="editModal" role="dialog" aria-modal="true" aria-labelledby="editModalTitle" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeEdit()">
   <div class="modal-card">
-    <div class="modal-title">Edit Task</div>
+    <div class="modal-title" id="editModalTitle">Edit Task</div>
     <div class="mrow"><label>Task</label><input type="text" id="editText"></div>
     <!-- Same split as New task: the common fields up front, the rest behind
          "More options", which opens by itself when the task already uses one. -->
@@ -3008,9 +3008,9 @@
 </div>
 
 <!-- Global Search -->
-<div class="search-overlay" id="searchOverlay" onclick="if(event.target===this)closeGlobalSearch()">
+<div class="search-overlay" id="searchOverlay" role="dialog" aria-label="Search" onclick="if(event.target===this)closeGlobalSearch()">
   <div class="search-box flux-ac-frosted-strip">
-    <input class="search-input" id="globalSearchInput" type="text" placeholder="Search tasks, notes, classes..." autocomplete="off" oninput="handleGlobalSearch(this.value)">
+    <input class="search-input" id="globalSearchInput" aria-label="Search tasks, notes and classes" type="text" placeholder="Search tasks, notes, classes..." autocomplete="off" oninput="handleGlobalSearch(this.value)">
     <div class="search-results" id="globalSearchResults"></div>
   </div>
 </div>
@@ -3018,7 +3018,7 @@
 <!-- Quick Add Panel -->
 <div class="quick-add-panel" id="quickAddPanel">
   <div class="quick-add-panel-inner flux-ac-ai-chat-shell flux-ac-corner-accents flux-ac-scanline-light">
-    <input type="text" id="quickAddInput" list="quickAddHistList" placeholder="Type a task... &quot;Math HW Friday high&quot;" autocomplete="off" oninput="updateQuickAddPreview(this.value)">
+    <input type="text" id="quickAddInput" aria-label="Quick add a task" list="quickAddHistList" placeholder="Type a task... &quot;Math HW Friday high&quot;" autocomplete="off" oninput="updateQuickAddPreview(this.value)">
     <datalist id="quickAddHistList"></datalist>
     <button onclick="submitQuickAdd()" id="quickAddSubmit">Add</button>
   </div>
@@ -3031,8 +3031,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.7eadd903.js"></script>
-<script defer src="public/bundles/flux-core.8055abb2.js"></script>
-<script defer src="public/bundles/flux-features.b354cd0f.js"></script>
+<script defer src="public/bundles/flux-core.1632df18.js"></script>
+<script defer src="public/bundles/flux-features.2f1a29ce.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
@@ -3129,7 +3129,7 @@
   <div class="more-sheet-section">
     <div class="more-sheet-section-title">Quick actions</div>
     <button type="button" class="more-sheet-row" onclick="closeMobileSheet();window.fluxOpenQuickAdd&&fluxOpenQuickAdd()">
-      <span class="more-sheet-icon" style="font-size:1.15rem">＋</span>
+      <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span>
       <span class="lbl">Quick add</span>
       <span style="opacity:.5;font-size:.8rem">space</span>
     </button>
