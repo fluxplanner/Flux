@@ -1225,10 +1225,6 @@
           <button type="button" class="mob-menu-btn" onclick="openDrawer()" aria-label="Open menu">☰</button>
           <span class="topbar-title" id="topbarTitle">Dashboard</span>
         </div>
-        <button type="button" class="topbar-new-task-btn" data-flux-magnet="0.22" onclick="openDashAddTaskModal()" title="Add a new task">
-          <span class="topbar-new-task-icon" aria-hidden="true">＋</span>
-          <span class="topbar-new-task-label">New task</span>
-        </button>
       </div>
       <!-- Mobile brand cluster (hidden on desktop) — taps go to dashboard -->
       <button type="button" class="topbar-mob-brand" onclick="navMob('dashboard')" aria-label="Flux Planner home">
@@ -1249,10 +1245,6 @@
         <span class="topbar-mob-brand-text">Flux</span>
       </button>
       <div class="topbar-right">
-        <button type="button" class="topbar-new-task-btn topbar-mob-only" onclick="openDashAddTaskModal()" title="Add a new task" aria-label="New task">
-          <span class="topbar-new-task-icon" aria-hidden="true">＋</span>
-          <span class="topbar-new-task-label">New task</span>
-        </button>
         <button type="button" class="topbar-cd" id="topbarCountdown" hidden aria-haspopup="dialog" aria-expanded="false" onclick="fluxToggleCountdownPop(event)"></button>
         <div class="date-pill topbar-desktop-only" id="datePill"></div>
         <div id="syncIndicator" class="sync-badge offline topbar-sync-pill topbar-desktop-only" style="display:none">Local</div>
@@ -1408,6 +1400,7 @@
             <div class="dash-toolbar-views"></div>
             <!-- Plan my week (flux-week-plan-ui.js): study blocks for the next
                  seven days around classes and plans. Also on the calendar. -->
+            <button type="button" class="pw-entry dash-add-task-btn" id="dashAddTaskBtn" onclick="openDashAddTaskModal()" title="Add a new task">+ Add task</button>
             <button type="button" class="pw-entry" id="dashPlanWeekBtn" onclick="openPlanWeek()">Plan my week</button>
           </div>
         </div>
@@ -1497,7 +1490,6 @@
                      does too. -->
                 <button type="button" id="calCountdownBtn" onclick="fluxCalCountdownToggle()" class="cal-countdown-btn" aria-pressed="false" style="display:none">⏳ Count down</button>
                 <button type="button" id="calAddEventBtn" onclick="openAddEventModal()" class="cal-add-event-btn" style="display:none">+ Add</button>
-                <button type="button" id="calAddEcBtn" onclick="openAddEventModal('ec')" class="cal-add-ec-btn" style="display:none" title="Add an activity from College Prep">+ Activity</button>
                 <button type="button" id="calPlanWeekBtn" onclick="openPlanWeek()" class="pw-entry">Plan my week</button>
               </div>
             </div>
@@ -3073,9 +3065,9 @@
 <div id="toastLive" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
-<script type="module" src="public/bundles/flux-vendor.efddfbf8.js"></script>
-<script defer src="public/bundles/flux-core.a1765d69.js"></script>
-<script defer src="public/bundles/flux-features.8ba8efbf.js"></script>
+<script type="module" src="public/bundles/flux-vendor.23f0b5fe.js"></script>
+<script defer src="public/bundles/flux-core.3f50219f.js"></script>
+<script defer src="public/bundles/flux-features.a47c831b.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->

@@ -755,6 +755,7 @@
       CV.connectStep = "host";
       CV.connectHostDraft = "";
       await loadCourses(true);
+      try { window.fluxImportCanvasClasses?.(); } catch (_) {}
       try {
         if (window.FluxGoogle && typeof FluxGoogle.pushIntegrationsToCloud === "function") {
           FluxGoogle.pushIntegrationsToCloud();
@@ -1190,6 +1191,7 @@
       await canvasProxyGet("/users/self/profile");
       cacheBust();
       await loadCourses(true);
+      try { window.fluxImportCanvasClasses?.(); } catch (_) {}
       try {
         if (window.FluxGoogle && typeof FluxGoogle.pushIntegrationsToCloud === "function") {
           FluxGoogle.pushIntegrationsToCloud();

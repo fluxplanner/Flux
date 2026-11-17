@@ -4412,6 +4412,11 @@ function addTask(){
     }
   }
   task.urgencyScore=calcUrgency(task);tasks.unshift(task);
+  if(fluxConvertEventId!=null){
+    save('flux_events',load('flux_events',[]).filter(x=>String(x.id)!==String(fluxConvertEventId)));
+    syncKey('events',1);
+    fluxConvertEventId=null;
+  }
   try{if(window.FluxRecurring?.bindTask)FluxRecurring.bindTask(task);}catch(_){}
   save('tasks',tasks);
   if(window.Flux100&&typeof Flux100.captureLastTaskFromModal==='function')try{Flux100.captureLastTaskFromModal(task);}catch(e){}
@@ -5387,8 +5392,9 @@ function openDashAddTaskModal(instant){
   populateSubjectSelects();
   const more=document.getElementById('taskMoreOptions');if(more)more.open=false;
   ntResetForm();
-  m.style.display='flex';
   const card=m.querySelector('.modal-card');
+  try{window.FluxAnim?.modalCancelClose?.(m,card);}catch(e){}
+  m.style.display='flex';
   m.classList.toggle('flux-modal-swap',!!instant);
   try{if(!instant&&window.FluxAnim?.modalOpen)FluxAnim.modalOpen(m,card||m);}catch(e){}
   try{window.FluxA11y?.trapFocus?.(m);}catch(e){}
@@ -5469,6 +5475,7 @@ function closeDashAddTaskModal(instant){
   const m=document.getElementById('dashAddTaskModal');
   if(!m)return;
   try{window.FluxA11y?.releaseFocus?.(m);}catch(e){}
+  fluxConvertEventId=null;
   const card=m.querySelector('.modal-card');
   const hide=()=>{m.style.display='none';};
   const calRow=document.getElementById('taskCalTypeRow');if(calRow)calRow.style.display='none';
@@ -6057,11 +6064,21 @@ function setAddEventScope(scope){
    else (plan it out, repeats…), dated to the selected day. Switching between
    it and the Event / Activity dialog swaps them in place, with no open/close
    animation (instant / .flux-modal-swap), so it feels like changing tabs. */
+/* Set while the New task dialog is turning an existing calendar event into a
+   task: the event is removed only once the task is actually saved. */
+var fluxConvertEventId=null;
 function openCalendarNewTask(){
   const ymd=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
+  const ev=editCalendarEventId?load('flux_events',[]).find(x=>String(x.id)===String(editCalendarEventId)):null;
   closeAddEventModal();
   openDashAddTaskModal(true);
-  const d=document.getElementById('taskDate');if(d)d.value=ymd;
+  fluxConvertEventId=ev?ev.id:null;
+  const d=document.getElementById('taskDate');if(d)d.value=ev?.date||ymd;
+  if(ev){
+    const n=document.getElementById('taskName');if(n)n.value=ev.title||'';
+    const no=document.getElementById('taskNotes');if(no)no.value=ev.notes||'';
+    const tt=document.getElementById('taskTime');if(tt)tt.value=ev.time||'';
+  }
   const row=document.getElementById('taskCalTypeRow');if(row)row.style.display='flex';
 }
 function openAddEventModal(preferredType,instant){
@@ -6096,13 +6113,14 @@ function openEditCalendarEventModal(id){
   const modal=document.getElementById('addEventModal');if(!modal)return;
   const mt=document.getElementById('addEventModalTitle');if(mt)mt.textContent='Edit calendar event';
   const pb=document.getElementById('addEventPrimaryBtn');if(pb)pb.textContent='Save';
-  const trow=document.getElementById('addEventTypeRow');if(trow)trow.style.display='none';
+  const trow=document.getElementById('addEventTypeRow');if(trow)trow.style.display='flex';
   document.getElementById('addEventDate').value=ev.date||'';
   document.getElementById('addEventTitle').value=ev.title||'';
   document.getElementById('addEventTime').value=ev.time||'';
   document.getElementById('addEventNotes').value=ev.notes||'';
   setAddEventScope(ev.scope==='outside'?'outside':'school');
-  setAddEventType('event');
+  setAddEventType(ev.kind==='ec'?'ec':'event');
+  if(ev.kind==='ec'&&ev.extraId!=null){const sel=document.getElementById('addEventExtraSelect');if(sel)sel.value=String(ev.extraId);}
   modal.hidden=false;
   modal.style.display='flex';
   modal.setAttribute('aria-hidden','false');
@@ -6164,7 +6182,12 @@ function saveAddEvent(){
     const events=load('flux_events',[]);
     const ix=events.findIndex(x=>String(x.id)===String(editCalendarEventId));
     if(ix>=0){
-      events[ix]={...events[ix],title,date,time:time||'',notes,scope};
+      const next={...events[ix],title,date,time:time||'',notes,scope};
+      if(addEventType==='ec'){
+        const ex=getExtraById(parseInt(document.getElementById('addEventExtraSelect')?.value,10));
+        next.kind='ec';next.scope='outside';next.extraId=ex?ex.id:next.extraId;
+      }else{delete next.kind;delete next.extraId;}
+      events[ix]=next;
       save('flux_events',events);
       syncKey('events',1);
     }
@@ -7830,11 +7853,21 @@ function applyTheme(key){
   Object.entries(custom)
     .filter(([k])=>k!=='--accent'&&k!=='--accent-rgb')
     .forEach(([k,v])=>document.documentElement.style.setProperty(k,v));
-  if(theme.vars['--accent']){
-    fluxSaveStoredString('flux_accent',theme.vars['--accent']);
-    fluxSaveStoredString('flux_accent_rgb',theme.vars['--accent-rgb']||hexToRgb(theme.vars['--accent']));
+  // A user-picked accent (swatch or "Set custom accent") survives theme
+  // switches; only themes without a chosen accent bring their own.
+  const keepAccent=fluxLoadStoredString('flux_accent_custom','')==='1'&&fluxLoadStoredString('flux_accent','');
+  if(keepAccent){
+    const hex=fluxLoadStoredString('flux_accent','');
+    document.documentElement.style.setProperty('--accent',hex);
+    document.documentElement.style.setProperty('--accent-rgb',fluxLoadStoredString('flux_accent_rgb','')||hexToRgb(hex));
+    updateLogoColor(hex);
+  }else{
+    if(theme.vars['--accent']){
+      fluxSaveStoredString('flux_accent',theme.vars['--accent']);
+      fluxSaveStoredString('flux_accent_rgb',theme.vars['--accent-rgb']||hexToRgb(theme.vars['--accent']));
+    }
+    updateLogoColor(theme.vars['--accent']||fluxLoadStoredString('flux_accent','#00bfff'));
   }
-  updateLogoColor(theme.vars['--accent']||fluxLoadStoredString('flux_accent','#00bfff'));
   // The full-screen mesh canvas is the app's backdrop and cannot see CSS
   // variable changes. Without this it kept painting the previous theme.
   try{document.dispatchEvent(new CustomEvent('flux-theme-change',{detail:{theme:key}}));}catch(_){}
@@ -7922,6 +7955,7 @@ function applyCustomVar(varName,value){
 }
 function resetCustomColors(){
   save('flux_custom_colors',{});
+  fluxSaveStoredString('flux_accent_custom','');
   const key=fluxLoadStoredString('flux_theme','dark');
   applyTheme(key);
   const b=event?.target;if(b){b.textContent='✓ Reset!';setTimeout(()=>b.textContent='↺ Reset colors',1500);}
@@ -8016,6 +8050,7 @@ function clearSvgLogoGradientStyles(){
   });
 }
 function setAccent(hex,rgb,el){
+  fluxSaveStoredString('flux_accent_custom','1');
   // Use updateLogoColor which injects persistent <style> tag
   applyCustomVar('--accent',hex);
   applyCustomVar('--accent-rgb',rgb);
@@ -16065,7 +16100,6 @@ function fluxTourSteps(){
   if(!edu){
     return[
       tab('dashboard','Dashboard','Your tasks for today and the days ahead. Tick one off, or swipe it right on a phone; Undo brings it back. Plan my week, above your tasks, fits study blocks around your classes.'),
-      {sel:'.topbar-new-task-btn',title:'New task',body:'Add a task from any tab. Type it the way you would say it — “Bio quiz friday” or “essay due 10/24” — and Flux fills in the date, type and class. Press Enter to add it.'},
       tab('calendar','Calendar','Tasks, classes and no-school days on one month. Pick a day to add something, or count down to it: the countdown then sits in the top bar.'),
       tab('timer','Time','Pomodoro focus sessions with a budget for each subject, plus a clock, stopwatch, countdown and alarms.'),
       tab('school','School Info','Your classes, bell schedule and locker. Upload a photo or PDF of your timetable and Flux fills in your periods.'),
@@ -16425,7 +16459,31 @@ function saveCanvasConfig(){
   }catch(e){}
   const b=event?.target;if(b){b.textContent='✓ Saved';setTimeout(()=>b.textContent='Save',1500);}
   renderCanvasHubPanel();
+  if(canvasToken&&canvasUrl)fluxImportCanvasClasses();
 }
+/* Connecting Canvas fills in the class list from the student's active
+   courses, so nobody has to type their classes in one by one. */
+async function fluxImportCanvasClasses(){
+  try{
+    const courses=await canvasProxyGet('/courses?enrollment_state=active&per_page=100&include[]=teachers');
+    if(!Array.isArray(courses)||!courses.length)return;
+    const before=classes.length;
+    courses.forEach(c=>{
+      if(!c||c.access_restricted_by_date||!(c.name||c.course_code))return;
+      const t=(c.teachers||[])[0];
+      upsertClassFromCanvasCourse(c,t?.display_name||t?.name||'');
+    });
+    save('flux_classes',classes);
+    syncKey('classes',classes);
+    try{populateSubjectSelects();}catch(_){}
+    try{renderSchool();}catch(_){}
+    const added=classes.length-before;
+    if(added>0)showToast(`✓ Added ${added} class${added===1?'':'es'} from Canvas`);
+  }catch(e){
+    console.warn('[Canvas] class import failed',e);
+  }
+}
+window.fluxImportCanvasClasses=fluxImportCanvasClasses;
 
 function fluxCanvasProxyHost(){
   const h=load('flux_canvas_host',null);
@@ -16741,8 +16799,11 @@ function addCanvasQuizToPlanner(courseId,quizId,opts){
 function upsertClassFromCanvasCourse(c,primaryTeacher){
   const name=cleanClassName(c.name||c.course_code||'Course');
   const level=parseClassLevel(name).level;
-  const ex=classes.find(x=>x.canvasCourseId===c.id);
+  const key=String(name).trim().toLowerCase();
+  const ex=classes.find(x=>x.canvasCourseId===c.id)
+    ||classes.find(x=>!x.canvasCourseId&&String(x.name||'').trim().toLowerCase()===key);
   if(ex){
+    ex.canvasCourseId=c.id;
     ex.name=name;
     ex.level=level;
     if(primaryTeacher)ex.teacher=primaryTeacher;
