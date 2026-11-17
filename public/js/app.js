@@ -7427,15 +7427,34 @@ try{document.addEventListener('flux-nav',(e)=>{const id=e&&e.detail&&e.detail.pa
 const TM={pomodoro:{label:'Focus Time',mins:25},short:{label:'Short Break',mins:5},long:{label:'Long Break',mins:15}};
 let tMode='pomodoro',tRunning=false,tInterval=null,tSecs=25*60,tTotal=25*60;
 let _fluxPomoPillVisible=false;
+/* The running timer is kept as an end time in raw localStorage
+   (flux_suite_timer, shared by every page on this origin), never as a ticking
+   counter, so the other suite apps can show and control it
+   (public/js/flux-suite-timer.js) and nothing drifts while the tab sleeps.
+   Shape: {mode,label,total,running,remaining,endAt(epoch ms)}. */
+let tEndAt=0;
+const FLUX_SUITE_TIMER_KEY='flux_suite_timer';
+function fluxTimerLeft(){return Math.max(0,Math.ceil((tEndAt-Date.now())/1000));}
+function fluxTimerClear(){try{localStorage.removeItem(FLUX_SUITE_TIMER_KEY);}catch(e){}}
+function fluxTimerPersist(){try{localStorage.setItem(FLUX_SUITE_TIMER_KEY,JSON.stringify({mode:tMode,label:TM[tMode].label,total:tTotal,running:tRunning,remaining:tSecs,endAt:tRunning?tEndAt:0}));}catch(e){}}
+function fluxTimerSetBtn(label){const b=document.getElementById('timerBtn');if(b)b.innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> '+label;}
+/** Take on whatever another page (or an earlier visit) left in flux_suite_timer. */
+function fluxTimerAdopt(){let s=null;try{s=JSON.parse(localStorage.getItem(FLUX_SUITE_TIMER_KEY)||'null');}catch(e){}
+  if(!s||!TM[s.mode]||!isFinite(s.total)){if(tRunning||tSecs!==tTotal)resetTimer();return;}
+  if(tMode!==s.mode){tMode=s.mode;document.querySelectorAll('#timer .tmode-btn').forEach(b=>b.classList.toggle('active',(b.getAttribute('onclick')||'').indexOf("'"+s.mode+"'")>=0));const l=document.getElementById('tLbl');if(l)l.textContent=TM[s.mode].label;}
+  tTotal=s.total;
+  if(s.running){if(tRunning&&tEndAt===s.endAt)return;tSecs=Math.max(0,Math.ceil((s.endAt-Date.now())/1000));if(tSecs<=0){tEndAt=s.endAt;updateTDisplay();timerDone();return;}startTimer(s.endAt);return;}
+  tSecs=Math.max(0,Math.round(s.remaining||0));if(tRunning){tRunning=false;clearInterval(tInterval);}fluxTimerSetBtn('Resume');updateTDisplay();syncFluxPomoPill();}
+try{window.addEventListener('storage',e=>{if(e.key===FLUX_SUITE_TIMER_KEY&&window._fluxTimerAdopted)fluxTimerAdopt();});}catch(_){}
 let tDone=load('t_sessions',0),tMins=load('t_minutes',0),tStreak=load('t_streak',0),tLastDate=load('t_date','');
 const CIRC=2*Math.PI*88;
 function updateTLengths(){if(tRunning)return;TM.pomodoro.mins=parseInt(document.getElementById('customWork').value)||25;TM.short.mins=parseInt(document.getElementById('customShort').value)||5;if(tMode==='pomodoro'||tMode==='short'){tSecs=TM[tMode].mins*60;tTotal=tSecs;updateTDisplay();}}
-function setTMode(mode,el){if(tRunning)return;tMode=mode;tSecs=TM[mode].mins*60;tTotal=tSecs;document.querySelectorAll('#timer .tmode-btn').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');updateTDisplay();document.getElementById('tLbl').textContent=TM[mode].label;syncFluxPomoPill();}
+function setTMode(mode,el){if(tRunning)return;fluxTimerClear();tMode=mode;tSecs=TM[mode].mins*60;tTotal=tSecs;document.querySelectorAll('#timer .tmode-btn').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');updateTDisplay();document.getElementById('tLbl').textContent=TM[mode].label;syncFluxPomoPill();}
 function toggleTimer(){tRunning?pauseTimer():startTimer();}
-function startTimer(){if(tInterval){clearInterval(tInterval);tInterval=null;}tRunning=true;document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg> Pause';try{window.FluxFocusMotion?.start();}catch(e){}updateTDisplay();syncFluxPomoPill();tInterval=setInterval(()=>{tSecs--;updateTDisplay();if(tSecs<=0)timerDone();},1000);}
-function pauseTimer(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Resume';syncFluxPomoPill();}
-function resetTimer(){tRunning=false;clearInterval(tInterval);tSecs=TM[tMode].mins*60;tTotal=tSecs;document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';updateTDisplay();syncFluxPomoPill();}
-function timerDone(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';syncFluxPomoPill();if(tMode==='pomodoro'){tDone++;tMins+=TM.pomodoro.mins;const ts=todayStr();if(tLastDate!==ts){const y=new Date();y.setDate(y.getDate()-1);tStreak=tLastDate===fluxLocalYMD(y)?tStreak+1:1;tLastDate=ts;save('t_date',tLastDate);}const sub=document.getElementById('timerSubject')?.value||'';sessionLog.push({date:ts,mins:TM.pomodoro.mins,subject:sub,hour:new Date().getHours()});save('flux_session_log',sessionLog);if(typeof FluxBus!=='undefined')FluxBus.emit('session_ended',{mins:TM.pomodoro.mins,subject:sub,date:ts,hour:new Date().getHours()});if(sub){subjectBudgets[sub]=(subjectBudgets[sub]||0)+(TM.pomodoro.mins/60);save('flux_budgets',subjectBudgets);}save('t_sessions',tDone);save('t_minutes',tMins);save('t_streak',tStreak);updateTStats();renderTDots();renderSubjectBudget();renderFocusHeatmap();
+function startTimer(endAt){if(tInterval){clearInterval(tInterval);tInterval=null;}tRunning=true;tEndAt=typeof endAt==='number'&&endAt>0?endAt:Date.now()+tSecs*1000;fluxTimerPersist();document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg> Pause';try{window.FluxFocusMotion?.start();}catch(e){}updateTDisplay();syncFluxPomoPill();tInterval=setInterval(()=>{tSecs=fluxTimerLeft();updateTDisplay();if(tSecs<=0)timerDone();},1000);}
+function pauseTimer(){if(tRunning)tSecs=fluxTimerLeft();tRunning=false;clearInterval(tInterval);updateTDisplay();fluxTimerPersist();document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Resume';syncFluxPomoPill();}
+function resetTimer(){tRunning=false;clearInterval(tInterval);fluxTimerClear();tSecs=TM[tMode].mins*60;tTotal=tSecs;document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';updateTDisplay();syncFluxPomoPill();}
+function timerDone(){tRunning=false;clearInterval(tInterval);fluxTimerClear();document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';syncFluxPomoPill();if(tMode==='pomodoro'){tDone++;tMins+=TM.pomodoro.mins;const ts=todayStr();if(tLastDate!==ts){const y=new Date();y.setDate(y.getDate()-1);tStreak=tLastDate===fluxLocalYMD(y)?tStreak+1:1;tLastDate=ts;save('t_date',tLastDate);}const sub=document.getElementById('timerSubject')?.value||'';sessionLog.push({date:ts,mins:TM.pomodoro.mins,subject:sub,hour:new Date().getHours()});save('flux_session_log',sessionLog);if(typeof FluxBus!=='undefined')FluxBus.emit('session_ended',{mins:TM.pomodoro.mins,subject:sub,date:ts,hour:new Date().getHours()});if(sub){subjectBudgets[sub]=(subjectBudgets[sub]||0)+(TM.pomodoro.mins/60);save('flux_budgets',subjectBudgets);}save('t_sessions',tDone);save('t_minutes',tMins);save('t_streak',tStreak);updateTStats();renderTDots();renderSubjectBudget();renderFocusHeatmap();
 showSessionRecap(sub,TM.pomodoro.mins);
 setTimeout(()=>{const mode=tDone%4===0?'long':'short';const btns=document.querySelectorAll('#timer .tmode-btn');setTMode(mode,btns[mode==='long'?2:1]);},400);}else{setTimeout(()=>{setTMode('pomodoro',document.querySelectorAll('#timer .tmode-btn')[0]);},400);}}
 function updateTDisplay(){const m=Math.floor(tSecs/60),s=tSecs%60;const txt=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');const td=document.getElementById('tDisplay');if(td)td.textContent=txt;const pillT=document.getElementById('fluxPomoPillTime');if(pillT)pillT.textContent=txt;const offset=CIRC*(1-tSecs/tTotal);const ring=document.getElementById('timerRing');if(ring){ring.style.strokeDasharray=CIRC;ring.style.strokeDashoffset=offset;}try{if(window.FluxVisual&&typeof FluxVisual.updateTimerRingGlow==='function'&&tTotal>0)FluxVisual.updateTimerRingGlow((tSecs/tTotal)*100);}catch(e){}try{window.FluxFocusMotion?.update(tSecs,tTotal,tMode);}catch(e){}const mini=document.getElementById('fluxPomoMiniRing');if(mini&&window.FluxAnim?.updateMiniRing){try{const p=tTotal>0?tSecs/tTotal:0;FluxAnim.updateMiniRing(mini,p);}catch(e){}}syncFluxPomoPill();}
@@ -15365,6 +15384,7 @@ function handleCheckoutReturn(){
   renderNotesList();renderExtrasList();renderSchoolsList();
   renderMoodHistory();renderAffirmation();renderAISugs();syncFluxAIModeButtons();renderSchool();
   renderSubjectBudget();renderFocusHeatmap();
+  try{fluxTimerAdopt();window._fluxTimerAdopted=true;}catch(e){}
   updateTDisplay();renderTDots();updateTStats();
   checkAllPanic();setInterval(checkAllPanic,60000);
   initFeaturePills();
@@ -15676,8 +15696,14 @@ let _pomDistractions=0;
 function getPomDistractionCount(){return _pomDistractions;}
 try{window.getPomDistractionCount=getPomDistractionCount;}catch(_){}
 function initPomodoroVisibilityPause(){
+  /* Leaving the page (e.g. opening another Flux Suite app) also hides it, but
+     the timer is meant to keep running there (flux-suite-timer.js), so only a
+     real tab/app switch counts as a distraction. beforeunload fires first. */
+  let leaving=false;
+  window.addEventListener('beforeunload',()=>{leaving=true;});
+  window.addEventListener('pageshow',()=>{leaving=false;});
   document.addEventListener('visibilitychange',()=>{
-    if(document.hidden&&tRunning){
+    if(document.hidden&&tRunning&&!leaving){
       pauseTimer();
       _pomDistractions++;
       const el=document.getElementById('distractionCount');
