@@ -258,7 +258,8 @@
                divider went with it: there is nothing left to divide. -->
           <div id="loginEmailSection">
             <div class="lx-auth-error" id="loginAuthError" role="alert" aria-live="assertive"></div>
-            <div class="lx-form" id="loginEmailForm">
+            <!-- A real form, so Enter signs in and password managers recognise it. -->
+            <form class="lx-form" id="loginEmailForm" novalidate onsubmit="event.preventDefault();handleEmailAuth()">
               <!-- Name, not email. Nothing is emailed and no address is kept;
                    app.js folds this into a synthesised account key. type=text
                    rather than email so a phone does not demand an @ sign. -->
@@ -309,11 +310,11 @@
                 <label for="loginWebsite">Website</label>
                 <input type="text" id="loginWebsite" name="website" tabindex="-1" autocomplete="off">
               </div>
-              <button type="button" class="lx-submit" id="loginEmailBtn" onclick="handleEmailAuth()">
+              <button type="submit" class="lx-submit" id="loginEmailBtn">
                 <span class="login-email-btn-label">Sign in</span>
                 <span class="lx-submit-arrow" aria-hidden="true">→</span>
               </button>
-            </div>
+            </form>
             <div class="lx-toggle">
               <span id="loginToggleText">Don't have an account?</span>
               <button type="button" class="lx-toggle-btn" onclick="toggleAuthMode()"><span id="loginToggleAction">Sign up</span></button>
@@ -1892,7 +1893,7 @@
     <!-- ─── Google + Canvas hub (Gmail, Tasks, LMS) — all account types ─── -->
     <div id="canvas" class="panel flux-page">
       <header class="flux-page-header flux-page-header--lead">
-        <p class="flux-page-sub" id="canvasHubPageSub">Sign in once for Gmail, Tasks, Calendar, and Docs. Use the Canvas tab below when your school uses Canvas LMS.</p>
+        <p class="flux-page-sub" id="canvasHubPageSub">Canvas, Schoology and Moodle in one place. Google is paused, so Gmail, Tasks and Docs are not connected.</p>
       </header>
       <div class="flux-stack" id="canvasHubStack"></div>
     </div>
@@ -3031,7 +3032,7 @@
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.7eadd903.js"></script>
 <script defer src="public/bundles/flux-core.8055abb2.js"></script>
-<script defer src="public/bundles/flux-features.79da825b.js"></script>
+<script defer src="public/bundles/flux-features.b354cd0f.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
