@@ -137,6 +137,7 @@ textarea.fc-input { resize: vertical; line-height: 1.45; }
 .fc-clef { fill: #1d1d27; font-family: 'Noto Music', 'Bravura', 'Segoe UI Symbol', 'Apple Symbols', serif; }
 .fc-clef--treble { font-size: 64px; }
 .fc-clef--bass { font-size: 40px; }
+.fc-clef-c { fill: none; stroke: #1d1d27; stroke-width: 2.6; stroke-linecap: round; }
 .fc-accp { fill: none; stroke: #1d1d27; stroke-linecap: round; }
 .fc-accp--bowl { stroke-width: 1.8; }
 .fc-head { fill: #1d1d27; }

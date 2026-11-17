@@ -138,55 +138,78 @@
 
   /* ── Staff (SVG) ────────────────────────────────────────────────────────── */
   // Diatonic step (oct*7 + letter) of each clef's bottom line.
-  const BOTTOM = { treble: 4 * 7 + 2, bass: 2 * 7 + 4 };
+  // Treble: E4. Bass: G2. Alto (C clef on the middle line): F3, so middle C
+  // sits on the middle line.
+  const BOTTOM = { treble: 4 * 7 + 2, bass: 2 * 7 + 4, alto: 3 * 7 + 3 };
   const SIG_STEPS = {
     treble: { sharp: [38, 35, 39, 36, 33, 37, 34], flat: [34, 37, 33, 36, 32, 35, 31] },
     bass: { sharp: [24, 21, 25, 22, 19, 23, 20], flat: [20, 23, 19, 22, 18, 21, 17] },
+    alto: { sharp: [31, 28, 32, 29, 26, 30, 27], flat: [27, 30, 26, 29, 25, 28, 24] },
   };
-  /* Accidentals drawn as paths, centred on (x, y), so they sit exactly on
-     their line or space whatever fonts the device has — as text, ♭ and ♯
-     landed a space too high and some systems drew them as coloured emoji. */
-  function accPath(a, x, y) {
-    const P = (d, w) => `<path d="${d}" class="fc-accp" style="stroke-width:${w || 1.4}"/>`;
-    const flat = (fx) => P(`M${fx} ${y - 15}V${y + 5}`) + `<path d="M${fx} ${y + 5}C${fx + 9} ${y + 1} ${fx + 9} ${y - 6} ${fx} ${y - 3}" class="fc-accp fc-accp--bowl"/>`;
-    if (a === -1) return flat(x - 3);
-    if (a === -2) return flat(x - 8) + flat(x);
-    if (a === 1) return P(`M${x - 2.5} ${y - 11}V${y + 12}M${x + 2.5} ${y - 12}V${y + 11}`) + P(`M${x - 6} ${y - 2}L${x + 6} ${y - 5}M${x - 6} ${y + 5}L${x + 6} ${y + 2}`, 3);
-    if (a === 2) return P(`M${x - 4} ${y - 4}L${x + 4} ${y + 4}M${x + 4} ${y - 4}L${x - 4} ${y + 4}`, 2.4);
-    return P(`M${x - 3} ${y - 12}V${y + 4}M${x + 3} ${y - 4}V${y + 12}`) + P(`M${x - 3} ${y - 2}L${x + 3} ${y - 4}M${x - 3} ${y + 5}L${x + 3} ${y + 3}`, 3);
+  /** Line or space a note sits on in a clef: 0 = bottom line, 1 = first space, 8 = top line. */
+  const staffPos = (p, clef) => p.oct * 7 + p.l - BOTTOM[clef];
+  /** The clef that keeps the most of these notes on the staff (the old guess: bass below middle C). */
+  const autoClef = (notes) => (notes.length && notes.reduce((s, p) => s + p.oct * 7 + p.l, 0) / notes.length < 28 ? 'bass' : 'treble');
+  /** A clef at x on the staff whose top line is at `top`; small ones are mid-piece changes. */
+  function clefGlyph(clef, x, top, H, small) {
+    let g;
+    if (clef === 'treble') g = `<text x="${x}" y="${top + 8 * H + 9}" class="fc-clef fc-clef--treble">𝄞</text>`;
+    else if (clef === 'bass') g = `<text x="${x - 1}" y="${top + 2 * H + 13}" class="fc-clef fc-clef--bass">𝄢</text>`;
+    else {
+      // C clef drawn as paths, centred on its line, so it never needs a music font.
+      const m = top + 4 * H, b = top + 8 * H, cx = x + 10;
+      const bump = (dir) => `M${cx} ${m}C${cx + 5} ${m + dir * 9} ${cx + 13} ${m + dir * 2} ${cx + 13} ${m + dir * 2.6 * H}`
+        + `C${cx + 13} ${m + dir * 4 * H} ${cx + 4} ${m + dir * 4.2 * H} ${cx + 2} ${m + dir * 3.2 * H}`;
+      g = `<g class="fc-clef fc-clef--alto"><rect x="${x}" y="${top}" width="4.5" height="${b - top}"/><rect x="${x + 6.5}" y="${top}" width="1.6" height="${b - top}"/>`
+        + `<path d="${bump(-1)}${bump(1)}" class="fc-clef-c"/></g>`;
+    }
+    if (!small) return g;
+    // Shrink about the clef's own line (G, F or C) so it stays on that line.
+    const ly = top + (clef === 'treble' ? 6 : clef === 'bass' ? 2 : 4) * H;
+    return `<g transform="translate(${x} ${ly}) scale(0.72) translate(${-x} ${-ly})">${g}</g>`;
   }
   /**
    * opts.notes: [{l, a, oct}] · opts.chord: stack them in one column
    * opts.sig: {sharps, flats} draws a key signature (and hides accidentals it covers)
-   * opts.clef: 'treble' | 'bass' (default: picked from the notes)
+   * opts.clef: 'treble' | 'bass' | 'alto' (default: picked from the notes)
+   * A note with its own .clef switches the staff to that clef from there on,
+   * drawn as a small clef before it, as printed music does mid-piece.
    */
   function staffSVG(opts) {
     const notes = opts.notes || [];
-    const clef = opts.clef || (notes.length && notes.reduce((s, p) => s + p.oct * 7 + p.l, 0) / notes.length < 28 ? 'bass' : 'treble');
+    const clef = (notes[0] && BOTTOM[notes[0].clef] != null && notes[0].clef) || (BOTTOM[opts.clef] != null ? opts.clef : autoClef(notes));
+    // The clef in force at each note, and where it changes.
+    let cur = clef;
+    const clefs = notes.map((p) => (cur = BOTTOM[p.clef] != null ? p.clef : cur));
+    const changeAt = clefs.map((c, i) => i > 0 && c !== clefs[i - 1] && !opts.chord);
     const H = 7;                 // half a space, in px
     /* Notes far above or below the staff are written an octave or two lower
        or higher under 8va / 15ma (8vb / 15mb), as printed music does, rather
        than on a ladder of ledger lines running off the top of the picture. */
-    const steps = notes.map((p) => p.oct * 7 + p.l);
+    const steps = notes.map((p, i) => staffPos(p, clefs[i])); // 0 = bottom line
     const hi = steps.length ? Math.max.apply(null, steps) : 0;
     const lo = steps.length ? Math.min.apply(null, steps) : 0;
     let shift = 0;
-    while (steps.length && shift > -14 && hi + shift > BOTTOM[clef] + 8 + 7) shift -= 7;
-    while (steps.length && shift < 14 && lo + shift < BOTTOM[clef] - 7) shift += 7;
+    while (steps.length && shift > -14 && hi + shift > 8 + 7) shift -= 7;
+    while (steps.length && shift < 14 && lo + shift < -7) shift += 7;
     const ottava = shift === -7 ? '8va' : shift === -14 ? '15ma' : shift === 7 ? '8vb' : shift === 14 ? '15mb' : '';
     // Room for whatever ledger lines are left, above and below.
-    const above = Math.max(0, (hi + shift - (BOTTOM[clef] + 8)) * H + 14);
-    const below = Math.max(0, (BOTTOM[clef] - (lo + shift)) * H + 14);
+    const above = Math.max(0, (hi + shift - 8) * H + 14);
+    const below = Math.max(0, (0 - (lo + shift)) * H + 14);
     const top = Math.max(34, above + 12) + (ottava && shift < 0 ? 14 : 0); // y of the top line
     const bottom = top + 8 * H;  // y of the bottom line
-    const yOf = (d) => bottom - (d - BOTTOM[clef]) * H; // d on the staff, after any octave shift
+    const yOf = (d) => bottom - d * H; // d = staff position, after any octave shift
     const sig = opts.sig || { sharps: 0, flats: 0 };
     const sigCount = sig.sharps || sig.flats;
     const sigKind = sig.sharps ? 'sharp' : 'flat';
     const sigW = sigCount * 11;
     const startX = 54 + sigW + (sigCount ? 10 : 4);
     const colW = opts.chord ? 0 : 38;
-    const width = opts.width || Math.max(180, startX + (opts.chord ? 70 : notes.length * colW + 30));
+    const CHG = 26;              // room for a mid-staff clef
+    const xs = [];
+    let run = 0;
+    notes.forEach((p, i) => { if (changeAt[i]) run += CHG; xs.push(startX + 16 + i * colW + run); });
+    const width = opts.width || Math.max(180, startX + (opts.chord ? 70 : notes.length * colW + run + 30));
     const sigLetters = new Set();
     if (sigCount) {
       const order = sig.sharps ? [3, 0, 4, 1, 5, 2, 6] : [6, 2, 5, 1, 4, 0, 3];
@@ -199,21 +222,20 @@
       s += `<text x="${startX}" y="${oy}" class="fc-ottava">${ottava}</text><line x1="${startX + 36}" x2="${width - 10}" y1="${oy - 4}" y2="${oy - 4}" class="fc-line fc-ottava-line"/>`;
     }
     for (let i = 0; i < 5; i++) s += `<line x1="6" x2="${width - 6}" y1="${top + i * 2 * H}" y2="${top + i * 2 * H}" class="fc-line"/>`;
-    s += clef === 'treble'
-      ? `<text x="10" y="${bottom + 9}" class="fc-clef fc-clef--treble">𝄞</text>`
-      : `<text x="9" y="${top + 2 * H + 13}" class="fc-clef fc-clef--bass">𝄢</text>`;
+    s += clefGlyph(clef, 10, top, H);
     if (sigCount) {
       SIG_STEPS[clef][sigKind].slice(0, sigCount).forEach((d, i) => {
-        s += accPath(sigKind === 'sharp' ? 1 : -1, 54 + i * 11, yOf(d));
+        s += accPath(sigKind === 'sharp' ? 1 : -1, 54 + i * 11, yOf(d - BOTTOM[clef]));
       });
     }
     notes.forEach((p, i) => {
-      const d = p.oct * 7 + p.l + shift;
-      const x = opts.chord ? startX + 20 + (opts.chord && i > 0 && d - shift - (notes[i - 1].oct * 7 + notes[i - 1].l) === 1 ? 14 : 0) : startX + 16 + i * colW;
+      const d = steps[i] + shift;
+      const x = opts.chord ? startX + 20 + (i > 0 && steps[i] - steps[i - 1] === 1 ? 14 : 0) : xs[i];
       const y = yOf(d);
+      if (changeAt[i]) s += clefGlyph(clefs[i], x - 16 - CHG, top, H, true);
       // Ledger lines above and below the staff.
-      for (let ld = BOTTOM[clef] - 2; ld >= d; ld -= 2) s += `<line x1="${x - 11}" x2="${x + 11}" y1="${yOf(ld)}" y2="${yOf(ld)}" class="fc-line"/>`;
-      for (let ld = BOTTOM[clef] + 10; ld <= d; ld += 2) s += `<line x1="${x - 11}" x2="${x + 11}" y1="${yOf(ld)}" y2="${yOf(ld)}" class="fc-line"/>`;
+      for (let ld = -2; ld >= d; ld -= 2) s += `<line x1="${x - 11}" x2="${x + 11}" y1="${yOf(ld)}" y2="${yOf(ld)}" class="fc-line"/>`;
+      for (let ld = 10; ld <= d; ld += 2) s += `<line x1="${x - 11}" x2="${x + 11}" y1="${yOf(ld)}" y2="${yOf(ld)}" class="fc-line"/>`;
       const inSig = sigLetters.has(p.l) && ((sig.sharps && p.a === 1) || (sig.flats && p.a === -1));
       const needsNatural = sigLetters.has(p.l) && p.a === 0;
       if ((p.a !== 0 && !inSig) || needsNatural) {
@@ -477,6 +499,28 @@
   const BT_DRUMS = [['kick', 'Kick'], ['snare', 'Snare'], ['clap', 'Clap'], ['hat', 'Hi-hat'], ['open', 'Open'], ['tom', 'Tom'], ['bell', 'Cowbell']];
   const BT_KEYS = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
   const BT_IDS = BT_DRUMS.map((d) => d[0]).concat(['k0', 'k1', 'k2', 'k3', 'k4', 'bass']);
+  const KB_KEY = 'flux_composer_keyboard';
+  const KB_CLEFS = ['auto', 'treble', 'alto', 'bass'];
+  /** A saved Keyboard, checked field by field: anything odd falls back to `base`. */
+  function cleanKb(v, base) {
+    const kb = Object.assign({ from: 48, played: [], clefs: [], flat: false, clef: 'auto' }, base);
+    if (!v || typeof v !== 'object') return kb;
+    if (Number.isInteger(v.from) && v.from >= 24 && v.from <= 84 && v.from % 12 === 0) kb.from = v.from;
+    if (Array.isArray(v.played)) {
+      const keep = [];
+      v.played.slice(-64).forEach((m, i, arr) => {
+        if (!Number.isInteger(m) || m < 0 || m > 127) return;
+        const c = Array.isArray(v.clefs) ? v.clefs[v.clefs.length - arr.length + i] : null;
+        keep.push([m, BOTTOM[c] != null ? c : null]);
+      });
+      kb.played = keep.map((x) => x[0]);
+      kb.clefs = keep.map((x) => x[1]);
+    }
+    kb.flat = v.flat === true;
+    if (KB_CLEFS.includes(v.clef)) kb.clef = v.clef;
+    return kb;
+  }
+
   /* Rows that play a pitch, and the notes their menus offer (C3–C6, E1–D3). */
   const BT_NOTE_IDS = ['k0', 'k1', 'k2', 'k3', 'k4', 'bass'];
   const BT_MELODY_RANGE = [48, 84];
@@ -497,7 +541,7 @@
     const st = {
       tab: 'keys',
       key: { tonic: 'C', mode: 'major' },
-      kb: { from: 48, played: [], flat: false },
+      kb: loadKb(),
       sc: { root: 'C', type: 'Major' },
       ch: { root: 'C', type: 'Major' },
       hm: { tonic: 'C', mode: 'major' },
@@ -508,6 +552,18 @@
       dp: { sel: { kind: 'core', i: 0 } },
       bt: { bpm: 90, swing: 25, key: 'C', mode: 'minor', preset: 'Boom bap', rows: {}, notes: {}, grid: 16, on: false, timer: null, bar: 0, step: 0 },
     };
+    /* The Keyboard's notes, their clefs and the chosen clef are kept on this
+       device, so the little piece you played is still there next time. */
+    function loadKb() {
+      const kb = { from: 48, played: [], clefs: [], flat: false, clef: 'auto' };
+      let v = null;
+      try { v = JSON.parse(localStorage.getItem(KB_KEY) || 'null'); } catch (e) { v = null; }
+      return v ? cleanKb(v, kb) : kb;
+    }
+    function saveKb() {
+      const kb = st.kb;
+      try { localStorage.setItem(KB_KEY, JSON.stringify({ from: kb.from, played: kb.played, clefs: kb.clefs, flat: kb.flat, clef: kb.clef })); } catch (e) { /* storage full or blocked: the notes just aren't kept */ }
+    }
     const VALID = new Set(TABS.map((t) => t[0]));
     function readHash() {
       if (!opts.hash) return;
@@ -657,12 +713,18 @@
       // The staff spans the whole card and shows as many of the latest notes
       // as fit across it (about 38px each, after the clef).
       const staffW = Math.max(240, Math.floor((body.clientWidth || 700) - 64));
-      const shown = last.slice(-Math.max(4, Math.floor((staffW - 88) / 38)));
+      const n = Math.max(4, Math.floor((staffW - 88) / 38));
+      const shown = last.slice(-n);
+      const shownClefs = kb.clefs.slice(-n);
+      // Notes played on "Auto" take whichever clef suits them best.
+      const fallback = autoClef(shown.map((m, i) => shownClefs[i] ? null : spellMidi(m, kb.flat)).filter(Boolean));
+      const staffNotes = shown.map((m, i) => Object.assign(spellMidi(m, kb.flat), { clef: shownClefs[i] || fallback }));
       const info = lastNote
         ? `<div class="fc-kb-now"><div class="fc-kb-name">${esc(nm(lastNote))}<sub>${lastNote.oct}</sub></div>
              <div class="fc-kb-sub">${esc(pcName(last[last.length - 1]))} · ${freq(last[last.length - 1]).toFixed(2)} Hz · midi ${last[last.length - 1]}</div>
              ${intervalTxt ? `<div class="fc-kb-int">${esc(intervalTxt)}</div>` : ''}</div>
-           <div class="fc-staves fc-staves--full">${staffSVG({ notes: shown.map((m) => spellMidi(m, kb.flat)), label: 'Notes played', width: staffW })}</div>`
+           <div class="fc-staves fc-staves--full">${staffSVG({ notes: staffNotes, label: 'Notes played', width: staffW })}</div>
+           <div class="fc-row"><button type="button" class="fc-btn fc-btn--primary" data-play="${shown.join(',')}" data-gap="0.36">▶ Play back</button></div>`
         : '<p class="fc-sub">Tap a key, or use your computer keyboard: <b>A W S E D F T G Y H U J K</b> play a chromatic octave.</p>';
       body.innerHTML = card('Keyboard', 'Three octaves. Every note you play is named, measured and written on the staff.',
         `<div class="fc-row">
@@ -671,16 +733,26 @@
            <button type="button" class="fc-btn" id="kbUp" ${kb.from >= 84 ? 'disabled' : ''}>Higher ▶</button>
            ${segHTML('kbSpell', kb.flat ? 'flat' : 'sharp', [['sharp', 'Sharps'], ['flat', 'Flats']])}
            <button type="button" class="fc-btn" id="kbClear">Clear</button></div>
+         <div class="fc-row"><span class="fc-sub">Clef</span>${segHTML('kbClef', kb.clef, [['auto', 'Auto'], ['treble', 'Treble'], ['alto', 'Alto'], ['bass', 'Bass']])}
+           <span class="fc-sub">${kb.played.length ? 'Notes you play next use this clef; a change shows mid-staff.' : 'Alto puts middle C on the middle line (viola).'}</span></div>
          ${pianoHTML({ from: kb.from, octaves: 3, lit })}
          <div class="fc-kb-info">${info}</div>`);
       body.querySelectorAll('.fc-piano [data-midi]').forEach((k) => k.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         pressKey(+k.dataset.midi);
       }));
-      body.querySelector('#kbDown').addEventListener('click', () => { kb.from -= 12; renderKeyboard(); });
-      body.querySelector('#kbUp').addEventListener('click', () => { kb.from += 12; renderKeyboard(); });
-      body.querySelector('#kbClear').addEventListener('click', () => { kb.played = []; renderKeyboard(); });
-      body.querySelector('#kbSpell').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; kb.flat = b.dataset.v === 'flat'; renderKeyboard(); });
+      body.querySelector('#kbDown').addEventListener('click', () => { kb.from -= 12; saveKb(); renderKeyboard(); });
+      body.querySelector('#kbUp').addEventListener('click', () => { kb.from += 12; saveKb(); renderKeyboard(); });
+      body.querySelector('#kbClear').addEventListener('click', () => { kb.played = []; kb.clefs = []; saveKb(); renderKeyboard(); });
+      body.querySelector('#kbSpell').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; kb.flat = b.dataset.v === 'flat'; saveKb(); renderKeyboard(); });
+      body.querySelector('#kbClef').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-v]');
+        if (!b) return;
+        kb.clef = b.dataset.v;
+        // With nothing written yet, the clef simply is the staff's clef.
+        saveKb();
+        renderKeyboard();
+      });
       if (!kbKeyHandler) {
         kbKeyHandler = (e) => {
           if (st.tab !== 'keyboard' || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -697,7 +769,9 @@
     function pressKey(m) {
       tone(m, 0, 1.1, 0.25);
       st.kb.played.push(m);
-      if (st.kb.played.length > 64) st.kb.played.shift();
+      st.kb.clefs.push(st.kb.clef === 'auto' ? null : st.kb.clef);
+      if (st.kb.played.length > 64) { st.kb.played.shift(); st.kb.clefs.shift(); }
+      saveKb();
       renderKeyboard();
     }
 
@@ -1485,5 +1559,5 @@
     };
   }
 
-  window.FluxComposer = { mount, staffSVG, placeRising, midiOf, spellMidi, tempoWord };
+  window.FluxComposer = { mount, staffSVG, placeRising, midiOf, spellMidi, tempoWord, staffPos, cleanKb };
 })();

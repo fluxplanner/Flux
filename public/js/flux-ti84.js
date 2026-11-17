@@ -41,8 +41,10 @@
   /* ── The keypad ─────────────────────────────────────────────────────── */
 
   const K = (id, main, sec, al, cls) => ({ id: id, main: main, sec: sec || '', al: al || '', cls: cls || 'fn' });
-  const TOP = [K('yequ', 'y=', 'stat plot', 'f1', 'top'), K('window', 'window', 'tblset', 'f2', 'top'), K('zoom', 'zoom', 'format', 'f3', 'top'),
-    K('trace', 'trace', 'calc', 'f4', 'top'), K('graph', 'graph', 'table', 'f5', 'top')];
+  /* alpha + a top key opens the CE's shortcut menus. The handheld only prints
+     "f1"–"f4"; the menu name is added so the fraction key can be found. */
+  const TOP = [K('yequ', 'y=', 'stat plot', 'f1 frac', 'top'), K('window', 'window', 'tblset', 'f2 func', 'top'), K('zoom', 'zoom', 'format', 'f3 mtrx', 'top'),
+    K('trace', 'trace', 'calc', 'f4 yvar', 'top'), K('graph', 'graph', 'table', 'f5', 'top')];
   const MID = [[K('2nd', '2nd', '', '', 'second'), K('mode', 'mode', 'quit'), K('del', 'del', 'ins')],
     [K('alpha', 'alpha', 'A-lock', '', 'alpha'), K('xt', 'X,T,θ,n', 'link'), K('stat', 'stat', 'list')]];
   const ROWS = [
@@ -57,7 +59,7 @@
   /* Evo keeps the same math engine and memory, while changing the keys that
      TI changed on the physical model. The fraction template takes the old
      X,T,θ,n key's place; 2nd restores that variable key. */
-  const EVO_TOP = [K('yequ', 'plot', 'stat plot', 'f1', 'top'), TOP[1], TOP[2], TOP[3], TOP[4]];
+  const EVO_TOP = [K('yequ', 'plot', 'stat plot', 'f1 frac', 'top'), TOP[1], TOP[2], TOP[3], TOP[4]];
   const EVO_MID = [[MID[0][0], MID[0][1], K('del', 'del', 'insert')],
     [MID[1][0], K('xt', 'a b/c', 'X,T,θ,n'), K('stat', 'stat', 'list', 'distr')]];
   const EVO_ROWS = [
@@ -1650,6 +1652,7 @@
     mount: mount,
     core: {
       Calc: Calc, FormApp: FormApp, ReportApp: ReportApp, MenuApp: MenuApp, ConfirmApp: ConfirmApp, AppsHomeApp: AppsHomeApp, ModeApp: ModeApp,
+      KEYPAD: { TOP: TOP, MID: MID, ROWS: ROWS, EVO_TOP: EVO_TOP, EVO_MID: EVO_MID, EVO_ROWS: EVO_ROWS, SEC: SEC, ALPHA: ALPHA, ALPHA_TOP: ALPHA_TOP },
       esc: esc, fmt: fmt, outHTML: outHTML, outNodes: outNodes, YCOLOURS: YCOLOURS, yNames: yNames, MENU_KEYS: MENU_KEYS,
     },
   };
