@@ -199,6 +199,7 @@
     "public/js/flux-study-physics.js",
     "public/js/flux-lab-fit.js",
     "public/js/flux-expr.js",
+    "public/data/products.js",
     "public/js/flux-hub.js",
     "public/js/flux-purple-day.js",
     "public/js/flux-synara-link.js",
@@ -453,6 +454,7 @@
   ],
   "owner": [
     "public/js/flux-iconify.js",
+    "public/data/products.js",
     "public/js/flux-hub.js",
     "public/js/flux-owner-runtime.js",
     "public/js/flux-staff-directory.js",

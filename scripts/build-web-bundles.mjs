@@ -260,7 +260,7 @@ for (const page of ['owner.html', 'grapher.html', 'calculator.html', 'periodic.h
   const file = path.join(ROOT, page);
   if (!fs.existsSync(file)) continue;
   const before = fs.readFileSync(file, 'utf8');
-  const after = before.replace(/(src|href)="(public\/(?:js|css)\/[\w.-]+\.(?:js|css))(\?v=[0-9a-f]+)?"/g, (m, attr, src) => {
+  const after = before.replace(/(src|href)="(public\/(?:js|css|data)\/[\w.-]+\.(?:js|css))(\?v=[0-9a-f]+)?"/g, (m, attr, src) => {
     const abs = path.join(ROOT, src);
     if (!fs.existsSync(abs)) return m;
     return `${attr}="${src}?v=${hash8(fs.readFileSync(abs, 'utf8'))}"`;
