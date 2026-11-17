@@ -169,6 +169,19 @@
     });
   }
 
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /* Split screen needs room for two apps; below this it is not offered and
+     split.html falls back to the left app on its own. */
+  var SPLIT_MIN = 900;
+  function wideEnough() {
+    var w = window.innerWidth;
+    try { w = window.top.innerWidth; } catch (e) { /* other origin: use our own */ }
+    return w >= SPLIT_MIN;
+  }
+
   function mount(host) {
     if (!host || host.getAttribute('data-flux-hub-ready') === '1') return;
     host.setAttribute('data-flux-hub-ready', '1');
@@ -183,8 +196,98 @@
       + '<circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/>'
       + '</svg></span>'
       + '<span class="fxhub-btn-label">Flux</span>'
-      + '</a>';
+      + '</a>'
+      + '<button type="button" class="fxhub-more" aria-haspopup="true" aria-expanded="false" aria-label="Switch app" title="Switch app">'
+      + '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>'
+      + '</button>';
   }
+
+  /* ── The quick switcher ───────────────────────────────────────────────
+     The chevron beside the Flux button lists every app as a real link, so a
+     plain click switches, and Cmd/Ctrl/middle-click opens a new tab as on any
+     link. Each row also has its own "open in a new tab" button, and on wide
+     screens there is Split screen (split.html). Built on each open, so apps
+     hidden or shown by Owner Controls since the page loaded are up to date. */
+  var menuEl = null, menuBtn = null;
+  var NEWTAB_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>';
+  var SPLIT_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/></svg>';
+
+  function closeMenu(refocus) {
+    if (!menuEl) return;
+    menuEl.remove();
+    menuEl = null;
+    if (menuBtn) {
+      menuBtn.setAttribute('aria-expanded', 'false');
+      if (refocus) menuBtn.focus();
+    }
+    menuBtn = null;
+  }
+
+  function openMenu(btn) {
+    closeMenu(false);
+    var host = btn.closest('[data-flux-hub]');
+    var current = host ? host.getAttribute('data-flux-hub') : '';
+    var newTab = !installed();
+    var rows = visibleProducts().map(function (p) {
+      var here = p.id === current;
+      return '<div class="fxhub-row">'
+        + '<a class="fxhub-item" role="menuitem" href="' + esc(p.href) + '"' + (here ? ' aria-current="page"' : '') + '>'
+        + '<span class="fxhub-item-mark" aria-hidden="true">' + p.mark + '</span>'
+        + '<span class="fxhub-item-name">' + esc(p.name) + '</span></a>'
+        + (newTab ? '<a class="fxhub-newtab" role="menuitem" href="' + esc(p.href) + '" target="_blank" rel="noopener" aria-label="Open ' + esc(p.name) + ' in a new tab" title="Open in new tab">' + NEWTAB_SVG + '</a>' : '')
+        + '</div>';
+    }).join('');
+    var split = '';
+    if (wideEnough()) {
+      var left = PRODUCTS.some(function (p) { return p.id === current; }) ? current : 'planner';
+      split = '<a class="fxhub-split" role="menuitem" target="_top" href="split.html?left=' + encodeURIComponent(left) + '">'
+        + SPLIT_SVG + '<span>Split screen</span></a>';
+    }
+    var m = document.createElement('div');
+    m.className = 'fxhub-menu';
+    m.setAttribute('role', 'menu');
+    m.setAttribute('aria-label', 'Flux apps');
+    m.innerHTML = rows + split
+      + '<a class="fxhub-all" role="menuitem" href="suite.html">All of Flux Suite</a>';
+    document.body.appendChild(m);
+    // Fixed to the button, so no overflow:hidden toolbar can clip it.
+    var r = btn.getBoundingClientRect();
+    var w = m.offsetWidth;
+    var left = Math.min(Math.max(8, r.right - w), window.innerWidth - w - 8);
+    m.style.left = Math.max(8, left) + 'px';
+    m.style.top = (r.bottom + 6) + 'px';
+    m.style.maxHeight = Math.max(160, window.innerHeight - r.bottom - 18) + 'px';
+    menuEl = m;
+    menuBtn = btn;
+    btn.setAttribute('aria-expanded', 'true');
+    var first = m.querySelector('.fxhub-item');
+    if (first) first.focus();
+  }
+
+  // Capture phase: the planner stops clicks bubbling.
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    var btn = t && t.closest && t.closest('.fxhub-more');
+    if (btn) {
+      e.preventDefault();
+      if (menuBtn === btn) closeMenu(false); else openMenu(btn);
+      return;
+    }
+    if (menuEl && !menuEl.contains(t)) closeMenu(false);
+  }, true);
+  document.addEventListener('keydown', function (e) {
+    if (!menuEl) return;
+    if (e.key === 'Escape') { e.preventDefault(); closeMenu(true); return; }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    var items = [].slice.call(menuEl.querySelectorAll('a'));
+    var i = items.indexOf(document.activeElement);
+    e.preventDefault();
+    var n = e.key === 'ArrowDown' ? i + 1 : i - 1;
+    items[(n + items.length) % items.length].focus();
+  }, true);
+  window.addEventListener('resize', function () { closeMenu(false); });
+  // Opening a link in a new tab leaves this page open: put the menu away.
+  document.addEventListener('visibilitychange', function () { if (document.hidden) closeMenu(false); });
 
   function mountAll() {
     var hosts = document.querySelectorAll('[data-flux-hub]');
@@ -342,5 +445,5 @@
     return cv;
   }
 
-  window.FluxHub = { mount: mount, mountAll: mountAll, openPage: openPage, PRODUCTS: PRODUCTS, visibleProducts: visibleProducts, GROUPS: GROUPS, canPrint: canPrint, printImage: printImage, markCanvas: markCanvas, printMarkHTML: printMarkHTML };
+  window.FluxHub = { mount: mount, SPLIT_MIN: SPLIT_MIN, mountAll: mountAll, openPage: openPage, PRODUCTS: PRODUCTS, visibleProducts: visibleProducts, GROUPS: GROUPS, canPrint: canPrint, printImage: printImage, markCanvas: markCanvas, printMarkHTML: printMarkHTML };
 })();

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="public/js/flux-frame-guard.js?v=9afa87b3"></script>
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
+<script src="public/js/flux-app-visibility.js?v=8ab1ae57" data-app="suite"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flux Split Screen</title>
+<meta name="theme-color" content="#070b14">
+<link rel="icon" type="image/png" href="public/flux-planner-logo.png">
+<!--
+  Two Flux apps side by side, e.g. the planner and the grapher. Each side is
+  the app's own page in an iframe. Same origin, so both share localStorage and
+  the sign-in: nothing has to be passed between them. The pair and the divider
+  position are remembered (localStorage flux_split_v1). Below FluxHub.SPLIT_MIN
+  wide there is no room for two, so this page only shows the left app.
+-->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #070b14; color: #eaf1ff; font: 600 .86rem/1.2 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+  body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+  .bar { flex: none; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 10px; background: #080c16; border-bottom: 1px solid rgba(255,255,255,.12); }
+  .bar img { width: 24px; height: 24px; border-radius: 7px; }
+  .bar .side { flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .bar .side + button + .side { justify-content: flex-end; }
+  select, .bar button, .bar a { font: inherit; color: inherit; height: 30px; border-radius: 9px; border: 1px solid rgba(255,255,255,.16); background: #121a2c; padding: 0 10px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  select { max-width: 220px; }
+  .bar button:hover, .bar a:hover { border-color: rgba(0,194,255,.5); }
+  :focus-visible { outline: 2px solid #00c2ff; outline-offset: 2px; }
+  .panes { flex: 1; display: flex; min-height: 0; }
+  .pane { min-width: 0; display: flex; }
+  .pane iframe { flex: 1; width: 100%; height: 100%; border: 0; background: #070b14; }
+  #left { flex: 0 0 var(--ratio, 50%); }
+  #right { flex: 1 1 0; }
+  .divider { flex: none; width: 8px; cursor: col-resize; background: #0d1424; border-left: 1px solid rgba(255,255,255,.1); border-right: 1px solid rgba(255,255,255,.1); touch-action: none; position: relative; }
+  .divider::after { content: ''; position: absolute; top: 50%; left: 2px; width: 2px; height: 36px; margin-top: -18px; border-radius: 2px; background: rgba(255,255,255,.35); }
+  .divider:hover, .divider:focus-visible, body.dragging .divider { background: rgba(0,194,255,.35); }
+  /* Iframes swallow pointer events: switch them off while dragging. */
+  body.dragging iframe { pointer-events: none; }
+  body.dragging { cursor: col-resize; user-select: none; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  /* Window made too narrow for two apps: the left one alone, full width. */
+  @media (max-width: 899px) {
+    #right, .divider, .right-only { display: none !important; }
+    #left { flex: 1 1 auto; }
+  }
+</style>
+</head>
+<body>
+  <div class="bar">
+    <div class="side">
+      <img src="public/flux-planner-logo.png" alt="" width="24" height="24">
+      <label class="sr" for="pickLeft">Left app</label>
+      <select id="pickLeft"></select>
+    </div>
+    <button type="button" id="swap" class="right-only" aria-label="Swap sides" title="Swap sides">⇄</button>
+    <div class="side">
+      <label class="sr" for="pickRight">Right app</label>
+      <select id="pickRight" class="right-only"></select>
+      <a id="exit" href="index.html" title="Leave split screen">Close split</a>
+    </div>
+  </div>
+  <div class="panes" id="panes">
+    <div class="pane" id="left"><iframe id="frameLeft" title="Left app"></iframe></div>
+    <div class="divider" id="divider" role="separator" aria-orientation="vertical" aria-label="Resize the two apps" tabindex="0" aria-valuemin="20" aria-valuemax="80"></div>
+    <div class="pane" id="right"><iframe id="frameRight" title="Right app"></iframe></div>
+  </div>
+
+  <script src="public/js/flux-hub.js?v=b5d0b61b"></script>
+  <script>
+    (function () {
+      var KEY = 'flux_split_v1';
+      var hub = window.FluxHub;
+      var MIN = (hub && hub.SPLIT_MIN) || 900;
+      // Only Flux's own pages go in a pane: ids map to hrefs from PRODUCTS.
+      var apps = (hub ? hub.visibleProducts() : []).filter(function (p) { return !p.ownerOnly; });
+      var byId = {};
+      apps.forEach(function (p) { byId[p.id] = p; });
+      if (!apps.length) { location.replace('index.html'); return; }
+
+      var saved = {};
+      try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+      var q = new URLSearchParams(location.search);
+      function pick(a, b, fallback) { return byId[a] ? a : byId[b] ? b : fallback; }
+      var state = {
+        left: pick(q.get('left'), saved.left, byId.planner ? 'planner' : apps[0].id),
+        right: pick(q.get('right'), saved.right, 'grapher'),
+        ratio: typeof saved.ratio === 'number' ? saved.ratio : 50,
+      };
+      if (!byId[state.right] || state.right === state.left) {
+        var other = apps.filter(function (p) { return p.id !== state.left; })[0];
+        state.right = other ? other.id : state.left;
+      }
+
+      // Opened on a phone: no room for two, so just go to the left app.
+      if (window.innerWidth < MIN) { location.replace(byId[state.left].href); return; }
+
+      var pickL = document.getElementById('pickLeft'), pickR = document.getElementById('pickRight');
+      var frameL = document.getElementById('frameLeft'), frameR = document.getElementById('frameRight');
+      var panes = document.getElementById('panes'), divider = document.getElementById('divider');
+      apps.forEach(function (p) {
+        [pickL, pickR].forEach(function (sel) {
+          var o = document.createElement('option');
+          o.value = p.id; o.textContent = p.name;
+          sel.appendChild(o);
+        });
+      });
+
+      function save() {
+        try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* private mode */ }
+        try { history.replaceState(null, '', 'split.html?left=' + encodeURIComponent(state.left) + '&right=' + encodeURIComponent(state.right)); } catch (e) {}
+      }
+      function load(frame, id) {
+        if (frame.getAttribute('src') !== byId[id].href) frame.setAttribute('src', byId[id].href);
+        frame.title = byId[id].name;
+      }
+      function render() {
+        pickL.value = state.left; pickR.value = state.right;
+        load(frameL, state.left); load(frameR, state.right);
+        document.getElementById('exit').href = byId[state.left].href;
+        save();
+      }
+      function choose(side, id) {
+        if (!byId[id]) return;
+        var otherSide = side === 'left' ? 'right' : 'left';
+        // Picking the app already on the other side swaps the two.
+        if (state[otherSide] === id) state[otherSide] = state[side];
+        state[side] = id;
+        render();
+      }
+      pickL.addEventListener('change', function () { choose('left', pickL.value); });
+      pickR.addEventListener('change', function () { choose('right', pickR.value); });
+      document.getElementById('swap').addEventListener('click', function () { choose('left', state.right); });
+
+      // Divider: drag with mouse, finger or pen; arrow keys when focused.
+      function setRatio(r) {
+        state.ratio = Math.round(Math.min(80, Math.max(20, r)) * 10) / 10;
+        panes.style.setProperty('--ratio', state.ratio + '%');
+        divider.setAttribute('aria-valuenow', String(Math.round(state.ratio)));
+      }
+      setRatio(state.ratio);
+      divider.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        divider.setPointerCapture(e.pointerId);
+        document.body.classList.add('dragging');
+      });
+      divider.addEventListener('pointermove', function (e) {
+        if (!document.body.classList.contains('dragging')) return;
+        var r = panes.getBoundingClientRect();
+        setRatio((e.clientX - r.left) / r.width * 100);
+      });
+      function endDrag() {
+        if (!document.body.classList.contains('dragging')) return;
+        document.body.classList.remove('dragging');
+        save();
+      }
+      divider.addEventListener('pointerup', endDrag);
+      divider.addEventListener('pointercancel', endDrag);
+      divider.addEventListener('dblclick', function () { setRatio(50); save(); });
+      divider.addEventListener('keydown', function (e) {
+        var step = e.shiftKey ? 10 : 2;
+        if (e.key === 'ArrowLeft') setRatio(state.ratio - step);
+        else if (e.key === 'ArrowRight') setRatio(state.ratio + step);
+        else if (e.key === 'Home') setRatio(20);
+        else if (e.key === 'End') setRatio(80);
+        else return;
+        e.preventDefault();
+        save();
+      });
+
+      render();
+    })();
+  </script>
+</body>
+</html>
