@@ -1893,8 +1893,11 @@
   function display(v, mode, opts) {
     const o = opts || {};
     const m = mode || {};
-    const wantFrac = o.conv === '▶Frac' || o.conv === '▶n/d◀▶Un/d' || o.conv === '▶F◀▶D' || (m.answers === 'frac' && o.conv !== '▶Dec')
-      || (m.answers === 'auto' && o.fracInput && o.conv !== '▶Dec');
+    // ▶F◀▶D flips whatever the answer would have shown: a fraction typed with
+    // n/d comes back as a decimal, a decimal comes back as a fraction.
+    const fracByMode = m.answers === 'frac' || (m.answers === 'auto' && !!o.fracInput);
+    const wantFrac = o.conv === '▶F◀▶D' ? !fracByMode
+      : o.conv === '▶Frac' || o.conv === '▶n/d◀▶Un/d' || (fracByMode && o.conv !== '▶Dec');
     const mixed = o.conv === '▶n/d◀▶Un/d' ? m.fracType !== 'Un/d' : m.fracType === 'Un/d';
     const one = (x) => {
       if (isNum(x)) {
