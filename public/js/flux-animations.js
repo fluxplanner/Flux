@@ -646,7 +646,25 @@ function panelFlash(inEl) {
   });
 }
 
+/* A close animation finishes ~200ms after it starts. Reopening the same
+   modal inside that window used to let the stale onComplete hide it again
+   (and leave it at opacity 0), so the button looked dead. Opening now
+   cancels any close still in flight. */
+const pendingCloses = new WeakMap();
+function modalCancelClose(overlayEl, cardEl) {
+  const p = overlayEl && pendingCloses.get(overlayEl);
+  if (!p) return;
+  pendingCloses.delete(overlayEl);
+  try { p.tl.cancel?.(); } catch (_) {}
+  [overlayEl, cardEl || p.cardEl].forEach((el) => {
+    if (!el) return;
+    el.style.opacity = '';
+    el.style.transform = '';
+  });
+}
+
 function modalOpen(overlayEl, cardEl) {
+  modalCancelClose(overlayEl, cardEl);
   if (!cardEl) return;
   try {
     if (!prefersReducedMotion() && !perfSnappy() && typeof window.FluxAnim?.modalOpenEnhanced === 'function') {
@@ -669,6 +687,7 @@ function modalOpen(overlayEl, cardEl) {
 }
 
 function modalClose(overlayEl, cardEl, onComplete) {
+  modalCancelClose(overlayEl, cardEl);
   if (!cardEl && !overlayEl) {
     onComplete?.();
     return;
@@ -678,7 +697,13 @@ function modalClose(overlayEl, cardEl, onComplete) {
     return;
   }
   try {
-    const tl = createTimeline({ onComplete });
+    const done = () => {
+      if (overlayEl && pendingCloses.get(overlayEl)?.tl !== tl) return;
+      if (overlayEl) pendingCloses.delete(overlayEl);
+      onComplete?.();
+    };
+    const tl = createTimeline({ onComplete: done });
+    if (overlayEl) pendingCloses.set(overlayEl, { tl, cardEl });
     if (cardEl) {
       tl.add(cardEl, {
         opacity: [1, 0],
@@ -1371,6 +1396,7 @@ window.FluxAnim = {
   panelFlash,
   modalOpen,
   modalClose,
+  modalCancelClose,
   sheetOpen,
   sheetClose,
   cardsEnter,
