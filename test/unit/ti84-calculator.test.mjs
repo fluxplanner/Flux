@@ -372,3 +372,36 @@ test('graph sampling remains bounded when coordinates stop advancing', () => {
   same(W.FluxTIGraph.steppedValues(1e16, 1e16, 1, 10), [1e16]);
   same(W.FluxTIGraph.steppedValues(1e16, 1e16 + 2, 1, 10), [1e16, 1e16 + 2]);
 });
+
+test('fractions: n/d entry, ▶Frac, ▶Dec and the ▶F◀▶D toggle', () => {
+  const st = T.freshState();
+  const out = (src, fracInput) => { const r = T.run(src, st); return T.textOf(r.value, st.mode, { conv: r.conv, fracInput }); };
+  // Typed with the n/d template, AUTO answers come back as a fraction.
+  assert.equal(out('1/2+1/3', true), '5/6');
+  assert.equal(out('1/2+1/3', false), '.8333333333');
+  assert.equal(out('2.375▶Frac'), '19/8');
+  assert.equal(out('1/4▶Dec', true), '.25');
+  assert.equal(out('7/2▶n/d◀▶Un/d'), '3 1/2');
+  // ▶F◀▶D flips whatever would have shown, both ways.
+  assert.equal(out('.5▶F◀▶D'), '1/2');
+  assert.equal(out('1/2▶F◀▶D', true), '.5');
+});
+
+test('every TI-84 Plus CE key and its fraction shortcut are on the keypad', () => {
+  const K = W.FluxTI84.core.KEYPAD;
+  const ids = [...K.TOP, ...K.MID.flat(), ...K.ROWS.flat()].map((k) => k.id);
+  const want = ['yequ', 'window', 'zoom', 'trace', 'graph', '2nd', 'mode', 'del', 'alpha', 'xt', 'stat', 'math', 'apps', 'prgm', 'vars', 'clear',
+    'inv', 'sin', 'cos', 'tan', 'pow', 'sq', 'comma', 'lparen', 'rparen', 'div', 'log', '7', '8', '9', 'mul', 'ln', '4', '5', '6', 'sub',
+    'sto', '1', '2', '3', 'add', 'on', '0', 'dot', 'neg', 'enter'];
+  same(ids.slice().sort(), want.slice().sort());
+  // alpha + y= is the FRAC menu (n/d, Un/d, ▶F◀▶D, ▶n/d◀▶Un/d), and its label says so.
+  assert.equal(K.ALPHA_TOP.yequ, 'f1');
+  assert.match(K.TOP[0].al, /frac/);
+  const f1 = new W.FluxTI84.core.MenuApp({ st: T.freshState() }, 'F1');
+  same(f1.tabs[0].items.map((i) => i.l), ['n/d', 'Un/d', '▶F◀▶D', '▶n/d◀▶Un/d']);
+  const math = new W.FluxTI84.core.MenuApp({ st: T.freshState() }, 'MATH');
+  same(math.tabs.map((t) => t.name), ['MATH', 'NUM', 'CMPLX', 'PROB', 'FRAC']);
+  same(math.tabs[0].items.slice(0, 2).map((i) => i.l), ['▶Frac', '▶Dec']);
+  // On the Evo the fraction template has its own key.
+  assert.equal(K.EVO_MID[1][1].main, 'a b/c');
+});
