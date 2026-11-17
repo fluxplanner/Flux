@@ -28,7 +28,7 @@ const FLUX_IMPERSONATION_GLOBAL_KEYS=new Set([
   'flux_last_user_id','flux_last_user_email',
   // UI / theme prefs — kept shared so the dev experience doesn't reset
   // every time you switch into a different teacher to test something.
-  'flux_user_name','flux_accent','flux_accent_rgb','flux_theme',
+  'flux_user_name','flux_accent','flux_accent_rgb','flux_theme','flux_font','flux_texture',
   'flux_profile_pic',
   'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
   'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
@@ -7943,7 +7943,76 @@ function loadTheme(){
   document.documentElement.style.setProperty('--accent',acc);
   document.documentElement.style.setProperty('--accent-rgb',rgb);
   setTimeout(()=>{updateLogoColor(acc);clearSvgLogoGradientStyles();},0);
+  fluxApplyFont(fluxLoadStoredString('flux_font',''));
+  fluxApplyTexture(fluxLoadStoredString('flux_texture',''));
+  fluxRenderLookExtras();
 }
+
+// ══ FONTS & TEXTURES (Settings → Look) ══
+// Fonts come from Google Fonts and are only fetched once someone picks one.
+// '' is the built-in Plus Jakarta Sans. The look itself lives in
+// flux-design-2026.css under html[data-flux-font] / html[data-flux-texture].
+const FLUX_FONTS={
+  '':{label:'Default (Jakarta)',stack:"'Plus Jakarta Sans',system-ui,sans-serif"},
+  inter:{label:'Inter',family:'Inter',stack:"'Inter',system-ui,sans-serif"},
+  nunito:{label:'Nunito',family:'Nunito',stack:"'Nunito',system-ui,sans-serif"},
+  poppins:{label:'Poppins',family:'Poppins',stack:"'Poppins',system-ui,sans-serif"},
+  lexend:{label:'Lexend (easy reading)',family:'Lexend',stack:"'Lexend',system-ui,sans-serif"},
+  atkinson:{label:'Atkinson Hyperlegible',family:'Atkinson Hyperlegible',weights:'400;700',stack:"'Atkinson Hyperlegible',system-ui,sans-serif"},
+  spacegrotesk:{label:'Space Grotesk',family:'Space Grotesk',stack:"'Space Grotesk',system-ui,sans-serif"},
+  quicksand:{label:'Quicksand',family:'Quicksand',stack:"'Quicksand',system-ui,sans-serif"},
+  lora:{label:'Lora (serif)',family:'Lora',stack:"'Lora',Georgia,serif"},
+  merriweather:{label:'Merriweather (serif)',family:'Merriweather',weights:'400;700;900',stack:"'Merriweather',Georgia,serif"},
+  jetbrains:{label:'JetBrains Mono',family:'JetBrains Mono',stack:"'JetBrains Mono',ui-monospace,monospace"},
+};
+const FLUX_TEXTURES={
+  '':'None',wood:'Wood',metal:'Brushed metal',bakery:'Bakery',marble:'Marble',
+  felt:'Felt',parchment:'Parchment',slate:'Slate',checker:'Checkerboard',
+};
+function fluxApplyFont(key){
+  const f=FLUX_FONTS[key]?key:'';
+  const root=document.documentElement;
+  if(!f){root.removeAttribute('data-flux-font');root.style.removeProperty('--flux-font');return;}
+  const def=FLUX_FONTS[f];
+  const id='fluxFontLink-'+f;
+  if(!document.getElementById(id)){
+    const l=document.createElement('link');
+    l.id=id;l.rel='stylesheet';
+    l.href='https://fonts.googleapis.com/css2?family='+encodeURIComponent(def.family).replace(/%20/g,'+')+':wght@'+(def.weights||'400;500;600;700;800')+'&display=swap';
+    document.head.appendChild(l);
+  }
+  root.style.setProperty('--flux-font',def.stack);
+  root.setAttribute('data-flux-font',f);
+}
+function fluxApplyTexture(key){
+  const t=FLUX_TEXTURES[key]!==undefined?key:'';
+  if(t)document.documentElement.setAttribute('data-flux-texture',t);
+  else document.documentElement.removeAttribute('data-flux-texture');
+}
+function fluxSetFont(key){
+  fluxSaveStoredString('flux_font',FLUX_FONTS[key]?key:'');
+  fluxApplyFont(key);fluxRenderLookExtras();
+  if(typeof syncKey==='function')try{syncKey('flux_font');}catch(_){}
+}
+function fluxSetTexture(key){
+  fluxSaveStoredString('flux_texture',FLUX_TEXTURES[key]!==undefined?key:'');
+  fluxApplyTexture(key);fluxRenderLookExtras();
+  if(typeof syncKey==='function')try{syncKey('flux_texture');}catch(_){}
+}
+function fluxRenderLookExtras(){
+  const sel=document.getElementById('fluxFontSelect');
+  if(sel){
+    if(!sel.options.length)sel.innerHTML=Object.entries(FLUX_FONTS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('');
+    sel.value=FLUX_FONTS[fluxLoadStoredString('flux_font','')]?fluxLoadStoredString('flux_font',''):'';
+  }
+  const grid=document.getElementById('fluxTextureGrid');
+  if(grid){
+    const cur=fluxLoadStoredString('flux_texture','');
+    grid.innerHTML=Object.entries(FLUX_TEXTURES).map(([k,v])=>
+      `<button type="button" class="fx-tex-tile${k===cur?' active':''}" data-tex="${k}" aria-pressed="${k===cur}" onclick="fluxSetTexture('${k}')"><span class="fx-tex-swatch"></span><span class="fx-tex-name">${v}</span></button>`).join('');
+  }
+}
+window.fluxSetFont=fluxSetFont;window.fluxSetTexture=fluxSetTexture;window.fluxRenderLookExtras=fluxRenderLookExtras;
 
 function applyCustomVar(varName,value){
   document.documentElement.style.setProperty(varName,value);
@@ -8325,7 +8394,7 @@ function clearCache(){
   const inp=prompt('Type DELETE to confirm wiping all planner data. This cannot be undone.');
   if(inp!=='DELETE'){if(inp!==null)alert('Cancelled — you must type DELETE exactly.');return;}
   const keep=[
-    'flux_settings','flux_accent','flux_accent_rgb','flux_theme','profile','flux_user_name',
+    'flux_settings','flux_accent','flux_accent_rgb','flux_theme','flux_font','flux_texture','profile','flux_user_name',
     'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
     'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
     'flux_data_version','flux_splash_shown',
@@ -10066,6 +10135,8 @@ function getCloudPayload(){
     accent:fluxLoadStoredString('flux_accent','#00bfff'),
     accentRgb:fluxLoadStoredString('flux_accent_rgb','0,191,255'),
     theme:fluxLoadStoredString('flux_theme','dark'),
+    font:fluxLoadStoredString('flux_font',''),
+    texture:fluxLoadStoredString('flux_texture',''),
     tasks,
     notes:notes.map(n=>({...n,body:n.body||''})),
     // Tasks and notes deleted here, so other devices delete them too rather
@@ -10923,6 +10994,10 @@ async function syncFromCloud(opts){
     fluxSaveStoredString('flux_accent',syncAccent);
     fluxSaveStoredString('flux_accent_rgb',syncRgb);
     if(d.theme)fluxSaveStoredString('flux_theme',d.theme);
+    // Font and texture only travel once a device has chosen one; an older
+    // row without the keys leaves this device's choice alone.
+    if(typeof d.font==='string')fluxSaveStoredString('flux_font',d.font);
+    if(typeof d.texture==='string')fluxSaveStoredString('flux_texture',d.texture);
     loadTheme();
     // Mark active swatch
     document.querySelectorAll('.swatch').forEach(s=>{
@@ -14899,7 +14974,7 @@ function handleSignedOut(){
   _fluxRow=null;_fluxRowMisses=0;_fluxAgreed=null;
   sessionStorage.clear();
   const keysToKeep=[
-    'flux_splash_shown','flux_theme','flux_accent','flux_accent_rgb',
+    'flux_splash_shown','flux_theme','flux_accent','flux_accent_rgb','flux_font','flux_texture',
     'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
     'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
     'flux_data_version',
