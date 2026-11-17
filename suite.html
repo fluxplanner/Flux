@@ -22,7 +22,7 @@
   no bundles, no sign-in — and drawn from FluxHub.PRODUCTS in flux-hub.js, so
   every product appears here without duplicating its directory entry.
 -->
-<link rel="stylesheet" href="public/css/flux-hub.css?v=5123cc51">
+<link rel="stylesheet" href="public/css/flux-hub.css?v=f9d50f2f">
 <link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
 <style>
   * { box-sizing: border-box; }
@@ -101,7 +101,12 @@
   .app-top { display: flex; align-items: center; gap: 14px; }
   .app-icon { display: grid; place-items: center; flex: none; width: 54px; height: 54px; border-radius: 16px; color: #061020; background: linear-gradient(135deg, var(--c1), var(--c2)); box-shadow: 0 10px 24px -12px var(--c1); }
   .app-icon svg { width: 26px; height: 26px; }
-  .app-name { font-size: 1.15rem; font-weight: 800; letter-spacing: -.01em; }
+  /* Skip link: first stop for a keyboard, out of sight until focused. */
+  .skip-link { position: absolute; left: 12px; top: -60px; z-index: 100; padding: 10px 16px; border-radius: 10px; font-weight: 800; color: #061020; background: var(--accent, #00c2ff); text-decoration: none; }
+  .skip-link:focus { top: 12px; outline: 2px solid #fff; outline-offset: 2px; }
+  .visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  #apps:focus { outline: none; }
+  .app-name { margin: 0; font-size: 1.15rem; font-weight: 800; letter-spacing: -.01em; }
   .app-tag { font-size: .86rem; color: var(--muted2); }
   .app-desc { margin: 0; font-size: .92rem; line-height: 1.55; color: #cbd6ea; flex: 1; }
   [data-theme='light'] .app-desc { color: var(--muted2); }
@@ -187,7 +192,7 @@
   @keyframes suiteRise { from { opacity: 0; transform: translateY(26px); } }
   /* The same account as a pill in the header's top-right corner. */
   /* Instagram lives up here only: a filled, glowing pill. */
-  .top-ig { position: relative; margin-left: auto; display: inline-flex; align-items: center; gap: 9px; height: 40px; padding: 0 16px 0 5px; border-radius: 999px; text-decoration: none; font-weight: 800; font-size: .88rem; color: #fff;
+  .top-ig { position: relative; margin-left: auto; display: inline-flex; align-items: center; gap: 9px; height: 44px; min-height: 44px; padding: 0 16px 0 5px; border-radius: 999px; text-decoration: none; font-weight: 800; font-size: .88rem; color: #fff;
     background: linear-gradient(120deg, #f58529, #dd2a7b 45%, #8134af 80%, #515bd4); box-shadow: 0 8px 26px -8px rgba(221,42,123,.85); transition: transform .15s ease, box-shadow .15s ease; }
   .top-ig::after { content: ''; position: absolute; inset: -4px; border-radius: inherit; border: 2px solid rgba(221,42,123,.55); opacity: 0; pointer-events: none; }
   @media (prefers-reduced-motion: no-preference) { .top-ig::after { animation: igRing 2.8s ease-out infinite; } }
@@ -197,7 +202,7 @@
   .top-ig .ig-mark { width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,.18); }
   @media (max-width: 420px) { .top-ig .ig-follow, .top-tt .ig-follow { display: none; } }
   /* TikTok sits beside it: same pill shape, TikTok's black with cyan/red glow. */
-  .top-tt { display: inline-flex; align-items: center; gap: 9px; height: 40px; padding: 0 16px 0 5px; margin-left: 8px; border-radius: 999px; text-decoration: none; font-weight: 800; font-size: .88rem; color: #fff;
+  .top-tt { display: inline-flex; align-items: center; gap: 9px; height: 44px; min-height: 44px; padding: 0 16px 0 5px; margin-left: 8px; border-radius: 999px; text-decoration: none; font-weight: 800; font-size: .88rem; color: #fff;
     background: #000; box-shadow: -2px 0 0 #25f4ee, 2px 0 0 #fe2c55, 0 8px 26px -10px rgba(254,44,85,.7); transition: transform .15s ease; }
   .top-tt:hover { transform: translateY(-1px); }
   .top-tt:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
@@ -210,10 +215,11 @@
   .hero h1 span { background: none; color: inherit; -webkit-text-fill-color: currentColor; }
 </style>
 <script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
-<script src="public/js/flux-purple-day.js?v=3d01d4fb"></script>
+<script src="public/js/flux-purple-day.js?v=b8cd878a"></script>
 <link rel="stylesheet" href="public/css/flux-look-flat.css?v=8156dbe3">
 </head>
 <body>
+  <a href="#apps" class="skip-link">Skip to the apps</a>
   <header class="top">
     <img class="brand-mark" src="public/flux-planner-logo.png" alt="" width="32" height="32">
     <span class="brand">Flux Suite</span>
@@ -233,7 +239,8 @@
     </section>
     <!-- Filled by flux-purple-day.js on March 26 only. -->
     <div class="pd-slot" data-purple-day-slot></div>
-    <div class="apps" id="apps" aria-label="Flux apps"></div>
+    <h2 id="appsTitle" class="visually-hidden">Flux apps</h2>
+    <div class="apps" id="apps" role="region" aria-labelledby="appsTitle" tabindex="-1"></div>
     <!-- Moved into the Partners tab by the script below, or left here under the
          grid when there is no Partners tab. -->
     <aside class="partners-strip" id="partnersStrip" aria-label="Flux Partners">
@@ -286,7 +293,7 @@
         return !!(v && (v.isOwner() || v.hasGrant(p.id)) && v.hiddenIds().indexOf(p.id) >= 0);
       };
       var title = function (p) {
-        return '<div class="app-name">' + esc(p.name) + (p.partner ? '<span class="app-partner">Partner</span>' : '') + (isHiddenFromOthers(p) ? '<span class="app-partner">Hidden</span>' : '') + '</div><div class="app-tag">' + esc(p.tagline) + '</div>';
+        return '<h3 class="app-name">' + esc(p.name) + (p.partner ? '<span class="app-partner">Partner</span>' : '') + (isHiddenFromOthers(p) ? '<span class="app-partner">Hidden</span>' : '') + '</h3><div class="app-tag">' + esc(p.tagline) + '</div>';
       };
       var card = function (p) {
         return '<a class="app app--' + esc(p.id) + '" href="' + esc(p.href) + '">'

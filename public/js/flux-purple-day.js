@@ -64,7 +64,7 @@
     + '.fxpd-s{margin:0;font-size:.88rem;color:#d9ccff}'
     + '.fxpd-a{display:inline-block;margin-top:8px;font-weight:800;font-size:.88rem;color:#c4b5fd;text-decoration:none}'
     + '.fxpd-a:hover{text-decoration:underline}'
-    + '.fxpd-x{flex:none;width:32px;height:32px;margin:-6px -8px 0 0;border:0;border-radius:10px;background:none;'
+    + '.fxpd-x{flex:none;width:40px;height:40px;margin:-6px -8px 0 0;border:0;border-radius:10px;background:none;'
     + 'color:#c9b8f5;font-size:1.1rem;line-height:1;cursor:pointer}'
     + '.fxpd-x:hover{background:rgba(255,255,255,.08);color:#fff}'
     + '.fxpd-x:focus-visible,.fxpd-a:focus-visible{outline:2px solid #c4b5fd;outline-offset:2px}'
