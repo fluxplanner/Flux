@@ -123,6 +123,7 @@
 .app--cite { --c1: #fde68a; --c2: #f59e0b; }
 .app--balance { --c1: #a7f3d0; --c2: #34d399; }
 .app--formulae { --c1: #c4b5fd; --c2: #818cf8; }
+.app--score { --c1: #f9a8d4; --c2: #fb7185; }
 .app--owner { --c1: #fca5a5; --c2: #a78bfa; }
 .hub-tab--owner[aria-selected="true"] { color: #fff; background: linear-gradient(135deg, #fca5a5, #a78bfa); }
 

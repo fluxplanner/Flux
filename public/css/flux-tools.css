@@ -59,7 +59,7 @@ label.ft-check input { width: 20px; height: 20px; accent-color: var(--accent); }
 .ft-err { color: var(--bad); font-weight: 700; }
 .ft-good { color: var(--good); font-weight: 700; }
 .ft-muted { color: var(--muted2); font-size: .9rem; }
-.ft-table-wrap { overflow-x: auto; }
+.ft-table-wrap { overflow-x: auto; position: relative; max-width: 100%; }
 table.ft-table { border-collapse: collapse; width: 100%; font-size: .92rem; }
 .ft-table th, .ft-table td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .ft-table th { color: var(--muted2); font-weight: 700; }
