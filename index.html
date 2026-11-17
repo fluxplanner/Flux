@@ -2611,6 +2611,16 @@
           </select>
           <script>(function(){var s=document.getElementById('fluxLookSelect');if(s&&window.FluxLook)s.value=FluxLook.get();})();</script>
         </div>
+        <div class="card" id="fluxFontCard">
+          <h3>Font</h3>
+          <p style="font-size:.75rem;color:var(--muted2);margin:0 0 12px;line-height:1.55">Changes the lettering across Flux. Synced to your other devices.</p>
+          <select id="fluxFontSelect" aria-label="Font" onchange="window.fluxSetFont&&fluxSetFont(this.value)"></select>
+        </div>
+        <div class="card" id="fluxTextureCard">
+          <h3>Background texture</h3>
+          <p style="font-size:.75rem;color:var(--muted2);margin:0 0 12px;line-height:1.55">A textured backdrop behind your cards. It is tinted to your theme so text stays easy to read.</p>
+          <div class="fx-tex-grid" id="fluxTextureGrid" role="group" aria-label="Background texture"></div>
+        </div>
         <div class="card">
           <h3>Panel layout</h3>
           <p style="font-size:.75rem;color:var(--muted2);margin:0 0 12px;line-height:1.55">Reorder major blocks on the <strong>Dashboard</strong> and <strong>Calendar</strong>. Preference is saved on this device.</p>
