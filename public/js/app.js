@@ -28,7 +28,7 @@ const FLUX_IMPERSONATION_GLOBAL_KEYS=new Set([
   'flux_last_user_id','flux_last_user_email',
   // UI / theme prefs — kept shared so the dev experience doesn't reset
   // every time you switch into a different teacher to test something.
-  'flux_user_name','flux_accent','flux_accent_rgb','flux_theme',
+  'flux_user_name','flux_accent','flux_accent_rgb','flux_theme','flux_font','flux_texture',
   'flux_profile_pic',
   'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
   'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
@@ -7427,15 +7427,34 @@ try{document.addEventListener('flux-nav',(e)=>{const id=e&&e.detail&&e.detail.pa
 const TM={pomodoro:{label:'Focus Time',mins:25},short:{label:'Short Break',mins:5},long:{label:'Long Break',mins:15}};
 let tMode='pomodoro',tRunning=false,tInterval=null,tSecs=25*60,tTotal=25*60;
 let _fluxPomoPillVisible=false;
+/* The running timer is kept as an end time in raw localStorage
+   (flux_suite_timer, shared by every page on this origin), never as a ticking
+   counter, so the other suite apps can show and control it
+   (public/js/flux-suite-timer.js) and nothing drifts while the tab sleeps.
+   Shape: {mode,label,total,running,remaining,endAt(epoch ms)}. */
+let tEndAt=0;
+const FLUX_SUITE_TIMER_KEY='flux_suite_timer';
+function fluxTimerLeft(){return Math.max(0,Math.ceil((tEndAt-Date.now())/1000));}
+function fluxTimerClear(){try{localStorage.removeItem(FLUX_SUITE_TIMER_KEY);}catch(e){}}
+function fluxTimerPersist(){try{localStorage.setItem(FLUX_SUITE_TIMER_KEY,JSON.stringify({mode:tMode,label:TM[tMode].label,total:tTotal,running:tRunning,remaining:tSecs,endAt:tRunning?tEndAt:0}));}catch(e){}}
+function fluxTimerSetBtn(label){const b=document.getElementById('timerBtn');if(b)b.innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> '+label;}
+/** Take on whatever another page (or an earlier visit) left in flux_suite_timer. */
+function fluxTimerAdopt(){let s=null;try{s=JSON.parse(localStorage.getItem(FLUX_SUITE_TIMER_KEY)||'null');}catch(e){}
+  if(!s||!TM[s.mode]||!isFinite(s.total)){if(tRunning||tSecs!==tTotal)resetTimer();return;}
+  if(tMode!==s.mode){tMode=s.mode;document.querySelectorAll('#timer .tmode-btn').forEach(b=>b.classList.toggle('active',(b.getAttribute('onclick')||'').indexOf("'"+s.mode+"'")>=0));const l=document.getElementById('tLbl');if(l)l.textContent=TM[s.mode].label;}
+  tTotal=s.total;
+  if(s.running){if(tRunning&&tEndAt===s.endAt)return;tSecs=Math.max(0,Math.ceil((s.endAt-Date.now())/1000));if(tSecs<=0){tEndAt=s.endAt;updateTDisplay();timerDone();return;}startTimer(s.endAt);return;}
+  tSecs=Math.max(0,Math.round(s.remaining||0));if(tRunning){tRunning=false;clearInterval(tInterval);}fluxTimerSetBtn('Resume');updateTDisplay();syncFluxPomoPill();}
+try{window.addEventListener('storage',e=>{if(e.key===FLUX_SUITE_TIMER_KEY&&window._fluxTimerAdopted)fluxTimerAdopt();});}catch(_){}
 let tDone=load('t_sessions',0),tMins=load('t_minutes',0),tStreak=load('t_streak',0),tLastDate=load('t_date','');
 const CIRC=2*Math.PI*88;
 function updateTLengths(){if(tRunning)return;TM.pomodoro.mins=parseInt(document.getElementById('customWork').value)||25;TM.short.mins=parseInt(document.getElementById('customShort').value)||5;if(tMode==='pomodoro'||tMode==='short'){tSecs=TM[tMode].mins*60;tTotal=tSecs;updateTDisplay();}}
-function setTMode(mode,el){if(tRunning)return;tMode=mode;tSecs=TM[mode].mins*60;tTotal=tSecs;document.querySelectorAll('#timer .tmode-btn').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');updateTDisplay();document.getElementById('tLbl').textContent=TM[mode].label;syncFluxPomoPill();}
+function setTMode(mode,el){if(tRunning)return;fluxTimerClear();tMode=mode;tSecs=TM[mode].mins*60;tTotal=tSecs;document.querySelectorAll('#timer .tmode-btn').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');updateTDisplay();document.getElementById('tLbl').textContent=TM[mode].label;syncFluxPomoPill();}
 function toggleTimer(){tRunning?pauseTimer():startTimer();}
-function startTimer(){if(tInterval){clearInterval(tInterval);tInterval=null;}tRunning=true;document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg> Pause';try{window.FluxFocusMotion?.start();}catch(e){}updateTDisplay();syncFluxPomoPill();tInterval=setInterval(()=>{tSecs--;updateTDisplay();if(tSecs<=0)timerDone();},1000);}
-function pauseTimer(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Resume';syncFluxPomoPill();}
-function resetTimer(){tRunning=false;clearInterval(tInterval);tSecs=TM[tMode].mins*60;tTotal=tSecs;document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';updateTDisplay();syncFluxPomoPill();}
-function timerDone(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';syncFluxPomoPill();if(tMode==='pomodoro'){tDone++;tMins+=TM.pomodoro.mins;const ts=todayStr();if(tLastDate!==ts){const y=new Date();y.setDate(y.getDate()-1);tStreak=tLastDate===fluxLocalYMD(y)?tStreak+1:1;tLastDate=ts;save('t_date',tLastDate);}const sub=document.getElementById('timerSubject')?.value||'';sessionLog.push({date:ts,mins:TM.pomodoro.mins,subject:sub,hour:new Date().getHours()});save('flux_session_log',sessionLog);if(typeof FluxBus!=='undefined')FluxBus.emit('session_ended',{mins:TM.pomodoro.mins,subject:sub,date:ts,hour:new Date().getHours()});if(sub){subjectBudgets[sub]=(subjectBudgets[sub]||0)+(TM.pomodoro.mins/60);save('flux_budgets',subjectBudgets);}save('t_sessions',tDone);save('t_minutes',tMins);save('t_streak',tStreak);updateTStats();renderTDots();renderSubjectBudget();renderFocusHeatmap();
+function startTimer(endAt){if(tInterval){clearInterval(tInterval);tInterval=null;}tRunning=true;tEndAt=typeof endAt==='number'&&endAt>0?endAt:Date.now()+tSecs*1000;fluxTimerPersist();document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg> Pause';try{window.FluxFocusMotion?.start();}catch(e){}updateTDisplay();syncFluxPomoPill();tInterval=setInterval(()=>{tSecs=fluxTimerLeft();updateTDisplay();if(tSecs<=0)timerDone();},1000);}
+function pauseTimer(){if(tRunning)tSecs=fluxTimerLeft();tRunning=false;clearInterval(tInterval);updateTDisplay();fluxTimerPersist();document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Resume';syncFluxPomoPill();}
+function resetTimer(){tRunning=false;clearInterval(tInterval);fluxTimerClear();tSecs=TM[tMode].mins*60;tTotal=tSecs;document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';updateTDisplay();syncFluxPomoPill();}
+function timerDone(){tRunning=false;clearInterval(tInterval);fluxTimerClear();document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';syncFluxPomoPill();if(tMode==='pomodoro'){tDone++;tMins+=TM.pomodoro.mins;const ts=todayStr();if(tLastDate!==ts){const y=new Date();y.setDate(y.getDate()-1);tStreak=tLastDate===fluxLocalYMD(y)?tStreak+1:1;tLastDate=ts;save('t_date',tLastDate);}const sub=document.getElementById('timerSubject')?.value||'';sessionLog.push({date:ts,mins:TM.pomodoro.mins,subject:sub,hour:new Date().getHours()});save('flux_session_log',sessionLog);if(typeof FluxBus!=='undefined')FluxBus.emit('session_ended',{mins:TM.pomodoro.mins,subject:sub,date:ts,hour:new Date().getHours()});if(sub){subjectBudgets[sub]=(subjectBudgets[sub]||0)+(TM.pomodoro.mins/60);save('flux_budgets',subjectBudgets);}save('t_sessions',tDone);save('t_minutes',tMins);save('t_streak',tStreak);updateTStats();renderTDots();renderSubjectBudget();renderFocusHeatmap();
 showSessionRecap(sub,TM.pomodoro.mins);
 setTimeout(()=>{const mode=tDone%4===0?'long':'short';const btns=document.querySelectorAll('#timer .tmode-btn');setTMode(mode,btns[mode==='long'?2:1]);},400);}else{setTimeout(()=>{setTMode('pomodoro',document.querySelectorAll('#timer .tmode-btn')[0]);},400);}}
 function updateTDisplay(){const m=Math.floor(tSecs/60),s=tSecs%60;const txt=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');const td=document.getElementById('tDisplay');if(td)td.textContent=txt;const pillT=document.getElementById('fluxPomoPillTime');if(pillT)pillT.textContent=txt;const offset=CIRC*(1-tSecs/tTotal);const ring=document.getElementById('timerRing');if(ring){ring.style.strokeDasharray=CIRC;ring.style.strokeDashoffset=offset;}try{if(window.FluxVisual&&typeof FluxVisual.updateTimerRingGlow==='function'&&tTotal>0)FluxVisual.updateTimerRingGlow((tSecs/tTotal)*100);}catch(e){}try{window.FluxFocusMotion?.update(tSecs,tTotal,tMode);}catch(e){}const mini=document.getElementById('fluxPomoMiniRing');if(mini&&window.FluxAnim?.updateMiniRing){try{const p=tTotal>0?tSecs/tTotal:0;FluxAnim.updateMiniRing(mini,p);}catch(e){}}syncFluxPomoPill();}
@@ -7943,7 +7962,76 @@ function loadTheme(){
   document.documentElement.style.setProperty('--accent',acc);
   document.documentElement.style.setProperty('--accent-rgb',rgb);
   setTimeout(()=>{updateLogoColor(acc);clearSvgLogoGradientStyles();},0);
+  fluxApplyFont(fluxLoadStoredString('flux_font',''));
+  fluxApplyTexture(fluxLoadStoredString('flux_texture',''));
+  fluxRenderLookExtras();
 }
+
+// ══ FONTS & TEXTURES (Settings → Look) ══
+// Fonts come from Google Fonts and are only fetched once someone picks one.
+// '' is the built-in Plus Jakarta Sans. The look itself lives in
+// flux-design-2026.css under html[data-flux-font] / html[data-flux-texture].
+const FLUX_FONTS={
+  '':{label:'Default (Jakarta)',stack:"'Plus Jakarta Sans',system-ui,sans-serif"},
+  inter:{label:'Inter',family:'Inter',stack:"'Inter',system-ui,sans-serif"},
+  nunito:{label:'Nunito',family:'Nunito',stack:"'Nunito',system-ui,sans-serif"},
+  poppins:{label:'Poppins',family:'Poppins',stack:"'Poppins',system-ui,sans-serif"},
+  lexend:{label:'Lexend (easy reading)',family:'Lexend',stack:"'Lexend',system-ui,sans-serif"},
+  atkinson:{label:'Atkinson Hyperlegible',family:'Atkinson Hyperlegible',weights:'400;700',stack:"'Atkinson Hyperlegible',system-ui,sans-serif"},
+  spacegrotesk:{label:'Space Grotesk',family:'Space Grotesk',stack:"'Space Grotesk',system-ui,sans-serif"},
+  quicksand:{label:'Quicksand',family:'Quicksand',stack:"'Quicksand',system-ui,sans-serif"},
+  lora:{label:'Lora (serif)',family:'Lora',stack:"'Lora',Georgia,serif"},
+  merriweather:{label:'Merriweather (serif)',family:'Merriweather',weights:'400;700;900',stack:"'Merriweather',Georgia,serif"},
+  jetbrains:{label:'JetBrains Mono',family:'JetBrains Mono',stack:"'JetBrains Mono',ui-monospace,monospace"},
+};
+const FLUX_TEXTURES={
+  '':'None',wood:'Wood',metal:'Brushed metal',bakery:'Bakery',marble:'Marble',
+  felt:'Felt',parchment:'Parchment',slate:'Slate',checker:'Checkerboard',
+};
+function fluxApplyFont(key){
+  const f=FLUX_FONTS[key]?key:'';
+  const root=document.documentElement;
+  if(!f){root.removeAttribute('data-flux-font');root.style.removeProperty('--flux-font');return;}
+  const def=FLUX_FONTS[f];
+  const id='fluxFontLink-'+f;
+  if(!document.getElementById(id)){
+    const l=document.createElement('link');
+    l.id=id;l.rel='stylesheet';
+    l.href='https://fonts.googleapis.com/css2?family='+encodeURIComponent(def.family).replace(/%20/g,'+')+':wght@'+(def.weights||'400;500;600;700;800')+'&display=swap';
+    document.head.appendChild(l);
+  }
+  root.style.setProperty('--flux-font',def.stack);
+  root.setAttribute('data-flux-font',f);
+}
+function fluxApplyTexture(key){
+  const t=FLUX_TEXTURES[key]!==undefined?key:'';
+  if(t)document.documentElement.setAttribute('data-flux-texture',t);
+  else document.documentElement.removeAttribute('data-flux-texture');
+}
+function fluxSetFont(key){
+  fluxSaveStoredString('flux_font',FLUX_FONTS[key]?key:'');
+  fluxApplyFont(key);fluxRenderLookExtras();
+  if(typeof syncKey==='function')try{syncKey('flux_font');}catch(_){}
+}
+function fluxSetTexture(key){
+  fluxSaveStoredString('flux_texture',FLUX_TEXTURES[key]!==undefined?key:'');
+  fluxApplyTexture(key);fluxRenderLookExtras();
+  if(typeof syncKey==='function')try{syncKey('flux_texture');}catch(_){}
+}
+function fluxRenderLookExtras(){
+  const sel=document.getElementById('fluxFontSelect');
+  if(sel){
+    if(!sel.options.length)sel.innerHTML=Object.entries(FLUX_FONTS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('');
+    sel.value=FLUX_FONTS[fluxLoadStoredString('flux_font','')]?fluxLoadStoredString('flux_font',''):'';
+  }
+  const grid=document.getElementById('fluxTextureGrid');
+  if(grid){
+    const cur=fluxLoadStoredString('flux_texture','');
+    grid.innerHTML=Object.entries(FLUX_TEXTURES).map(([k,v])=>
+      `<button type="button" class="fx-tex-tile${k===cur?' active':''}" data-tex="${k}" aria-pressed="${k===cur}" onclick="fluxSetTexture('${k}')"><span class="fx-tex-swatch"></span><span class="fx-tex-name">${v}</span></button>`).join('');
+  }
+}
+window.fluxSetFont=fluxSetFont;window.fluxSetTexture=fluxSetTexture;window.fluxRenderLookExtras=fluxRenderLookExtras;
 
 function applyCustomVar(varName,value){
   document.documentElement.style.setProperty(varName,value);
@@ -8325,7 +8413,7 @@ function clearCache(){
   const inp=prompt('Type DELETE to confirm wiping all planner data. This cannot be undone.');
   if(inp!=='DELETE'){if(inp!==null)alert('Cancelled — you must type DELETE exactly.');return;}
   const keep=[
-    'flux_settings','flux_accent','flux_accent_rgb','flux_theme','profile','flux_user_name',
+    'flux_settings','flux_accent','flux_accent_rgb','flux_theme','flux_font','flux_texture','profile','flux_user_name',
     'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
     'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
     'flux_data_version','flux_splash_shown',
@@ -10066,6 +10154,8 @@ function getCloudPayload(){
     accent:fluxLoadStoredString('flux_accent','#00bfff'),
     accentRgb:fluxLoadStoredString('flux_accent_rgb','0,191,255'),
     theme:fluxLoadStoredString('flux_theme','dark'),
+    font:fluxLoadStoredString('flux_font',''),
+    texture:fluxLoadStoredString('flux_texture',''),
     tasks,
     notes:notes.map(n=>({...n,body:n.body||''})),
     // Tasks and notes deleted here, so other devices delete them too rather
@@ -10923,6 +11013,10 @@ async function syncFromCloud(opts){
     fluxSaveStoredString('flux_accent',syncAccent);
     fluxSaveStoredString('flux_accent_rgb',syncRgb);
     if(d.theme)fluxSaveStoredString('flux_theme',d.theme);
+    // Font and texture only travel once a device has chosen one; an older
+    // row without the keys leaves this device's choice alone.
+    if(typeof d.font==='string')fluxSaveStoredString('flux_font',d.font);
+    if(typeof d.texture==='string')fluxSaveStoredString('flux_texture',d.texture);
     loadTheme();
     // Mark active swatch
     document.querySelectorAll('.swatch').forEach(s=>{
@@ -14899,7 +14993,7 @@ function handleSignedOut(){
   _fluxRow=null;_fluxRowMisses=0;_fluxAgreed=null;
   sessionStorage.clear();
   const keysToKeep=[
-    'flux_splash_shown','flux_theme','flux_accent','flux_accent_rgb',
+    'flux_splash_shown','flux_theme','flux_accent','flux_accent_rgb','flux_font','flux_texture',
     'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
     'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
     'flux_data_version',
@@ -15365,6 +15459,7 @@ function handleCheckoutReturn(){
   renderNotesList();renderExtrasList();renderSchoolsList();
   renderMoodHistory();renderAffirmation();renderAISugs();syncFluxAIModeButtons();renderSchool();
   renderSubjectBudget();renderFocusHeatmap();
+  try{fluxTimerAdopt();window._fluxTimerAdopted=true;}catch(e){}
   updateTDisplay();renderTDots();updateTStats();
   checkAllPanic();setInterval(checkAllPanic,60000);
   initFeaturePills();
@@ -15676,8 +15771,14 @@ let _pomDistractions=0;
 function getPomDistractionCount(){return _pomDistractions;}
 try{window.getPomDistractionCount=getPomDistractionCount;}catch(_){}
 function initPomodoroVisibilityPause(){
+  /* Leaving the page (e.g. opening another Flux Suite app) also hides it, but
+     the timer is meant to keep running there (flux-suite-timer.js), so only a
+     real tab/app switch counts as a distraction. beforeunload fires first. */
+  let leaving=false;
+  window.addEventListener('beforeunload',()=>{leaving=true;});
+  window.addEventListener('pageshow',()=>{leaving=false;});
   document.addEventListener('visibilitychange',()=>{
-    if(document.hidden&&tRunning){
+    if(document.hidden&&tRunning&&!leaving){
       pauseTimer();
       _pomDistractions++;
       const el=document.getElementById('distractionCount');
