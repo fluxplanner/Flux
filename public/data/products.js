@@ -12,6 +12,21 @@ window.FluxProducts = {
       "kind": "tab"
     },
     {
+      "id": "science",
+      "name": "Science",
+      "kind": "tab"
+    },
+    {
+      "id": "writing",
+      "name": "Writing",
+      "kind": "tab"
+    },
+    {
+      "id": "tools",
+      "name": "Tools",
+      "kind": "tab"
+    },
+    {
       "id": "partner",
       "name": "Partners",
       "kind": "tab"
@@ -111,6 +126,16 @@ window.FluxProducts = {
       "href": "translate.html",
       "free": true,
       "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m5 8 6 6\"/><path d=\"m4 14 6-6 2-3\"/><path d=\"M2 5h12\"/><path d=\"M7 2h1\"/><path d=\"m22 22-5-10-5 10\"/><path d=\"M14 18h6\"/></svg>"
+    },
+    {
+      "id": "paper",
+      "group": "tools",
+      "name": "Flux Graph Paper",
+      "tagline": "Grid, dot, polar and staves to print",
+      "blurb": "Square, dot, isometric, semi-log and polar graph paper, music staves and handwriting lines, on A4 or Letter with your own spacing, margins and a title block. Print it or save a PNG.",
+      "href": "paper.html",
+      "free": true,
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M3 9h18M3 15h18M9 3v18M15 3v18\"/></svg>"
     },
     {
       "id": "synara",

@@ -109,5 +109,6 @@ test('skip link comes first and tabs are keyboard reachable', async ({ page }) =
   await expect(page.locator('.skip-link')).toBeFocused();
   await page.locator('#tab-study').focus();
   await page.keyboard.press('ArrowRight');
-  await expect(page.locator('#tab-partner')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.hub-tab').nth(1)).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.hub-tab').nth(1)).toBeFocused();
 });
