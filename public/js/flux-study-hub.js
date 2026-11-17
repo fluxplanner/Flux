@@ -342,6 +342,13 @@
       { id: 'literature', name: 'Literature', tools: ['devices', 'lit-poetry', 'lit-commentary', 'lit-graphic', 'lit-mediums', 'lit-reading-log'] },
       { id: 'rhetoric', name: 'Rhetoric', tools: ['rh-situation', 'rh-devices', 'rh-fallacies', 'rh-essays'] },
     ],
+    /* History opens on the map through time: the slider makes the other
+       tools' dates concrete. Anything else filed under History (the skills
+       reference, legacy chips) falls into the trailing More bucket. */
+    history: [
+      { id: 'world-history', name: 'World history', tools: ['worldmap', 'timeline', 'eras'] },
+      { id: 'geography', name: 'Geography', tools: ['capitals'] },
+    ],
     music: [
       { id: 'theory', name: 'Theory', tools: ['circle', 'explorer', 'inversions', 'numerals', 'intervals', 'dimensions'] },
       { id: 'orchestra', name: 'Orchestra', tools: ['orc-transpose', 'orc-score', 'orc-markings'] },
