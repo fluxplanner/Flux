@@ -128,6 +128,7 @@
 .app--plan { --c1: #fbbf24; --c2: #f97316; }
 .app--data { --c1: #67e8f9; --c2: #06b6d4; }
 .app--lab { --c1: #86efac; --c2: #22c55e; }
+.app--spell { --c1: #fda4af; --c2: #f472b6; }
 .app--owner { --c1: #fca5a5; --c2: #a78bfa; }
 .hub-tab--owner[aria-selected="true"] { color: #fff; background: linear-gradient(135deg, #fca5a5, #a78bfa); }
 

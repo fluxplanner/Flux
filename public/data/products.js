@@ -208,6 +208,16 @@ window.FluxProducts = {
       "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 3v18h18\"/><circle cx=\"8\" cy=\"15\" r=\"1.5\"/><circle cx=\"12\" cy=\"11\" r=\"1.5\"/><circle cx=\"17\" cy=\"7\" r=\"1.5\"/><path d=\"m6 17 13-12\"/></svg>"
     },
     {
+      "id": "lab",
+      "group": "science",
+      "name": "Flux Lab",
+      "tagline": "Uncertainties and lab report criteria",
+      "blurb": "Uncertainty propagation for any formula with every step written out, and a lab report skeleton for the IB DP internal assessment or MYP Sciences criteria B and C, with a checklist for each part. Saved on your device.",
+      "href": "lab.html",
+      "free": true,
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2.2h12.4a1.5 1.5 0 0 0 1.3-2.2L14 9V3\"/><path d=\"M7 15h10\"/></svg>"
+    },
+    {
       "id": "units",
       "group": "science",
       "name": "Flux Units",
@@ -218,14 +228,14 @@ window.FluxProducts = {
       "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 7h18M3 17h18\"/><path d=\"m7 3-4 4 4 4M17 13l4 4-4 4\"/></svg>"
     },
     {
-      "id": "lab",
-      "group": "science",
-      "name": "Flux Lab",
-      "tagline": "Uncertainties and lab report criteria",
-      "blurb": "Uncertainty propagation for any formula with every step written out, and a lab report skeleton for the IB DP internal assessment or MYP Sciences criteria B and C, with a checklist for each part. Saved on your device.",
-      "href": "lab.html",
+      "id": "spell",
+      "group": "writing",
+      "name": "Flux Spell",
+      "tagline": "Spelling, homophones, punctuation",
+      "blurb": "Spelling drills from your own word list, read aloud so you spell it without seeing it, with the words you miss coming back; plus homophone and punctuation practice. Works offline and saves on your device.",
+      "href": "spell.html",
       "free": true,
-      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2.2h12.4a1.5 1.5 0 0 0 1.3-2.2L14 9V3\"/><path d=\"M7 15h10\"/></svg>"
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m4 16 4-12 4 12M5.3 12h5.4\"/><path d=\"m14 15 2.5 2.5L21 12\"/></svg>"
     },
     {
       "id": "synara",
