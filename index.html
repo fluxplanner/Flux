@@ -2428,19 +2428,19 @@
       <div class="stabs flux-settings-stabs" role="tablist" aria-label="Settings sections">
         <!-- Look was eleven cards doing three jobs. Split three ways: what the
              app looks like, what makes it readable, and where things sit. -->
-        <button type="button" class="stab active" role="tab" aria-selected="true" id="stab-theme" aria-controls="spane-theme" onclick="switchStab(\'theme\',this)">Theme</button>
-        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-text" aria-controls="spane-text" onclick="switchStab(\'text\',this)">Text &amp; reading</button>
+        <button type="button" class="stab active" role="tab" aria-selected="true" id="stab-theme" aria-controls="spane-theme" onclick="switchStab('theme',this)">Theme</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-text" aria-controls="spane-text" onclick="switchStab('text',this)">Text &amp; reading</button>
         <!-- id stays `appearance`: eight modules inject their settings card
              into #spane-appearance and none of them throw when it is missing,
              so a rename would quietly lose six features' settings. -->
-        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-appearance" aria-controls="spane-appearance" onclick="switchStab(\'appearance\',this)">Layout</button>
-        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-account" aria-controls="spane-account" onclick="switchStab(\'account\',this)">Account</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-appearance" aria-controls="spane-appearance" onclick="switchStab('appearance',this)">Layout</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-account" aria-controls="spane-account" onclick="switchStab('account',this)">Account</button>
         <!-- `data` id kept for the same reason as `appearance`:
              flux-email-task-inbox and flux-automation-hooks both call
              switchStab('data') to reveal their own injected card. -->
-        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-data" aria-controls="spane-data" onclick="switchStab(\'data\',this)">Your data</button>
-        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-help" aria-controls="spane-help" onclick="switchStab(\'help\',this)">Help</button>
-        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-about" aria-controls="spane-about" onclick="switchStab(\'about\',this)">About</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-data" aria-controls="spane-data" onclick="switchStab('data',this)">Your data</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-help" aria-controls="spane-help" onclick="switchStab('help',this)">Help</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-about" aria-controls="spane-about" onclick="switchStab('about',this)">About</button>
       </div>
       <div class="flux-stack flux-settings-panes">
       <div class="spane active" id="spane-theme" role="tabpanel" aria-labelledby="stab-theme">
