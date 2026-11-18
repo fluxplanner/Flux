@@ -157,12 +157,8 @@ test.describe('OriginKit motion primitives', () => {
     expect(threw, 'autoEnhance threw').toBe(false);
   });
 
-  test('the magnet CTA still wires on the top bar (M5)', async ({ page }) => {
-    await gotoScenario(page, 'guest');
-    await expect
-      .poll(() => page.evaluate(() => !!document.querySelector('.topbar-new-task-btn.flux-magnet')))
-      .toBe(true);
-  });
+  // M5's magnet CTA left with the top-bar New task button (#266).
+
 
   /* The pointer-following glow is gone — it drew the eye while you were doing
      nothing but moving the mouse, and repainting a 340px gradient from a

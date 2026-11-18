@@ -59,13 +59,13 @@ test.describe('planner tour', () => {
   test('each step opens the tab it describes, and Back goes back', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
     await startTour(page);
-    await page.locator('.ftour-next').click(); // New task
+    // The New task step left with the top-bar button (#266).
     await page.locator('.ftour-next').click(); // Calendar
     await expect(page.locator('.ftour-title')).toHaveText('Calendar');
     await expect(page.locator('#calendar.panel.active')).toBeVisible();
-    await expect(page.locator('.ftour-count')).toContainText('3 of');
+    await expect(page.locator('.ftour-count')).toContainText('2 of');
     await page.locator('.ftour-back').click();
-    await expect(page.locator('.ftour-title')).toHaveText('New task');
+    await expect(page.locator('.ftour-title')).toHaveText('Dashboard');
     await page.keyboard.press('Escape');
     await expect(page.locator('.ftour')).toHaveCount(0);
     expect(await page.evaluate(() => localStorage.getItem('flux_tour_completed'))).toBe('true');

@@ -146,6 +146,18 @@
     bass: { sharp: [24, 21, 25, 22, 19, 23, 20], flat: [20, 23, 19, 22, 18, 21, 17] },
     alto: { sharp: [31, 28, 32, 29, 26, 30, 27], flat: [27, 30, 26, 29, 25, 28, 24] },
   };
+  /* Accidentals drawn as paths, centred on (x, y), so they sit exactly on
+     their line or space whatever fonts the device has — as text, ♭ and ♯
+     landed a space too high and some systems drew them as coloured emoji. */
+  function accPath(a, x, y) {
+    const P = (d, w) => `<path d="${d}" class="fc-accp" style="stroke-width:${w || 1.4}"/>`;
+    const flat = (fx) => P(`M${fx} ${y - 15}V${y + 5}`) + `<path d="M${fx} ${y + 5}C${fx + 9} ${y + 1} ${fx + 9} ${y - 6} ${fx} ${y - 3}" class="fc-accp fc-accp--bowl"/>`;
+    if (a === -1) return flat(x - 3);
+    if (a === -2) return flat(x - 8) + flat(x);
+    if (a === 1) return P(`M${x - 2.5} ${y - 11}V${y + 12}M${x + 2.5} ${y - 12}V${y + 11}`) + P(`M${x - 6} ${y - 2}L${x + 6} ${y - 5}M${x - 6} ${y + 5}L${x + 6} ${y + 2}`, 3);
+    if (a === 2) return P(`M${x - 4} ${y - 4}L${x + 4} ${y + 4}M${x + 4} ${y - 4}L${x - 4} ${y + 4}`, 2.4);
+    return P(`M${x - 3} ${y - 12}V${y + 4}M${x + 3} ${y - 4}V${y + 12}`) + P(`M${x - 3} ${y - 2}L${x + 3} ${y - 4}M${x - 3} ${y + 5}L${x + 3} ${y + 3}`, 3);
+  }
   /** Line or space a note sits on in a clef: 0 = bottom line, 1 = first space, 8 = top line. */
   const staffPos = (p, clef) => p.oct * 7 + p.l - BOTTOM[clef];
   /** The clef that keeps the most of these notes on the staff (the old guess: bass below middle C). */
