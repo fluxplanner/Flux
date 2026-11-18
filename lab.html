@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="public/js/flux-look.js?v=81a3e0d1"></script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://lfigdijuqmbensebnevo.supabase.co; media-src 'self' blob: data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
+<script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="lab" data-no-hold></script>
+<script defer src="public/js/flux-site-notices.js?v=5e36c924"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flux Lab</title>
+<meta name="description" content="Free lab report helper from Flux: uncertainty propagation that shows its working, and a lab report skeleton with the IB DP internal assessment and MYP Sciences criteria B and C. Saved on your device.">
+<meta name="theme-color" content="#06120a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/png" href="public/flux-planner-logo.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Flux Lab">
+<!--
+  Flux Lab: a free Flux tool, built like periodic.html — no bundles, no
+  Supabase, no sign-in, nothing fetched, so it opens offline on any school
+  computer. Shared parts: public/js/flux-tool-kit.js, public/css/flux-tools.css.
+  Listed in Flux Suite from public/data/products.json.
+-->
+<link rel="stylesheet" href="public/css/flux-hub.css?v=c53a076e">
+<link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
+<link rel="stylesheet" href="public/css/flux-tools.css?v=3c01335d">
+<style>
+  :root { --bg: #06120a; --accent: #86efac; }
+</style>
+<script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
+<script src="public/js/flux-purple-day.js?v=b8cd878a"></script>
+<link rel="stylesheet" href="public/css/flux-look-flat.css?v=8156dbe3">
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to the lab helper</a>
+  <header class="top">
+    <a class="ft-back" href="suite.html" aria-label="Back to Flux Suite" title="Back to Flux Suite"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
+    <img class="brand-mark" src="public/flux-planner-logo.png" alt="" width="28" height="28">
+    <span class="title">Flux Lab</span>
+    <span class="grow"></span>
+    <div data-flux-hub="lab"></div>
+  </header>
+  <main id="main" tabindex="-1">
+
+    <h1 class="ft-h1">Lab</h1>
+    <p class="ft-lede">Propagate uncertainties with the working shown, and write your report against the criteria.</p>
+    <div class="ft-tabs" role="tablist" aria-label="Lab tools"><button type="button" role="tab" class="ft-tab" id="tab-unc" aria-controls="pane-unc">Uncertainty</button><button type="button" role="tab" class="ft-tab" id="tab-rep" aria-controls="pane-rep">Report</button></div>
+    <section class="ft-card" id="pane-unc" role="tabpanel" aria-labelledby="tab-unc">
+      <label class="ft-field">What you calculate<input id="lbExpr" type="text" spellcheck="false" autocomplete="off" value="m / (l*w*h)"></label>
+      <p class="ft-muted">Use the names of your measurements, <kbd>*</kbd>, <kbd>/</kbd>, <kbd>^</kbd>, <kbd>sqrt()</kbd>.</p>
+      <div class="ft-table-wrap"><table class="ft-table"><thead><tr><th scope="col">Quantity</th><th scope="col">Value</th><th scope="col">± uncertainty</th><th scope="col">%</th></tr></thead><tbody id="lbVars"></tbody></table></div>
+      <div class="ft-out" id="lbOut" aria-live="polite"></div>
+      <div class="ft-row" style="margin-top:10px"><button type="button" class="ft-btn small" id="lbCopy">Copy the working</button></div>
+    </section>
+    <section class="ft-card" id="pane-rep" role="tabpanel" aria-labelledby="tab-rep">
+      <div class="ft-row ft-noprint">
+        <label class="ft-field">Criteria<select id="rpKind"><option value="dp">IB DP Sciences internal assessment</option><option value="myp">MYP Sciences criteria B and C</option><option value="plain">Plain lab report</option></select></label>
+        <label class="ft-field" style="flex:2 1 220px">Title<input id="rpTitle" type="text" maxlength="120"></label>
+      </div>
+      <div id="rpBody"></div>
+      <div class="ft-row ft-noprint" style="margin-top:10px">
+        <button type="button" class="ft-btn" id="rpTable">Copy data table for the grapher</button>
+        <button type="button" class="ft-btn" id="rpTxt">Download as text</button>
+        <button type="button" class="ft-btn" id="rpPrint">Print</button>
+      </div>
+      <p class="ft-muted ft-noprint">The grapher takes a pasted table: open Flux Grapher, choose Data, and paste into the first cell.</p>
+    </section>
+  </main>
+  <script src="public/data/products.js?v=15ed22e3"></script>
+  <script src="public/js/flux-hub.js?v=eb42b549"></script>
+  <script src="public/js/flux-suite-timer.js?v=998cda1e"></script>
+  <script src="public/js/flux-tool-kit.js?v=72a95e9f"></script>
+  <script src="public/js/flux-app-lab.js?v=2c4b51db"></script>
+</body>
+</html>

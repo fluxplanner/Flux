@@ -198,6 +198,16 @@ window.FluxProducts = {
       "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"17\" rx=\"2\"/><path d=\"M3 10h18M8 2v4M16 2v4M8 14h3M8 17h6\"/></svg>"
     },
     {
+      "id": "data",
+      "group": "science",
+      "name": "Flux Data",
+      "tagline": "Statistics first: SD, regression, χ²",
+      "blurb": "Paste or type a table and get the mean, median and standard deviation of every column, linear regression with r, R² and residuals, and a chi-squared test with degrees of freedom and p-value. Export a CSV or a PNG chart.",
+      "href": "data.html",
+      "free": true,
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 3v18h18\"/><circle cx=\"8\" cy=\"15\" r=\"1.5\"/><circle cx=\"12\" cy=\"11\" r=\"1.5\"/><circle cx=\"17\" cy=\"7\" r=\"1.5\"/><path d=\"m6 17 13-12\"/></svg>"
+    },
+    {
       "id": "units",
       "group": "science",
       "name": "Flux Units",
@@ -208,14 +218,14 @@ window.FluxProducts = {
       "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 7h18M3 17h18\"/><path d=\"m7 3-4 4 4 4M17 13l4 4-4 4\"/></svg>"
     },
     {
-      "id": "data",
+      "id": "lab",
       "group": "science",
-      "name": "Flux Data",
-      "tagline": "Statistics first: SD, regression, χ²",
-      "blurb": "Paste or type a table and get the mean, median and standard deviation of every column, linear regression with r, R² and residuals, and a chi-squared test with degrees of freedom and p-value. Export a CSV or a PNG chart.",
-      "href": "data.html",
+      "name": "Flux Lab",
+      "tagline": "Uncertainties and lab report criteria",
+      "blurb": "Uncertainty propagation for any formula with every step written out, and a lab report skeleton for the IB DP internal assessment or MYP Sciences criteria B and C, with a checklist for each part. Saved on your device.",
+      "href": "lab.html",
       "free": true,
-      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 3v18h18\"/><circle cx=\"8\" cy=\"15\" r=\"1.5\"/><circle cx=\"12\" cy=\"11\" r=\"1.5\"/><circle cx=\"17\" cy=\"7\" r=\"1.5\"/><path d=\"m6 17 13-12\"/></svg>"
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2.2h12.4a1.5 1.5 0 0 0 1.3-2.2L14 9V3\"/><path d=\"M7 15h10\"/></svg>"
     },
     {
       "id": "synara",
