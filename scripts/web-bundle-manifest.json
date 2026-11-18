@@ -220,6 +220,8 @@
     "public/js/flux-ti84-prgm.js",
     "public/js/flux-study-math.js",
     "public/js/flux-study-labreport.js",
+    "public/js/flux-tool-embed.js",
+    "public/js/flux-study-embedded-tools.js",
     "public/js/flux-study-calculus.js",
     "public/js/flux-music-theory.js",
     "public/js/flux-study-music.js",

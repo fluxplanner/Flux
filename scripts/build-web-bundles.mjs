@@ -260,7 +260,10 @@ for (const AORTA_PAGE of ['aorta-tracker.html', 'aorta.html']) {
 // tool page needs no edit here.
 const PRODUCT_PAGES = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/data/products.json'), 'utf8')).products
   .map((p) => p.href).filter((h) => /^[\w-]+\.html$/.test(h));
-for (const page of [...new Set([...PRODUCT_PAGES, 'owner.html', 'grapher.html', 'calculator.html', 'periodic.html', 'composer.html', 'flashcards.html', 'translate.html', 'pixel.html', 'synara.html', 'partners.html', 'landing.html', 'suite.html', 'split.html', 'teacher.html', 'synara-welcome.html', 'aorta.html', 'aorta-tracker.html', 'index.html'])]) {
+// The tool pages are not Suite apps (they open inside other apps) but load
+// plain scripts all the same.
+const TOOL_PAGES = ['paper', 'units', 'cite', 'balance', 'formulae', 'score', 'timer', 'plan', 'data', 'lab', 'spell', 'timetable'].map((p) => p + '.html');
+for (const page of [...new Set([...PRODUCT_PAGES, ...TOOL_PAGES, 'owner.html', 'grapher.html', 'calculator.html', 'periodic.html', 'composer.html', 'flashcards.html', 'translate.html', 'pixel.html', 'synara.html', 'partners.html', 'landing.html', 'suite.html', 'split.html', 'teacher.html', 'synara-welcome.html', 'aorta.html', 'aorta-tracker.html', 'index.html'])]) {
   const file = path.join(ROOT, page);
   if (!fs.existsSync(file)) continue;
   const before = fs.readFileSync(file, 'utf8');

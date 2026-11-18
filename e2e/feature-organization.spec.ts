@@ -7,16 +7,16 @@ import { gotoScenario, openSidebarTab } from './helpers';
    own under Learn. */
 
 test.describe('feature organization', () => {
-  test('Flux Suite: the planner as a bar on top, then Study apps, Science, Writing, Tools and Partners tabs', async ({ page }) => {
+  test('Flux Suite: the planner as a bar on top, then Study apps and Partners tabs', async ({ page }) => {
     await page.goto('/suite.html');
-    await expect(page.locator('#apps .app')).toHaveCount(23);
+    await expect(page.locator('#apps .app')).toHaveCount(11);
     // The planner is the wide bar above the tabs.
     const bar = page.locator('#apps > a.app--feature');
     await expect(bar).toHaveAttribute('href', 'index.html');
     await expect(bar).toContainText('Open the planner');
     const tabs = page.getByRole('tab');
-    // Science, Writing and Tools hold the free tool pages (2026-11 suite audit).
-    await expect(tabs).toHaveText(['Study apps8', 'Science5', 'Writing2', 'Tools5', 'Partners2']);
+    // The free tool pages open inside other apps, not as Suite tabs (2026-11-18).
+    await expect(tabs).toHaveText(['Study apps8', 'Partners2']);
     await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
 
     const study = page.getByRole('tabpanel', { name: /Study apps/ });
@@ -42,8 +42,6 @@ test.describe('feature organization', () => {
     // Arrow keys move between tabs.
     await page.getByRole('tab', { name: /Partners/ }).focus();
     await page.keyboard.press('ArrowLeft');
-    await expect(page.getByRole('tab', { name: /Tools/ })).toBeFocused();
-    await page.keyboard.press('Home');
     await expect(page.getByRole('tab', { name: /Study apps/ })).toBeFocused();
     await expect(study).toBeVisible();
   });

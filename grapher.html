@@ -37,7 +37,7 @@
 <link rel="stylesheet" href="public/css/flux-tex.css?v=b68bf637">
 <link rel="stylesheet" href="public/css/flux-grapher.css?v=fe83419c">
 <link rel="stylesheet" href="public/css/flux-grapher-3d.css?v=8bc1f300">
-<link rel="stylesheet" href="public/css/flux-hub.css?v=800c0703">
+<link rel="stylesheet" href="public/css/flux-hub.css?v=d76c413f">
 <link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
 <style>
   /* No page margin when printing, so the browser has nowhere to put its own
@@ -230,6 +230,8 @@
         </button>
       </div>
 
+      <button type="button" class="ftx-btn" data-flux-tool="data.html" data-flux-tool-title="Statistics" title="Statistics: SD, regression, chi-squared"><span aria-hidden="true">σ</span><span class="ftx-lbl">Statistics</span></button>
+    <button type="button" class="ftx-btn" data-flux-tool="lab.html" data-flux-tool-title="Lab helper" title="Uncertainties and lab report criteria"><span aria-hidden="true">🧪</span><span class="ftx-lbl">Lab helper</span></button>
       <div data-flux-hub="grapher"></div>
     </header>
 
@@ -237,8 +239,9 @@
   </div>
 
   <!-- Plain script tags, not the app bundles: this page has to stand alone. -->
-  <script src="public/data/products.js?v=48202a8c"></script>
+  <script src="public/data/products.js?v=bebae07f"></script>
 <script src="public/js/flux-hub.js?v=eb42b549"></script>
+<script src="public/js/flux-tool-embed.js?v=aa0e3f08"></script>
 <script src="public/js/flux-suite-timer.js?v=998cda1e"></script>
   <script src="public/js/flux-expr.js?v=8f27a6da"></script>
   <script src="public/js/flux-lab-fit.js?v=da22f751"></script>

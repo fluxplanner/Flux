@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <script src="public/js/flux-look.js?v=81a3e0d1"></script>
+<script src="public/js/flux-tool-embed-mode.js?v=22cb5bd5"></script>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://lfigdijuqmbensebnevo.supabase.co; media-src 'self' blob: data:; object-src 'none'; base-uri 'self'; form-action 'self'">
 <script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
 <script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="timetable" data-no-hold></script>
@@ -21,9 +22,10 @@
   Flux Timetable: a free Flux tool, built like periodic.html — no bundles, no
   Supabase, no sign-in, nothing fetched, so it opens offline on any school
   computer. Shared parts: public/js/flux-tool-kit.js, public/css/flux-tools.css.
-  Listed in Flux Suite from public/data/products.json.
+  Not a Suite app of its own since 2026-11-18: it opens inside the app it
+  fits (public/js/flux-tool-embed.js says which), and still works on its own.
 -->
-<link rel="stylesheet" href="public/css/flux-hub.css?v=800c0703">
+<link rel="stylesheet" href="public/css/flux-hub.css?v=d76c413f">
 <link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
 <link rel="stylesheet" href="public/css/flux-tools.css?v=3c01335d">
 <style>
@@ -68,7 +70,7 @@
       <div class="ft-out" id="ttOut" aria-live="polite"></div>
     </section>
   </main>
-  <script src="public/data/products.js?v=48202a8c"></script>
+  <script src="public/data/products.js?v=bebae07f"></script>
   <script src="public/js/flux-hub.js?v=eb42b549"></script>
   <script src="public/js/flux-suite-timer.js?v=998cda1e"></script>
   <script src="public/js/flux-tool-kit.js?v=91bafb05"></script>
