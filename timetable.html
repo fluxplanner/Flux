@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="public/js/flux-look.js?v=81a3e0d1"></script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://lfigdijuqmbensebnevo.supabase.co; media-src 'self' blob: data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
+<script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="timetable" data-no-hold></script>
+<script defer src="public/js/flux-site-notices.js?v=5e36c924"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flux Timetable</title>
+<meta name="description" content="Free bell-schedule builder from Flux: type your periods or start from a school preset, choose every day or an A/B rotation, skip holidays, and download an .ics file for Google, Apple or Outlook calendar.">
+<meta name="theme-color" content="#080a18">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/png" href="public/flux-planner-logo.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Flux Timetable">
+<!--
+  Flux Timetable: a free Flux tool, built like periodic.html — no bundles, no
+  Supabase, no sign-in, nothing fetched, so it opens offline on any school
+  computer. Shared parts: public/js/flux-tool-kit.js, public/css/flux-tools.css.
+  Listed in Flux Suite from public/data/products.json.
+-->
+<link rel="stylesheet" href="public/css/flux-hub.css?v=800c0703">
+<link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
+<link rel="stylesheet" href="public/css/flux-tools.css?v=3c01335d">
+<style>
+  :root { --bg: #080a18; --accent: #a5b4fc; }
+</style>
+<script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
+<script src="public/js/flux-purple-day.js?v=b8cd878a"></script>
+<link rel="stylesheet" href="public/css/flux-look-flat.css?v=8156dbe3">
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to the timetable builder</a>
+  <header class="top">
+    <a class="ft-back" href="suite.html" aria-label="Back to Flux Suite" title="Back to Flux Suite"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
+    <img class="brand-mark" src="public/flux-planner-logo.png" alt="" width="28" height="28">
+    <span class="title">Flux Timetable</span>
+    <span class="grow"></span>
+    <div data-flux-hub="timetable"></div>
+  </header>
+  <main id="main" tabindex="-1">
+
+    <h1 class="ft-h1">Timetable</h1>
+    <p class="ft-lede">Build your bell schedule once and put it in any calendar app.</p>
+    <section class="ft-card">
+      <h2>Periods</h2>
+      <div class="ft-row">
+        <label class="ft-field">Start from a school<select id="ttPreset"><option value="">Choose a preset…</option></select></label>
+        <button type="button" class="ft-btn" id="ttLoad">Fill in its periods</button>
+      </div>
+      <div class="ft-table-wrap" style="margin-top:10px"><table class="ft-table"><thead><tr><th scope="col">Day</th><th scope="col">Period</th><th scope="col">Class</th><th scope="col">Room</th><th scope="col">Starts</th><th scope="col">Ends</th><th scope="col"><span class="visually-hidden">Remove</span></th></tr></thead><tbody id="ttRows"></tbody></table></div>
+      <button type="button" class="ft-btn small" id="ttAdd" style="margin-top:8px">Add a period</button>
+    </section>
+    <section class="ft-card">
+      <h2>Term</h2>
+      <div class="ft-row">
+        <label class="ft-field">Pattern<select id="ttPattern"><option value="every">Same every weekday</option><option value="ab">A/B days, alternating</option></select></label>
+        <label class="ft-field">First day of term<input id="ttStart" type="date"></label>
+        <label class="ft-field">Last day of term<input id="ttEnd" type="date"></label>
+        <label class="ft-field" data-ab>First day is<select id="ttFirst"><option value="A">an A day</option><option value="B">a B day</option></select></label>
+      </div>
+      <label class="ft-field">No school on these dates, one per line (YYYY-MM-DD, or a range like 2026-12-21 to 2027-01-01)<textarea id="ttOff" class="ft-in" rows="3" style="min-height:76px"></textarea></label>
+      <div class="ft-row" style="margin-top:10px"><button type="button" class="ft-btn primary" id="ttIcs">Download calendar (.ics)</button></div>
+      <div class="ft-out" id="ttOut" aria-live="polite"></div>
+    </section>
+  </main>
+  <script src="public/data/products.js?v=48202a8c"></script>
+  <script src="public/js/flux-hub.js?v=eb42b549"></script>
+  <script src="public/js/flux-suite-timer.js?v=998cda1e"></script>
+  <script src="public/js/flux-tool-kit.js?v=72a95e9f"></script>
+  <script src="public/js/flux-school-presets.js?v=7ceb27ae"></script>
+  <script src="public/js/flux-app-timetable.js?v=939b9001"></script>
+</body>
+</html>
