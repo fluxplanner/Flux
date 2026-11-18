@@ -178,16 +178,6 @@
       "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 20V10M10 20V4M16 20v-7M22 20H2\"/></svg>"
     },
     {
-      "id": "units",
-      "group": "science",
-      "name": "Flux Units",
-      "tagline": "Conversions with the working shown",
-      "blurb": "Convert length, mass, volume, time, speed, area, energy, pressure and temperature with the factors written out, keep the right significant figures, and practise with a quick units quiz.",
-      "href": "units.html",
-      "free": true,
-      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 7h18M3 17h18\"/><path d=\"m7 3-4 4 4 4M17 13l4 4-4 4\"/></svg>"
-    },
-    {
       "id": "timer",
       "group": "tools",
       "name": "Flux Timer",
@@ -206,6 +196,26 @@
       "href": "plan.html",
       "free": true,
       "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"17\" rx=\"2\"/><path d=\"M3 10h18M8 2v4M16 2v4M8 14h3M8 17h6\"/></svg>"
+    },
+    {
+      "id": "units",
+      "group": "science",
+      "name": "Flux Units",
+      "tagline": "Conversions with the working shown",
+      "blurb": "Convert length, mass, volume, time, speed, area, energy, pressure and temperature with the factors written out, keep the right significant figures, and practise with a quick units quiz.",
+      "href": "units.html",
+      "free": true,
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 7h18M3 17h18\"/><path d=\"m7 3-4 4 4 4M17 13l4 4-4 4\"/></svg>"
+    },
+    {
+      "id": "data",
+      "group": "science",
+      "name": "Flux Data",
+      "tagline": "Statistics first: SD, regression, χ²",
+      "blurb": "Paste or type a table and get the mean, median and standard deviation of every column, linear regression with r, R² and residuals, and a chi-squared test with degrees of freedom and p-value. Export a CSV or a PNG chart.",
+      "href": "data.html",
+      "free": true,
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 3v18h18\"/><circle cx=\"8\" cy=\"15\" r=\"1.5\"/><circle cx=\"12\" cy=\"11\" r=\"1.5\"/><circle cx=\"17\" cy=\"7\" r=\"1.5\"/><path d=\"m6 17 13-12\"/></svg>"
     },
     {
       "id": "synara",

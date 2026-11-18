@@ -190,5 +190,19 @@
     return String(Math.round(n * 1e6) / 1e6);
   }
 
+  /* A table that scrolls sideways must be reachable by keyboard (axe:
+     scrollable-region-focusable): every .ft-table-wrap, now or later, gets
+     tabindex=0 and a name. */
+  function focusableTables() {
+    $$('.ft-table-wrap:not([tabindex])').forEach(function (w) {
+      w.tabIndex = 0; w.setAttribute('role', 'region');
+      if (!w.hasAttribute('aria-label')) w.setAttribute('aria-label', 'Table, scrolls sideways');
+    });
+  }
+  if (document.body) {
+    focusableTables();
+    try { new MutationObserver(focusableTables).observe(document.body, { childList: true, subtree: true }); } catch (e) { /* old browser */ }
+  }
+
   window.FluxTool = { esc: esc, $: $, $$: $$, load: load, save: save, toast: toast, copy: copy, download: download, tabs: tabs, compile: compile, solve: solve, sigFigsOf: sigFigsOf, toSig: toSig, fmt: fmt };
 })();
