@@ -86,12 +86,15 @@
   };
   function report() {
     st.kind = $('#rpKind').value; st.title = $('#rpTitle').value; save();
+    // The select's value is DOM text: only a known kind is used.
+    if (!KINDS[st.kind]) st.kind = 'dp';
     var secs = KINDS[st.kind];
     $('#rpBody').innerHTML = secs.map(function (s, i) {
       var id = st.kind + i, r = st.rep[id] || { text: '', done: [] };
+      var done = Array.isArray(r.done) ? r.done : [];
       return '<section class="ft-card" style="background:transparent"><h2>' + T.esc(s[0]) + '</h2><ul class="ft-list ft-noprint">'
-        + s[1].map(function (c, j) { return '<li><label class="ft-check"><input type="checkbox" data-sec="' + id + '" data-c="' + j + '"' + (r.done.indexOf(j) >= 0 ? ' checked' : '') + '> ' + T.esc(c) + '</label></li>'; }).join('')
-        + '</ul><label class="ft-field">Your ' + T.esc(s[0].replace(/^Criterion \w: /, '').toLowerCase()) + '<textarea class="ft-in" data-text="' + id + '" rows="5" style="font-family:inherit">' + T.esc(r.text) + '</textarea></label></section>';
+        + s[1].map(function (c, j) { return '<li><label class="ft-check"><input type="checkbox" data-sec="' + T.esc(id) + '" data-c="' + j + '"' + (done.indexOf(j) >= 0 ? ' checked' : '') + '> ' + T.esc(c) + '</label></li>'; }).join('')
+        + '</ul><label class="ft-field">Your ' + T.esc(s[0].replace(/^Criterion \w: /, '').toLowerCase()) + '<textarea class="ft-in" data-text="' + T.esc(id) + '" rows="5" style="font-family:inherit">' + T.esc(r.text) + '</textarea></label></section>';
     }).join('');
   }
   $('#rpBody').addEventListener('input', function (e) {

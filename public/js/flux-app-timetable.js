@@ -50,7 +50,7 @@
     });
     return set;
   }
-  function icsEsc(s) { return String(s).replace(/[\;,]/g, '\\$&').replace(/\n/g, '\\n'); }
+  function icsEsc(s) { return String(s).replace(/[\\;,]/g, '\\$&').replace(/\n/g, '\\n'); }
   function stamp(date, hm) { return date.replace(/-/g, '') + 'T' + hm.replace(':', '') + '00'; }
   $('#ttIcs').addEventListener('click', function () {
     var out = $('#ttOut'), start = $('#ttStart').value, end = $('#ttEnd').value;

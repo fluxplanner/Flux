@@ -80,7 +80,7 @@
     T.copy(last.sessions.map(function (s) { return nice(s.date) + ' — ' + s.task + ': ' + s.label + ' (' + s.minutes + ' min)'; }).join('\n') || 'No plan yet.');
   });
   $('#plIcs').addEventListener('click', function () {
-    var esc = function (s) { return String(s).replace(/[\;,]/g, '\\$&').replace(/\n/g, '\\n'); };
+    var esc = function (s) { return String(s).replace(/[\\;,]/g, '\\$&').replace(/\n/g, '\\n'); };
     var lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Flux//Plan//EN'];
     last.sessions.forEach(function (s, i) {
       var d = s.date.replace(/-/g, '');

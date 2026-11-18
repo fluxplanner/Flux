@@ -10,9 +10,10 @@
    ========================================================================== */
 (function () {
   'use strict';
+  /* The same escape as FluxHub.esc, kept local so it never depends on what
+     another script put on window (and so code scanning can see it). */
   var esc = function (s) {
-    return (window.FluxHub && window.FluxHub.esc) ? window.FluxHub.esc(s)
-      : String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   };
   var $ = function (sel, root) { return (root || document).querySelector(sel); };
   var $$ = function (sel, root) { return [].slice.call((root || document).querySelectorAll(sel)); };
@@ -37,7 +38,8 @@
   function download(name, data, type) {
     var blob = data instanceof Blob ? data : new Blob([data], { type: type || 'text/plain;charset=utf-8' });
     var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = name;
+    // A file name, not markup: only letters, digits, dot, dash and underscore.
+    a.href = URL.createObjectURL(blob); a.download = String(name).replace(/[^\w.-]+/g, '-') || 'flux-file';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
   }
