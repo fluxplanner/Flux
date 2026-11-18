@@ -68,7 +68,7 @@ test.describe('Typed dates in the planner', () => {
   });
 
   test('the New task form fills its fields from the title, and Enter adds the task', async ({ page }) => {
-    await page.locator('.topbar-new-task-btn:not(.topbar-mob-only)').click();
+    await page.locator('#dashAddTaskBtn').click();
     const title = page.locator('#taskName');
     await expect(title).toBeFocused();
     await title.pressSequentially('Algebra quiz friday');
@@ -88,7 +88,7 @@ test.describe('Typed dates in the planner', () => {
   });
 
   test('a field you set yourself is not overwritten by the title', async ({ page }) => {
-    await page.locator('.topbar-new-task-btn:not(.topbar-mob-only)').click();
+    await page.locator('#dashAddTaskBtn').click();
     await page.locator('#taskType').selectOption('project');
     await page.locator('#taskName').pressSequentially('Algebra quiz friday');
     await expect(page.locator('#taskDate')).toHaveValue('2026-03-13');
@@ -98,13 +98,13 @@ test.describe('Typed dates in the planner', () => {
   // The last subject and type are remembered on purpose (applyAddTaskDefaults);
   // the date was the one left behind by accident.
   test('each New task form starts due today instead of keeping the last task\'s date', async ({ page }) => {
-    await page.locator('.topbar-new-task-btn:not(.topbar-mob-only)').click();
+    await page.locator('#dashAddTaskBtn').click();
     await page.locator('#taskName').pressSequentially('Bio essay oct 24');
     await page.locator('#taskName').press('Enter');
     await expect(page.locator('#dashAddTaskModal')).toBeHidden();
     await page.waitForTimeout(500);
 
-    await page.locator('.topbar-new-task-btn:not(.topbar-mob-only)').click();
+    await page.locator('#dashAddTaskBtn').click();
     await expect(page.locator('#taskDate')).toHaveValue('2026-03-09');
     await expect(page.locator('#taskNameParsed')).toBeHidden();
   });
