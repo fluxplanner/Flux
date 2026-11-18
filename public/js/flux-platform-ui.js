@@ -19,9 +19,9 @@
 (function () {
   'use strict';
 
-  var SB_URL = 'https://lfigdijuqmbensebnevo.supabase.co';
+  var SB_URL = window.FluxSB.url;
   // Public anon key — already shipped in the bundle; read-only under RLS.
-  var SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaWdkaWp1cW1iZW5zZWJuZXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjEzMDgsImV4cCI6MjA4ODkzNzMwOH0.qG1d9DLKrs0qqLgAp-6UGdaU7xWvlg2sWq-oD-y2kVo';
+  var SB_ANON = window.FluxSB.anon;
 
   var CACHE_KEY = 'flux_platform_ui';
   var REFRESH_MS = 5 * 60 * 1000;

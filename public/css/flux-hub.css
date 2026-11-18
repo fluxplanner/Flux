@@ -15,7 +15,9 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 12px;
+  padding: 10px 13px;
+  min-height: 44px;
+  box-sizing: border-box;
   border-radius: 11px;
   cursor: pointer;
   font: inherit;
@@ -54,9 +56,9 @@
 
 /* A second planner mount sits beside the avatar on phones, where the desktop
    top-bar cluster is hidden. */
-.fxhub.topbar-mob-hub { display: none; }
+.fxhub.topbar-mob-hub, [data-flux-hub].topbar-mob-hub { display: none; }
 @media (max-width: 768px) {
-  .fxhub.topbar-mob-hub { display: inline-flex; }
+  .fxhub.topbar-mob-hub, [data-flux-hub].topbar-mob-hub { display: inline-flex; }
   .topbar-mob-hub .fxhub-btn-label { display: none; }
   .topbar-mob-hub .fxhub-btn { padding: 8px 9px; }
 }
@@ -67,8 +69,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 38px;
+  height: 38px;
   padding: 0;
   margin: 0;
   border-radius: 10px;
@@ -109,3 +111,48 @@
 .fxhub-split { margin-top: 4px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, .1); color: #7fe3ff; }
 .fxhub-all { color: #9fb0cc; font-weight: 600; }
 @media (max-width: 768px) { .topbar-mob-hub .fxhub-more { width: 34px; height: 34px; } }
+
+/* ── Suite card colours ──
+   A new PRODUCTS entry needs a --c1/--c2 pair here, a blurb, and a static
+   card. Miss one and the card falls back to the default blue with no error.
+   suite.html carries the cards' layout; the pairs live here so every page
+   that draws a product tile agrees on its colour. */
+.app--translate { --c1: #86efac; --c2: #22d3ee; }
+.app--paper { --c1: #6ee7b7; --c2: #22d3ee; }
+.app--units { --c1: #7dd3fc; --c2: #818cf8; }
+.app--cite { --c1: #fde68a; --c2: #f59e0b; }
+.app--balance { --c1: #a7f3d0; --c2: #34d399; }
+.app--formulae { --c1: #c4b5fd; --c2: #818cf8; }
+.app--score { --c1: #f9a8d4; --c2: #fb7185; }
+.app--timer { --c1: #93c5fd; --c2: #60a5fa; }
+.app--plan { --c1: #fbbf24; --c2: #f97316; }
+.app--data { --c1: #67e8f9; --c2: #06b6d4; }
+.app--lab { --c1: #86efac; --c2: #22c55e; }
+.app--spell { --c1: #fda4af; --c2: #f472b6; }
+.app--timetable { --c1: #a5b4fc; --c2: #6366f1; }
+.app--owner { --c1: #fca5a5; --c2: #a78bfa; }
+.hub-tab--owner[aria-selected="true"] { color: #fff; background: linear-gradient(135deg, #fca5a5, #a78bfa); }
+
+/* ── Product marks in the switcher ──
+   Synara's violet tile is a CSS gradient rather than an SVG <linearGradient>:
+   the planner mounts this menu's host twice, and a gradient defined inside a
+   hidden SVG draws nothing where it is referenced from elsewhere. */
+.fxhub-item-mark { flex: none; width: 22px; height: 22px; align-items: center; justify-content: center; }
+.fxhub-item-mark svg, .fxhub-item-mark img { width: 18px; height: 18px; display: block; }
+.fxhub-item--synara .fxhub-item-mark { padding: 2px; border-radius: 6px; color: #fff; background: linear-gradient(135deg, #9c7aff, #5926d4); }
+.fxhub-item--aorta .fxhub-item-mark { overflow: hidden; border-radius: 6px; background: #f5f5f2; }
+.fxhub-item--aorta .fxhub-item-mark img { width: 22px; height: 22px; object-fit: cover; }
+
+/* ── Light themes ── The menu was always the dark navy, glaring on Cloud
+   and the other light themes. */
+[data-theme="light"] .fxhub-menu { background: #fff; color: #1f2328; border-color: #d0d7de; box-shadow: 0 18px 48px -12px rgba(0,0,0,.25); }
+[data-theme="light"] .fxhub-menu a:hover, [data-theme="light"] .fxhub-menu a:focus-visible { background: rgba(0,120,180,.1); }
+[data-theme="light"] .fxhub-item[aria-current="page"] { background: rgba(0,120,180,.08); color: #0b6c8f; }
+[data-theme="light"] .fxhub-item-mark { color: #0b6c8f; }
+[data-theme="light"] .fxhub-newtab, [data-theme="light"] .fxhub-all { color: #57606a; }
+[data-theme="light"] .fxhub-split { color: #0b6c8f; border-top-color: #d0d7de; }
+
+/* The tool groups' tabs (products.json groups science, writing, tools). */
+.hub-tab--science[aria-selected="true"] { color: #061020; background: linear-gradient(135deg, #6ee7b7, #22d3ee); }
+.hub-tab--writing[aria-selected="true"] { color: #061020; background: linear-gradient(135deg, #fde68a, #f9a8d4); }
+.hub-tab--tools[aria-selected="true"] { color: #061020; background: linear-gradient(135deg, #93c5fd, #c4b5fd); }

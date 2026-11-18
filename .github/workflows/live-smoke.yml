@@ -18,7 +18,8 @@ concurrency:
 
 jobs:
   smoke:
-    runs-on: ubuntu-latest
+    # ubuntu-latest became 26.04, where Playwright cannot install Chromium yet.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4

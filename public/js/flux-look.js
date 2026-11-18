@@ -99,7 +99,13 @@
   }
   // setTimeout, not requestAnimationFrame: rAF stalls in hidden tabs, and the
   // line must already be right when the tab comes back.
-  function queue() { if (!queued) { queued = true; setTimeout(scan, 30); } }
+  /* Every DOM change in the planner lands here, so bail before queueing
+     anything when the flat look is off, and batch at 60ms rather than 30. */
+  function queue() {
+    if (document.documentElement.getAttribute('data-flux-look') !== 'flat') return;
+    if (queued) return;
+    queued = true; setTimeout(scan, 60);
+  }
 
   function start() {
     scan();

@@ -462,7 +462,7 @@
     if (!googleOn()) {
       // This is a Canvas tab now — do not advertise Gmail/Tasks/Docs to a
       // student who may not have a Google account at all.
-      sub.textContent = 'Connect Canvas, Schoology or Moodle to pull your assignments and due dates into Flux.';
+      sub.textContent = 'Canvas, Schoology and Moodle in one place. Google is paused, so Gmail, Tasks and Docs are not connected.';
       return;
     }
     if (isStaffHub()) {

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="public/js/flux-look.js?v=81a3e0d1"></script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://lfigdijuqmbensebnevo.supabase.co; media-src 'self' blob: data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
+<script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="data" data-no-hold></script>
+<script defer src="public/js/flux-site-notices.js?v=5e36c924"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flux Data</title>
+<meta name="description" content="Free statistics tool from Flux: paste a table and get mean, median, standard deviation, linear regression with residuals, and a chi-squared test with its p-value. Export a CSV or a PNG chart.">
+<meta name="theme-color" content="#041216">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/png" href="public/flux-planner-logo.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Flux Data">
+<!--
+  Flux Data: a free Flux tool, built like periodic.html — no bundles, no
+  Supabase, no sign-in, nothing fetched, so it opens offline on any school
+  computer. Shared parts: public/js/flux-tool-kit.js, public/css/flux-tools.css.
+  Listed in Flux Suite from public/data/products.json.
+-->
+<link rel="stylesheet" href="public/css/flux-hub.css?v=800c0703">
+<link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
+<link rel="stylesheet" href="public/css/flux-tools.css?v=3c01335d">
+<style>
+  :root { --bg: #041216; --accent: #67e8f9; }
+</style>
+<script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
+<script src="public/js/flux-purple-day.js?v=b8cd878a"></script>
+<link rel="stylesheet" href="public/css/flux-look-flat.css?v=8156dbe3">
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to the statistics</a>
+  <header class="top">
+    <a class="ft-back" href="suite.html" aria-label="Back to Flux Suite" title="Back to Flux Suite"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
+    <img class="brand-mark" src="public/flux-planner-logo.png" alt="" width="28" height="28">
+    <span class="title">Flux Data</span>
+    <span class="grow"></span>
+    <div data-flux-hub="data"></div>
+  </header>
+  <main id="main" tabindex="-1">
+
+    <h1 class="ft-h1">Data</h1>
+    <p class="ft-lede">Paste a table from a spreadsheet, or type one with commas. The first row may be headings.</p>
+    <div class="ft-card">
+      <label class="ft-field">Your table<textarea id="dtIn" class="ft-in" rows="7">Time (s),Distance (m)
+1,2.1
+2,3.9
+3,6.2
+4,7.8
+5,10.1</textarea></label>
+      <p class="ft-muted" id="dtInfo" aria-live="polite"></p>
+    </div>
+    <div class="ft-tabs" role="tablist" aria-label="Statistics"><button type="button" role="tab" class="ft-tab" id="tab-sum" aria-controls="pane-sum">Summary</button><button type="button" role="tab" class="ft-tab" id="tab-reg" aria-controls="pane-reg">Regression</button><button type="button" role="tab" class="ft-tab" id="tab-chi" aria-controls="pane-chi">Chi-squared</button></div>
+    <section class="ft-card" id="pane-sum" role="tabpanel" aria-labelledby="tab-sum">
+      <div class="ft-table-wrap" id="dtSum"></div>
+      <button type="button" class="ft-btn small" id="dtSumCsv" style="margin-top:10px">Export CSV</button>
+    </section>
+    <section class="ft-card" id="pane-reg" role="tabpanel" aria-labelledby="tab-reg">
+      <div class="ft-row"><label class="ft-field">x<select id="dtX"></select></label><label class="ft-field">y<select id="dtY"></select></label></div>
+      <div class="ft-out" id="dtReg" aria-live="polite"></div>
+      <canvas id="dtChart" width="720" height="380" style="width:100%;height:auto;margin-top:12px;border-radius:12px;background:#fff" role="img" aria-label="Scatter plot with the line of best fit"></canvas>
+      <div class="ft-table-wrap" id="dtRes"></div>
+      <div class="ft-row" style="margin-top:10px"><button type="button" class="ft-btn small" id="dtResCsv">Export residuals CSV</button><button type="button" class="ft-btn small" id="dtPng">Save chart PNG</button></div>
+    </section>
+    <section class="ft-card" id="pane-chi" role="tabpanel" aria-labelledby="tab-chi">
+      <div class="ft-row"><label class="ft-field">Observed<select id="dtO"></select></label><label class="ft-field">Expected<select id="dtE"></select></label></div>
+      <div class="ft-out" id="dtChi" aria-live="polite"></div>
+    </section>
+  </main>
+  <script src="public/data/products.js?v=48202a8c"></script>
+  <script src="public/js/flux-hub.js?v=eb42b549"></script>
+  <script src="public/js/flux-suite-timer.js?v=998cda1e"></script>
+  <script src="public/js/flux-tool-kit.js?v=91bafb05"></script>
+  <script src="public/js/flux-app-data.js?v=cc3db47a"></script>
+</body>
+</html>

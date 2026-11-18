@@ -3433,8 +3433,8 @@ let sidebarCollapsed=load('flux_sidebar_collapsed',false);
 })();
 
 // ══ SUPABASE + API ══
-const SB_URL='https://lfigdijuqmbensebnevo.supabase.co';
-const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaWdkaWp1cW1iZW5zZWJuZXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjEzMDgsImV4cCI6MjA4ODkzNzMwOH0.qG1d9DLKrs0qqLgAp-6UGdaU7xWvlg2sWq-oD-y2kVo';
+const SB_URL= window.FluxSB.url;
+const SB_ANON= window.FluxSB.anon;
 const API={
   ai:`${SB_URL}/functions/v1/ai-proxy`,
   gemini:`${SB_URL}/functions/v1/gemini-proxy`,
@@ -4387,9 +4387,9 @@ function openDrawer(){
     drawer.classList.toggle('drawer-right',isRight);
   }
   document.getElementById('drawerOverlay').classList.add('open');
-  if(drawer)drawer.classList.add('open');
+  if(drawer){drawer.classList.add('open');drawer.setAttribute('aria-hidden','false');}
 }
-function closeDrawer(){document.getElementById('drawerOverlay').classList.remove('open');const d=document.getElementById('mobDrawer');if(d)d.classList.remove('open');}
+function closeDrawer(){document.getElementById('drawerOverlay').classList.remove('open');const d=document.getElementById('mobDrawer');if(d){d.classList.remove('open');d.setAttribute('aria-hidden','true');}}
 
 // ══ TASKS ══
 function calcUrgency(task){const now=new Date();now.setHours(0,0,0,0);const days=task.date?Math.max(0,Math.floor((new Date(task.date+'T00:00:00')-now)/86400000)):99;const pMap={high:3,med:2,low:1};return(pMap[task.priority]||2)*(task.difficulty||3)/Math.max(days,0.5);}
@@ -4723,7 +4723,7 @@ function renderFlatDashHead(){
     }
   }catch(_){}
   const date=d0.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'});
-  const html=`<div><h1 class="fx-head-date">${esc(date)}</h1><p class="fx-head-sub">${esc(sub)}</p></div>`
+  const html=`<div><h2 class="fx-head-date">${esc(date)}</h2><p class="fx-head-sub">${esc(sub)}</p></div>`
     +`<div class="fx-head-stats"><div class="fx-stat"><b>${open.length}</b><small>open</small></div>`
     +`<div class="fx-stat${overdue?' is-bad':''}"><b>${overdue}</b><small>overdue</small></div>${countdown}</div>`;
   if(head.dataset.fx!==html){head.innerHTML=html;head.dataset.fx=html;}
@@ -8460,7 +8460,7 @@ const OWNER_EMAIL='azfermohammed21@gmail.com';
    conversion (release-admin's isOwnerCaller, and account-setup); this is the
    client catching up. The email stays as a fallback so a fresh database or a
    restored backup still recognises the owner before any conversion. */
-const OWNER_UID='eabe2b1f-e428-4181-8530-8e5366eb3975';
+const OWNER_UID= window.FluxSB.ownerUid;
 
 // Permission levels: owner > user.
 // The dev tier was switched off in the 2026-11-05 incident. It was read from

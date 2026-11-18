@@ -23,11 +23,14 @@
   'use strict';
   if (window.FluxSiteNotices) return;
 
-  var SB_URL = 'https://lfigdijuqmbensebnevo.supabase.co';
-  var SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaWdkaWp1cW1iZW5zZWJuZXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjEzMDgsImV4cCI6MjA4ODkzNzMwOH0.qG1d9DLKrs0qqLgAp-6UGdaU7xWvlg2sWq-oD-y2kVo';
-  var SESSION_KEY = 'sb-lfigdijuqmbensebnevo-auth-token';
-  var OWNER_UID = 'eabe2b1f-e428-4181-8530-8e5366eb3975';
+  var SB_URL = window.FluxSB.url;
+  var SB_ANON = window.FluxSB.anon;
+  var SESSION_KEY = window.FluxSB.sessionKey;
+  var OWNER_UID = window.FluxSB.ownerUid;
   var CLOSED_KEY = 'flux_closed_announcements_v1';
+  /* Announcements this device has already counted as read. In memory alone,
+     every reload posted the read again and the owner's counts meant nothing. */
+  var SEEN_KEY = 'flux_seen_announcements_v1';
   var REFRESH_MS = 2 * 60 * 1000;
 
   var host = location.hostname;
@@ -226,12 +229,12 @@
   /* ---------- Announcements ---------- */
 
   function closedIds() { var c = readJSON(CLOSED_KEY); return Array.isArray(c) ? c : []; }
-  var _counted = {};
-
   function markSeen(id) {
     var s = session();
-    if (!s.access_token || !s.user || _counted[id]) return;
-    _counted[id] = true;
+    if (!s.access_token || !s.user) return;
+    var seen = readJSON(SEEN_KEY);
+    if (Array.isArray(seen) && seen.indexOf(id) >= 0) return;
+    try { localStorage.setItem(SEEN_KEY, JSON.stringify((Array.isArray(seen) ? seen : []).concat(id).slice(-200))); } catch (e) { /* storage blocked */ }
     fetch(SB_URL + '/rest/v1/rpc/flux_mark_announcement_read', {
       method: 'POST',
       headers: { apikey: SB_ANON, Authorization: 'Bearer ' + s.access_token, 'Content-Type': 'application/json' },
@@ -241,12 +244,20 @@
 
   function applyAnnouncements(rows) {
     var s = stack();
-    Array.prototype.forEach.call(s.querySelectorAll('[data-notice^="ann-"]'), function (n) { n.remove(); });
     var closed = closedIds();
-    rows.filter(function (a) {
+    var shown = rows.filter(function (a) {
       return (!a.app || a.app === APP) && (a.level === 'urgent' || closed.indexOf(a.id) < 0);
-    }).slice(0, 3).forEach(function (a) {
-      s.appendChild(banner('ann-' + a.id, a.level, a.title, a.body, a.level === 'urgent' ? null : function () {
+    }).slice(0, 3);
+    var keep = shown.map(function (a) { return 'ann-' + a.id; });
+    /* Only banners no longer wanted go: urgent banners cannot be dismissed, so
+       removing and re-adding them every two minutes read as a flicker. */
+    Array.prototype.forEach.call(s.querySelectorAll('[data-notice^="ann-"]'), function (n) {
+      if (keep.indexOf(n.getAttribute('data-notice')) < 0) n.remove();
+    });
+    shown.forEach(function (a) {
+      var noticeId = 'ann-' + a.id;
+      if (s.querySelector('[data-notice="' + noticeId + '"]')) return;
+      s.appendChild(banner(noticeId, a.level, a.title, a.body, a.level === 'urgent' ? null : function () {
         var c = closedIds();
         c.push(a.id);
         try { localStorage.setItem(CLOSED_KEY, JSON.stringify(c.slice(-200))); } catch (e) { /* storage blocked */ }
@@ -264,7 +275,11 @@
     get('flux_announcements?select=id,title,body,app,level&order=created_at.desc&limit=10').then(applyAnnouncements, function () {});
   }
 
+  /* Coming back to a tab refetches, but not more than every 30 seconds:
+     flicking between tabs was a request each time. */
+  var lastRefresh = 0;
   function start() {
+    lastRefresh = Date.now();
     refresh();
     setInterval(refresh, REFRESH_MS);
     // This viewer's role permissions arrived or changed.
@@ -272,7 +287,10 @@
       if (_lastSiteMode) applySiteMode(_lastSiteMode);
     });
     document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState === 'visible') refresh();
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastRefresh < 30000) return;
+      lastRefresh = Date.now();
+      refresh();
     });
   }
 

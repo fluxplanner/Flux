@@ -1,5 +1,6 @@
 {
   "vendor": [
+    "public/js/flux-sb-config.js",
     "public/js/flux-supabase-vendor.js",
     "public/js/core/dom-walker.js",
     "public/js/flux-anime-catalog.js",
@@ -189,6 +190,7 @@
     "public/js/flux-ptable-atom3d.js",
     "public/js/flux-ptable-explore.js",
     "public/js/flux-ptable-history.js",
+    "public/js/flux-formula-data.js",
     "public/js/flux-toolbox.js",
     "public/js/flux-toolbox-dp.js",
     "public/js/flux-study-hub.js",
@@ -198,6 +200,7 @@
     "public/js/flux-study-physics.js",
     "public/js/flux-lab-fit.js",
     "public/js/flux-expr.js",
+    "public/data/products.js",
     "public/js/flux-hub.js",
     "public/js/flux-purple-day.js",
     "public/js/flux-synara-link.js",
@@ -447,10 +450,12 @@
     "public/css/flux-look-flat.css"
   ],
   "ownerVendor": [
+    "public/js/flux-sb-config.js",
     "public/js/flux-supabase-vendor.js"
   ],
   "owner": [
     "public/js/flux-iconify.js",
+    "public/data/products.js",
     "public/js/flux-hub.js",
     "public/js/flux-owner-runtime.js",
     "public/js/flux-staff-directory.js",

@@ -60,7 +60,7 @@
       'font:600 14px/1.2 system-ui,-apple-system,Segoe UI,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.28);' +
       'border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(8px)}' +
       '.fst-pill[hidden],.fst-pill button[hidden]{display:none}' +
-      '.fst-pill a{color:inherit;text-decoration:none;display:flex;align-items:center;gap:8px}' +
+      '.fst-pill .fst-link{color:inherit;text-decoration:none;display:flex;align-items:center;gap:8px}' +
       '.fst-time{font-variant-numeric:tabular-nums;font-size:16px}' +
       '.fst-lbl{opacity:.75;font-weight:500;font-size:12px}' +
       '.fst-pill button{all:unset;cursor:pointer;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;' +
@@ -78,6 +78,17 @@
     stop: '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
   };
 
+  /* The planner needs an account, so for a guest the pill is not a link: from
+     the Suite it would only drop them on the sign-in screen. */
+  function signedIn() {
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        if (/^sb-.*-auth-token$/.test(localStorage.key(i) || '')) return true;
+      }
+    } catch (e) { /* storage blocked */ }
+    return false;
+  }
+
   function mount() {
     if (el) return;
     css();
@@ -87,8 +98,8 @@
     el.hidden = true;
     el.setAttribute('role', 'timer');
     el.innerHTML =
-      '<a href="index.html" title="Open Flux Planner">' +
-      '<span class="fst-time">00:00</span><span class="fst-lbl"></span></a>' +
+      (signedIn() ? '<a class="fst-link" href="index.html" title="Open Flux Planner">' : '<span class="fst-link">') +
+      '<span class="fst-time">00:00</span><span class="fst-lbl"></span>' + (signedIn() ? '</a>' : '</span>') +
       '<button type="button" data-fst="toggle"></button>' +
       '<button type="button" data-fst="stop" aria-label="Stop timer" title="Stop">' + ICON.stop + '</button>';
     el.addEventListener('click', function (e) {

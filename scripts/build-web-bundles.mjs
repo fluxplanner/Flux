@@ -256,11 +256,15 @@ for (const AORTA_PAGE of ['aorta-tracker.html', 'aorta.html']) {
 //     the OLD scripts, and the page broke ("G.create is not a function").
 //     A content hash in each query string makes every version its own URL.
 //     calculator.html, periodic.html and composer.html are built the same way, for the same reason.
-for (const page of ['owner.html', 'grapher.html', 'calculator.html', 'periodic.html', 'composer.html', 'flashcards.html', 'translate.html', 'pixel.html', 'synara.html', 'partners.html', 'landing.html', 'suite.html', 'split.html', 'teacher.html', 'synara-welcome.html', 'aorta.html', 'aorta-tracker.html', 'index.html']) {
+// Every product page in public/data/products.json is stamped too, so a new
+// tool page needs no edit here.
+const PRODUCT_PAGES = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/data/products.json'), 'utf8')).products
+  .map((p) => p.href).filter((h) => /^[\w-]+\.html$/.test(h));
+for (const page of [...new Set([...PRODUCT_PAGES, 'owner.html', 'grapher.html', 'calculator.html', 'periodic.html', 'composer.html', 'flashcards.html', 'translate.html', 'pixel.html', 'synara.html', 'partners.html', 'landing.html', 'suite.html', 'split.html', 'teacher.html', 'synara-welcome.html', 'aorta.html', 'aorta-tracker.html', 'index.html'])]) {
   const file = path.join(ROOT, page);
   if (!fs.existsSync(file)) continue;
   const before = fs.readFileSync(file, 'utf8');
-  const after = before.replace(/(src|href)="(public\/(?:js|css)\/[\w.-]+\.(?:js|css))(\?v=[0-9a-f]+)?"/g, (m, attr, src) => {
+  const after = before.replace(/(src|href)="(public\/(?:js|css|data)\/[\w.-]+\.(?:js|css))(\?v=[0-9a-f]+)?"/g, (m, attr, src) => {
     const abs = path.join(ROOT, src);
     if (!fs.existsSync(abs)) return m;
     return `${attr}="${src}?v=${hash8(fs.readFileSync(abs, 'utf8'))}"`;

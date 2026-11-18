@@ -24,140 +24,12 @@
      Adding a product here puts it on both without duplicating product data in
      their markup. `group` places it in Flux Suite (GROUPS, below): the planner is
      the wide bar at the top, and every other group is a pill tab over a grid.
-     The list is in display order within each. */
-  var GROUPS = [
-    { id: 'planner', name: 'Planner' },
-    { id: 'study', name: 'Study apps' },
-    { id: 'partner', name: 'Partners' },
-    { id: 'owner', name: 'Owner Controls' },
-  ];
-  var PRODUCTS = [
-    {
-      id: 'planner',
-      group: 'planner',
-      name: 'Flux Planner',
-      tagline: 'Tasks, timetable, revision',
-      href: 'index.html',
-      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
-    },
-    {
-      id: 'teacher',
-      group: 'study',
-      name: 'Flux Tutor',
-      tagline: 'Learn from your class materials',
-      href: 'teacher.html',
-      free: true,
-      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2.5 8 12 13l9.5-5L12 3Z"/><path d="M6.5 11v5.2c3.1 2.4 7.9 2.4 11 0V11M21.5 8v6"/></svg>',
-    },
-    {
-      id: 'grapher',
-      group: 'study',
-      name: 'Flux Grapher',
-      tagline: 'Equations, lab data and 3D',
-      href: 'grapher.html',
-      free: true,
-      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg>',
-    },
-    {
-      id: 'calculator',
-      group: 'study',
-      name: 'Flux Calculator',
-      tagline: 'Works like a TI-84, Plus CE or Evo',
-      href: 'calculator.html',
-      free: true,
-      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2.5"/><rect x="8" y="5" width="8" height="4" rx=".8"/><path d="M8.5 13h.01M12 13h.01M15.5 13h.01M8.5 16.5h.01M12 16.5h.01M15.5 16.5h.01"/></svg>',
-    },
-    {
-      id: 'flashcards',
-      group: 'study',
-      name: 'Flux Flashcards',
-      tagline: 'Spaced repetition, tests and games',
-      href: 'flashcards.html',
-      free: true,
-      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="15" height="14" rx="2"/><path d="M7 2h13a2 2 0 0 1 2 2v12"/></svg>',
-    },
-    {
-      id: 'pixel',
-      group: 'study',
-      name: 'Flux Pixel',
-      tagline: 'Diagrams and Flux Figures',
-      href: 'pixel.html',
-      free: true,
-      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
-    },
-    {
-      id: 'periodic',
-      group: 'study',
-      name: 'Flux Periodic Table',
-      tagline: 'Every trend, spectrum and atom in 3D',
-      href: 'periodic.html',
-      free: true,
-      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="10" width="5" height="5" rx="1"/><rect x="9.5" y="10" width="5" height="5" rx="1"/><rect x="16" y="10" width="5" height="5" rx="1"/><path d="M5 19h14"/></svg>',
-    },
-    {
-      id: 'composer',
-      group: 'study',
-      name: 'Flux Composer',
-      tagline: 'Keys, chords, beats and DP Music',
-      href: 'composer.html',
-      free: true,
-      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
-    },
-    {
-      id: 'translate',
-      group: 'study',
-      name: 'Flux Lingo',
-      tagline: 'Every verb conjugated, practice, translate',
-      href: 'translate.html',
-      free: true,
-      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>',
-    },
-    {
-      // Last, under Partner apps: built by Flux for another organization, so
-      // it follows Flux's own study apps rather than sitting among them. Its
-      // own brand rather than "Flux …": Synara keeps its name and violet look.
-      id: 'synara',
-      group: 'partner',
-      name: 'Synara',
-      tagline: 'Epilepsy meds, seizures, safety card',
-      href: 'synara.html',
-      free: true,
-      // A Flux Partner: built and hosted by Flux for another organization (partners.html).
-      partner: true,
-      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13.5h3.75l2.25-6 3.75 10.5 2.6-6.75H21"/></svg>',
-      /* Its real logo, drawn in place of the mark: the white pulse from
-         public/synara/icons/icon.svg, filling a tile painted with the Hub
-         directory's violet gradient (.app-icon--logo). */
-      logo: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19h4l2.5-6.5L16.5 23l2.8-7H26"/></svg>',
-    },
-    {
-      // A Flux Partner: the Aorta Project. The tile opens their app, the
-      // blood pressure tracker; their site (aorta.html) links to it too.
-      // Kept hidden from everyone but the owner with Owner Controls → Hide
-      // apps (flux-app-visibility.js) until it launches.
-      id: 'aorta',
-      group: 'partner',
-      name: 'Aorta Project',
-      tagline: 'Blood pressure and medicine tracker for families',
-      href: 'aorta-tracker.html',
-      free: true,
-      partner: true,
-      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></svg>',
-      // Their real logo, a photo, on the white tile it was drawn for.
-      logo: '<img src="public/partners/aorta/logo.png" alt="" width="54" height="54">',
-    },
-    {
-      // Only the owner sees this tile, and owner.html turns anyone else away.
-      // The database is what actually protects what is inside.
-      id: 'owner',
-      group: 'owner',
-      name: 'Flux Owner Controls',
-      tagline: 'Moderation, people, releases and every switch',
-      href: 'owner.html',
-      ownerOnly: true,
-      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>',
-    },
-  ];
+     The list is in display order within each.
+     The data itself now lives in public/data/products.json; the build writes
+     it to public/data/products.js (window.FluxProducts), which every page
+     loads before this file. Edit the JSON and run npm run build:suite. */
+  var GROUPS = (window.FluxProducts && window.FluxProducts.groups) || [];
+  var PRODUCTS = (window.FluxProducts && window.FluxProducts.products) || [];
 
   /** PRODUCTS minus any the owner has hidden from this viewer (flux-app-visibility.js).
       PRODUCTS itself stays complete: the owner's control lists from it. */
@@ -169,8 +41,10 @@
     });
   }
 
+  /* The one escape for product text: the switcher and the Suite (via
+     FluxHub.esc) both use it. */
   function esc(s) {
-    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   /* Split screen needs room for two apps; below this it is not offered and
@@ -230,9 +104,11 @@
     var newTab = !installed();
     var rows = visibleProducts().map(function (p) {
       var here = p.id === current;
-      return '<div class="fxhub-row">'
-        + '<a class="fxhub-item" role="menuitem" href="' + esc(p.href) + '"' + (here ? ' aria-current="page"' : '') + '>'
-        + '<span class="fxhub-item-mark" aria-hidden="true">' + p.mark + '</span>'
+      /* A product's own logo where it has one (Synara, Aorta), and a class per
+         product so its tile can be framed in its own colours. */
+      return '<div class="fxhub-row fxhub-row--' + esc(p.id) + '">'
+        + '<a class="fxhub-item fxhub-item--' + esc(p.id) + '" role="menuitem" href="' + esc(p.href) + '"' + (here ? ' aria-current="page"' : '') + '>'
+        + '<span class="fxhub-item-mark" aria-hidden="true">' + (p.logo || p.mark) + '</span>'
         + '<span class="fxhub-item-name">' + esc(p.name) + '</span></a>'
         + (newTab ? '<a class="fxhub-newtab" role="menuitem" href="' + esc(p.href) + '" target="_blank" rel="noopener" aria-label="Open ' + esc(p.name) + ' in a new tab" title="Open in new tab">' + NEWTAB_SVG + '</a>' : '')
         + '</div>';
@@ -289,10 +165,22 @@
   // Opening a link in a new tab leaves this page open: put the menu away.
   document.addEventListener('visibilitychange', function () { if (document.hidden) closeMenu(false); });
 
+  /* The planner has two hosts (desktop top bar, phone avatar row) and shows
+     one at a time: mount only the one on screen, and look again when the
+     window is resized across the breakpoint. */
   function mountAll() {
     var hosts = document.querySelectorAll('[data-flux-hub]');
-    for (var i = 0; i < hosts.length; i++) mount(hosts[i]);
+    for (var i = 0; i < hosts.length; i++) {
+      var shown = true;
+      try { shown = getComputedStyle(hosts[i]).display !== 'none'; } catch (e) { /* no layout yet */ }
+      if (shown) mount(hosts[i]);
+    }
   }
+  var resizeTimer = 0;
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(mountAll, 200);
+  });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', mountAll);
@@ -315,12 +203,20 @@
         || window.navigator.standalone === true;
     } catch (e) { return false; }
   }
+  /* Other ways of linking to an app, beyond <id>.html. Shared in spirit with
+     flux-app-visibility.js's ALSO; keep the two in step. */
+  var ALIAS = { grapher: ['graph/'], synara: ['synara-welcome.html'], aorta: ['aorta-tracker.html'] };
   function isFluxPage(href) {
     try {
       var u = new URL(href, location.href);
       if (u.origin !== location.origin) return false;
-      var path = u.pathname.replace(/\.html$/, '');
-      return PRODUCTS.some(function (p) { var n = '/' + p.href.replace(/\.html$/, ''); return path.slice(-n.length) === n; });
+      var path = u.pathname.replace(/\.html$/, '').replace(/\/$/, '');
+      return PRODUCTS.some(function (p) {
+        return [p.href].concat(ALIAS[p.id] || []).some(function (n) {
+          var t = '/' + n.replace(/\/$/, '').replace(/\.html$/, '');
+          return path.slice(-t.length) === t;
+        });
+      });
     } catch (e) { return false; }
   }
   function openPage(href) {
@@ -445,5 +341,5 @@
     return cv;
   }
 
-  window.FluxHub = { mount: mount, SPLIT_MIN: SPLIT_MIN, mountAll: mountAll, openPage: openPage, PRODUCTS: PRODUCTS, visibleProducts: visibleProducts, GROUPS: GROUPS, canPrint: canPrint, printImage: printImage, markCanvas: markCanvas, printMarkHTML: printMarkHTML };
+  window.FluxHub = { esc: esc, mount: mount, SPLIT_MIN: SPLIT_MIN, mountAll: mountAll, openPage: openPage, PRODUCTS: PRODUCTS, visibleProducts: visibleProducts, GROUPS: GROUPS, canPrint: canPrint, printImage: printImage, markCanvas: markCanvas, printMarkHTML: printMarkHTML };
 })();

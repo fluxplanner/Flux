@@ -8,7 +8,8 @@ on:
 
 jobs:
   playwright:
-    runs-on: ubuntu-latest
+    # ubuntu-latest became 26.04, where Playwright cannot install Chromium yet.
+    runs-on: ubuntu-24.04
     # The suite reported "231 passed (14.4m)" and was then killed at 15m0s
     # during teardown, so main went red with every single test green. The cap
     # was raised to 30, with a note saying that if 30 was ever genuinely

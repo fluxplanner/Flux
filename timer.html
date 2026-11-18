@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="public/js/flux-look.js?v=81a3e0d1"></script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://lfigdijuqmbensebnevo.supabase.co; media-src 'self' blob: data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
+<script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="timer" data-no-hold></script>
+<script defer src="public/js/flux-site-notices.js?v=5e36c924"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flux Timer</title>
+<meta name="description" content="Free classroom timer from Flux: a big-screen countdown, an interval trainer, a metronome with tap tempo, and a stopwatch with laps. Works offline.">
+<meta name="theme-color" content="#060c18">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/png" href="public/flux-planner-logo.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Flux Timer">
+<!--
+  Flux Timer: a free Flux tool, built like periodic.html — no bundles, no
+  Supabase, no sign-in, nothing fetched, so it opens offline on any school
+  computer. Shared parts: public/js/flux-tool-kit.js, public/css/flux-tools.css.
+  Listed in Flux Suite from public/data/products.json.
+-->
+<link rel="stylesheet" href="public/css/flux-hub.css?v=800c0703">
+<link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
+<link rel="stylesheet" href="public/css/flux-tools.css?v=3c01335d">
+<link rel="stylesheet" href="public/css/flux-app-timer.css?v=fa79cfb6">
+<style>
+  :root { --bg: #060c18; --accent: #93c5fd; }
+</style>
+<script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
+<script src="public/js/flux-purple-day.js?v=b8cd878a"></script>
+<link rel="stylesheet" href="public/css/flux-look-flat.css?v=8156dbe3">
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to the timer</a>
+  <header class="top">
+    <a class="ft-back" href="suite.html" aria-label="Back to Flux Suite" title="Back to Flux Suite"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
+    <img class="brand-mark" src="public/flux-planner-logo.png" alt="" width="28" height="28">
+    <span class="title">Flux Timer</span>
+    <span class="grow"></span>
+    <div data-flux-hub="timer"></div>
+  </header>
+  <main id="main" tabindex="-1">
+
+    <h1 class="ft-h1">Timer</h1>
+    <p class="ft-lede">A countdown for the whole room, intervals, a metronome and a stopwatch.</p>
+    <div class="ft-tabs" role="tablist" aria-label="Timer tools"><button type="button" role="tab" class="ft-tab" id="tab-count" aria-controls="pane-count">Countdown</button><button type="button" role="tab" class="ft-tab" id="tab-int" aria-controls="pane-int">Intervals</button><button type="button" role="tab" class="ft-tab" id="tab-metro" aria-controls="pane-metro">Metronome</button><button type="button" role="tab" class="ft-tab" id="tab-sw" aria-controls="pane-sw">Stopwatch</button></div>
+    <section class="ft-card" id="pane-count" role="tabpanel" aria-labelledby="tab-count">
+      <div id="cdFace" class="tm-face" role="timer" aria-live="off">05:00</div>
+      <div class="ft-row tm-presets">
+        <button type="button" class="ft-btn small" data-min="1">1 min</button><button type="button" class="ft-btn small" data-min="5">5 min</button>
+        <button type="button" class="ft-btn small" data-min="10">10 min</button><button type="button" class="ft-btn small" data-min="15">15 min</button>
+        <label class="ft-field" style="flex:0 1 120px">Minutes<input id="cdMin" type="number" min="0" max="999" value="5"></label>
+        <label class="ft-field" style="flex:0 1 120px">Seconds<input id="cdSec" type="number" min="0" max="59" value="0"></label>
+      </div>
+      <div class="ft-row"><button type="button" class="ft-btn primary" id="cdGo">Start</button><button type="button" class="ft-btn" id="cdReset">Reset</button><button type="button" class="ft-btn" id="cdFull">Full screen</button>
+      <label class="ft-check"><input type="checkbox" id="cdSound" checked> Sound at the end</label></div>
+      <p class="visually-hidden" id="cdSay" aria-live="assertive"></p>
+    </section>
+    <section class="ft-card" id="pane-int" role="tabpanel" aria-labelledby="tab-int">
+      <div id="inPhase" class="ft-big">Ready</div>
+      <div id="inFace" class="tm-face" role="timer">00:30</div>
+      <div class="ft-row">
+        <label class="ft-field">Work (s)<input id="inWork" type="number" min="1" value="30"></label>
+        <label class="ft-field">Rest (s)<input id="inRest" type="number" min="0" value="10"></label>
+        <label class="ft-field">Rounds<input id="inRounds" type="number" min="1" value="8"></label>
+      </div>
+      <div class="ft-row"><button type="button" class="ft-btn primary" id="inGo">Start</button><button type="button" class="ft-btn" id="inReset">Reset</button></div>
+    </section>
+    <section class="ft-card" id="pane-metro" role="tabpanel" aria-labelledby="tab-metro">
+      <div class="tm-face" id="mtFace" aria-live="polite">120 bpm</div>
+      <div id="mtBeats" class="tm-beats" aria-hidden="true"></div>
+      <div class="ft-row">
+        <label class="ft-field" style="flex:3 1 200px">Tempo<input id="mtBpm" type="range" min="30" max="240" value="120"></label>
+        <label class="ft-field">Beats in a bar<select id="mtBar"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option></select></label>
+      </div>
+      <div class="ft-row"><button type="button" class="ft-btn primary" id="mtGo">Start</button><button type="button" class="ft-btn" id="mtTap">Tap tempo</button></div>
+    </section>
+    <section class="ft-card" id="pane-sw" role="tabpanel" aria-labelledby="tab-sw">
+      <div id="swFace" class="tm-face" role="timer">00:00.0</div>
+      <div class="ft-row"><button type="button" class="ft-btn primary" id="swGo">Start</button><button type="button" class="ft-btn" id="swLap">Lap</button><button type="button" class="ft-btn" id="swReset">Reset</button></div>
+      <ol class="ft-list" id="swLaps"></ol>
+    </section>
+  </main>
+  <script src="public/data/products.js?v=48202a8c"></script>
+  <script src="public/js/flux-hub.js?v=eb42b549"></script>
+  <script src="public/js/flux-suite-timer.js?v=998cda1e"></script>
+  <script src="public/js/flux-tool-kit.js?v=91bafb05"></script>
+  <script src="public/js/flux-app-timer.js?v=146f9523"></script>
+</body>
+</html>

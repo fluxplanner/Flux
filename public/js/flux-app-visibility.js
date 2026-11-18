@@ -36,17 +36,18 @@
    answer cannot be fetched, the cached grants for that same account are used.
 
    ONE DELIBERATE EXCEPTION
-   A device with Synara medicines or seizures saved on it keeps Synara. That
+   A device with Synara medicines or seizures saved on it keeps Synara, and one
+   with Aorta readings or medicines keeps Aorta. That
    person already uses it, so there is no secret to keep from them, and locking
    them out of their emergency card could hurt someone.
    ========================================================================== */
 (function () {
   'use strict';
 
-  var SB_URL = 'https://lfigdijuqmbensebnevo.supabase.co';
-  var SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaWdkaWp1cW1iZW5zZWJuZXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjEzMDgsImV4cCI6MjA4ODkzNzMwOH0.qG1d9DLKrs0qqLgAp-6UGdaU7xWvlg2sWq-oD-y2kVo';
-  var SESSION_KEY = 'sb-lfigdijuqmbensebnevo-auth-token';
-  var OWNER_UID = 'eabe2b1f-e428-4181-8530-8e5366eb3975';
+  var SB_URL = window.FluxSB.url;
+  var SB_ANON = window.FluxSB.anon;
+  var SESSION_KEY = window.FluxSB.sessionKey;
+  var OWNER_UID = window.FluxSB.ownerUid;
   var CACHE_KEY = 'flux_hidden_apps_v1';
   var GRANTS_KEY = 'flux_my_permissions_v1';
   var HOLD_MS = 1500;
@@ -124,10 +125,21 @@
     return can('apps:all') || can('app:' + id);
   }
 
+  /* Synara has the emergency card; Aorta has a family's logged readings and
+     medicines (aorta_bp_v1, one entry per person in `people`). A device that
+     already holds either keeps the app. */
   function hasOwnRecords(id) {
-    if (id !== 'synara') return false;
-    var d = readJSON('synara.v2');
-    return !!(d && ((d.meds && d.meds.length) || (d.seizures && d.seizures.length)));
+    if (id === 'synara') {
+      var d = readJSON('synara.v2');
+      return !!(d && ((d.meds && d.meds.length) || (d.seizures && d.seizures.length)));
+    }
+    if (id === 'aorta') {
+      var a = readJSON('aorta_bp_v1');
+      return !!(a && Array.isArray(a.people) && a.people.some(function (p) {
+        return p && ((p.readings && p.readings.length) || (p.meds && p.meds.length));
+      }));
+    }
+    return false;
   }
 
   /** Hidden from the person looking at this page? */
@@ -135,10 +147,15 @@
     return ids.indexOf(id) >= 0 && !isOwner() && !hasGrant(id) && !hasOwnRecords(id);
   }
 
-  function selectorsFor(id) {
-    var also = ALSO[id] || { pages: [], hashes: [] };
+  /* Ids and page names become CSS attribute values: escape quotes and
+     backslashes so a bad id from the database cannot break out of the rule. */
+  function cssAttr(s) { return String(s).replace(/(["\\])/g, '\\$1'); }
+
+  function selectorsFor(rawId) {
+    var id = cssAttr(rawId);
+    var also = ALSO[rawId] || { pages: [], hashes: [] };
     var out = ['[data-flux-app~="' + id + '"]'];
-    [id + '.html'].concat(also.pages).forEach(function (page) {
+    [rawId + '.html'].concat(also.pages).map(cssAttr).forEach(function (page) {
       out.push(
         'a[href="' + page + '"]',
         'a[href^="' + page + '?"]',
@@ -262,7 +279,10 @@
      the first visit on this device, or the last answer said hidden. Asking
      rather than trusting that answer means nobody is bounced once it is shown again.
      Everyone else opens at once and is re-checked behind the scenes. */
-  var mustAsk = declaresPage && !isOwner() && (!known || (pageApp && isHidden(pageApp)));
+  /* A page whose app can never be hidden (the Suite directory) has nothing to
+     wait for: asking would only blank it. data-no-hold says so. */
+  var holdsPage = declaresPage && !(script && script.hasAttribute('data-no-hold'));
+  var mustAsk = holdsPage && !isOwner() && (!known || (pageApp && isHidden(pageApp)));
   var timer = 0;
   if (mustAsk) {
     hold();
