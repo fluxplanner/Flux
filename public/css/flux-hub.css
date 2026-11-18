@@ -118,18 +118,6 @@
    suite.html carries the cards' layout; the pairs live here so every page
    that draws a product tile agrees on its colour. */
 .app--translate { --c1: #86efac; --c2: #22d3ee; }
-.app--paper { --c1: #6ee7b7; --c2: #22d3ee; }
-.app--units { --c1: #7dd3fc; --c2: #818cf8; }
-.app--cite { --c1: #fde68a; --c2: #f59e0b; }
-.app--balance { --c1: #a7f3d0; --c2: #34d399; }
-.app--formulae { --c1: #c4b5fd; --c2: #818cf8; }
-.app--score { --c1: #f9a8d4; --c2: #fb7185; }
-.app--timer { --c1: #93c5fd; --c2: #60a5fa; }
-.app--plan { --c1: #fbbf24; --c2: #f97316; }
-.app--data { --c1: #67e8f9; --c2: #06b6d4; }
-.app--lab { --c1: #86efac; --c2: #22c55e; }
-.app--spell { --c1: #fda4af; --c2: #f472b6; }
-.app--timetable { --c1: #a5b4fc; --c2: #6366f1; }
 .app--owner { --c1: #fca5a5; --c2: #a78bfa; }
 .hub-tab--owner[aria-selected="true"] { color: #fff; background: linear-gradient(135deg, #fca5a5, #a78bfa); }
 
@@ -152,7 +140,3 @@
 [data-theme="light"] .fxhub-newtab, [data-theme="light"] .fxhub-all { color: #57606a; }
 [data-theme="light"] .fxhub-split { color: #0b6c8f; border-top-color: #d0d7de; }
 
-/* The tool groups' tabs (products.json groups science, writing, tools). */
-.hub-tab--science[aria-selected="true"] { color: #061020; background: linear-gradient(135deg, #6ee7b7, #22d3ee); }
-.hub-tab--writing[aria-selected="true"] { color: #061020; background: linear-gradient(135deg, #fde68a, #f9a8d4); }
-.hub-tab--tools[aria-selected="true"] { color: #061020; background: linear-gradient(135deg, #93c5fd, #c4b5fd); }

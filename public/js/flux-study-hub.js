@@ -225,6 +225,8 @@
     // Just "Languages" now that French, German and Spanish each have a pill —
     // "English & Languages" read as though English were the exception.
     { id:'languages-arts', name:'Languages', ico:'🌍' },
+    // Score, Plan, Timetable and Timer: tools for any subject (2026-11-18).
+    { id:'general', name:'General', ico:'🗂' },
     { id:'arts',       name:'Arts',       ico:'🎵' },
   ];
   const SUBJECTS = [
@@ -254,6 +256,8 @@
     { id:'psychology', name:'Psychology', ico:'🧠', accent:'#f2545b', group:'humanities' },
     { id:'econ', name:'Economics', ico:'💹', accent:'#f4a13f', group:'humanities' },
     { id:'english', name:'English', ico:'✒', accent:'#e069b4', group:'languages-arts' },
+    /* The free tool pages that fit no other app (flux-study-embedded-tools.js). */
+    { id:'organise', name:'Get organised', ico:'🗓', accent:'#fbbf24', group:'general' },
     /* One "Languages" pill with a Spanish/French toggle inside every tool was
        fine for two languages and stopped being fine at three: whichever one
        you took, the tools opened on the wrong one. Three pills, and each tool
