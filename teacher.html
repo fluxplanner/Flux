@@ -2,6 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!--
+  GitHub Pages can't send headers, so the CSP rides in a meta tag. A meta CSP
+  ignores frame-ancestors; flux-frame-guard.js stays the clickjacking control.
+  TODO(csp): 'unsafe-inline' stays until inline <script> blocks and on*= handlers
+  move out — worst offenders are index.html (~386 on*= attributes) and the
+  inline boot scripts on every standalone page.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net 'wasm-unsafe-eval'; worker-src 'self' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; frame-src 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flux Tutor · Study from your notes</title>
 <meta name="description" content="Turn your class notes, PDFs, Word documents and photos into a study guide with sources, step-by-step lessons, practice tests, flashcards and a plan to your exam, built only from your own notes.">
