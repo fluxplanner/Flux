@@ -1259,6 +1259,8 @@
           }
           if (file.size > MAX_FILE_BYTES) throw new Error('Files must be 15 MB or smaller.');
           if (!file.size) throw new Error('This file is empty.');
+          // The name and MIME type are the sender's word; the first bytes are not.
+          if (kind === 'PDF' || kind === 'Photo') await window.FluxFileSniff.check(file, [kind === 'PDF' ? 'pdf' : 'image']);
           setImportStatus('Reading ' + file.name + (job.files.length > 1 ? ' (' + (i + 1) + ' of ' + job.files.length + ')' : '') + '…');
           const got = await extractFileText(file, kind);
           let text = T.normalizeText(got.text);

@@ -12715,6 +12715,17 @@ async function handleScheduleImg(event){
   if(!file)return;
   const errEl=document.getElementById('obScheduleImportError');
   if(errEl){errEl.textContent='';errEl.setAttribute('hidden','');}
+  // Reject by content, not by name, before pdf.js or an <img> sees the bytes.
+  // DECISION: pdf.js already parses in its own worker (workerSrc above); the
+  // page-to-image step stays on the main thread because moving it needs
+  // OffscreenCanvas + pdf.js inside our own worker, which Safari 16 lacks.
+  try{await window.FluxFileSniff.check(file,['pdf','image']);}
+  catch(e){
+    if(event.target)event.target.value='';
+    if(errEl){errEl.textContent=e.message;errEl.removeAttribute('hidden');}
+    if(typeof showToast==='function')showToast(e.message,'error');
+    return;
+  }
   const prev=document.getElementById('schedulePreview');
   const prevImg=document.getElementById('schedulePreviewImg');
   const overlay=document.getElementById('obSchedulePdfOverlay');
