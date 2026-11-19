@@ -328,7 +328,6 @@ test('verbs typed without accents find the table spelling; unknown irregulars ar
   // répartir is a different verb from repartir: an accent typed is meant.
   assert.equal(E.conjugate('fr', 'répartir', 'present').forms[0], 'répartis');
   assert.throws(() => E.conjugate('fr', 'conclure', 'present'), /does not have the forms/);
-  assert.throws(() => E.conjugate('fr', 'asseoir', 'present'), /does not have the forms/);
   // Impersonal: one person, dashes for the rest — never an invented form.
   assert.deepEqual([...E.conjugate('fr', 'falloir', 'present').forms], ['—', '—', 'faut', '—', '—', '—']);
   assert.equal(E.pastParticiple('es', 'leer'), 'leído');
@@ -337,4 +336,118 @@ test('verbs typed without accents find the table spelling; unknown irregulars ar
   assert.equal(E.known('es', 'obtener'), true);
   assert.equal(E.known('fr', 'préférer'), true);
   assert.equal(E.known('es', 'bailar'), false, 'a regular verb is conjugated by rule, not listed');
+});
+
+test('French reflexive verbs carry their pronoun, elided where French elides it', () => {
+  const forms = (v, t) => E.conjugate('fr', v, t).forms.join(',');
+  assert.equal(forms('se réveiller', 'present'), 'me réveille,te réveilles,se réveille,nous réveillons,vous réveillez,se réveillent');
+  assert.equal(forms("s'endormir", 'present'), "m'endors,t'endors,s'endort,nous endormons,vous endormez,s'endorment");
+  assert.equal(forms('se laver', 'imperfect'), 'me lavais,te lavais,se lavait,nous lavions,vous laviez,se lavaient');
+  assert.equal(forms('se lever', 'future'), 'me lèverai,te lèveras,se lèvera,nous lèverons,vous lèverez,se lèveront');
+  assert.equal(forms("s'habiller", 'conditional').split(',')[0], "m'habillerais");
+  assert.equal(forms('se hâter', 'present').split(',')[2], 'se hâte', 'an aspirated h does not elide');
+
+  // Every way a phone or keyboard writes it lands on the same verb.
+  for (const typed of ['se reveiller', 'SE RÉVEILLER', 'to se reveiller', '  se   reveiller ']) {
+    assert.equal(E.conjugate('fr', typed, 'present').verb, 'se réveiller', typed);
+    assert.equal(E.conjugate('fr', typed, 'present').forms[0], 'me réveille', typed);
+  }
+  for (const typed of ["s'endormir", 's’endormir', 's endormir', 'se endormir', "s' endormir"]) {
+    assert.equal(E.conjugate('fr', typed, 'present').verb, "s'endormir", typed);
+  }
+  assert.equal(E.resolve('fr', 'se depecher'), 'se dépêcher');
+});
+
+test('French reflexive verbs take être in the passé composé and agree', () => {
+  const r = E.conjugate('fr', 'se réveiller', 'passeCompose');
+  assert.deepEqual([...r.forms], ['me suis réveillé', "t'es réveillé", "s'est réveillé", 'nous sommes réveillés', 'vous êtes réveillés', 'se sont réveillés']);
+  assert.deepEqual([...r.pronouns], ['je', 'tu', 'il/elle', 'nous', 'vous', 'ils/elles'], 'never j\' — me suis');
+  assert.equal(r.agree, true);
+  assert.equal(E.pastParticiple('fr', "s'endormir"), 'endormi');
+  // A verb that takes avoir on its own still takes être once reflexive.
+  assert.equal(E.conjugate('fr', 'se laver', 'passeCompose').forms[2], "s'est lavé");
+  // assis already ends in s: no second one.
+  assert.equal(E.conjugate('fr', "s'asseoir", 'passeCompose').forms[5], "se sont assis");
+  // se = "to each other": no agreement.
+  const parler = E.conjugate('fr', 'se parler', 'passeCompose');
+  assert.equal(parler.forms[5], 'se sont parlé');
+  assert.equal(parler.agree, undefined);
+});
+
+test('the irregular verbs reflexives lean on, and what is refused', () => {
+  const forms = (v, t) => E.conjugate('fr', v, t).forms.join(',');
+  assert.equal(forms("s'asseoir", 'present'), "m'assieds,t'assieds,s'assied,nous asseyons,vous asseyez,s'asseyent");
+  assert.equal(forms("s'asseoir", 'future').split(',')[0], "m'assiérai");
+  assert.equal(forms("s'asseoir", 'imperfect').split(',')[0], "m'asseyais");
+  assert.equal(E.conjugate('fr', "s'asseoir", 'present').alts[0][0], "m'assois");
+  assert.equal(forms('se souvenir', 'present'), 'me souviens,te souviens,se souvient,nous souvenons,vous souvenez,se souviennent');
+  assert.equal(forms('se souvenir', 'passeCompose').split(',')[0], 'me suis souvenu');
+  assert.equal(forms('se taire', 'present'), 'me tais,te tais,se tait,nous taisons,vous taisez,se taisent');
+  assert.equal(forms('se taire', 'passeCompose').split(',')[1], "t'es tu");
+  assert.equal(forms('se taire', 'future').split(',')[0], 'me tairai');
+
+  assert.throws(() => E.conjugate('fr', 'se conclure', 'present'), /does not have the forms/);
+  assert.throws(() => E.conjugate('fr', 'se conclure', 'passeCompose'), /does not have the forms/);
+  assert.throws(() => E.conjugate('fr', 'se falloir', 'present'), /not a French reflexive/);
+  assert.throws(() => E.conjugate('fr', "s'être", 'present'), /not a French reflexive/);
+  assert.throws(() => E.conjugate('fr', 'se <img>', 'present'), /Letters only/);
+  assert.throws(() => E.conjugate('fr', 'se maison', 'present'), /end in -er/);
+  // Only French reads "se" as a pronoun.
+  assert.throws(() => E.conjugate('es', 'se hablar', 'present'), /Letters only/);
+});
+
+test('Spanish reflexive verbs put the pronoun in front of every form', () => {
+  const forms = (v, t) => E.conjugate('es', v, t).forms.join(',');
+  assert.equal(forms('levantarse', 'present'), 'me levanto,te levantas,se levanta,nos levantamos,os levantáis,se levantan');
+  assert.equal(forms('levantarse', 'perfect').split(',')[0], 'me he levantado');
+  assert.equal(forms('acostarse', 'present').split(',')[0], 'me acuesto');
+  assert.equal(forms('dormirse', 'preterite').split(',')[2], 'se durmió');
+  assert.equal(forms('irse', 'present'), 'me voy,te vas,se va,nos vamos,os vais,se van');
+  assert.equal(forms('ponerse', 'preterite').split(',')[0], 'me puse');
+  assert.equal(forms('sentirse', 'present').split(',')[0], 'me siento');
+  assert.equal(forms('sentarse', 'present').split(',')[3], 'nos sentamos');
+  // Fixed so that these reflexives are right: all three were plain regulars.
+  assert.equal(forms('arrepentirse', 'present').split(',')[0], 'me arrepiento');
+  assert.equal(forms('reunirse', 'present'), 'me reúno,te reúnes,se reúne,nos reunimos,os reunís,se reúnen');
+  assert.equal(forms('desvestirse', 'present').split(',')[0], 'me desvisto');
+  // Typed without its accent, and alternatives carry the pronoun too.
+  assert.equal(E.conjugate('es', 'reirse', 'present').verb, 'reírse');
+  assert.equal(E.conjugate('es', 'reirse', 'present').forms[0], 'me río');
+  assert.equal(E.conjugate('es', 'reírse', 'preterite').alts[2][0], 'se rio');
+  assert.equal(E.pastParticiple('es', 'ponerse'), 'puesto');
+  assert.equal(E.known('es', 'acostarse'), true);
+  assert.throws(() => E.conjugate('es', 'serse', 'present'), /not a Spanish reflexive/);
+  // Words that merely end in -se are still not verbs.
+  assert.throws(() => E.conjugate('es', 'clase', 'present'), /-ar/);
+});
+
+test('German reflexive verbs place the pronoun after the first word', () => {
+  const forms = (v, t) => E.conjugate('de', v, t).forms.join(',');
+  assert.equal(forms('sich waschen', 'present'), 'wasche mich,wäschst dich,wäscht sich,waschen uns,wascht euch,waschen sich');
+  assert.equal(forms('sich waschen', 'past').split(',')[0], 'wusch mich');
+  assert.equal(forms('sich waschen', 'perfect').split(',')[0], 'habe mich gewaschen');
+  assert.equal(forms('sich waschen', 'future').split(',')[1], 'wirst dich waschen');
+  // Separable: the prefix still goes last.
+  assert.equal(forms('sich anziehen', 'present').split(',')[0], 'ziehe mich an');
+  assert.equal(forms('sich anziehen', 'perfect').split(',')[0], 'habe mich angezogen');
+  assert.equal(forms('sich anziehen', 'future').split(',')[0], 'werde mich anziehen');
+  // Plain umziehen takes sein; reflexive it takes haben.
+  assert.equal(E.conjugate('de', 'umziehen', 'perfect').forms[0], 'bin umgezogen');
+  assert.equal(forms('sich umziehen', 'perfect').split(',')[0], 'habe mich umgezogen');
+  // Dative.
+  assert.equal(forms('sich merken', 'present').split(',')[0], 'merke mir');
+  assert.equal(forms('sich merken', 'present').split(',')[3], 'merken uns');
+  // Fixed so that these reflexives are right.
+  assert.equal(forms('sich ausruhen', 'present').split(',')[0], 'ruhe mich aus');
+  assert.equal(forms('sich hinlegen', 'perfect').split(',')[0], 'habe mich hingelegt');
+  assert.equal(forms('sich unterhalten', 'present').split(',')[2], 'unterhält sich');
+  assert.equal(forms('sich unterhalten', 'perfect').split(',')[0], 'habe mich unterhalten');
+  assert.equal(forms('sich befinden', 'past').split(',')[0], 'befand mich');
+  assert.equal(forms('sich überlegen', 'perfect').split(',')[0], 'habe mir überlegt');
+  // Typed without the umlaut.
+  assert.equal(E.conjugate('de', '  SICH  fuhlen', 'present').verb, 'sich fühlen');
+  assert.equal(forms('sich fuhlen', 'present').split(',')[0], 'fühle mich');
+  assert.equal(E.pastParticiple('de', 'sich anziehen'), 'angezogen');
+  assert.throws(() => E.conjugate('de', 'sich sein', 'present'), /not a German reflexive/);
+  assert.throws(() => E.conjugate('de', 'sich haus', 'present'), /end in -en/);
 });

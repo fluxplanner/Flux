@@ -125,6 +125,18 @@ test('imports what students actually paste', () => {
   assert.equal(F.parseImport('').length, 0);
 });
 
+test('a copied Quizlet page keeps only the cards', () => {
+  const page = 'Spanish 1\nFlashcards\nLearn\nTest\nMatch\nTerms in this set (3)\nOriginal\nperro\ndog\n☆\ngato\ncat\n☆\ncasa\nhouse\n☆\nStudents also studied\nFrench 1\nchien\ndog';
+  assert.deepEqual(plain(F.parseImport(page).map((c) => [c.term, c.def])), [['perro', 'dog'], ['gato', 'cat'], ['casa', 'house']]);
+  const tabbed = 'Terms in this set (2)\nperro\tdog\ngato\tcat\nStudents also studied\nchien\tdog';
+  assert.deepEqual(plain(F.parseImport(tabbed).map((c) => [c.term, c.def])), [['perro', 'dog'], ['gato', 'cat']]);
+});
+
+test('a definition with a line break stays on its own card', () => {
+  const text = 'mitosis\tcell division\nmakes two identical cells\nmeiosis\tmakes gametes';
+  assert.deepEqual(plain(F.parseImport(text).map((c) => [c.term, c.def])), [['mitosis', 'cell division makes two identical cells'], ['meiosis', 'makes gametes']]);
+});
+
 test('a practice test mixes question types and marks itself', () => {
   const cards = 'abcdef'.split('').map((x, i) => ({ id: x, term: 'term ' + x, def: 'definition ' + i }));
   let seed = 1;

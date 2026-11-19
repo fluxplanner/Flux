@@ -107,7 +107,7 @@
 </script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="public/flux-planner-logo.png">
-<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="favicon.ico?v=2" sizes="any">
 <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <!-- B5.1 font diet: self-hosted variable Inter + JetBrains Mono (latin subset,
@@ -117,7 +117,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.2ca36f51.css">
+<link rel="stylesheet" href="public/bundles/flux.ec6393f8.css">
 </head>
 <body>
 <noscript>
@@ -352,7 +352,7 @@
                 <div class="lx-keepsafe-title">Write your password down somewhere safe</div>
                 <div class="lx-keepsafe-body">
                   You sign in as <strong id="loginKeepsafeName"></strong>. Flux has no email for you,
-                  so there is no reset link — if you forget this password, only Azfer can get you back in.
+                  so there is no reset link — if you forget this password, you'll have to request a reset from this screen.
                 </div>
               </div>
               <!-- This row held a second "Name (optional)" box, left over from
@@ -384,7 +384,7 @@
                  table the owner alone can read. -->
             <div class="lx-help">
               <button type="button" class="lx-help-btn" id="loginHelpBtn" onclick="fluxRequestPasswordHelp()">
-                Forgot your password? Ask Azfer to reset it
+                Forgot your password? Request a reset
               </button>
             </div>
           </div>
@@ -1030,7 +1030,7 @@
         <button class="nav-item" onclick="nav('notes',this)" data-tab="notes"><span class="ni"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></span><span class="nl">Knowledge</span></button>
         <button class="nav-item" onclick="nav('notebook',this)" data-tab="notebook"><span class="ni"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span><span class="nl">Notebook</span></button>
         <button class="nav-item" onclick="nav('timer',this)" data-tab="timer"><span class="ni"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg></span><span class="nl">Time</span></button>
-        <button class="nav-item" onclick="nav('canvas',this)" data-tab="canvas" aria-label="Canvas"><span class="ni"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg></span><span class="nl">Canvas</span></button>
+        <button class="nav-item" onclick="nav('canvas',this)" data-tab="canvas" aria-label="Connect school apps"><span class="ni"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg></span><span class="nl">Connect</span></button>
         <button class="nav-item" onclick="nav('toolbox',this)" data-tab="toolbox"><span class="ni"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span><span class="nl">Study tools</span></button>
         <button type="button" class="nav-item" onclick="nav('staffTasks',this);try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><span class="nl">Tasks</span></button>
         <button type="button" class="nav-item" onclick="nav('staffResources',this);try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span><span class="nl">Resources</span></button>
@@ -1126,7 +1126,7 @@
         <button class="nav-item" onclick="navMob('notes')"><span class="ni"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></span><span class="nl">Knowledge</span></button>
         <button class="nav-item" onclick="navMob('notebook')"><span class="ni"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span><span class="nl">Notebook</span></button>
         <button class="nav-item" onclick="navMob('timer')"><span class="ni"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg></span><span class="nl">Time</span></button>
-        <button class="nav-item" onclick="navMob('canvas')" aria-label="Canvas"><span class="ni"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg></span><span class="nl">Canvas</span></button>
+        <button class="nav-item" onclick="navMob('canvas')" aria-label="Connect school apps"><span class="ni"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg></span><span class="nl">Connect</span></button>
         <button class="nav-item" onclick="navMob('toolbox')"><span class="ni"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span><span class="nl">Study tools</span></button>
         <button type="button" class="nav-item" onclick="navMob('staffTasks');try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><span class="nl">Tasks</span></button>
         <button type="button" class="nav-item" onclick="navMob('staffResources');try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span><span class="nl">Resources</span></button>
@@ -2931,7 +2931,7 @@
       <div class="nt-more-body">
     <div class="irow modal-labeled-row" style="margin-bottom:8px">
       <div style="flex:0 1 120px"><label class="modal-micro-label" for="taskTime">Due time</label><input type="time" id="taskTime" style="width:100%;margin:0"></div>
-      <div style="flex:0 1 140px"><label class="modal-micro-label" for="taskEstTime">Est. time (min)</label><input type="number" id="taskEstTime" placeholder="Minutes" min="5" max="480" style="width:100%;margin:0"></div>
+      <div style="display:none"><label class="modal-micro-label" for="taskEstTime">Est. time (min)</label><input type="number" id="taskEstTime" placeholder="Minutes" min="5" max="480" style="width:100%;margin:0"></div>
       <div style="flex:1;min-width:120px"><label class="modal-micro-label" for="taskDifficulty">Difficulty (1–5)</label><input type="number" id="taskDifficulty" placeholder="1–5" min="1" max="5" style="width:100%;margin:0"></div>
     </div>
     <div class="mrow"><label>Notes</label><textarea id="taskNotes" placeholder="Notes (optional)..." style="min-height:52px;margin:0"></textarea></div>
@@ -2979,7 +2979,7 @@
       <div class="nt-more-body">
     <div class="mrow"><label>Notes</label><textarea id="editNotes" style="min-height:60px"></textarea></div>
     <div class="nt-pair">
-      <div class="mrow"><label>Est. Minutes</label><input type="number" id="editEstTime" min="5" max="480"></div>
+      <div class="mrow" style="display:none"><label>Est. Minutes</label><input type="number" id="editEstTime" min="5" max="480"></div>
       <div class="mrow"><label>Difficulty (1–5)</label><input type="number" id="editDifficulty" min="1" max="5"></div>
     </div>
     <div class="mrow"><label>Waiting on</label><input type="text" id="editWaitingOn" placeholder="Optional" style="margin:0"></div>
@@ -3018,8 +3018,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.a79385df.js"></script>
-<script defer src="public/bundles/flux-core.384aad0f.js"></script>
-<script defer src="public/bundles/flux-features.73421f72.js"></script>
+<script defer src="public/bundles/flux-core.4e924c3d.js"></script>
+<script defer src="public/bundles/flux-features.9a02671b.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
@@ -3094,7 +3094,7 @@
       <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z M8 14s1.5 2 4 2 4-2 4-2 M9 9h.01 M15 9h.01"/></svg></span><span class="more-sheet-label">Mood</span>
     </button>
     <button type="button" class="more-sheet-item" data-nav-tab="canvas" onclick="navMob('canvas')">
-      <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg></span><span class="more-sheet-label">Canvas</span>
+      <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg></span><span class="more-sheet-label">Connect</span>
     </button>
     <button type="button" class="more-sheet-item" data-nav-tab="toolbox" onclick="navMob('toolbox')">
       <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14 M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3Z"/></svg></span><span class="more-sheet-label">Study tools</span>

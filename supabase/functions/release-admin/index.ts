@@ -11,17 +11,20 @@ const OWNER_EMAIL = (Deno.env.get("FLUX_OWNER_EMAIL") ||
  * synthesised one. The moment the owner's address changes, all of them return
  * 403 and he loses every Auth Admin action at once — including
  * auth_set_password, which is the only way to get anyone else back into their
- * account now that there is no email-based reset. The email check stays as a
- * fallback, so this is strictly additive.
+ * account now that there is no email-based reset.
+ *
+ * The id is the only test. An email fallback stood here until the 2026-11-05
+ * incident, but once the owner moved to a synthesised address nobody held
+ * OWNER_EMAIL as a login, and sign-ups are confirmed automatically, so whoever
+ * registered it would have become the owner.
  *
  * Matches OWNER_UID in public/js/app.js. Override with FLUX_OWNER_UID.
  */
 const OWNER_UID = (Deno.env.get("FLUX_OWNER_UID") ||
   "eabe2b1f-e428-4181-8530-8e5366eb3975").trim();
 
-function isOwnerCaller(email: string, userId: string) {
-  if (OWNER_UID && userId && userId === OWNER_UID) return true;
-  return !!email && email === OWNER_EMAIL;
+function isOwnerCaller(_email: string, userId: string) {
+  return !!OWNER_UID && !!userId && userId === OWNER_UID;
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -81,26 +84,22 @@ function normalizePreviewEmails(v: unknown) {
     .slice(0, 100);
 }
 
-async function findOwnerRow(db: ReturnType<typeof serviceClient>, authUserId: string) {
-  const { data: rows, error } = await db
+/**
+ * Looked up by id, never by the ownerEmail marker inside the row. Every user
+ * can write their own user_data, so a marker search could be pointed at an
+ * attacker's row, whose devAccounts and platformConfig would then be trusted
+ * and republished to everyone.
+ */
+async function findOwnerRow(db: ReturnType<typeof serviceClient>) {
+  const { data: ownerRow, error } = await db
     .from("user_data")
     .select("id,data,updated_at")
-    .limit(5000);
-  if (error) throw error;
-
-  const owner = ((rows || []) as OwnerRow[]).find((row) =>
-    normEmail(asRecord(row.data).ownerEmail) === OWNER_EMAIL
-  );
-  if (owner) return owner;
-
-  const { data: ownRow } = await db
-    .from("user_data")
-    .select("id,data,updated_at")
-    .eq("id", authUserId)
+    .eq("id", OWNER_UID)
     .maybeSingle();
-  if (ownRow) return ownRow as OwnerRow;
+  if (error) throw error;
+  if (ownerRow) return ownerRow as OwnerRow;
 
-  return { id: authUserId, data: { ownerEmail: OWNER_EMAIL } } as OwnerRow;
+  return { id: OWNER_UID, data: { ownerEmail: OWNER_EMAIL } } as OwnerRow;
 }
 
 /**
@@ -231,7 +230,7 @@ Deno.serve(async (req) => {
   const db = serviceClient();
 
   try {
-    const ownerRow = await findOwnerRow(db, auth.userId);
+    const ownerRow = await findOwnerRow(db);
     const ownerData = asRecord(ownerRow.data);
     const platformConfig = asRecord(ownerData.platformConfig);
     const gate = platformConfig.releaseGate || null;

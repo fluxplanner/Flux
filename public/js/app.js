@@ -1813,7 +1813,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notebook',notebook:'Notebook',timer:'Time',canvas:'Canvas',google:'Google',profile:'Profile',goals:'College Prep',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',teacherResources:'Resources',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffMessages:'Messages',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notebook',notebook:'Notebook',timer:'Time',canvas:'Connect',google:'Google',profile:'Profile',goals:'College Prep',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',teacherResources:'Resources',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffMessages:'Messages',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
 
 // ══ Time / format helpers (used by educator dashboards + onboarding) ══
 function getTimeGreeting(){
@@ -3417,7 +3417,7 @@ const DEFAULT_TABS=[
   {id:'dashboard',icon:'⚡',label:'Dashboard',visible:true},
   {id:'calendar',icon:'📅',label:'Calendar',visible:true},
   {id:'school',icon:'🏫',label:'School Info',visible:true},
-  {id:'canvas',icon:'C',label:'Canvas',visible:true},
+  {id:'canvas',icon:'C',label:'Connect',visible:true},
   {id:'notes',icon:'📓',label:'Notebook',visible:true},
   {id:'timer',icon:'⏱',label:'Time',visible:true},
   {id:'profile',icon:'👤',label:'Profile',visible:true},
@@ -3455,7 +3455,8 @@ tabConfig.forEach(t=>{if(t.id==='ai'&&/flux\s*agent/i.test(String(t.label||'')))
 tabConfig.forEach(t=>{if(t.id==='notes'&&(/^notes$/i.test(String(t.label||''))||!t.label))t.label='Notebook';});
 tabConfig.forEach(t=>{
   if(t.id!=='canvas')return;
-  if(/gmail/i.test(String(t.label||''))||t.label==='Google'||!t.label)t.label='Canvas';
+  // Canvas, Schoology and Moodle now share this tab as "Connect".
+  if(/gmail/i.test(String(t.label||''))||t.label==='Google'||t.label==='Canvas'||!t.label)t.label='Connect';
 });
 (function migrateCanvasTabOrder(){
   const si=tabConfig.findIndex(t=>t.id==='school');
@@ -4318,7 +4319,7 @@ function buildEducatorNavAugmentation(isMob,schoolClassicLabelEscaped){
   const googleNavIcon=`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>`;
   const googleNavOnclick=isMob?`navMob('canvas');try{FluxGoogle.renderHub()}catch(e){}`:`nav('canvas',this);try{FluxGoogle.renderHub()}catch(e){}`;
   const googleNavWork=`<button type="button" class="nav-item" data-educator-google data-educator-google-work onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Canvas"><span class="ni">${googleNavIcon}</span><span class="nl">Canvas</span></button>`;
-  const googleNavPersonal=`<button type="button" class="nav-item" data-educator-google data-educator-google-personal onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Canvas"><span class="ni">${googleNavIcon}</span><span class="nl">Canvas</span></button>`;
+  const googleNavPersonal=`<button type="button" class="nav-item" data-educator-google data-educator-google-personal onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Connect school apps"><span class="ni">${googleNavIcon}</span><span class="nl">Connect</span></button>`;
   const staffPersonal=`<button type="button" class="nav-item" onclick="${isMob?`navMob('staffTasks');try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`:`nav('staffTasks',this);try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni">${getNavIconHtml('staffTasks')}</span><span class="nl">Tasks</span></button>
 <button type="button" class="nav-item" onclick="${isMob?`navMob('staffResources');try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`:`nav('staffResources',this);try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni">${getNavIconHtml('staffResources')}</span><span class="nl">Resources</span></button>
 <button type="button" class="nav-item" onclick="${isMob?`navMob('staffPersonalHub');try{renderStaffPersonalHub()}catch(e){}`:`nav('staffPersonalHub',this);try{renderStaffPersonalHub()}catch(e){}`}" data-tab="staffPersonalHub" data-staff-personal style="display:none"><span class="ni">${getNavIconHtml('staffPersonalHub')}</span><span class="nl">Personal hub</span></button>
@@ -4619,7 +4620,7 @@ function toggleTask(id){
     if(window.FluxIntel&&FluxIntel.recordCompletionStreak)FluxIntel.recordCompletionStreak();
     // V4 Effort Accuracy: ask for actual time when an estimate exists. A Plan my
     // week block's minutes are a time slot, not a guess, so it isn't asked.
-    if((t.estTime||0)>0&&t.actualMins==null&&!t.weekBlock&&typeof showEffortPrompt==='function'){
+    if(false&&(t.estTime||0)>0&&t.actualMins==null&&!t.weekBlock&&typeof showEffortPrompt==='function'){
       setTimeout(()=>{try{showEffortPrompt(t);}catch(_){}}, 1100);
     }
     if(t.srsEnabled)setTimeout(()=>{
@@ -5029,7 +5030,6 @@ function fluxRenderDashMob(){
           else label=`Due in ${diffDays}d`;
           chips.push(`<span class="mob-meta-chip">${label}</span>`);
         }
-        if(t.estTime)chips.push(`<span class="mob-meta-chip">${esc(String(t.estTime))}m</span>`);
         meta.innerHTML=chips.join('');
       }
       const cta=document.getElementById('dashMobDoNowCta');
@@ -5083,8 +5083,6 @@ function fluxRenderDashMob(){
           const due=new Date(t.date+'T00:00:00');
           const days=Math.round((due-today)/86400000);
           time=days===1?'Tomorrow':`in ${days}d`;
-        } else if(t.estTime){
-          time=`${t.estTime}m`;
         } else {
           time='Today';
         }
@@ -5420,8 +5418,6 @@ function renderTasks(){
     const blockedStyle=blocked?'opacity:.45;pointer-events:auto':'';
     const priChip=t.priority?`<span class="task-chip task-chip-priority ${t.priority}">${t.priority}</span>`:'';
     const extraCls=(isOver?' task-overdue':'')+(isToday?' due-today':'');
-    const histEst=!t.done&&t.subject?avgEstMinutesForSubject(t.subject):null;
-    const estHist=histEst?`<span class="task-chip task-chip-hint" title="Typical time for completed work in this subject">~${histEst}m avg</span>`:'';
     const bulk=_taskBulkMode&&!t.done?`<input type="checkbox" class="task-bulk-cb" aria-label="Select" ${_bulkIds.has(t.id)?'checked':''} onclick="event.stopPropagation();toggleBulkOne(${t.id},this.checked)"/>`:'';
     const waitChip=t.waitingOn?`<span class="task-chip" title="Waiting on">${esc(t.waitingOn)}</span>`:'';
     const recChip=(window.FluxRecurring?.chipHtml?FluxRecurring.chipHtml(t):'')||(t.recurringWeekly?`<span class="task-chip task-chip-recurring" title="Repeats weekly when completed">Weekly</span>`:'');
@@ -5450,7 +5446,6 @@ ${bulk}
 ${sub?`<span class="task-chip task-chip-subject">${sub.icon?sub.icon+' ':''}${sub.short}</span>`:''}
 ${priChip}
 ${ds?`<span class="task-chip task-chip-due ${isOver?'overdue':''}${isToday?' due-today':''}" onclick="event.stopPropagation();openInlineDatePicker(${t.id},this)" title="Click to change date" style="cursor:pointer">${ds}${isNP?' '+restEmoji:''}</span>`:`<span class="task-chip task-chip-nodate" onclick="event.stopPropagation();openInlineDatePicker(${t.id},this)" title="Add due date" style="cursor:pointer;opacity:.42">+ date</span>`}
-${t.estTime?`<span class="task-chip task-chip-time">${t.estTime}m</span>`:''}${estHist}
 ${waitChip}${recChip}${snz}
 ${t.planOf!=null&&t.planParts&&!t.weekBlock?`<span class="task-chip task-chip-plan" title="Part of a plan: open it to change the days" onclick="event.stopPropagation();openPlanItOut(${fluxIdArg(t.planOf)})" style="cursor:pointer">Step ${t.planPart} of ${t.planParts}</span>`:''}${fluxWeekPlanChip(t)}${t.plan&&!t.done?(()=>{const ps=tasks.filter(x=>x.planOf!=null&&String(x.planOf)===String(t.id));return ps.length?`<span class="task-chip task-chip-plan" title="Open the plan" onclick="event.stopPropagation();openPlanItOut(${fluxIdArg(t.id)})" style="cursor:pointer">Planned · ${ps.filter(x=>x.done).length}/${ps.length}</span>`:'';})():''}
 ${t.done&&taskFilter==='done'&&Number.isFinite(fluxDoneExpiresMs(t))?`<span class="task-chip task-chip-expiry" title="Finished tasks are deleted 2 weeks after you complete them">Deletes ${fmtFluxDate(new Date(fluxDoneExpiresMs(t)),'short')}</span>`:''}
@@ -7670,7 +7665,7 @@ async function fluxSyncLoginNameToProfile(newName, oldName){
     'You sign in as:  '+was+'\n'+
     'You will sign in as:  '+now+'\n\n'+
     'Your password stays the same. Write the new name down — there is no reset '+
-    'email, so if you forget it only Azfer can get you back in.\n\n'+
+    'email, so if you forget it you\'ll have to request a reset from the sign-in screen.\n\n'+
     'Change it?');
   if(!ok)return false;
 
@@ -13083,7 +13078,7 @@ function fluxAuthErrorText(e,mode,name){
   }
   if(m.includes('invalid login credentials')){
     return mode==='signin'
-      ?'That name and password don\'t match. Check the spelling, or ask Azfer to reset it.'
+      ?'That name and password don\'t match. Check the spelling, or request a reset below.'
       :'Could not sign you in. Please try again.';
   }
   /* Must come before the generic password branch. This is the alphabet
@@ -13194,10 +13189,10 @@ async function fluxRequestPasswordHelp(){
       note:'Asked for help from the sign-in screen.'
     });
     if(error)throw error;
-    showAuthError('Sent. Azfer will get you back in — ask him next time you see him.','ok');
+    showAuthError('Request sent. We\'ll get you back in as soon as we can.','ok');
     if(btn){btn.textContent='Request sent';}
   }catch(e){
-    showAuthError('Could not send that just now. Tell Azfer directly and he can reset it.');
+    showAuthError('Could not send that just now. Please try again in a moment.');
     if(btn){btn.disabled=false;btn.textContent=prev;}
   }
 }
@@ -13247,7 +13242,7 @@ async function handleEmailAuth(){
         /* Reachable only if email confirmation gets switched back on, which
            would strand every account created this way. Say so plainly rather
            than telling someone to check an inbox that does not exist. */
-        showAuthError('Your account was made, but Flux is waiting on a confirmation it cannot send. Tell Azfer.','ok');
+        showAuthError('Your account was made, but Flux is waiting on a confirmation it cannot send. Use "Forgot your password?" on the sign-in screen to get help.','ok');
         if(btn){_setLoginEmailBtnText(btn,'Create account');btn.disabled=false;}
         return;
       }

@@ -219,6 +219,13 @@
     status: () => 'coming_soon',
   });
 
+  /** Schoology and Moodle connect from their tab in the Connect panel. */
+  function openLmsTab(id) {
+    try { if (typeof window.nav === 'function') window.nav('canvas'); } catch (_) {}
+    try { window.FluxGoogle?.setTab?.(id); } catch (_) {}
+    return false;
+  }
+
   // 4 · Schoology
   register({
     id: 'schoology',
@@ -226,10 +233,25 @@
     icon: '🅢',
     category: 'lms',
     auth_kind: 'api_key',
-    description: 'Assignments, grades, calendar.',
-    supports: ['assignments', 'grades', 'calendar'],
+    description: 'Assignments and due dates from your Schoology calendar.',
+    supports: ['assignments', 'calendar'],
     role: 'student',
-    status: () => (ls('flux_schoology_token', null) ? 'connected' : 'coming_soon'),
+    status: () => (window.FluxLmsFeeds?.isConnected('schoology') ? 'connected' : 'off'),
+    connect: async () => openLmsTab('schoology'),
+  });
+
+  // 4b · Moodle
+  register({
+    id: 'moodle',
+    name: 'Moodle',
+    icon: '🅜',
+    category: 'lms',
+    auth_kind: 'api_key',
+    description: 'Assignments, quizzes and due dates from your Moodle calendar.',
+    supports: ['assignments', 'calendar'],
+    role: 'student',
+    status: () => (window.FluxLmsFeeds?.isConnected('moodle') ? 'connected' : 'off'),
+    connect: async () => openLmsTab('moodle'),
   });
 
   // 5 · PowerSchool / Infinite Campus (gradebook read)

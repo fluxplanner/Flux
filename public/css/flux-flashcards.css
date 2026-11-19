@@ -183,6 +183,7 @@ select.ff-input { cursor: pointer; }
   padding: 12px 12px 12px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--card);
 }
 .ff-row:not(:has(.ff-dot)) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); }
+.ff-row.ff-row--imp { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) auto; }
 .ff-dot { width: 8px; height: 8px; margin-top: 8px; border-radius: 50%; }
 .ff-row-term { font-weight: 700; overflow-wrap: anywhere; }
 .ff-row-def { color: color-mix(in srgb, var(--text) 85%, var(--muted2)); overflow-wrap: anywhere; }
