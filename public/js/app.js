@@ -71,7 +71,53 @@ function fluxNamespacedKey(k){
 }
 function _fluxLoadRaw(k,def){try{const v=localStorage.getItem(fluxNamespacedKey(k));return v?JSON.parse(v):def;}catch(e){return def;}}
 function _fluxSaveRaw(k,v){try{localStorage.setItem(fluxNamespacedKey(k),JSON.stringify(v));}catch(e){console.warn('Storage full',e);}}
+/* Canvas access token. It is a password-equivalent for the student's Canvas
+   account, so it gets rules no other key has: it expires 90 days after it was
+   saved, "this session only" keeps it in sessionStorage (gone when the tab
+   closes, never synced), and Forget leaves a tombstone so a cloud pull can't
+   quietly bring an older copy back. Every reader goes through load/save, so
+   enforcing it here covers app.js, the Canvas panel and the Google hub. */
+const FLUX_CANVAS_TOKEN_TTL=90*864e5;
+function _fluxCanvasMeta(){const m=_fluxLoadRaw('flux_canvas_token_meta',null);return m&&typeof m==='object'?m:{};}
+function _fluxCanvasTokenClear(meta){
+  try{localStorage.removeItem(fluxNamespacedKey('flux_canvas_token'));}catch(_){}
+  try{sessionStorage.removeItem(fluxNamespacedKey('flux_canvas_token'));}catch(_){}
+  _fluxSaveRaw('flux_canvas_token_meta',{sessionOnly:!!meta.sessionOnly,forgottenAt:meta.forgottenAt||0});
+}
+function _fluxCanvasTokenRead(def){
+  const meta=_fluxCanvasMeta();
+  let tok=null;
+  try{const s=sessionStorage.getItem(fluxNamespacedKey('flux_canvas_token'));if(s)tok=JSON.parse(s);}catch(_){}
+  if(!tok)tok=_fluxLoadRaw('flux_canvas_token',null);
+  if(!tok)return def;
+  if(!meta.savedAt){meta.savedAt=Date.now();_fluxSaveRaw('flux_canvas_token_meta',meta);} // legacy token: the 90 days start now
+  if(Date.now()-meta.savedAt>FLUX_CANVAS_TOKEN_TTL){_fluxCanvasTokenClear(meta);return def;}
+  return tok;
+}
+function _fluxCanvasTokenWrite(v){
+  const meta=_fluxCanvasMeta();
+  if(!v){_fluxCanvasTokenClear(meta);return;}
+  if(_fluxCanvasTokenRead(null)!==v)meta.savedAt=Date.now();
+  _fluxSaveRaw('flux_canvas_token_meta',meta);
+  if(meta.sessionOnly){
+    try{sessionStorage.setItem(fluxNamespacedKey('flux_canvas_token'),JSON.stringify(v));}catch(_){}
+    try{localStorage.removeItem(fluxNamespacedKey('flux_canvas_token'));}catch(_){}
+  }else{
+    try{sessionStorage.removeItem(fluxNamespacedKey('flux_canvas_token'));}catch(_){}
+    _fluxSaveRaw('flux_canvas_token',v);
+  }
+}
+window.fluxCanvasTokenInfo=()=>{const m=_fluxCanvasMeta();return{sessionOnly:!!m.sessionOnly,savedAt:m.savedAt||0,forgottenAt:m.forgottenAt||0,expiresAt:m.savedAt?m.savedAt+FLUX_CANVAS_TOKEN_TTL:0};};
+window.fluxCanvasTokenSetSessionOnly=on=>{const tok=_fluxCanvasTokenRead(null);const m=_fluxCanvasMeta();m.sessionOnly=!!on;_fluxSaveRaw('flux_canvas_token_meta',m);if(tok){const keep=m.savedAt;_fluxCanvasTokenWrite(tok);const m2=_fluxCanvasMeta();m2.savedAt=keep;_fluxSaveRaw('flux_canvas_token_meta',m2);}};
+window.fluxCanvasForgetToken=()=>{
+  const m=_fluxCanvasMeta();m.forgottenAt=Date.now();_fluxCanvasTokenClear(m);
+  ['flux_canvas_host','flux_canvas_url'].forEach(k=>_fluxSaveRaw(k,null));
+  try{canvasToken='';canvasUrl='';}catch(_){}
+  // Push now so the account copy is replaced by "no integrations" before the next pull.
+  try{if(typeof syncToCloud==='function')void syncToCloud();}catch(_){}
+};
 const load=(k,def)=>{
+  if(k==='flux_canvas_token')return _fluxCanvasTokenRead(def);
   const o=_fluxLoadRaw(k,def);
   try{if(window.FluxDebug&&typeof FluxDebug.traceStorage==='function')FluxDebug.traceStorage('load',k);}catch(e){}
   return o;
@@ -81,6 +127,7 @@ const save=(k,v)=>{
   // Tasks and notes merge item by item on a cloud pull, so each write notes
   // which items changed (see fluxNoteListEdits by the sync code).
   if(k==='tasks'||k==='flux_notes'){try{fluxNoteListEdits(k,v);}catch(_){}}
+  if(k==='flux_canvas_token'){_fluxCanvasTokenWrite(v);return;}
   _fluxSaveRaw(k,v);
 };
 /* This tab's bookkeeping for the merged task and note lists: its own merge
@@ -10647,8 +10694,8 @@ function getCloudPayload(){
       if(window.FluxGoogle&&typeof FluxGoogle.getIntegrationsForCloud==='function')return FluxGoogle.getIntegrationsForCloud();
       const tok=load('flux_canvas_token','');
       const host=load('flux_canvas_host','');
-      if(!tok||!host)return null;
-      return{canvasToken:String(tok),canvasHost:String(host),canvasUrl:load('flux_canvas_url','')};
+      if(!tok||!host||window.fluxCanvasTokenInfo?.().sessionOnly)return null;
+      return{canvasToken:String(tok),canvasHost:String(host),canvasUrl:load('flux_canvas_url',''),updatedAt:Date.now()};
     })(),
     ...(isOwner()?{
       devAccounts:load('flux_dev_accounts',[]),

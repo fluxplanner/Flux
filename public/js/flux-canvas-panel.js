@@ -517,7 +517,7 @@
               ).join("")}
             </select>
             <button type="button" class="cv-btn cv-btn--ghost" onclick="window.fluxCanvasRefresh()" title="Refresh">↻ Refresh</button>
-            <button type="button" class="cv-btn cv-btn--ghost" onclick="window.fluxCanvasDisconnect()" title="Disconnect">⏻</button>
+            <button type="button" class="cv-btn cv-btn--ghost" onclick="window.fluxCanvasDisconnect()" title="Forget your Canvas access key on this device and your account">⏻ Forget Canvas token</button>
           </div>
         </header>
 
@@ -617,11 +617,15 @@
         <div class="cv-onb-card">
           <div class="cv-onb-step-label">Step 3 of 3</div>
           <div class="cv-onb-step-title">Paste your access key</div>
-          <p class="cv-onb-line">Canvas gave you a long string after you generated a new access token. Paste it below — it stays on this device only.</p>
+          <p class="cv-onb-line">Canvas gave you a long string after you generated a new access token. Paste it below. Flux keeps it in this browser for 90 days and copies it to your Flux account so your other devices stay connected.</p>
           <div class="cv-onb-paste-row">
             <input type="password" id="cvOnbToken" class="cv-onb-input" placeholder="Paste your Canvas access key" autocomplete="off" autocapitalize="off" spellcheck="false">
             <button type="button" class="cv-onb-eye" onclick="(function(){const i=document.getElementById('cvOnbToken');if(i)i.type=i.type==='password'?'text':'password';})()" title="Show / hide">👁</button>
           </div>
+          <label class="cv-onb-line" style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
+            <input type="checkbox" id="cvOnbSessionOnly" style="margin-top:3px">
+            <span>Keep it for this session only — forget it when I close this tab, and don't copy it to my account.</span>
+          </label>
           <button type="button" class="cv-onb-cta" onclick="window.fluxCanvasFinishConnect()">Connect to Canvas</button>
           <div class="cv-onb-row">
             <button type="button" class="cv-onb-back" onclick="window.fluxCanvasOnboardOpenAgain()">← Back to Canvas</button>
@@ -740,6 +744,8 @@
     fluxCanvasOnbErr("");
     try {
       try { canvasToken = tok; canvasUrl = "https://" + host; } catch (_) {}
+      // Set before the save so a session-only key never touches localStorage.
+      if (window.fluxCanvasTokenSetSessionOnly) window.fluxCanvasTokenSetSessionOnly(!!document.getElementById("cvOnbSessionOnly")?.checked);
       save("flux_canvas_token", tok);
       save("flux_canvas_host", host);
       save("flux_canvas_url", "https://" + host);
@@ -1154,11 +1160,12 @@
   };
 
   window.fluxCanvasDisconnect = function () {
-    if (!confirm("Disconnect Canvas from Flux? Your existing tasks and notes won't be touched.")) return;
+    if (!confirm("Forget your Canvas access key? Flux removes it from this browser and your Flux account. Your existing tasks and notes won't be touched.")) return;
     try {
-      save("flux_canvas_token", null);
-      save("flux_canvas_host", null);
-      save("flux_canvas_url", null);
+      // Forget (app.js) also clears the account copy; the old save(null) path
+      // left it there, so the next cloud pull quietly reconnected Canvas.
+      if (window.fluxCanvasForgetToken) window.fluxCanvasForgetToken();
+      else { save("flux_canvas_token", null); save("flux_canvas_host", null); save("flux_canvas_url", null); }
       try { canvasToken = ""; canvasUrl = ""; } catch (_) {}
     } catch (_) {}
     CV.connected = false;

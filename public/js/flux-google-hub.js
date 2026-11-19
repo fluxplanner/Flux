@@ -197,7 +197,8 @@
     try {
       const tok = typeof load === 'function' ? load('flux_canvas_token', '') : '';
       const host = typeof load === 'function' ? load('flux_canvas_host', '') : '';
-      if (!tok || !host) return null;
+      // A "this session only" token stays off the account (see app.js load/save).
+      if (!tok || !host || (window.fluxCanvasTokenInfo && window.fluxCanvasTokenInfo().sessionOnly)) return null;
       return {
         canvasToken: String(tok),
         canvasHost: String(host),
@@ -211,6 +212,10 @@
 
   function restoreIntegrationsFromCloud(integrations) {
     if (!integrations || !integrations.canvasToken || !integrations.canvasHost) return false;
+    // After "Forget Canvas token", an older copy still on the account (or pushed
+    // by another device that hasn't caught up) must not bring the token back.
+    const info = window.fluxCanvasTokenInfo ? window.fluxCanvasTokenInfo() : null;
+    if (info && info.forgottenAt && !(Number(integrations.updatedAt) > info.forgottenAt)) return false;
     try {
       if (typeof save === 'function') {
         save('flux_canvas_token', integrations.canvasToken);

@@ -180,7 +180,8 @@
     supports: ['assignments', 'courses', 'grades'],
     role: 'student',
     status: () => {
-      const t = ls('flux_canvas_token', null) || ls('flux_canvas_v3_token', null);
+      // load() knows about session-only tokens (sessionStorage) and the 90-day expiry; raw ls() doesn't.
+      const t = (typeof window.load === 'function' ? window.load('flux_canvas_token', null) : ls('flux_canvas_token', null)) || ls('flux_canvas_v3_token', null);
       const h = ls('flux_canvas_host', null) || ls('flux_canvas_v3_host', null);
       if (t && h) return 'connected';
       return 'off';
