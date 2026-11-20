@@ -62,7 +62,11 @@
   .brand { font-weight: 800; font-size: 1.05rem; letter-spacing: -.01em; }
   main { max-width: 1120px; margin: 0 auto; padding: clamp(28px, 6vw, 64px) max(16px, env(safe-area-inset-right, 0px)) calc(56px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
   .hero { text-align: center; margin: 0 auto clamp(26px, 5vw, 44px); max-width: 640px; }
-  .hero h1 { margin: 0 0 10px; font-size: clamp(2rem, 5.5vw, 3.2rem); font-weight: 800; letter-spacing: -.03em; line-height: 1.05; }
+  /* The page named Plus Jakarta Sans but never loaded it, so the hero fell back
+     to system-ui. Alias it to the self-hosted variable face, as styles.css does
+     for the planner. The span used to be nowrap and overflowed at 320px. */
+  @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 400 800; font-display: swap; src: url('public/fonts/inter-latin-var.woff2') format('woff2'); }
+  .hero h1 { margin: 0 0 10px; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: clamp(2rem, 5.5vw, 3.2rem); font-weight: 800; letter-spacing: -.03em; line-height: 1.05; }
   .hero h1 span { background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 50%, #fff), var(--accent) 45%, color-mix(in srgb, var(--accent) 60%, #a78bfa)); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .hero p { margin: 0; color: var(--muted2); font-size: clamp(.98rem, 2vw, 1.1rem); }
   /* The planner is a wide bar on top; the other groups are pill tabs over a
@@ -160,7 +164,7 @@
   </header>
   <main>
     <section class="hero">
-      <h1>Every Flux app, <span style="white-space:nowrap">one tap away.</span></h1>
+      <h1>Every Flux app, <span>one tap away.</span></h1>
       <p>The planner for your whole school life, and free study tools that open on any computer — no account needed.</p>
     </section>
     <!-- Filled by flux-purple-day.js on March 26 only. -->
