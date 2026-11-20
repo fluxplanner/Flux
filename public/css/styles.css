@@ -6087,3 +6087,9 @@ body{
   #editModal .ed-subtasks textarea{flex:1 1 100%!important;min-width:0!important}
   #editModal .ed-subtasks .btn-sec{flex:1 1 0!important}
 }
+
+/* #keyHint carries white-space:nowrap inline, which ran it off both edges of
+   a narrow phone. Below 420px let it wrap inside the gutters instead. */
+@media (max-width:419px){
+  #keyHint{white-space:normal!important;flex-wrap:wrap;justify-content:center;text-align:center;width:max-content;max-width:calc(100vw - 32px)}
+}
