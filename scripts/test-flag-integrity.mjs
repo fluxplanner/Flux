@@ -30,6 +30,9 @@ const RETIRED_KEYS = new Set([
   // Recovery Mode / cognitive load UI removed outright — the flag row stays in
   // the applied migration, but nothing reads it any more.
   'enable_cognitive_ui',
+  // Ghost drafts, removed 2026-10-26 (20261026160000_retire_ghost_draft_flags.sql).
+  'enable_ghost_draft_v2',
+  'enable_docs_ghost_sync',
 ]);
 
 function readClientDefaults() {

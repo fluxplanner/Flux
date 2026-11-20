@@ -323,31 +323,17 @@
    * opts.between: 'auto' | sep id | a custom string
    * opts.cards: 'newline' (default) | 'semicolon' | 'blank' | custom string
    */
-  // Words Quizlet's set page puts around the cards when you select the page
-  // and copy it, rather than using Export.
-  var QUIZLET_CHROME = /^(terms in this set( \(\d+\))?|flashcards|learn|test|match|blast|blocks|q-chat|study|save|share|copy|print|combine|edit|more|original|alphabetical|star(red)?|add image|preview|try it free|upgrade|show more|see more|created by|teacher|study guides?|practice questions for this set|\d+\s*(terms?|studiers.*)|[☆★⭐\s]+)$/i;
-  // Everything from here down is other people's sets, not yours.
-  var QUIZLET_TAIL = /^(students also studied|sets found in the same folder|other sets by this creator|verified questions|recommended textbook solutions|related questions|flashcard sets?|textbook solutions)\b/i;
-
-  function stripChrome(text) {
-    var out = [];
-    var lines = text.split('\n');
-    for (var i = 0; i < lines.length; i++) {
-      var l = lines[i].trim();
-      if (QUIZLET_TAIL.test(l)) break;
-      if (!QUIZLET_CHROME.test(l)) out.push(lines[i]);
-    }
-    return out.join('\n').trim();
-  }
-
   function parseImport(text, opts) {
     opts = opts || {};
     text = String(text || '').replace(/\r\n?/g, '\n').trim();
     if (!text) return [];
-    text = stripChrome(text);
-    if (!text) return [];
     var between = opts.between || 'auto';
     var cardSep = opts.cards || 'newline';
+
+    if (between === 'auto' && cardSep === 'newline') {
+      var qz = quizletPageText(text);
+      if (qz) return qz.cards;
+    }
 
     if (cardSep === 'newline' && (between === 'comma' || (between === 'auto' && /^"|",|,"/m.test(text) && !/\t/.test(text)))) {
       return csvRows(text, ',').map(function (r) { return { term: (r[0] || '').trim(), def: r.slice(1).join(', ').trim() }; })
@@ -547,6 +533,26 @@
     return fromSharePayload(JSON.parse(new TextDecoder().decode(bytesFromB64url(code.slice(1)))));
   }
 
+  /**
+   * A whole Quizlet set page, selected and copied (Ctrl/⌘ + A, then C): the
+   * set's terms follow "Terms in this set (N)", term and definition on
+   * alternate lines. Works in any browser, no bookmark needed. Returns
+   * { cards: [{term, def}], count: N }, or null when the text is not one.
+   * A definition that runs over several lines puts the pairs out of step,
+   * so the count is a guide, not a promise.
+   */
+  function quizletPageText(text) {
+    text = String(text || '').replace(/\r\n?/g, '\n');
+    var m = text.match(/Terms in this set \((\d[\d,]*)\)[^\n]*\n/i);
+    if (!m) return null;
+    var n = parseInt(m[1].replace(/,/g, ''), 10) || 0;
+    var lines = text.slice(m.index + m[0].length).split('\n')
+      .map(function (l) { return l.trim(); }).filter(Boolean).slice(0, n * 2);
+    var cards = [];
+    for (var i = 0; i + 1 < lines.length; i += 2) cards.push({ term: lines[i], def: lines[i + 1] });
+    return cards.length ? { cards: cards, count: n } : null;
+  }
+
   /* ── Decks and the store ────────────────────────────────────────────── */
 
   function newCard(c) {
@@ -699,6 +705,7 @@
     sharePayload: sharePayload, fromSharePayload: fromSharePayload,
     creator: creator, relatedDeck: relatedDeck, diffDecks: diffDecks, mergeInto: mergeInto,
     encodeShare: encodeShare, decodeShare: decodeShare,
+    quizletPageText: quizletPageText,
     b64urlFromBytes: b64urlFromBytes, bytesFromB64url: bytesFromB64url,
     newDeck: newDeck, newCard: newCard,
     decks: decks, getDeck: getDeck, putDeck: putDeck, removeDeck: removeDeck,

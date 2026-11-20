@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="referrer" content="strict-origin-when-cross-origin">
+<script src="public/js/flux-frame-guard.js?v=9afa87b3"></script>
+<script src="public/js/flux-look.js?v=81a3e0d1"></script>
+<script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
+<script src="public/js/flux-app-visibility.js?v=ade4d827"></script>
+<script defer src="public/js/flux-site-notices.js?v=5e36c924"></script>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: data:; worker-src 'self' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://api.anthropic.com https://api.openai.com https://api.groq.com https://api.mistral.ai https://api.deepseek.com https://en.wikipedia.org https://api.duckduckgo.com https://html.duckduckgo.com https://corsproxy.io https://api.allorigins.win https://tessdata.projectnaptha.com https://api.open-meteo.com https://nominatim.openstreetmap.org https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com">
 <script>/* Flux Pulse layout — REMOVED. The experimental "Pulse" reskin caused lag and is
    gone for good. Force legacy layout for everyone and purge any stale opt-in so
@@ -11,9 +16,9 @@
 <style>
 /* Hide main shell until JS adds .visible — must beat layout media queries; also covers first paint before CSS loads */
 #app{display:none!important}
-#app.visible{display:flex!important;min-height:100vh}
+#app.visible{display:flex!important;min-height:100vh;min-height:100dvh}
 @media(max-width:768px){
-  #app.visible{display:block!important;min-height:100vh!important}
+  #app.visible{display:block!important;min-height:100vh!important;min-height:100dvh!important}
 }
 </style>
 <script>
@@ -118,7 +123,9 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.5483a766.css">
+<link rel="stylesheet" href="public/bundles/flux.016c4bef.css">
+<!-- Scroll story on the sign-in screen (kept out of the bundle: landing pages load it too). -->
+<link rel="stylesheet" href="public/css/flux-scroll-story.css?v=cb163716">
 <!-- The bundle already hides #app, but if it fails to load without JS the
      half-built shell would show under the notice. Say it here too. -->
 <noscript><style>#app,#splash,.skip-link{display:none!important}</style></noscript>
@@ -136,56 +143,9 @@
 <!-- Built dynamically by splash.js, just needs the container -->
 <div id="splash" style="display:none"></div>
 
-<!-- ══ ROLE SELECT SCREEN (legacy — never shown pre-login now) ══ -->
-<!-- Kept in DOM so any deep-links / legacy onclick="selectRole(...)" still resolve. -->
-<div id="roleSelectScreen" style="display:none !important" aria-hidden="true">
-  <div class="role-select-bg" aria-hidden="true"></div>
-  <div class="role-select-wrap">
-    <div class="role-select-logo">
-      <svg width="48" height="28" viewBox="0 0 60 32" fill="none" aria-hidden="true">
-        <path d="M30,16 C32,5 46,5 46,16 C46,27 32,27 30,16 C28,27 14,27 14,16 C14,5 28,5 30,16 Z"
-          fill="none" stroke="url(#rsg)" stroke-width="3.5" stroke-linecap="round"/>
-        <circle cx="30" cy="16" r="2.5" fill="#00bfff"/>
-        <defs>
-          <linearGradient id="rsg" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stop-color="#00bfff" stop-opacity="0"/>
-            <stop offset="25%" stop-color="#00bfff"/>
-            <stop offset="75%" stop-color="#7c5cff"/>
-            <stop offset="100%" stop-color="#7c5cff" stop-opacity="0"/>
-          </linearGradient>
-        </defs>
-      </svg>
-      <span class="role-logo-text">Flux Planner</span>
-    </div>
-
-    <h1 class="role-select-heading">I am a…</h1>
-    <p class="role-select-sub">Choose your role to get started</p>
-
-    <div class="role-cards">
-      <button type="button" class="role-card" onclick="selectRole('student')" aria-label="Student account">
-        <div class="role-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2 M8 21v-5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v5 M8 10h8"/></svg></div>
-        <div class="role-card-title">Student</div>
-        <div class="role-card-desc">Manage assignments, study plans, and connect with your teachers and counselor.</div>
-        <div class="role-card-arrow" aria-hidden="true">→</div>
-      </button>
-
-      <button type="button" class="role-card role-card-staff" onclick="selectRole('staff')" aria-label="Staff account">
-        <div class="role-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 22h20 M6 22V10l6-6 6 6v12 M10 22v-5h4v5 M12 9h.01"/></svg></div>
-        <div class="role-card-title">Staff</div>
-        <div class="role-card-desc" data-copy-no-student-links="Your classes bell by bell, classroom tools, messages with colleagues and a planner of your own.">Post assignments, view student progress, and communicate with your class.</div>
-        <div class="role-card-arrow" aria-hidden="true">→</div>
-        <div class="role-card-subroles">
-          <span>Teacher</span><span>Counselor</span><span>Admin</span>
-        </div>
-      </button>
-    </div>
-
-    <div class="role-already-have">
-      Already have an account?
-      <span class="role-login-link" onclick="showLoginScreen()" role="button" tabindex="0">Sign in</span>
-    </div>
-  </div>
-</div>
+<!-- #roleSelectScreen (the pre-2026 role picker) was removed: unreachable since the
+     login split, and every script that looked it up already checks for null.
+     window.selectRole still exists and opens the login screen. -->
 
 <!-- ══ LOGIN SCREEN ══ -->
 
@@ -198,7 +158,7 @@
     <span class="lx-blob lx-blob-3"></span>
   </div>
   <div class="lx-grid" aria-hidden="true"></div>
-  <div class="lx-lemni" aria-hidden="true">
+  <div class="lx-lemni" data-fs-logo aria-hidden="true">
     <svg viewBox="0 0 680 680" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="lxMarkBig" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -211,7 +171,14 @@
       <g transform="translate(392,340)">
         <path class="lx-lemni-path" d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"
           fill="none" stroke="url(#lxMarkBig)" stroke-width="13" stroke-linecap="round"/>
+        <path class="fs-logo-halo" pathLength="1" d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z" stroke="url(#lxMarkBig)"/>
+        <path class="fs-logo-trace" pathLength="1" d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z" stroke="url(#lxMarkBig)"/>
+        <path class="fs-logo-comet-halo" pathLength="1" d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"/>
+        <path class="fs-logo-comet" pathLength="1" d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"/>
+        <g class="fs-pins" data-fs-pins="Canvas@.07@#E72429|Calendar@.25@#58a6ff|Study tools@.43@#3fb950|Grades@.56@#e3b341|Focus timer@.76@#f78166|Reading log@.9@#a371f7"></g>
       </g>
+      <circle class="fs-logo-dot" cx="392" cy="340" r="15" fill="#00C2FF"/>
+      <circle class="fs-logo-dot" cx="612" cy="300" r="13" fill="#00C2FF"/>
     </svg>
   </div>
   <div class="lx-vignette" aria-hidden="true"></div>
@@ -245,9 +212,6 @@
         <a class="lx-navlink" href="#features">Features</a>
         <a class="lx-navlink" href="#grapher">Grapher</a>
         <a class="lx-navlink" href="suite.html">All apps</a>
-        <button type="button" class="lx-ghost-btn" onclick="skipLogin()">
-          Continue as guest <span aria-hidden="true">→</span>
-        </button>
       </nav>
     </div>
   </header>
@@ -256,50 +220,9 @@
 
     <!-- ── Hero ── -->
     <section class="login-scroll-section login-scroll-hero lx-hero" id="top">
-      <div class="lx-hero-copy">
-        <span class="lx-badge"><span class="lx-badge-dot" aria-hidden="true"></span>The school planner — for students &amp; schools</span>
-
-        <div class="lx-aud-toggle" role="tablist" aria-label="Who is Flux for">
-          <button type="button" class="lx-aud-tab is-on" id="lxAudStudent" role="tab" aria-selected="true" data-aud="student">For students</button>
-          <button type="button" class="lx-aud-tab" id="lxAudTeacher" role="tab" aria-selected="false" data-aud="teacher">For teachers &amp; staff</button>
-        </div>
-
-        <h1 class="lx-headline" id="lxHeadline" style="text-wrap:balance">Your whole school life,<br><span class="grad">in flow.</span></h1>
-        <p class="lx-sub" id="lxSub">Flux keeps tasks, classes, study tools, grades and focus in one calm place — and brings in your assignments from Canvas.</p>
-
-        <div class="lx-demo" aria-live="polite">
-          <div class="lx-demo-label"><span class="lx-demo-pulse" aria-hidden="true"></span>Try it in Flux</div>
-          <p class="lx-demo-line" id="loginDemoLineLeft">Count down to the SAT from any day on your calendar.</p>
-          <p class="lx-demo-line" id="loginDemoLineCard" hidden aria-hidden="true"></p>
-        </div>
-
-        <div class="lx-highlights" aria-label="Highlights" data-aud-show="student">
-          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#7fdcff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg>Countdowns</span>
-          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#8ab4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Smart calendar</span>
-          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#ffd66b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16M8 17v-5M12 17V9M16 17v-8"/></svg>College prep</span>
-          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#b7a4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6.5L4.8 18a2 2 0 0 0 1.7 3h11a2 2 0 0 0 1.7-3L14 9.5V3"/><path d="M7.5 14h9"/></svg>Study tools</span>
-          <a class="lx-chip lx-chip--link" href="grapher.html" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg>Free grapher <span aria-hidden="true">↗</span></a>
-        </div>
-
-        <div class="lx-highlights lx-aud-hidden" aria-label="Highlights for staff" data-aud-show="staff">
-          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#7fdcff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Lesson Hub</span>
-          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#8ab4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg>Classroom timer</span>
-          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#ffd66b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.4 3.6a2 2 0 0 1 2.8 2.8L7.5 18.1 3 19.5l1.4-4.5Z"/></svg>Meeting notes</span>
-          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#b7a4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Staff messages</span>
-        </div>
-
-        <div class="lx-integrations">
-          <div class="lx-integrations-label">Brings in your assignments from Canvas</div>
-          <div class="lx-logos">
-            <span class="lx-logo is-google" title="Google"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg></span>
-            <span class="lx-logo is-google" title="Google Calendar"><svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M390.736 121.264H121.264V390.736H390.736V121.264Z" fill="#fff"/><path d="M390.736 512 512 390.736l-60.632-10.344-60.632 10.344-11.066 55.46z" fill="#EA4335"/><path d="M0 390.736v80.842C0 493.912 18.088 512 40.42 512h80.844l12.45-60.632-12.45-60.632-66.066-10.344z" fill="#188038"/><path d="M512 121.264V40.42C512 18.088 493.912 0 471.58 0H390.736c-7.376 30.072-11.065 52.203-11.066 66.392 0 14.188 3.689 32.479 11.066 54.872 26.82 7.68 47.031 11.52 60.632 11.52s33.812-3.839 60.632-11.52z" fill="#1967D2"/><path d="M512 121.264H390.736V390.736H512V121.264Z" fill="#FBBC04"/><path d="M390.736 390.736H121.264V512H390.736V390.736Z" fill="#34A853"/><path d="M390.736 0H40.422C18.088 0 0 18.088 0 40.42V390.736H121.264V121.264H390.736V0Z" fill="#4285F4"/><path d="M176.54 330.308c-10.072-6.804-17.046-16.74-20.852-29.88l23.378-9.632c2.12 8.084 5.825 14.349 11.116 18.796 5.254 4.446 11.654 6.636 19.132 6.636 7.645 0 14.213-2.325 19.704-6.974 5.492-4.648 8.254-10.576 8.254-17.75 0-7.344-2.897-13.34-8.69-17.988-5.794-4.648-13.07-6.972-21.76-6.972h-13.508v-23.14h12.126c7.477 0 13.776-2.022 18.896-6.066 5.12-4.04 7.68-9.566 7.68-16.606 0-6.264-2.29-11.25-6.87-14.988-4.58-3.74-10.376-5.626-17.416-5.626-6.872 0-12.328 1.82-16.37 5.49-4.041 3.681-6.834 8.329-8.582 13.508l-23.14-9.634c3.064-8.69 8.69-16.37 16.942-23.006 8.252-6.636 18.796-9.97 31.596-9.97 9.466 0 17.988 1.82 25.534 5.49 7.544 3.672 13.472 8.758 17.75 15.226 4.28 6.5 6.4 13.776 6.4 21.86 0 8.252-1.986 15.226-5.96 20.952-3.974 5.726-8.86 10.104-14.654 13.17v1.38c7.481 3.085 13.98 8.151 18.796 14.654 4.884 6.568 7.344 14.416 7.344 23.58 0 9.16-2.326 17.346-6.974 24.52-4.648 7.176-11.08 12.834-19.234 16.944-8.184 4.11-17.38 6.2-27.586 6.2-11.824.032-22.736-3.37-32.808-10.174zM320.132 214.298l-25.666 18.56-12.834-19.468 46.046-33.214h17.65v156.666h-25.196z" fill="#4285F4"/></svg></span>
-            <span class="lx-logo is-google" title="Gmail"><svg viewBox="0 49.4 512 399.42" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#4285f4" d="M34.91 448.818h81.454V251L0 163.727V413.91c0 19.287 15.622 34.91 34.91 34.91z"/><path fill="#34a853" d="M395.636 448.818h81.455c19.287 0 34.909-15.622 34.909-34.909V163.727L395.636 251z"/><path fill="#fbbc04" d="M395.636 99.727V251L512 163.727v-46.545c0-43.142-49.25-67.782-83.782-41.891z"/><path fill="#ea4335" d="M116.364 251V99.727L256 204.455 395.636 99.727V251L256 355.727z"/><path fill="#c5221f" d="M0 117.182v46.545L116.364 251V99.727L83.782 75.291C49.25 49.4 0 74.04 0 117.18z"/></svg></span>
-            <span class="lx-logo is-google" title="Google Drive"><svg viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#0066da" d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5z"/><path fill="#00ac47" d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z"/><path fill="#ea4335" d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75L86.1 57.5c.8-1.4 1.2-2.95 1.2-4.5H59.798l5.852 11.5z"/><path fill="#00832d" d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"/><path fill="#2684fc" d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z"/><path fill="#ffba00" d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z"/></svg></span>
-            <span class="lx-logo is-google" title="Google Classroom"><svg viewBox="0 0 578.9 500" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#0F9D58" d="M52.6 52.6h473.7v394.7H52.6z"/><path fill="#57BB8A" d="M394.7 263.2a29.6 29.6 0 1 0 0-59.2 29.6 29.6 0 0 0 0 59.2zm0 19.7c-31.7 0-65.8 16.8-65.8 37.6v21.6h131.6v-21.6c0-20.8-34.1-37.6-65.8-37.6zm-210.5-19.7a29.6 29.6 0 1 0 0-59.2 29.6 29.6 0 0 0 0 59.2zm0 19.7c-31.7 0-65.8 16.8-65.8 37.6v21.6H250v-21.6c0-20.8-34.1-37.6-65.8-37.6z"/><path fill="#F7F7F7" d="M289.5 236.8a39.5 39.5 0 1 0 0-79 39.5 39.5 0 0 0 0 79zm0 26.4c-44.4 0-92.1 23.6-92.1 52.6v26.3h184.2v-26.3c0-29.1-47.7-52.6-92.1-52.6z"/><path fill="#F1F1F1" d="M342.1 421.1h118.4v26.3H342.1z"/><path fill="#F4B400" d="M539.5 0h-500A39.5 39.5 0 0 0 0 39.5v421.1A39.5 39.5 0 0 0 39.5 500h500a39.5 39.5 0 0 0 39.5-39.5v-421A39.5 39.5 0 0 0 539.5 0zm-13.2 447.4H52.6V52.6h473.7z"/></svg></span>
-            <span class="lx-logo" title="Canvas"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="12" cy="12" r="3.1" fill="#E72429"/><circle cx="12" cy="4.1" r="1.5" fill="#E72429"/><circle cx="12" cy="19.9" r="1.5" fill="#E72429"/><circle cx="4.1" cy="12" r="1.5" fill="#E72429"/><circle cx="19.9" cy="12" r="1.5" fill="#E72429"/><circle cx="6.4" cy="6.4" r="1.5" fill="#E72429"/><circle cx="17.6" cy="17.6" r="1.5" fill="#E72429"/><circle cx="17.6" cy="6.4" r="1.5" fill="#E72429"/><circle cx="6.4" cy="17.6" r="1.5" fill="#E72429"/></svg></span>
-          </div>
-        </div>
-
+      <!-- Just the name: the scroll story below does the talking. -->
+      <div class="lx-hero-copy lx-hero-name">
+        <h1 class="lx-name">Flux<span class="lx-sr"> Planner, the smart school planner</span></h1>
         <div class="feat-pills-wrap" aria-hidden="true"><div class="feat-pills" id="featPills"></div></div>
       </div>
 
@@ -339,7 +262,8 @@
                divider went with it: there is nothing left to divide. -->
           <div id="loginEmailSection">
             <div class="lx-auth-error" id="loginAuthError" role="alert" aria-live="assertive"></div>
-            <div class="lx-form" id="loginEmailForm">
+            <!-- A real form, so Enter signs in and password managers recognise it. -->
+            <form class="lx-form" id="loginEmailForm" novalidate onsubmit="event.preventDefault();handleEmailAuth()">
               <!-- Name, not email. Nothing is emailed and no address is kept;
                    app.js folds this into a synthesised account key. type=text
                    rather than email so a phone does not demand an @ sign. -->
@@ -355,8 +279,8 @@
               <div id="loginKeepsafe" class="lx-keepsafe" style="display:none" role="status">
                 <div class="lx-keepsafe-title">Write your password down somewhere safe</div>
                 <div class="lx-keepsafe-body">
-                  You sign in as <strong id="loginKeepsafeName"></strong>. Flux has no email for you,
-                  so there is no reset link — if you forget this password, you'll have to request a reset from this screen.
+                  You sign in as <strong id="loginKeepsafeName"></strong>. If you forget this password, "Forgot your password?" sends a reset link to
+                  your email once you have clicked the confirmation link in it.
                 </div>
               </div>
               <!-- This row held a second "Name (optional)" box, left over from
@@ -372,17 +296,35 @@
                 <label class="lx-field" for="loginPassword2">Confirm password
                   <input type="password" id="loginPassword2" name="loginPassword2" autocomplete="new-password" placeholder="Type it again">
                 </label>
+                <!-- Required, but not how you sign in. It is kept beside the
+                     account for one purpose: sending a link to set a new
+                     password (flux-recovery.js). It counts only after the
+                     person clicks the confirmation link sent to it. -->
+                <label class="lx-field" for="loginRecoveryEmail">Email
+                  <input type="email" id="loginRecoveryEmail" name="loginRecoveryEmail" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="Only used to reset your password">
+                </label>
+                <!-- Shown only while the owner has sign-ups set to invite code. -->
+                <label class="lx-field" for="loginInvite" id="loginInviteRow" style="display:none">Invite code
+                  <input type="text" id="loginInvite" name="loginInvite" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="From your teacher or school">
+                </label>
               </div>
-              <button type="button" class="lx-submit" id="loginEmailBtn" onclick="handleEmailAuth()">
+              <!-- A trap for bots: people never see or fill this, form-filling
+                   scripts do. Anything typed here means the form is ignored. -->
+              <div aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden">
+                <label for="loginWebsite">Website</label>
+                <input type="text" id="loginWebsite" name="website" tabindex="-1" autocomplete="off">
+              </div>
+              <button type="submit" class="lx-submit" id="loginEmailBtn">
                 <span class="login-email-btn-label">Sign in</span>
                 <span class="lx-submit-arrow" aria-hidden="true">→</span>
               </button>
-            </div>
+            </form>
             <div class="lx-toggle">
               <span id="loginToggleText">Don't have an account?</span>
               <button type="button" class="lx-toggle-btn" onclick="toggleAuthMode()"><span id="loginToggleAction">Sign up</span></button>
             </div>
-            <!-- The only way back in. There is no email on file and therefore
+            <!-- The way back in. With a confirmed recovery email this sends a
+                 reset link (flux-recovery.js). Without one there is
                  no reset link, so someone locked out cannot reach anyone from
                  inside the app — they cannot sign in to ask. This writes to a
                  table the owner alone can read. -->
@@ -394,9 +336,6 @@
           </div>
 
           <div class="lx-auth-foot">
-            <button type="button" class="lx-guest" onclick="skipLogin()">
-              Continue as a guest <span class="lx-guest-arrow" aria-hidden="true">→</span>
-            </button>
             <p class="lx-fineprint">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               Your data stays yours. Encrypted in transit, synced across your devices.
@@ -405,7 +344,84 @@
         </div>
         <div class="feat-pills-wrap" aria-hidden="true"><div class="feat-pills" id="featPillsLoginCard"></div></div>
       </aside>
+      <a class="lx-cue" href="#fsLogoStory"><span class="lx-cue-line" aria-hidden="true"></span>Scroll to meet Flux</a>
     </section>
+
+    <!-- ── Scroll story (shown to every audience) ── -->
+    <div class="lx-story" style="--fs-a:#00C2FF;--fs-b:#7C5CFF;--fs-card:#111827;--fs-ink:#eaf1ff;--fs-mut:#9fb0cc;margin-inline:calc(-1 * clamp(16px,4vw,40px))">
+    <!-- Scroll story (public/css/flux-scroll-story.css + public/js/flux-scroll-story.js):
+         the Flux mark in the background rises, a light runs once round its loop
+         and pins light up where it passes, then it sinks back; then a week gets
+         planned, then the rest of Flux locks into place. -->
+    <section class="fs-lift" id="fsLogoStory" data-fs data-fs-lift aria-labelledby="fsLiftTitle">
+      <div class="fs-stage">
+        <p class="fs-lift-top fs-k" style="--from:.02;--to:.12">Your whole school life, <span class="fs-serif fs-grad-txt">in flow.</span></p>
+        <ul class="fs-lift-list">
+          <li>Canvas assignments</li><li>Smart calendar</li><li>Study tools</li><li>Grades &amp; GPA</li><li>Focus timer</li><li>Reading log</li>
+        </ul>
+        <h2 class="fs-k" id="fsLiftTitle" style="--from:.66;--to:.78">Every class, every deadline, every test. <span class="fs-serif fs-grad-txt">One calm loop.</span></h2>
+      </div>
+    </section>
+
+    <section class="fs-week" data-fs aria-labelledby="fsWeekTitle">
+      <div class="fs-stage">
+        <div class="fs-head">
+          <p class="fs-eyebrow">Plan it out</p>
+          <h2 id="fsWeekTitle">One big essay becomes <span class="fs-serif fs-grad-txt">a little each day.</span></h2>
+          <p>Tell Flux how long it takes. It spreads the work across the days before it's due, so you finish a day early.</p>
+        </div>
+        <div class="fs-board">
+          <div class="fs-day fs-src">New<b>Task</b></div>
+          <div class="fs-day">Mon<b>9</b></div>
+          <div class="fs-day">Tue<b>10</b></div>
+          <div class="fs-day">Wed<b>11</b></div>
+          <div class="fs-day">Thu<b>12</b></div>
+          <div class="fs-day">Fri<b>13</b></div>
+          <div class="fs-task"><b>History essay</b><small>4 hours · due Friday</small></div>
+          <div class="fs-blk" style="--n:1;--from:.12">Research<small>1 hour</small></div>
+          <div class="fs-blk" style="--n:2;--from:.28">Outline<small>45 min</small></div>
+          <div class="fs-blk" style="--n:3;--from:.44">Draft<small>1½ hours</small></div>
+          <div class="fs-blk" style="--n:4;--from:.6">Edit<small>45 min</small></div>
+          <div class="fs-due">Due<span class="fs-done">✓ Finished Thursday</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="fs-bento" data-fs aria-labelledby="fsBentoTitle">
+      <div class="fs-stage">
+        <div class="fs-head">
+          <p class="fs-eyebrow">And the rest</p>
+          <h2 id="fsBentoTitle">Everything else, <span class="fs-serif fs-grad-txt">already in place.</span></h2>
+        </div>
+        <div class="fs-tiles">
+          <article class="fs-tile wide" style="--from:.04;--sx:-60vw;--sy:-10vh;--r:-8deg">
+            <div class="fs-canvas" aria-hidden="true"><span>Problem set 4.2</span><span>Lab report</span></div>
+            <h3>Canvas, built in</h3><p>Connect once. Assignments, due dates and classes come straight in.</p>
+          </article>
+          <article class="fs-tile" style="--from:.1;--sx:30vw;--sy:-40vh;--r:10deg">
+            <span class="fs-big" data-fs-count="118" data-from=".1">118</span>
+            <h3>Study tools</h3><p>Across 16 subjects, sorted into the units you're taught.</p>
+          </article>
+          <article class="fs-tile" style="--from:.16;--sx:60vw;--sy:10vh;--r:12deg">
+            <span class="fs-ring" aria-hidden="true"></span>
+            <h3>Focus timer</h3><p>Pomodoro sessions, countdowns and a full-screen mode.</p>
+          </article>
+          <article class="fs-tile" style="--from:.22;--sx:-50vw;--sy:40vh;--r:-12deg">
+            <div class="fs-month" aria-hidden="true"><i></i><i class="d"></i><i></i><i></i><i class="d" style="--c:#e3b341"></i><i></i><i></i><i></i><i></i><i class="d" style="--c:#3fb950"></i><i></i><i></i><i class="d" style="--c:#f78166"></i><i></i></div>
+            <h3>Smart calendar</h3><p>Tasks, classes and tests on one month, no-school days built in.</p>
+          </article>
+          <article class="fs-tile" style="--from:.28;--sx:-10vw;--sy:60vh;--r:6deg">
+            <h3>College prep</h3><p>Your college list with deadlines, GPA, SAT, ACT and AP/IB scores.</p>
+          </article>
+          <article class="fs-tile wide" style="--from:.34;--sx:50vw;--sy:50vh;--r:-6deg">
+            <div class="fs-modes" aria-hidden="true"><span>Work</span><span>Personal</span></div>
+            <h3>For teachers, too</h3><p>Lesson Hub, classroom tools and staff messages in Work mode, and a private planner for after the last bell.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    </div>
 
     <!-- ── Feature showcase (student audience) ── -->
     <section class="login-scroll-section lx-section" id="features" data-aud-show="student">
@@ -488,7 +504,7 @@
             <div class="login-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></div>
             <div class="login-feature-info">
               <div class="login-feature-name">More Flux apps</div>
-              <div class="login-feature-desc">Free, no account needed: Flux Tutor for studying from your own notes, a 3D grapher, Pixel for diagrams and maths figures, Flashcards and a TI-84 calculator.</div>
+              <div class="login-feature-desc">Free, no account needed.<span data-flux-app="teacher"> Flux Tutor for studying from your own notes.</span><span data-flux-app="grapher"> A 3D grapher.</span><span data-flux-app="pixel"> Pixel for diagrams and maths figures.</span><span data-flux-app="flashcards"> Flashcards.</span><span data-flux-app="calculator"> A TI-84 calculator.</span></div>
             </div>
           </div>
         </div>
@@ -496,7 +512,7 @@
     </section>
 
     <!-- ── Flux Grapher — shown to every audience, and usable without an account ── -->
-    <section class="login-scroll-section lx-section lx-grapher-sec" id="grapher" aria-labelledby="lxGrapherTitle">
+    <section class="login-scroll-section lx-section lx-grapher-sec" id="grapher" data-flux-app="grapher" aria-labelledby="lxGrapherTitle">
       <div class="lx-wrap">
         <div class="lx-grapher">
           <div class="lx-grapher-copy">
@@ -636,11 +652,10 @@
     <section class="login-scroll-section lx-section" aria-label="Get started">
       <div class="lx-wrap">
         <div class="lx-cta-band">
-          <h2>Try it before you even sign up.</h2>
-          <p>Jump in as a guest, poke every tool, and add an account only when it earns it.</p>
+          <h2>Ready when you are.</h2>
+          <p>Create a free account and every tool is yours.</p>
           <div class="lx-cta-actions">
             <button type="button" class="lx-submit lx-cta-main" onclick="document.getElementById('top').scrollIntoView({behavior:'smooth'})">Create your account <span aria-hidden="true">↑</span></button>
-            <button type="button" class="lx-ghost-btn" onclick="skipLogin()">Continue as guest <span aria-hidden="true">→</span></button>
           </div>
         </div>
       </div>
@@ -655,7 +670,7 @@
           <span class="lx-trust-item"><span class="lx-trust-ico lx-trust-ico--p" aria-hidden="true"></span>Cross-device sync</span>
           <span class="lx-trust-item"><span class="lx-trust-ico" aria-hidden="true"></span>Private by design</span>
         </div>
-        <p class="lx-foot-note">Sign in to sync across devices — or jump in as a guest and add an account whenever you're ready.</p>
+        <p class="lx-foot-note">Sign in to sync across devices.</p>
         <p class="lx-credit">Developed by Azfer Mohammed</p>
       </div>
     </footer>
@@ -685,20 +700,20 @@
         </div>
 
         <div class="ob-avatar-wrap">
-          <div class="ob-avatar" id="obAvatar" onclick="document.getElementById('obPicInput').click()">?
+          <div class="ob-avatar" id="obAvatar" role="button" tabindex="0" aria-label="Add a profile photo" onclick="document.getElementById('obPicInput').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">?
             <input type="file" id="obPicInput" accept="image/*" style="display:none" onchange="handleObPic(event)">
           </div>
           <div style="font-size:.8rem;color:var(--muted2)">Tap to add a photo<br><span style="font-size:.72rem;font-family:'JetBrains Mono',monospace">optional</span></div>
         </div>
         <span class="ob-label" id="obNameLabel">Your first name</span>
-        <input type="text" id="obName" placeholder="e.g. Jordan" style="margin:0" oninput="updateObPreview()">
+        <input type="text" id="obName" aria-label="Your name" placeholder="e.g. Jordan" style="margin:0" oninput="updateObPreview()">
         <div id="obGradeSection" data-ob-role="student">
           <span class="ob-label">Grade</span>
-          <div class="ob-chip-wrap" id="obGradeChips">
-            <div class="ob-chip" onclick="selectObChip(this,'obGrade','9')">9th</div>
-            <div class="ob-chip active" onclick="selectObChip(this,'obGrade','10')">10th</div>
-            <div class="ob-chip" onclick="selectObChip(this,'obGrade','11')">11th</div>
-            <div class="ob-chip" onclick="selectObChip(this,'obGrade','12')">12th</div>
+          <div class="ob-chip-wrap" id="obGradeChips" role="radiogroup" aria-label="Grade">
+            <div class="ob-chip" role="radio" aria-checked="false" tabindex="0" onclick="selectObChip(this,'obGrade','9')">9th</div>
+            <div class="ob-chip active" role="radio" aria-checked="true" tabindex="0" onclick="selectObChip(this,'obGrade','10')">10th</div>
+            <div class="ob-chip" role="radio" aria-checked="false" tabindex="0" onclick="selectObChip(this,'obGrade','11')">11th</div>
+            <div class="ob-chip" role="radio" aria-checked="false" tabindex="0" onclick="selectObChip(this,'obGrade','12')">12th</div>
           </div>
         </div>
         <div id="obStaffRoleSection" data-ob-role="staff" style="display:none">
@@ -737,7 +752,7 @@
             <div class="ob-chip" onclick="this.classList.toggle('active')" data-feat="calendar">Calendar</div>
             <div class="ob-chip" onclick="this.classList.toggle('active')" data-feat="timer">⏱ Focus</div>
             <div class="ob-chip" onclick="this.classList.toggle('active')" data-feat="toolbox">Study tools</div>
-            <div class="ob-chip" onclick="this.classList.toggle('active')" data-feat="grapher">Grapher</div>
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-feat="grapher" data-flux-app="grapher">Grapher</div>
             <!-- Label only. data-feat="extras" is the stored onboarding slug. -->
             <div class="ob-chip" onclick="this.classList.toggle('active')" data-feat="extras">Activities</div>
           </div>
@@ -788,7 +803,7 @@
         </div>
         <div class="ob-or" data-ob-role="student"><span>or type it in</span></div>
         <span class="ob-label">School name <span class="fx-soft" data-ob-role="staff">(optional)</span></span>
-        <input type="text" id="obSchool" placeholder="e.g. Lincoln High School" style="margin:0">
+        <input type="text" id="obSchool" aria-label="Your school" placeholder="e.g. Lincoln High School" style="margin:0">
         <div class="ob-need" id="obSchoolNeed" aria-live="polite"></div>
 
         <!-- STUDENT school details -->
@@ -1065,7 +1080,7 @@
 
   <!-- ── MOBILE DRAWER OVERLAY ── -->
   <div class="mob-drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
-  <div class="mob-drawer" id="mobDrawer">
+  <div class="mob-drawer" id="mobDrawer" role="dialog" aria-modal="true" aria-label="Menu" aria-hidden="true">
     <div class="mob-drawer-header">
       <span class="mob-drawer-logo" style="-webkit-text-fill-color:initial;background:none;line-height:1"><svg class="flux-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 52" width="198" height="50" aria-hidden="true" overflow="visible" text-rendering="geometricPrecision">
   <defs>
@@ -1169,10 +1184,6 @@
           <button type="button" class="mob-menu-btn" onclick="openDrawer()" aria-label="Open menu">☰</button>
           <span class="topbar-title" id="topbarTitle">Dashboard</span>
         </div>
-        <button type="button" class="topbar-new-task-btn" data-flux-magnet="0.22" onclick="openDashAddTaskModal()" title="Add a new task">
-          <span class="topbar-new-task-icon" aria-hidden="true">＋</span>
-          <span class="topbar-new-task-label">New task</span>
-        </button>
       </div>
       <!-- Mobile brand cluster (hidden on desktop) — taps go to dashboard -->
       <button type="button" class="topbar-mob-brand" onclick="navMob('dashboard')" aria-label="Flux Planner home">
@@ -1193,10 +1204,6 @@
         <span class="topbar-mob-brand-text">Flux</span>
       </button>
       <div class="topbar-right">
-        <button type="button" class="topbar-new-task-btn topbar-mob-only" onclick="openDashAddTaskModal()" title="Add a new task" aria-label="New task">
-          <span class="topbar-new-task-icon" aria-hidden="true">＋</span>
-          <span class="topbar-new-task-label">New task</span>
-        </button>
         <button type="button" class="topbar-cd" id="topbarCountdown" hidden aria-haspopup="dialog" aria-expanded="false" onclick="fluxToggleCountdownPop(event)"></button>
         <div class="date-pill topbar-desktop-only" id="datePill"></div>
         <div id="syncIndicator" class="sync-badge offline topbar-sync-pill topbar-desktop-only" style="display:none">Local</div>
@@ -1256,7 +1263,7 @@
     </div><!-- /.flux-main-chrome -->
 
     <!-- Notices sub-bar — sits below topbar, never overlaps controls -->
-    <div class="notices-subbar" id="noticesSubbar" aria-live="polite">
+    <div class="notices-subbar" id="noticesSubbar">
       <div id="connectivityBanner" class="connectivity-banner" style="display:none" role="status"></div>
       <div id="examConflictBanner" class="exam-conflict-banner" style="display:none" role="status"></div>
       <div id="gcalBusyBanner" role="status"></div>
@@ -1352,6 +1359,7 @@
             <div class="dash-toolbar-views"></div>
             <!-- Plan my week (flux-week-plan-ui.js): study blocks for the next
                  seven days around classes and plans. Also on the calendar. -->
+            <button type="button" class="pw-entry dash-add-task-btn" id="dashAddTaskBtn" onclick="openDashAddTaskModal()" title="Add a new task">+ Add task</button>
             <button type="button" class="pw-entry" id="dashPlanWeekBtn" onclick="openPlanWeek()">Plan my week</button>
           </div>
         </div>
@@ -1361,7 +1369,6 @@
             <button onclick="setFilter('active',this)" class="tmode-btn active">Active</button>
             <button onclick="setFilter('today',this)" class="tmode-btn">Today</button>
             <button onclick="setFilter('overdue',this)" class="tmode-btn">Overdue</button>
-            <button onclick="setFilter('done',this)" class="tmode-btn">Completed</button>
           </div>
         </div>
 
@@ -1392,10 +1399,6 @@
         </div>
       </div>
 
-      <!-- Reading log card (flux-reading-log.js): this week against the
-           teacher's goal, the streak, and "Log today". Hidden until drawn so
-           it never shows empty; can be switched off in Settings, Layout. -->
-      <section id="readingLogCard" class="frl-dash" data-flux-section="reading" aria-labelledby="frlCardH" hidden></section>
       </div>
 
     </div>
@@ -1428,11 +1431,7 @@
           <div class="cal-nav-row">
             <button type="button" class="btn-sec cal-nav-btn" onclick="changeMonth(-1)" aria-label="Previous month">‹</button>
             <div class="cal-month-picker-wrap">
-              <button type="button" class="cal-month-open-btn" id="calMonthOpenBtn" onclick="toggleCalGlassDropdown(event)" aria-expanded="false" aria-controls="calGlassDropdown" aria-haspopup="dialog">
-                <span id="calMonthLabel" class="cal-month-label-text"></span>
-                <span class="cal-month-open-chev" aria-hidden="true">▾</span>
-              </button>
-              <div id="calGlassDropdown" class="flux-cal-glass-dropdown" hidden role="dialog" aria-label="Pick a date"></div>
+              <span id="calMonthLabel" class="cal-month-label-text"></span>
             </div>
             <button type="button" class="btn-sec cal-nav-btn" onclick="changeMonth(1)" aria-label="Next month">›</button>
           </div>
@@ -1450,7 +1449,6 @@
                      does too. -->
                 <button type="button" id="calCountdownBtn" onclick="fluxCalCountdownToggle()" class="cal-countdown-btn" aria-pressed="false" style="display:none">⏳ Count down</button>
                 <button type="button" id="calAddEventBtn" onclick="openAddEventModal()" class="cal-add-event-btn" style="display:none">+ Add</button>
-                <button type="button" id="calAddEcBtn" onclick="openAddEventModal('ec')" class="cal-add-ec-btn" style="display:none" title="Add an activity from College Prep">+ Activity</button>
                 <button type="button" id="calPlanWeekBtn" onclick="openPlanWeek()" class="pw-entry">Plan my week</button>
               </div>
             </div>
@@ -1499,7 +1497,7 @@
               <input type="checkbox" id="cycleEnabled" style="margin:0"> Show cycle labels on calendar (A / B / …)
             </label>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-              <div><label class="fx-hint">Pattern (comma-separated)</label><input type="text" id="cyclePatternInput" placeholder="A, B" style="margin:4px 0 0"></div>
+              <div><label class="fx-hint">Pattern (comma-separated)</label><input type="text" id="cyclePatternInput" aria-label="Day cycle pattern" placeholder="A, B" style="margin:4px 0 0"></div>
               <div><label class="fx-hint">Anchor date (first “A” or first day in pattern)</label><input type="date" id="cycleAnchorInput" style="margin:4px 0 0"></div>
             </div>
             <label style="display:flex;align-items:center;gap:8px;font-size:.82rem;margin-bottom:10px;cursor:pointer">
@@ -1517,7 +1515,7 @@
               </select>
             </div>
             <div style="display:grid;grid-template-columns:1fr 120px;gap:10px;margin-bottom:10px;align-items:end">
-              <div><label class="fx-hint">Title</label><input type="text" id="weeklyTitleInput" placeholder="e.g. Taekwondo" style="margin:4px 0 0"></div>
+              <div><label class="fx-hint">Title</label><input type="text" id="weeklyTitleInput" aria-label="Weekly event name" placeholder="e.g. Taekwondo" style="margin:4px 0 0"></div>
               <div><label class="fx-hint">Time (optional)</label><input type="time" id="weeklyTimeInput" style="margin:4px 0 0"></div>
             </div>
             <div style="margin-bottom:10px">
@@ -1579,8 +1577,8 @@
         <div class="lx-keepsafe" style="margin-bottom:14px">
           <div class="lx-keepsafe-title">Write it down somewhere safe</div>
           <div class="lx-keepsafe-body">
-            Flux has no email for you, so there is no reset link. If you forget this,
-            only Azfer can get you back in.
+            If you forget it, "Forgot your password?" on the sign-in screen sends a reset link
+            to your confirmed recovery email (Settings, under Account).
           </div>
         </div>
         <div class="mactions">
@@ -1589,7 +1587,7 @@
       </div>
     </div>
 
-    <div id="addEventModal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeAddEventModal()">
+    <div id="addEventModal" role="dialog" aria-modal="true" aria-labelledby="addEventModalTitle" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeAddEventModal()">
       <div class="modal-card">
         <div class="modal-title" id="addEventModalTitle">Add to Calendar</div>
         <div id="addEventTypeRow" style="display:flex;gap:8px;margin-bottom:16px">
@@ -1627,7 +1625,7 @@
 
 
     <!-- EC SCHEDULE MODAL -->
-    <div id="ecScheduleModal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeEcScheduleModal()">
+    <div id="ecScheduleModal" role="dialog" aria-modal="true" aria-labelledby="ecScheduleModalTitle" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeEcScheduleModal()">
       <div class="modal-card">
         <div class="modal-title" id="ecScheduleModalTitle">Add to calendar</div>
         <p id="ecScheduleModalSub" style="font-size:.82rem;color:var(--muted2);margin:-8px 0 14px;line-height:1.45"></p>
@@ -1688,9 +1686,9 @@
         </div>
         <div id="classesList"></div>
         <div class="sch-add-class-row" style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:8px;align-items:end;margin-top:10px">
-          <div><label class="fx-hint">Period <span style="color:var(--muted2);font-weight:400">(A4, B4…)</span></label><input type="text" id="classPeriod" inputmode="text" autocomplete="off" placeholder="4 or B4" style="width:76px;min-width:64px;margin:0;padding:8px 6px" title="Type a number, or A3 / B4 for A-day or B-day period"></div>
-          <div><label class="fx-hint">Class Name</label><input type="text" id="className" placeholder="e.g. Chemistry" style="margin:0"></div>
-          <div><label class="fx-hint">Teacher</label><input type="text" id="classTeacher" placeholder="e.g. Mr. Smith" style="margin:0"></div>
+          <div><label class="fx-hint">Period <span style="color:var(--muted2);font-weight:400">(A4, B4…)</span></label><input type="text" id="classPeriod" aria-label="Period" inputmode="text" autocomplete="off" placeholder="4 or B4" style="width:76px;min-width:64px;margin:0;padding:8px 6px" title="Type a number, or A3 / B4 for A-day or B-day period"></div>
+          <div><label class="fx-hint">Class Name</label><input type="text" id="className" aria-label="Class name" placeholder="e.g. Chemistry" style="margin:0"></div>
+          <div><label class="fx-hint">Teacher</label><input type="text" id="classTeacher" aria-label="Teacher" placeholder="e.g. Mr. Smith" style="margin:0"></div>
           <button onclick="addClass()" style="padding:10px 14px;align-self:end" aria-label="Add class">+</button>
         </div>
         <div class="sch-class-meta-row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
@@ -1899,7 +1897,7 @@
     <!-- ─── Google + Canvas hub (Gmail, Tasks, LMS) — all account types ─── -->
     <div id="canvas" class="panel flux-page">
       <header class="flux-page-header flux-page-header--lead">
-        <p class="flux-page-sub" id="canvasHubPageSub">Sign in once for Gmail, Tasks, Calendar, and Docs. Use the Canvas tab below when your school uses Canvas LMS.</p>
+        <p class="flux-page-sub" id="canvasHubPageSub">Canvas, Schoology and Moodle in one place. Google is paused, so Gmail, Tasks and Docs are not connected.</p>
       </header>
       <div class="flux-stack" id="canvasHubStack"></div>
     </div>
@@ -2015,11 +2013,11 @@
       <div class="card" data-student-profile-only>
         <h3>Profile Info</h3>
         <label class="fx-caption">Name</label>
-        <input type="text" id="name" placeholder="Your name">
+        <input type="text" id="name" aria-label="Your name" placeholder="Your name">
         <label class="fx-caption">Grade</label>
-        <select id="grade"><option value="9">9th Grade</option><option value="10" selected>10th Grade</option><option value="11">11th Grade</option><option value="12">12th Grade</option></select>
+        <select id="grade" aria-label="Grade"><option value="9">9th Grade</option><option value="10" selected>10th Grade</option><option value="11">11th Grade</option><option value="12">12th Grade</option></select>
         <label class="fx-caption">School</label>
-        <input type="text" id="profileSchool" placeholder="e.g. Lincoln High School">
+        <input type="text" id="profileSchool" aria-label="School" placeholder="e.g. Lincoln High School">
         <label class="fx-caption">Academic Program</label>
         <div id="programOptions" style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-bottom:10px;font-size:.82rem;line-height:1.35">
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none"><input type="checkbox" name="programOpt" value="General"> General</label>
@@ -2089,13 +2087,13 @@
            the Profile tab, four cards down under "Academic Stats", where
            nobody found them. They belong with the rest of the application. -->
       <div class="stabs flux-ec-stabs" role="tablist" aria-label="College prep sections">
-        <button type="button" class="stab active" role="tab" aria-selected="true" onclick="switchEcSection(&#39;activities&#39;,this)">Activities</button>
-        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchEcSection(&#39;colleges&#39;,this)">Colleges</button>
-        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchEcSection(&#39;scores&#39;,this)">Test scores</button>
+        <button type="button" class="stab active" role="tab" aria-selected="true" id="ectab-activities" aria-controls="ecpane-activities" onclick="switchEcSection(&#39;activities&#39;,this)">Activities</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="ectab-colleges" aria-controls="ecpane-colleges" onclick="switchEcSection(&#39;colleges&#39;,this)">Colleges</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="ectab-scores" aria-controls="ecpane-scores" onclick="switchEcSection(&#39;scores&#39;,this)">Test scores</button>
       </div>
       <div class="flux-stack">
 
-      <div class="spane active" id="ecpane-activities">
+      <div class="spane active" id="ecpane-activities" role="tabpanel" aria-labelledby="ectab-activities">
       <!-- Activity list -->
       <div class="card">
         <h3>My Activities</h3>
@@ -2131,7 +2129,7 @@
       </div>
       </div>
 
-      <div class="spane" id="ecpane-colleges">
+      <div class="spane" id="ecpane-colleges" role="tabpanel" aria-labelledby="ectab-colleges">
       <!-- Target Schools -->
       <div class="card">
         <h3>Target Schools</h3>
@@ -2168,7 +2166,7 @@
       </div>
       </div>
 
-      <div class="spane" id="ecpane-scores">
+      <div class="spane" id="ecpane-scores" role="tabpanel" aria-labelledby="ectab-scores">
       <!-- GPA, SAT, ACT and AP/IB results. Filled by flux-academic-scores.js;
            left empty here so there is no flash of markup the module replaces. -->
       <div id="academicScoresMount"></div>
@@ -2194,7 +2192,7 @@
                icons rather than colour emoji. The commit that went emoji-free
                deleted these five and put nothing back, leaving five identical
                blank circles under "How are you feeling today?". The names are
-               the ones flux-mood-prompt.js already shows for the same 1-5 scale,
+               the ones the old mood pop-up used for the same 1-5 scale,
                rather than a second vocabulary for the same thing. aria-label as
                well as the face, because the SVG iconify substitutes is
                aria-hidden and carries no accessible name of its own.
@@ -2214,14 +2212,14 @@
           <button class="mood-btn" onclick="setMood(5,this)" aria-label="Great" aria-pressed="false" title="Great">😄</button>
         </div>
         <div style="font-size:.78rem;color:var(--muted2);margin-bottom:4px">Stress level:</div>
-        <input type="range" id="stressSlider" min="1" max="10" value="3" oninput="setStress(this.value)" style="margin-bottom:0">
+        <input type="range" id="stressSlider" aria-label="Stress level, 1 to 10" min="1" max="10" value="3" oninput="setStress(this.value)" style="margin-bottom:0">
         <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px;margin-bottom:10px"><span>Low</span><span id="stressVal">3</span><span>High</span></div>
-        <input type="number" id="sleepHours" placeholder="Hours slept last night" min="0" max="14" step="0.5">
+        <input type="number" id="sleepHours" aria-label="Hours slept last night" placeholder="Hours slept last night" min="0" max="14" step="0.5">
         <button onclick="saveMoodEntry()" style="width:100%">Save Check-In</button>
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border2)">
           <div style="font-size:.78rem;font-weight:600;margin-bottom:6px">Journal line</div>
           <div style="font-size:.72rem;color:var(--muted2);margin-bottom:8px">One sentence for today — saved per day on this device.</div>
-          <input type="text" id="journalLine" placeholder="e.g. Grateful for clear skies" style="width:100%;margin-bottom:8px" maxlength="500">
+          <input type="text" id="journalLine" aria-label="One line about today" placeholder="e.g. Grateful for clear skies" style="width:100%;margin-bottom:8px" maxlength="500">
           <button type="button" onclick="saveJournalLine()" style="width:100%" class="btn-sec">Save line</button>
         </div>
         <div id="burnoutAlert" style="display:none;margin-top:10px;padding:10px 14px;background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);border-radius:8px;font-size:.82rem;color:var(--red)">Burnout warning: high stress + low sleep. Take it easy today.</div>
@@ -2243,7 +2241,7 @@
       <div class="pt-top">
         <h1 class="pt-title">Periodic Table <span class="pt-sub">— all 118 elements · click any cell</span></h1>
         <div class="pt-tools">
-          <input type="text" id="ptSearch" placeholder="Search element, symbol or #" autocomplete="off">
+          <input type="text" id="ptSearch" aria-label="Search the periodic table" placeholder="Search element, symbol or #" autocomplete="off">
         </div>
       </div>
 
@@ -2390,7 +2388,7 @@
                 <button type="button" class="ai-attach" id="aiAttachBtn" onclick="document.getElementById('aiImgUpload')?.click()" aria-label="Attach image">
                   <svg class="ai-attach__ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05 12.25 20.24a5.47 5.47 0 0 1-7.73-7.73L15.91 4.12a3.65 3.65 0 0 1 5.16 5.16l-8.72 8.72a2.43 2.43 0 0 1-3.44-3.44l8.09-8.09"/></svg>
                 </button>
-                <textarea id="aiInput" class="ai-input-field" rows="1" placeholder="Ask anything about your planner…"></textarea>
+                <textarea id="aiInput" aria-label="Message Flux AI" class="ai-input-field" rows="1" placeholder="Ask anything about your planner…"></textarea>
                 <button type="button" class="ai-send" id="aiSendBtn" onclick="sendAI()" title="Send (Enter)" aria-label="Send message">
                   <svg class="ai-send__ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
                 </button>
@@ -2411,10 +2409,6 @@
       </div>
     </div>
 
-    <!-- ─── OWNER / DEV CONTROL (injected from sidebar when role allows) ─── -->
-    <div id="flux_control" class="panel flux-page flux-control-tab">
-      <div id="fluxControlMount" class="flux-control-mount"></div>
-    </div>
 
     <!-- ─── SETTINGS ─── -->
     <div id="settings" class="panel flux-page">
@@ -2438,22 +2432,22 @@
       <div class="stabs flux-settings-stabs" role="tablist" aria-label="Settings sections">
         <!-- Look was eleven cards doing three jobs. Split three ways: what the
              app looks like, what makes it readable, and where things sit. -->
-        <button type="button" class="stab active" role="tab" aria-selected="true" onclick="switchStab('theme',this)">Theme</button>
-        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('text',this)">Text &amp; reading</button>
+        <button type="button" class="stab active" role="tab" aria-selected="true" id="stab-theme" aria-controls="spane-theme" onclick="switchStab('theme',this)">Theme</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-text" aria-controls="spane-text" onclick="switchStab('text',this)">Text &amp; reading</button>
         <!-- id stays `appearance`: eight modules inject their settings card
              into #spane-appearance and none of them throw when it is missing,
              so a rename would quietly lose six features' settings. -->
-        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('appearance',this)">Layout</button>
-        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('account',this)">Account</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-appearance" aria-controls="spane-appearance" onclick="switchStab('appearance',this)">Layout</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-account" aria-controls="spane-account" onclick="switchStab('account',this)">Account</button>
         <!-- `data` id kept for the same reason as `appearance`:
              flux-email-task-inbox and flux-automation-hooks both call
              switchStab('data') to reveal their own injected card. -->
-        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('data',this)">Your data &amp; info</button>
-        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('help',this)">Help</button>
-        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('about',this)">About</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-data" aria-controls="spane-data" onclick="switchStab('data',this)">Your data &amp; info</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-help" aria-controls="spane-help" onclick="switchStab('help',this)">Help</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" id="stab-about" aria-controls="spane-about" onclick="switchStab('about',this)">About</button>
       </div>
       <div class="flux-stack flux-settings-panes">
-      <div class="spane active" id="spane-theme">
+      <div class="spane active" id="spane-theme" role="tabpanel" aria-labelledby="stab-theme">
         <div class="card">
           <h3>Themes</h3>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px">
@@ -2485,7 +2479,7 @@
             <div class="swatch" style="background:#f59e0b" onclick="setAccent('#f59e0b','245,158,11',this)"></div>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
-            <input type="color" id="customColor" value="#00bfff" style="flex:0 0 44px;width:44px;height:38px;margin:0;padding:2px;border-radius:8px;cursor:pointer">
+            <input type="color" id="customColor" aria-label="Custom accent colour" value="#00bfff" style="flex:0 0 44px;width:44px;height:38px;margin:0;padding:2px;border-radius:8px;cursor:pointer">
             <button id="setCustomAccentBtn" onclick="applyCustomColor()" style="flex:1">Set custom accent</button>
           </div>
         </div>
@@ -2496,27 +2490,27 @@
           <div style="display:flex;flex-direction:column;gap:10px">
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div><div style="font-size:.85rem;font-weight:600">Background</div><div class="fx-hint">Main page bg</div></div>
-              <input type="color" id="cc-bg" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--bg',this.value)">
+              <input type="color" id="cc-bg" aria-label="Background colour" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--bg',this.value)">
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div><div style="font-size:.85rem;font-weight:600">Card background</div><div class="fx-hint">Cards &amp; panels</div></div>
-              <input type="color" id="cc-card" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--card-solid',this.value)">
+              <input type="color" id="cc-card" aria-label="Card colour" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--card-solid',this.value)">
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div><div style="font-size:.85rem;font-weight:600">Text color</div><div class="fx-hint">Main text</div></div>
-              <input type="color" id="cc-text" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--text',this.value)">
+              <input type="color" id="cc-text" aria-label="Text colour" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--text',this.value)">
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div><div style="font-size:.85rem;font-weight:600">Green / Success</div><div class="fx-hint">Done states, streaks</div></div>
-              <input type="color" id="cc-green" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--green',this.value)">
+              <input type="color" id="cc-green" aria-label="Success colour" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--green',this.value)">
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div><div style="font-size:.85rem;font-weight:600">Red / Danger</div><div class="fx-hint">Overdue, high priority</div></div>
-              <input type="color" id="cc-red" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--red',this.value)">
+              <input type="color" id="cc-red" aria-label="Warning colour" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--red',this.value)">
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div><div style="font-size:.85rem;font-weight:600">Gold / Warning</div><div class="fx-hint">Badges, goals</div></div>
-              <input type="color" id="cc-gold" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--gold',this.value)">
+              <input type="color" id="cc-gold" aria-label="Highlight colour" style="width:44px;height:34px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" onchange="applyCustomVar('--gold',this.value)">
             </div>
           </div>
           <button onclick="resetCustomColors()" class="btn-sec" style="width:100%;margin-top:14px;font-size:.78rem">↺ Reset colors</button>
@@ -2527,7 +2521,7 @@
            motion and the accessibility suite are the settings someone changes
            because they need to read the app, not because they want it to look
            a particular way, so they are no longer mixed in with themes. -->
-      <div class="spane" id="spane-text">
+      <div class="spane" id="spane-text" role="tabpanel" aria-labelledby="stab-text">
         <div class="card" style="margin-bottom:10px">
           <div class="srow" style="border:none">
             <div><div class="slabel">High Contrast Mode</div><div class="ssub">Boost text and border contrast for accessibility</div></div>
@@ -2538,7 +2532,7 @@
           <h3>Text &amp; motion</h3>
           <div class="srow" style="border:none;flex-direction:column;align-items:stretch;gap:10px">
             <div><div class="slabel">Font size</div><div class="ssub">Scales the whole app (85–125%)</div></div>
-            <input type="range" id="fontScaleSlider" min="85" max="125" value="100" style="width:100%;margin:0" oninput="setFontScale(this.value)">
+            <input type="range" id="fontScaleSlider" aria-label="Text size" min="85" max="125" value="100" style="width:100%;margin:0" oninput="setFontScale(this.value)">
             <div style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace" id="fontScaleLabel">100%</div>
           </div>
           <div class="srow" style="border:none;margin-top:8px">
@@ -2566,7 +2560,26 @@
            they simply find nothing and inject nowhere. Renaming this pane
            would have made six features' settings silently disappear, which is
            exactly the kind of break that ships unnoticed. -->
-      <div class="spane" id="spane-appearance">
+      <div class="spane" id="spane-appearance" role="tabpanel" aria-labelledby="stab-appearance">
+        <div class="card" id="fluxLookCard">
+          <h3>Look</h3>
+          <p style="font-size:.75rem;color:var(--muted2);margin:0 0 12px;line-height:1.55">New uses underline tabs, rounded-box buttons and the numbers header on the dashboard. Classic brings back the pill buttons and greeting.</p>
+          <select id="fluxLookSelect" aria-label="Look" onchange="window.FluxLook&&FluxLook.set(this.value)">
+            <option value="flat">New</option>
+            <option value="classic">Classic</option>
+          </select>
+          <script>(function(){var s=document.getElementById('fluxLookSelect');if(s&&window.FluxLook)s.value=FluxLook.get();})();</script>
+        </div>
+        <div class="card" id="fluxFontCard">
+          <h3>Font</h3>
+          <p style="font-size:.75rem;color:var(--muted2);margin:0 0 12px;line-height:1.55">Changes the lettering across Flux. Synced to your other devices.</p>
+          <select id="fluxFontSelect" aria-label="Font" onchange="window.fluxSetFont&&fluxSetFont(this.value)"></select>
+        </div>
+        <div class="card" id="fluxTextureCard">
+          <h3>Background texture</h3>
+          <p style="font-size:.75rem;color:var(--muted2);margin:0 0 12px;line-height:1.55">A textured backdrop behind your cards. It is tinted to your theme so text stays easy to read.</p>
+          <div class="fx-tex-grid" id="fluxTextureGrid" role="group" aria-label="Background texture"></div>
+        </div>
         <div class="card">
           <h3>Panel layout</h3>
           <p style="font-size:.75rem;color:var(--muted2);margin:0 0 12px;line-height:1.55">Reorder major blocks on the <strong>Dashboard</strong> and <strong>Calendar</strong>. Preference is saved on this device.</p>
@@ -2579,32 +2592,11 @@
           <div class="tab-customizer" id="tabCustomizerList"></div>
           <button onclick="resetTabs()" class="btn-sec" style="width:100%;margin-top:14px;font-size:.78rem">↺ Reset to defaults</button>
         </div>
-        <div class="card" id="platformUiCard" style="display:none;border-color:rgba(var(--accent-rgb),.28)">
-          <!-- Owner only: hides sidebar tabs for EVERY planner. Backed by
-               public.platform_settings, written via the release-admin function.
-               Moved here from Data & info. It is the same decision as the card
-               directly above — which tabs appear in the sidebar — just applied to
-               everyone instead of to you, so having the two in different sections
-               meant hunting for the second one. flux-platform-ui.js finds it by
-               id, so the pane it lives in was never load-bearing. -->
-          <h3>Sidebar tabs — everyone</h3>
-          <p class="flux-pui-help">Untick a tab to hide it from every Flux planner, not just yours. Dashboard and Settings can't be hidden — they're the way back here.</p>
-          <div class="flux-pui-list" id="platformUiList"></div>
-          <p class="flux-pui-status" id="platformUiStatus"></p>
-          <div class="flux-pui-actions">
-            <button type="button" class="flux-pui-save" id="platformUiSave">Save for everyone</button>
-            <button type="button" class="flux-pui-reset" id="platformUiReset">Show all again</button>
-          </div>
-        </div>
       </div>
-      <div class="spane" id="spane-account">
+      <div class="spane" id="spane-account" role="tabpanel" aria-labelledby="stab-account">
         <div class="card">
           <h3>Account</h3>
           <div id="accountSignedOut" style="text-align:center;padding:10px 0">
-            <div id="guestAccountBanner" style="display:none;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:12px;padding:12px;margin-bottom:16px;text-align:left">
-              <div style="font-size:.82rem;font-weight:700;color:var(--gold);margin-bottom:4px">You're using a guest account</div>
-              <div style="font-size:.75rem;color:var(--muted2);line-height:1.6">Your data is saved on this device only. Sign in to back everything up and access it from any device.</div>
-            </div>
             <div style="font-size:.85rem;color:var(--muted2);margin-bottom:14px" id="accountSignedOutMsg">Sign in to sync data across devices</div>
             <!-- "Connect Google Account" removed for the same reason as the button
                  on the login screen: it runs the same OAuth flow, and that flow can
@@ -2625,14 +2617,33 @@
                  an account that has no recovery route. -->
             <div class="fx-pw" style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
               <div class="slabel" style="margin-bottom:2px">Change your password</div>
-              <div class="ssub" style="margin-bottom:10px">Pick something you'll remember. There's no reset email — write the new one down.</div>
+              <div class="ssub" style="margin-bottom:10px">Pick something you'll remember. If you forget it, a reset link goes to your recovery email below.</div>
               <div class="fx-pw-row"><input type="password" id="pwCurrent" autocomplete="current-password" placeholder="Current password"></div>
               <div class="fx-pw-row"><input type="password" id="pwNew" autocomplete="new-password" placeholder="New password"></div>
               <div class="fx-pw-row"><input type="password" id="pwNew2" autocomplete="new-password" placeholder="Type the new one again"></div>
               <div id="pwMsg" class="fx-pw-msg" role="status" aria-live="polite"></div>
               <button type="button" id="pwSaveBtn" class="btn-sec" style="width:100%;margin-top:8px" onclick="fluxChangePassword()">Change password</button>
             </div>
+            <!-- Recovery email (flux-recovery.js). The one real address kept
+                 beside an account, for a password reset link and nothing else.
+                 The current password is asked for, for the same reason the card
+                 above asks: a minute at an unlocked laptop must not be enough to
+                 point someone's account at another inbox. -->
+            <div class="fx-pw" id="fluxRecoveryCard" style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
+              <div class="slabel" style="margin-bottom:2px">Recovery email</div>
+              <div class="ssub" id="recStatus" style="margin-bottom:10px">Add an email so you can reset a forgotten password yourself. It is used for that and nothing else.</div>
+              <div class="fx-pw-row"><input type="email" id="recEmail" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com" aria-label="Recovery email"></div>
+              <div class="fx-pw-row"><input type="password" id="recPassword" autocomplete="current-password" placeholder="Current password" aria-label="Current password"></div>
+              <div id="recMsg" class="fx-pw-msg" role="status" aria-live="polite"></div>
+              <button type="button" id="recSaveBtn" class="btn-sec" style="width:100%;margin-top:8px" onclick="FluxRecovery.save()">Save and send confirmation</button>
+            </div>
           </div>
+        </div>
+        <!-- Roles the owner gave this account (Owner Controls › Roles). Filled by
+             flux-my-roles.js; stays hidden for anyone without a role. -->
+        <div class="card" id="fluxMyRolesCard" hidden>
+          <h3>Your roles</h3>
+          <div id="fluxMyRoles" aria-live="polite"></div>
         </div>
         <div class="card" id="studentEducatorUpgradeCard" style="display:none">
           <h3>School workspace</h3>
@@ -2660,7 +2671,7 @@
           </div>
         </div>
       </div>
-      <div class="spane" id="spane-data">
+      <div class="spane" id="spane-data" role="tabpanel" aria-labelledby="stab-data">
         <!-- Your data — the export/delete rights the Privacy Policy promises.
              Until this card existed the only delete path was owner-gated inside
              the dev panel, so the published policy pointed at a button no
@@ -2709,7 +2720,7 @@
           </div>
         </div>
       </div>
-      <div class="spane" id="spane-help">
+      <div class="spane" id="spane-help" role="tabpanel" aria-labelledby="stab-help">
         <div class="card">
           <h3>Planner tour</h3>
           <div class="srow" style="border:none">
@@ -2724,9 +2735,9 @@
                possible — accounts are a name and a password. Someone reading the
                FAQ to solve a sync problem was being sent to a button that is not
                there. -->
-          <details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600;font-size:.85rem">Guest vs signing in?</summary><p class="fx-note">Guest keeps data on this device only. Signing in with your name and password syncs encrypted planner data to your account so you can use multiple devices.</p></details>
-          <details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600;font-size:.85rem">Will I lose data?</summary><p class="fx-note">Clearing browser data or uninstalling the browser can remove local guest data. Sign in with your name and password to sync your planner to the cloud across devices.</p></details>
-          <details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600;font-size:.85rem">Where are the new features?</summary><p class="fx-note"><strong>Plan my week</strong> is the button above your tasks on the Dashboard, and on the Calendar. <strong>Reading log</strong> has its own tab under Learn in the sidebar. The <strong>verb drill</strong> is in Study tools, under French, German or Spanish. The row at the top of Study tools opens the other Flux apps: <strong>Flux Tutor</strong>, the <strong>Grapher</strong> (with 3D), <strong>Pixel</strong> (with maths figures), <strong>Flashcards</strong>, the <strong>Calculator</strong>, the <strong>Periodic Table</strong> and <strong>Composer</strong>. The nine dots at the top open the same list.</p></details>
+          <details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600;font-size:.85rem">Do I need an account?</summary><p class="fx-note">Yes. Signing in with your name and password syncs encrypted planner data to your account so you can use multiple devices.</p></details>
+          <details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600;font-size:.85rem">Will I lose data?</summary><p class="fx-note">Your planner syncs to your account, so clearing browser data or changing devices does not remove what has already synced.</p></details>
+          <details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600;font-size:.85rem">Where are the new features?</summary><p class="fx-note"><strong>Plan my week</strong> is the button above your tasks on the Dashboard, and on the Calendar. <strong>Reading log</strong> has its own tab under Learn in the sidebar. The <strong>verb drill</strong> is in Study tools, under French, German or Spanish. The row at the top of Study tools opens the other Flux apps. The nine dots at the top open the same list.</p></details>
           <details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600;font-size:.85rem">I ticked off a task by mistake</summary><p class="fx-note">Press <strong>Undo</strong> on the bar that appears, or Ctrl+Z (⌘Z on a Mac). On a phone you can also swipe a task right to tick it off, and Undo works the same way. Finished tasks are listed under Completed, newest first.</p></details>
           <details><summary style="cursor:pointer;font-weight:600;font-size:.85rem">What does AI see?</summary><p class="fx-note">AI only runs when you press a button that uses it — reading a photo of your timetable, Suggest steps on a task, or College Prep’s activity ideas — and only sees what that button sends. See the Privacy Policy for details.</p></details>
         </div>
@@ -2741,7 +2752,7 @@
           <p style="font-size:.78rem;color:var(--muted2);line-height:1.65;margin:0 0 12px">Quick facts for administrators, counselors, and parents. Flux is a <strong>voluntary</strong> student planner—it does not replace official school systems (Canvas, SIS, email from the district).</p>
           <ul style="margin:0;padding-left:1.15rem;font-size:.78rem;color:var(--text2);line-height:1.7">
             <li style="margin-bottom:8px"><strong>Voluntary use.</strong> Students choose whether to use it. Teachers and staff are not required to adopt or support it.</li>
-            <li style="margin-bottom:8px"><strong>Data.</strong> Planner data can stay on the device (guest) or sync to a signed-in account (cloud). Optional connections (e.g. Canvas) only use what the student authorizes. Details are in the Privacy Policy.</li>
+            <li style="margin-bottom:8px"><strong>Data.</strong> Planner data syncs to the student's signed-in account (cloud). Optional connections (e.g. Canvas) only use what the student authorizes. Details are in the Privacy Policy.</li>
             <li style="margin-bottom:8px"><strong>AI.</strong> AI answers can be wrong—double-check anything you rely on.</li>
             <li style="margin-bottom:8px"><strong>Audience.</strong> Built for <strong>high school</strong> students; younger users should use it with a parent or guardian and school policy in mind.</li>
             <li style="margin-bottom:8px"><strong>Accessibility.</strong> Settings → Text &amp; reading has high contrast, text size and reduce motion; we welcome feedback on barriers.</li>
@@ -2754,7 +2765,7 @@
           </div>
         </div>
       </div>
-      <div class="spane" id="spane-about">
+      <div class="spane" id="spane-about" role="tabpanel" aria-labelledby="stab-about">
         <div class="card" style="background:linear-gradient(135deg,rgba(var(--accent-rgb),.08),rgba(var(--purple-rgb),.04));border-color:rgba(var(--accent-rgb),.2)">
           <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap">
             <div style="flex-shrink:0;line-height:0;display:flex;align-items:center;gap:9px"><svg viewBox="0 0 680 680" width="30" height="30" aria-hidden="true" style="flex:0 0 auto;display:block;overflow:visible"><defs><linearGradient id="fluxMarkAi" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#00C2FF" stop-opacity="0.12"/><stop offset="40%" stop-color="#00C2FF"/><stop offset="60%" stop-color="#7C5CFF"/><stop offset="100%" stop-color="#7C5CFF" stop-opacity="0.12"/></linearGradient></defs><g transform="translate(392,340)"><path d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z" fill="none" stroke="url(#fluxMarkAi)" stroke-width="30" stroke-linecap="round"/></g><circle cx="392" cy="340" r="17" fill="#00C2FF"/><circle cx="612" cy="300" r="14" fill="#00C2FF"/></svg><svg class="flux-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 52" width="140" height="36" style="max-width:min(160px,42vw);height:auto;display:block;overflow:visible;filter:drop-shadow(0 4px 16px rgba(0,0,0,.2))" aria-hidden="true" text-rendering="geometricPrecision">
@@ -2844,13 +2855,6 @@
           <div class="flux-changelog-list" id="changelogList"></div>
           <button type="button" class="flux-changelog-more" id="changelogMore" style="display:none">Show more</button>
         </div>
-        <div class="card" id="settingsMasterBacklogCard" style="display:none">
-          <h3>Master backlog</h3>
-          <div class="srow" style="border:none">
-            <div><div class="slabel">Full improvement catalog</div><div class="ssub">Searchable list of roadmap items (AI, calendar, tasks, polish, …)</div></div>
-            <button type="button" onclick="openFluxMasterBacklog()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Open backlog</button>
-          </div>
-        </div>
       </div>
       </div><!-- /flux-settings-panes -->
       </div><!-- /flux-settings-shell -->
@@ -2903,15 +2907,24 @@
 </div><!-- /app -->
 
 <!-- NEW TASK (full form) — opened from top bar ＋ -->
-<div id="dashAddTaskModal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeDashAddTaskModal()">
+<div id="dashAddTaskModal" role="dialog" aria-modal="true" aria-labelledby="dashAddTaskModalTitle" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeDashAddTaskModal()">
   <div class="modal-card" onclick="event.stopPropagation()">
-    <div class="modal-title">New task</div>
+    <div class="modal-title" id="dashAddTaskModalTitle">New task</div>
+    <!-- Shown only when "Task" was picked in the calendar's Add dialog, so the
+         other two types stay one tap away instead of vanishing with it. -->
+    <div id="taskCalTypeRow" style="display:none;gap:8px;margin-bottom:16px">
+      <button type="button" id="taskCalTypeTask" style="flex:1;background:var(--accent)" aria-pressed="true">Task</button>
+      <button type="button" id="taskCalTypeEvent" onclick="closeDashAddTaskModal(true);openAddEventModal('event',true)" style="flex:1" class="btn-sec" aria-pressed="false">Event</button>
+      <button type="button" id="taskCalTypeEc" onclick="closeDashAddTaskModal(true);openAddEventModal('ec',true)" style="flex:1" class="btn-sec" aria-pressed="false">Activity</button>
+    </div>
     <div class="modal-field-group" style="margin-bottom:10px">
       <label class="modal-micro-label" for="taskName">Title</label>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <input type="text" id="taskName" placeholder="Assignment, test, project..." style="flex:1;min-width:160px;margin:0">
-        <button type="button" onclick="showTemplateMenu()" title="Use a template" style="padding:8px 10px;border-radius:10px;background:var(--card2);border:1px solid var(--border2);cursor:pointer;font-size:.72rem;font-weight:600;flex-shrink:0;white-space:nowrap">Templates</button>
+        <input type="text" id="taskName" placeholder="e.g. Bio quiz friday, essay due 10/24" enterkeyhint="done" autocomplete="off" style="flex:1;min-width:160px;margin:0">
+        <button type="button" onclick="showTemplateMenu()" title="Use a template" style="padding:8px 10px;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);cursor:pointer;font-size:.72rem;font-weight:600;flex-shrink:0;white-space:nowrap">Templates</button>
       </div>
+      <!-- Says what the title was read as ("Due Fri, Oct 23 · Quiz"); see ntReadTitle in app.js. -->
+      <div id="taskNameParsed" hidden aria-live="polite" style="margin-top:6px;font-size:.72rem;color:var(--accent)"></div>
     </div>
     <!-- What you need to add a task sits up front; the rest waits behind
          "More options" (Azfer, 2026-10-02: the window was crowded and felt
@@ -2953,9 +2966,9 @@
 </div>
 
 <!-- EDIT TASK MODAL -->
-<div id="editModal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeEdit()">
+<div id="editModal" role="dialog" aria-modal="true" aria-labelledby="editModalTitle" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeEdit()">
   <div class="modal-card">
-    <div class="modal-title">Edit Task</div>
+    <div class="modal-title" id="editModalTitle">Edit Task</div>
     <div class="mrow"><label>Task</label><input type="text" id="editText"></div>
     <!-- Same split as New task: the common fields up front, the rest behind
          "More options", which opens by itself when the task already uses one. -->
@@ -2997,9 +3010,9 @@
 </div>
 
 <!-- Global Search -->
-<div class="search-overlay" id="searchOverlay" onclick="if(event.target===this)closeGlobalSearch()">
+<div class="search-overlay" id="searchOverlay" role="dialog" aria-label="Search" onclick="if(event.target===this)closeGlobalSearch()">
   <div class="search-box flux-ac-frosted-strip">
-    <input class="search-input" id="globalSearchInput" type="text" placeholder="Search tasks, notes, classes..." autocomplete="off" oninput="handleGlobalSearch(this.value)">
+    <input class="search-input" id="globalSearchInput" aria-label="Search tasks, notes and classes" type="text" placeholder="Search tasks, notes, classes..." autocomplete="off" oninput="handleGlobalSearch(this.value)">
     <div class="search-results" id="globalSearchResults"></div>
   </div>
 </div>
@@ -3007,21 +3020,24 @@
 <!-- Quick Add Panel -->
 <div class="quick-add-panel" id="quickAddPanel">
   <div class="quick-add-panel-inner flux-ac-ai-chat-shell flux-ac-corner-accents flux-ac-scanline-light">
-    <input type="text" id="quickAddInput" list="quickAddHistList" placeholder="Type a task... &quot;Math HW Friday high&quot;" autocomplete="off" oninput="updateQuickAddPreview(this.value)">
+    <input type="text" id="quickAddInput" aria-label="Quick add a task" list="quickAddHistList" placeholder="Type a task... &quot;Math HW Friday high&quot;" autocomplete="off" oninput="updateQuickAddPreview(this.value)">
     <datalist id="quickAddHistList"></datalist>
     <button onclick="submitQuickAdd()" id="quickAddSubmit">Add</button>
   </div>
   <div id="quickAddPreviewTitle" class="quick-add-preview-title" aria-live="polite"></div>
   <div id="quickAddParsed" class="quick-add-parsed"></div>
-  <div class="quick-add-hint">Enter to add · Esc to close · <span class="quick-add-hint-strong">Natural language</span> — dates, priorities, subjects, types, “30min” · <span class="quick-add-hint-strong">⌘⇧K</span> search · <span class="quick-add-hint-strong">⌘K</span> palette · <button type="button" class="quick-add-agent-link" onclick="closeQuickAdd();openFluxAgent({prefill:document.getElementById('quickAddInput')?.value?('Help me refine this task idea: '+document.getElementById('quickAddInput').value):'Help me turn a rough idea into a clear task with date, priority, and subject.'})">Flux AI</button></div>
+  <div class="quick-add-hint">Enter to add · Esc to close · <span class="quick-add-hint-strong">Type it like a note</span> — “bio quiz fri 3pm”, “essay due 10/24”, “ch 5 hw tmrw 30 min” · <span class="quick-add-hint-strong">⌘⇧K</span> search · <span class="quick-add-hint-strong">⌘K</span> palette · <button type="button" class="quick-add-agent-link" onclick="closeQuickAdd();openFluxAgent({prefill:document.getElementById('quickAddInput')?.value?('Help me refine this task idea: '+document.getElementById('quickAddInput').value):'Help me turn a rough idea into a clear task with date, priority, and subject.'})">Flux AI</button></div>
 </div>
 
 <div id="toastLive" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
-<script type="module" src="public/bundles/flux-vendor.984821d2.js"></script>
-<script defer src="public/bundles/flux-core.9cae8369.js"></script>
-<script defer src="public/bundles/flux-features.076617c7.js"></script>
+<script type="module" src="public/bundles/flux-vendor.b78557ee.js"></script>
+<script defer src="public/bundles/flux-core.ad65087c.js"></script>
+<script defer src="public/bundles/flux-features.7de78789.js"></script>
+<script type="module" src="public/bundles/flux-vendor.b78557ee.js"></script>
+<script defer src="public/bundles/flux-core.ad65087c.js"></script>
+<script defer src="public/bundles/flux-features.7de78789.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
@@ -3069,7 +3085,6 @@
   </div>
 
   <div class="more-sheet-grid">
-    <div id="moreSheetAdminSlot" class="more-sheet-admin-slot" style="display:contents"></div>
     <button type="button" class="more-sheet-item" data-nav-tab="notes" onclick="navMob('notes')">
       <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9 M16.4 3.6a2 2 0 0 1 2.8 2.8L7.5 18.1 3 19.5l1.4-4.5Z"/></svg></span><span class="more-sheet-label">Notebook</span>
     </button>
@@ -3081,6 +3096,12 @@
     </button>
     <button type="button" class="more-sheet-item" data-nav-tab="profile" onclick="navMob('profile')">
       <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2 M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/></svg></span><span class="more-sheet-label">Profile</span>
+    </button>
+    <!-- The nine-dot switcher in the phone top bar is easy to miss, so the
+         rest of the Flux apps get a named way in here too. A button, not a
+         link, so it takes the sheet's pill shape like the rest. -->
+    <button type="button" class="more-sheet-item" data-action="suite" onclick="closeMobileSheet();location.href='suite.html'">
+      <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span><span class="more-sheet-label">Flux Suite</span>
     </button>
     <!-- B2: the floating Report fab collapses into this item on <768px -->
     <button type="button" class="more-sheet-item" data-action="report" onclick="closeMobileSheet();try{openFluxFeedbackModal()}catch(e){}">
@@ -3113,7 +3134,7 @@
   <div class="more-sheet-section">
     <div class="more-sheet-section-title">Quick actions</div>
     <button type="button" class="more-sheet-row" onclick="closeMobileSheet();window.fluxOpenQuickAdd&&fluxOpenQuickAdd()">
-      <span class="more-sheet-icon" style="font-size:1.15rem">＋</span>
+      <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span>
       <span class="lbl">Quick add</span>
       <span style="opacity:.5;font-size:.8rem">space</span>
     </button>
@@ -3131,5 +3152,6 @@
   </div>
 </div>
 
+<script defer src="public/js/flux-scroll-story.js?v=afe817fc"></script>
 </body>
 </html>

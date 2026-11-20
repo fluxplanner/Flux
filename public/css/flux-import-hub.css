@@ -67,3 +67,87 @@
   .fih-season-banner { flex-wrap: wrap; }
   .fih-season-go { order: 3; }
 }
+
+/* ── "Paste a list" (flux-paste-import.js) ─────────────────────────────────
+   Lives here with the hub that opens it. Sizes are set with the modal's own
+   class in front: styles.css forces padding and font-size on every text input
+   with !important, so a bare .fpi-name would lose. */
+.fpi-modal {
+  max-width: 600px;
+  width: min(600px, calc(100vw - 32px));
+  max-height: min(86vh, 760px);
+  padding: 18px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fpi-head { display: flex; align-items: center; gap: 8px; }
+.fpi-title { margin: 0; font-size: 1.05rem; flex: 1; }
+.fpi-modal .fpi-x {
+  width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
+  padding: 0; line-height: 1; border: none; border-radius: 8px; background: transparent;
+  color: var(--muted, #8b93b5); cursor: pointer; font-size: .95rem; box-shadow: none;
+}
+.fpi-modal .fpi-x:hover { background: rgba(127, 127, 127, .14); color: var(--text, #e8ecff); }
+.fpi-note { margin: 0; font-size: .78rem; color: var(--muted, #8b93b5); line-height: 1.45; }
+.fpi-note b { color: var(--text, #e8ecff); font-weight: 600; }
+.fpi-modal textarea.fpi-text {
+  width: 100%; box-sizing: border-box; min-height: 120px; max-height: 30vh; resize: vertical;
+  padding: 10px 12px !important; margin: 0 !important;
+  font: inherit; font-size: .85rem !important; line-height: 1.5;
+  color: var(--text, #e8ecff);
+  background: var(--card2, rgba(127, 127, 127, .08));
+  border: 1px solid var(--border, rgba(127, 127, 127, .25)); border-radius: 10px;
+}
+.fpi-count { min-height: 1.1em; font-size: .74rem; color: var(--muted, #8b93b5); }
+.fpi-list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+.fpi-empty { margin: 4px 0; font-size: .8rem; color: var(--muted, #8b93b5); }
+.fpi-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border, rgba(127, 127, 127, .22)); border-radius: 10px;
+}
+.fpi-row--off { opacity: .55; }
+.fpi-modal input.fpi-check { width: 18px !important; height: 18px; flex: 0 0 18px; margin: 7px 0 0 !important; padding: 0 !important; accent-color: var(--accent, #6366f1); }
+.fpi-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.fpi-modal input.fpi-name {
+  width: 100%; box-sizing: border-box; min-height: 32px;
+  padding: 4px 8px !important; margin: 0 !important;
+  font-size: .86rem !important; font-weight: 600;
+  color: var(--text, #e8ecff); background: transparent;
+  border: 1px solid transparent; border-radius: 7px;
+}
+.fpi-modal input.fpi-name:hover,
+.fpi-modal input.fpi-name:focus { border-color: var(--border, rgba(127, 127, 127, .35)); }
+.fpi-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.fpi-modal input.fpi-date,
+.fpi-modal select.fpi-subject {
+  width: auto !important; max-width: 100%; min-height: 30px; box-sizing: border-box;
+  padding: 3px 8px !important; margin: 0 !important;
+  font-size: .76rem !important;
+}
+.fpi-modal select.fpi-subject { padding-right: 26px !important; max-width: 180px; text-overflow: ellipsis; }
+.fpi-modal input.fpi-date,
+.fpi-modal select.fpi-subject {
+  color: var(--text, #e8ecff);
+  background-color: var(--card2, rgba(127, 127, 127, .08));
+  border: 1px solid var(--border, rgba(127, 127, 127, .25)); border-radius: 7px;
+}
+.fpi-chip {
+  font-size: .68rem; font-weight: 600; padding: 3px 8px; border-radius: 999px;
+  color: var(--accent, #6366f1); background: rgba(var(--accent-rgb, 99, 102, 241), .12);
+}
+.fpi-chip--dup { color: var(--muted, #8b93b5); background: rgba(127, 127, 127, .14); }
+.fpi-foot { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+.fpi-modal .fpi-btn {
+  min-height: 40px; padding: 0 16px; border-radius: 10px;
+  font-size: .84rem; font-weight: 600; cursor: pointer;
+}
+.fpi-modal .fpi-btn--ghost { background: transparent; color: var(--text, #e8ecff); border: 1px solid var(--border, rgba(127, 127, 127, .3)); box-shadow: none; }
+.fpi-modal .fpi-btn--primary { background: var(--accent, #6366f1); color: #fff; border: 1px solid transparent; }
+.fpi-modal .fpi-btn--primary:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 560px) {
+  .fpi-modal { max-height: 92vh; }
+  .fpi-modal .fpi-btn { flex: 1; }
+}

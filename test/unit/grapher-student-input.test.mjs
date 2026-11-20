@@ -9,7 +9,7 @@ import fs from 'node:fs';
  */
 
 const w = {};
-for (const f of ['flux-expr.js', 'flux-lab-fit.js', 'flux-grapher.js', 'flux-grapher-import.js']) {
+for (const f of ['flux-sb-config.js', 'flux-expr.js', 'flux-lab-fit.js', 'flux-grapher.js', 'flux-grapher-import.js']) {
   new Function('window', fs.readFileSync('public/js/' + f, 'utf8'))(w);
 }
 const T = w.FluxGrapher._test;

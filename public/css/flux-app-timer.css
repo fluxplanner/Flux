@@ -1,0 +1,9 @@
+/* Flux Timer (timer.html): the big digits, readable from the back of a room. */
+.tm-face { font: 800 clamp(3.2rem, 18vw, 9rem)/1 ui-monospace, 'JetBrains Mono', monospace; letter-spacing: -.03em; text-align: center; margin: 10px 0 16px; font-variant-numeric: tabular-nums; }
+.tm-face.done { color: var(--bad); }
+#pane-count:fullscreen { display: flex; flex-direction: column; justify-content: center; background: var(--bg); padding: 4vw; }
+#pane-count:fullscreen .tm-face { font-size: 26vw; }
+.tm-beats { display: flex; justify-content: center; gap: 10px; margin-bottom: 14px; }
+.tm-beats span { width: 18px; height: 18px; border-radius: 50%; background: var(--border2); }
+.tm-beats span.on { background: var(--accent); }
+.tm-beats span.on.first { background: var(--warn); }

@@ -154,6 +154,13 @@ const STRIPS: Array<[string, string, string]> = [
 ];
 
 test.describe('the sliding highlight reaches the rest of the planner', () => {
+  // The pill is the classic look's highlight. The 2026-11 look swaps it for a
+  // sliding underline inside tab switchers (flux-look.js) and hides the pill
+  // there, so these run in classic, which is still one click away in Settings.
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('flux_look', 'classic'));
+  });
+
   for (const [hostClass, itemClass, where] of STRIPS) {
     test(`${where} (.${hostClass}) gets a pill that moves`, async ({ page }) => {
       await gotoScenario(page, 'student-semester');
@@ -304,12 +311,18 @@ test.describe('the sliding highlight reaches the rest of the planner', () => {
       // A day on a later row, so the highlight has to move down as well as across.
       const target = days[Math.min(days.length - 1, 3 + 15)];
       target.click();
+      // The clicked day pops (0.85 -> 1.1 -> 1) and the highlight is measured
+      // against it, so let the pop finish before asking where either one is.
+      await until(() => !!sel() && sel()!.getAnimations().length === 0, 2000);
       await until(() => {
         const p = pos(pill()), s = pos(sel());
         return Math.hypot(p.x - first.x, p.y - first.y) > 8
           && Math.abs(p.x - s.x) < 1 && Math.abs(p.y - s.y) < 1;
       });
       const second = pos(pill());
+      // Right after a tab switch the highlight is placed, not tweened, so it
+      // can arrive before the day's own background has finished fading out.
+      await until(() => /rgba\(0, 0, 0, 0\)|transparent/.test(getComputedStyle(sel()!).backgroundColor), 2000);
 
       return {
         pillCount: grid.querySelectorAll('.flux-morph-pill').length,
@@ -462,6 +475,9 @@ test.describe('the sliding highlight reaches the rest of the planner', () => {
         items[clickIndex].click();
         // Arrived, not merely departed — see the sidebar test above.
         await until(() => Math.abs(x(pill()) - startX) > 8 && Math.abs(x(pill()) - x(active())) < 1);
+        // Placed rather than tweened just after a tab switch, so give the
+        // item's own background time to finish fading out before reading it.
+        await until(() => /rgba\(0, 0, 0, 0\)|transparent/.test(getComputedStyle(active()!).backgroundColor), 2000);
 
         return {
           error: null as string | null,

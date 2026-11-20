@@ -331,7 +331,17 @@
   }
 
   /* ── MutationObserver to watch for panel renders ─────────────── */
+  /* One pass per burst of changes. It ran all ten checks synchronously for
+     every DOM change anywhere in the app — hundreds of times while a single
+     list was being drawn. */
+  var _patchQueued = false;
   var _observer = new MutationObserver(function () {
+    if (_patchQueued) return;
+    _patchQueued = true;
+    setTimeout(_runPatches, 40);
+  });
+  function _runPatches() {
+    _patchQueued = false;
     tryPatchStaffTasks();
     tryPatchStaffProfileStats();
     tryPatchStudentProfileStats();
@@ -342,7 +352,7 @@
     tryPatchMeetingModal();
     tryPatchDashboardStats();
     tryPatchBookingModal();
-  });
+  }
 
   /* ── Init ─────────────────────────────────────────────────────── */
   function init() {
@@ -565,31 +575,12 @@
   // second palette on top of the real one and steal its focus.
 
   /* ── Smooth panel transitions ───────────────────────────────────── */
-  function hookPanelTransitions() {
-    if (!motionOk()) return;
-    var origNav = window.nav;
-    if (typeof origNav !== 'function') return;
-    window.nav = function (panel) {
-      var panels = document.querySelectorAll('.panel');
-      panels.forEach(function (p) {
-        if (p.style.display !== 'none' && !p.hidden) {
-          p.style.opacity = '0';
-          p.style.transform = 'translateY(8px)';
-        }
-      });
-      setTimeout(function () {
-        origNav(panel);
-        var active = document.querySelectorAll('.panel');
-        active.forEach(function (p) {
-          if (p.style.display !== 'none' && !p.hidden) {
-            p.style.transition = 'opacity .25s ease, transform .25s cubic-bezier(.22,1,.36,1)';
-            p.style.opacity = '1';
-            p.style.transform = 'none';
-          }
-        });
-      }, 80);
-    };
-  }
+  /* This used to wrap window.nav: fade every panel out, wait 80ms, and only
+     then switch tab. So each tab click sat doing nothing for 80ms, restyled
+     every panel in the app twice, and dropped nav()'s second argument. The
+     planner already animates the incoming panel itself (flux-apple-motion),
+     so the tab now switches the moment it is clicked. */
+  function hookPanelTransitions() {}
 
   /* ── Keyboard shortcut hint badge ───────────────────────────────── */
   function addCmdKHint() {

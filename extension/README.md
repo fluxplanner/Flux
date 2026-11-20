@@ -55,6 +55,11 @@ Key behaviors:
   works on tabs that were open before install. With **Live** on, a screenshot
   rides along and a vision model transcribes it so the strong reasoning model
   does the solving (two-stage = right answers on homework).
+- **Send to Flux on Quizlet** — `src/quizlet.js` puts a button on every Quizlet
+  set page. One click reads the set (`public/js/flux-quizlet.js`, shared with
+  the Flashcards "Send to Flux" bookmark) and opens
+  `<app_url>/flashcards.html#share=…` ready to save. This is the one-click route
+  for Dia and Arc, which will not run the bookmark.
 - **Sign-in** — popup → "Sign in to Flux" opens the planner with `?ext_auth=1`;
   after login the planner hands the session to the extension and the tab
   closes itself. Tokens auto-refresh; signed-out calls use the anon key.

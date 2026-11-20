@@ -57,10 +57,26 @@ test.describe('Calculator', () => {
     await expect(page.locator('.t84-home')).toBeVisible();
   });
 
+  test('wide view puts the keys beside the screen and is remembered', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 1100 });
+    await page.goto('/calculator.html');
+    await expect(page.locator('.t84-wrap')).not.toHaveClass(/is-wide/);
+    await page.locator('[data-seg="view"] [data-v="wide"]').click();
+    await expect(page.locator('.t84-wrap')).toHaveClass(/is-wide/);
+    const scr = await page.locator('.t84-bezel').boundingBox();
+    const keys = await page.locator('.t84-keys').boundingBox();
+    expect(keys!.x).toBeGreaterThan(scr!.x + scr!.width - 1);
+    await page.reload();
+    await expect(page.locator('.t84-wrap')).toHaveClass(/is-wide/);
+    await expect(page.locator('[data-seg="view"] [data-v="wide"]')).toHaveAttribute('aria-checked', 'true');
+    await page.locator('[data-seg="view"] [data-v="regular"]').click();
+    await expect(page.locator('.t84-wrap')).not.toHaveClass(/is-wide/);
+  });
+
   test('Evo mode has its own Apps screen, conversion key, and one-step clear undo', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/calculator.html');
-    await page.locator('.t84-model-control select').selectOption('evo');
+    await page.locator('[data-seg="model"] [data-v="evo"]').click();
     await expect(page.locator('.t84')).toHaveClass(/is-evo/);
     await expect(page.locator('.t84 [data-k="convert"]')).toHaveText('< >');
 
@@ -94,7 +110,7 @@ test.describe('Calculator', () => {
   test('Evo zoom menu has 17 presets and plus/minus quick zoom', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/calculator.html');
-    await page.locator('.t84-model-control select').selectOption('evo');
+    await page.locator('[data-seg="model"] [data-v="evo"]').click();
     const key = (k: string) => page.locator(`.t84 [data-k="${k}"]`).click();
     await key('graph');
     const range = () => page.evaluate(() => {
@@ -254,7 +270,7 @@ test.describe('Calculator', () => {
     expect(await k.evaluate((e) => getComputedStyle(e).backgroundImage)).toMatch(/gradient/);
     for (const id of ['6', 'mul', '7', 'enter']) await page.locator(`.fsh-calc .t84 [data-k="${id}"]`).click();
     await expect(page.locator('.fsh-calc .t84h-out').last()).toHaveText('42');
-    await page.locator('.fsh-calc .t84-model-control select').selectOption('evo');
+    await page.locator('.fsh-calc [data-seg="model"] [data-v="evo"]').click();
     await expect(page.locator('.fsh-calc .t84.is-evo')).toBeVisible();
   });
 

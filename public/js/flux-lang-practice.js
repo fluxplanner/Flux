@@ -677,9 +677,12 @@
   document.addEventListener('keydown', onKey);
 
   // ── registration ──────────────────────────────────────────────────────────
+  var bootTries = 0;
   function boot() {
     var H = window.fluxStudyHub;
-    if (!H || !H.register) return setTimeout(boot, 60);
+    /* Flux Lingo (translate.html) loads this for its decks alone and has no
+       study hub: stop asking after ~10s rather than polling forever. */
+    if (!H || !H.register) { if (++bootTries < 160) setTimeout(boot, 60); return; }
     /* One card, three subjects. Registering the same tool three times with a
        different pinned language is cheaper and less fragile than three copies
        of it, and it means a fix to the marking reaches all three at once. */

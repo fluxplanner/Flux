@@ -234,25 +234,33 @@
     icon: '🅢',
     category: 'lms',
     auth_kind: 'api_key',
-    description: 'Assignments and due dates from your Schoology calendar.',
+    description: 'Assignment and event dates from your Schoology calendar.',
     supports: ['assignments', 'calendar'],
     role: 'student',
-    status: () => (window.FluxLmsFeeds?.isConnected('schoology') ? 'connected' : 'off'),
-    connect: async () => openLmsTab('schoology'),
+    status: () => (window.FluxSchoology?.isConnected() ? 'connected' : 'off'),
+    connect: async () => {
+      window.FluxSchoology?.open();
+      return false;
+    },
+    disconnect: async () => { window.FluxSchoology?.disconnect(); },
   });
 
-  // 4b · Moodle
+  // 4b · Moodle — same calendar-link sync as Schoology (flux-schoology.js)
   register({
     id: 'moodle',
     name: 'Moodle',
     icon: '🅜',
     category: 'lms',
     auth_kind: 'api_key',
-    description: 'Assignments, quizzes and due dates from your Moodle calendar.',
+    description: 'Assignment and quiz dates from your Moodle calendar.',
     supports: ['assignments', 'calendar'],
     role: 'student',
-    status: () => (window.FluxLmsFeeds?.isConnected('moodle') ? 'connected' : 'off'),
-    connect: async () => openLmsTab('moodle'),
+    status: () => (window.FluxMoodle?.isConnected() ? 'connected' : 'off'),
+    connect: async () => {
+      window.FluxMoodle?.open();
+      return false;
+    },
+    disconnect: async () => { window.FluxMoodle?.disconnect(); },
   });
 
   // 5 · PowerSchool / Infinite Campus (gradebook read)

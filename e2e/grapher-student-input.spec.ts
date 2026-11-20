@@ -16,6 +16,9 @@ async function open(page: Page, mode: 'functions' | 'data') {
   }, mode);
   await page.goto('/grapher.html');
   await page.waitForTimeout(700);
+  // The grapher always opens on Measurements; go to the tab under test.
+  const tabId = ({ functions: '#modeFunctions', '3d': '#mode3d' } as Record<string, string>)[mode || ''];
+  if (tabId) { await page.locator(tabId).click(); await page.waitForTimeout(500); }
 }
 
 /** The first equation's parsed curve, evaluated at x. */

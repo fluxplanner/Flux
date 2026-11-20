@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="public/js/flux-look.js?v=81a3e0d1"></script>
+<script src="public/js/flux-tool-embed-mode.js?v=22cb5bd5"></script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://lfigdijuqmbensebnevo.supabase.co; media-src 'self' blob: data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
+<script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="units" data-no-hold></script>
+<script defer src="public/js/flux-site-notices.js?v=5e36c924"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flux Units</title>
+<meta name="description" content="Free unit converter from Flux with the working shown: length, mass, volume, time, speed, area, energy, pressure and temperature, significant figures, and a units quiz.">
+<meta name="theme-color" content="#06101a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/png" href="public/flux-planner-logo.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Flux Units">
+<!--
+  Flux Units: a free Flux tool, built like periodic.html — no bundles, no
+  Supabase, no sign-in, nothing fetched, so it opens offline on any school
+  computer. Shared parts: public/js/flux-tool-kit.js, public/css/flux-tools.css.
+  Not a Suite app of its own since 2026-11-18: it opens inside the app it
+  fits (public/js/flux-tool-embed.js says which), and still works on its own.
+-->
+<link rel="stylesheet" href="public/css/flux-hub.css?v=a473f365">
+<link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
+<link rel="stylesheet" href="public/css/flux-tools.css?v=3c01335d">
+<style>
+  :root { --bg: #06101a; --accent: #7dd3fc; }
+</style>
+<script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
+<script src="public/js/flux-purple-day.js?v=b8cd878a"></script>
+<link rel="stylesheet" href="public/css/flux-look-flat.css?v=8156dbe3">
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to the converter</a>
+  <header class="top">
+    <a class="ft-back" href="suite.html" aria-label="Back to Flux Suite" title="Back to Flux Suite"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
+    <img class="brand-mark" src="public/flux-planner-logo.png" alt="" width="28" height="28">
+    <span class="title">Flux Units</span>
+    <span class="grow"></span>
+    <div data-flux-hub="units"></div>
+  </header>
+  <main id="main" tabindex="-1">
+
+    <h1 class="ft-h1">Units</h1>
+    <p class="ft-lede">Convert with the working shown, count significant figures, and practise.</p>
+    <div class="ft-tabs" role="tablist" aria-label="Units tools"><button type="button" role="tab" class="ft-tab" id="tab-convert" aria-controls="pane-convert">Convert</button><button type="button" role="tab" class="ft-tab" id="tab-sigfig" aria-controls="pane-sigfig">Significant figures</button><button type="button" role="tab" class="ft-tab" id="tab-quiz" aria-controls="pane-quiz">Quiz</button></div>
+    <section class="ft-card" id="pane-convert" role="tabpanel" aria-labelledby="tab-convert">
+      <div class="ft-row">
+        <label class="ft-field">Quantity<select id="unCat"></select></label>
+        <label class="ft-field">Value<input id="unVal" type="text" inputmode="decimal" value="1"></label>
+        <label class="ft-field">From<select id="unFrom"></select></label>
+        <label class="ft-field">To<select id="unTo"></select></label>
+      </div>
+      <div class="ft-row">
+        <label class="ft-check"><input type="checkbox" id="unKeepSf" checked> Answer to the same significant figures</label>
+        <label class="ft-check"><input type="checkbox" id="unWork" checked> Show the working</label>
+        <button type="button" class="ft-btn small" id="unSwap">Swap units</button>
+      </div>
+      <div class="ft-out" id="unOut" aria-live="polite"></div>
+    </section>
+    <section class="ft-card" id="pane-sigfig" role="tabpanel" aria-labelledby="tab-sigfig">
+      <div class="ft-row">
+        <label class="ft-field">A number<input id="sfNum" type="text" inputmode="decimal" value="0.004560"></label>
+        <label class="ft-field">Round to (s.f.)<input id="sfTo" type="number" min="1" max="15" value="2"></label>
+      </div>
+      <div class="ft-out" id="sfOut" aria-live="polite"></div>
+    </section>
+    <section class="ft-card" id="pane-quiz" role="tabpanel" aria-labelledby="tab-quiz">
+      <p id="qzQ" class="ft-big"></p>
+      <form id="qzForm" class="ft-row" novalidate>
+        <label class="ft-field">Your answer<input id="qzA" type="text" inputmode="decimal" autocomplete="off"></label>
+        <button type="submit" class="ft-btn primary">Check</button>
+        <button type="button" class="ft-btn" id="qzNext">Next question</button>
+      </form>
+      <div class="ft-out" id="qzOut" aria-live="polite"></div>
+      <p class="ft-muted" id="qzScore"></p>
+    </section>
+  </main>
+  <script src="public/data/products.js?v=9634bc03"></script>
+  <script src="public/js/flux-hub.js?v=eb42b549"></script>
+  <script src="public/js/flux-suite-timer.js?v=998cda1e"></script>
+  <script src="public/js/flux-tool-kit.js?v=91bafb05"></script>
+  <script src="public/js/flux-reftool-units.js?v=6cc7b1d8"></script>
+  <script src="public/js/flux-app-units.js?v=2652fb29"></script>
+</body>
+</html>

@@ -78,6 +78,31 @@ test.describe('planner sweep', () => {
     await expect.poll(() => page.evaluate(() => (window as any).tasks.find((t: any) => t.id === 1727291234567.5)?.done)).toBe(true);
   });
 
+  test('a scroll made just before the right-click does not close the menu, a later one does', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    /* Scroll the list and right-click in the same task: the browser delivers
+       that scroll event in the next frame, after the menu has opened. Under
+       load, Playwright's own scroll-into-view lands the same way. */
+    await page.evaluate(() => {
+      const w = window as any;
+      for (let i = 0; i < 6; i++) w.tasks.push({ id: 1727291234000 + i + 0.5, name: `Filler ${i}`, date: '', subject: '', priority: 'low', done: false });
+      w.renderTasks();
+    });
+    await page.evaluate(() => {
+      const dash = document.getElementById('dashboard')!;
+      dash.scrollTop += 40;
+      const row = document.querySelector('.task-item[data-task-id]')!;
+      const r = row.getBoundingClientRect();
+      row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 20, clientY: r.top + 10 }));
+    });
+    expect(await page.evaluate(() => document.getElementById('dashboard')!.scrollTop), 'the dashboard must scroll for this test to mean anything').toBeGreaterThan(0);
+    await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res))));
+    await page.waitForTimeout(300);
+    await expect(page.locator('#fluxTaskCtxMenu')).toBeVisible();
+    await page.evaluate(() => { document.getElementById('dashboard')!.scrollTop -= 20; });
+    await expect(page.locator('#fluxTaskCtxMenu')).toHaveCount(0);
+  });
+
   test('the Pomodoro minutes are readable, not clipped to nothing', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
     await page.evaluate(() => (window as any).nav('timer'));

@@ -1,0 +1,154 @@
+{
+  "_comment": "The one list of Flux products. Edit here, then run npm run build:suite: it writes public/data/products.js (window.FluxProducts, loaded before flux-hub.js) and the static cards in suite.html. `group` places a product in Flux Suite; a group of kind \"bar\" is the wide bar on top (the planner), \"tab\" a pill tab over a grid. Order is display order. `blurb` is the Suite card's sentence; `tagline` the switcher's one line. A new product also needs a .app--<id> --c1/--c2 pair in public/css/flux-hub.css.",
+  "groups": [
+    {
+      "id": "planner",
+      "name": "Planner",
+      "kind": "bar"
+    },
+    {
+      "id": "study",
+      "name": "Study apps",
+      "kind": "tab"
+    },
+    {
+      "id": "partner",
+      "name": "Partners",
+      "kind": "tab"
+    },
+    {
+      "id": "owner",
+      "name": "Owner Controls",
+      "kind": "tab"
+    }
+  ],
+  "products": [
+    {
+      "id": "planner",
+      "group": "planner",
+      "name": "Flux Planner",
+      "tagline": "Tasks, timetable, revision",
+      "blurb": "Tasks, classes, your calendar and bell schedule, Plan my week, study tools, a reading log, college prep and Canvas assignments in one calm place. Sign in to sync across your devices.",
+      "href": "index.html",
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/></svg>"
+    },
+    {
+      "id": "teacher",
+      "slug": "tutor",
+      "group": "study",
+      "name": "Flux Tutor",
+      "tagline": "Learn from your class materials",
+      "blurb": "Turn your class notes, PDFs, Word documents and photos into a study guide with sources, step-by-step lessons, practice tests and flashcards, built only from what you give it, with no AI. Drag files straight in.",
+      "href": "teacher.html",
+      "free": true,
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 3 2.5 8 12 13l9.5-5L12 3Z\"/><path d=\"M6.5 11v5.2c3.1 2.4 7.9 2.4 11 0V11M21.5 8v6\"/></svg>"
+    },
+    {
+      "id": "grapher",
+      "group": "study",
+      "name": "Flux Grapher",
+      "tagline": "Equations, lab data and 3D",
+      "blurb": "Graph equations, plot lab data with a line of best fit, R² and residuals, and turn points, lines, planes and surfaces in 3D. Print it for your write-up.",
+      "href": "grapher.html",
+      "free": true,
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 3v18h18\"/><path d=\"m7 14 4-4 3 3 5-6\"/></svg>"
+    },
+    {
+      "id": "calculator",
+      "group": "study",
+      "name": "Flux Calculator",
+      "tagline": "Works like a TI-84, Plus CE or Evo",
+      "blurb": "A calculator that works like the TI-84, in the Plus CE or Evo layout, with graphs, sequences, tables and statistics, in your browser.",
+      "href": "calculator.html",
+      "free": true,
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"5\" y=\"2\" width=\"14\" height=\"20\" rx=\"2.5\"/><rect x=\"8\" y=\"5\" width=\"8\" height=\"4\" rx=\".8\"/><path d=\"M8.5 13h.01M12 13h.01M15.5 13h.01M8.5 16.5h.01M12 16.5h.01M15.5 16.5h.01\"/></svg>"
+    },
+    {
+      "id": "flashcards",
+      "group": "study",
+      "name": "Flux Flashcards",
+      "tagline": "Spaced repetition, tests and games",
+      "blurb": "Decks that schedule every card for when you are about to forget it, plus flip cards, write, practice tests, a match game, cards from your notes and Quizlet import. No ads.",
+      "href": "flashcards.html",
+      "free": true,
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"2\" y=\"6\" width=\"15\" height=\"14\" rx=\"2\"/><path d=\"M7 2h13a2 2 0 0 1 2 2v12\"/></svg>"
+    },
+    {
+      "id": "pixel",
+      "group": "study",
+      "name": "Flux Pixel",
+      "tagline": "Diagrams and Flux Figures",
+      "blurb": "Draw science diagrams, maps and sketches with 88 stamps, Flux Figures (maths figures drawn to scale for tests, typed in words: graphs and shaded inequalities, number lines, triangles, circles, angles, 3D solids), a ruler, protractor and compass, whiteboard tools (sticky notes, shape snap, a laser pointer, zoom and Present), vectors, labels with leader lines, and a crisp PNG or SVG.",
+      "href": "pixel.html",
+      "free": true,
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 20h9\"/><path d=\"M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z\"/></svg>"
+    },
+    {
+      "id": "periodic",
+      "group": "study",
+      "name": "Flux Periodic Table",
+      "tagline": "Every trend, spectrum and atom in 3D",
+      "blurb": "Every trend, the table melting and boiling with temperature, electron configurations, spectra, isotopes and every atom in 3D.",
+      "href": "periodic.html",
+      "free": true,
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"5\" height=\"5\" rx=\"1\"/><rect x=\"16\" y=\"3\" width=\"5\" height=\"5\" rx=\"1\"/><rect x=\"3\" y=\"10\" width=\"5\" height=\"5\" rx=\"1\"/><rect x=\"9.5\" y=\"10\" width=\"5\" height=\"5\" rx=\"1\"/><rect x=\"16\" y=\"10\" width=\"5\" height=\"5\" rx=\"1\"/><path d=\"M5 19h14\"/></svg>"
+    },
+    {
+      "id": "composer",
+      "group": "study",
+      "name": "Flux Composer",
+      "tagline": "Keys, chords, beats and DP Music",
+      "blurb": "A table of every key, a keyboard that writes what you play, scales, chords, cadences, an ear trainer, a beat maker and DP Music.",
+      "href": "composer.html",
+      "free": true,
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 18V5l12-2v13\"/><circle cx=\"6\" cy=\"18\" r=\"3\"/><circle cx=\"18\" cy=\"16\" r=\"3\"/></svg>"
+    },
+    {
+      "id": "translate",
+      "group": "study",
+      "name": "Flux Lingo",
+      "tagline": "Every verb conjugated, practice, translate",
+      "blurb": "Every tense of every Spanish and French verb, irregular forms highlighted. Type any form (tuvimos, eûmes) to find the verb, hear it read aloud, and practise against the clock. Plus translation between 35 languages.",
+      "href": "translate.html",
+      "free": true,
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m5 8 6 6\"/><path d=\"m4 14 6-6 2-3\"/><path d=\"M2 5h12\"/><path d=\"M7 2h1\"/><path d=\"m22 22-5-10-5 10\"/><path d=\"M14 18h6\"/></svg>"
+    },
+    {
+      "id": "synara",
+      "group": "partner",
+      "name": "Synara",
+      "tagline": "Epilepsy meds, seizures, safety card",
+      "blurb": "For students with epilepsy: dose reminders and a medication calendar, a seizure log that spots patterns with missed doses, sleep and stress, and an emergency card a teacher can follow, one tap away. Stays on this device.",
+      "href": "synara.html",
+      "free": true,
+      "partner": true,
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 13.5h3.75l2.25-6 3.75 10.5 2.6-6.75H21\"/></svg>",
+      "logo": "<svg viewBox=\"0 0 32 32\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M6 19h4l2.5-6.5L16.5 23l2.8-7H26\"/></svg>",
+      "note": "Last, under Partner apps: built by Flux for another organization, so it follows Flux's own study apps rather than sitting among them. Its own brand rather than \"Flux …\": Synara keeps its name and violet look. A Flux Partner: built and hosted by Flux for another organization (partners.html). Its logo is the white pulse from public/synara/icons/icon.svg, filling a tile painted with the Suite's violet gradient (.app-icon--logo)."
+    },
+    {
+      "id": "aorta",
+      "group": "partner",
+      "name": "Aorta Project",
+      "tagline": "Blood pressure and medicine tracker for families",
+      "blurb": "From the Aorta Project: take your medicines, log your blood pressure and see right away if a number needs attention, for everyone in your family. Reminders show in your Flux Planner calendar, and it works offline.",
+      "href": "aorta-tracker.html",
+      "free": true,
+      "partner": true,
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z\"/></svg>",
+      "logo": "<img src=\"public/partners/aorta/logo.png\" alt=\"\" width=\"54\" height=\"54\">",
+      "note": "A Flux Partner: the Aorta Project. The tile opens their app, the blood pressure tracker; their site (aorta.html) links to it too. Kept hidden from everyone but the owner with Owner Controls → Hide apps (flux-app-visibility.js) until it launches. Its logo is their real photo, on the white tile it was drawn for."
+    },
+    {
+      "id": "owner",
+      "group": "owner",
+      "name": "Flux Owner Controls",
+      "tagline": "Moderation, people, releases and every switch",
+      "blurb": "Your own app for running Flux: moderation, bans, people, the public archive, releases and every switch that used to live in the planner.",
+      "href": "owner.html",
+      "ownerOnly": true,
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z\"/></svg>",
+      "note": "Only the owner sees this tile, and owner.html turns anyone else away. The database is what actually protects what is inside."
+    }
+  ]
+}

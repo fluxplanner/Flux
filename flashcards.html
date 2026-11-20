@@ -11,6 +11,10 @@
   inline boot scripts on every standalone page.
 -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com; frame-src 'self'; form-action 'self'">
+<script src="public/js/flux-look.js?v=81a3e0d1"></script>
+<script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
+<script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="flashcards"></script>
+<script defer src="public/js/flux-site-notices.js?v=5e36c924"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flux Flashcards</title>
 <meta name="description" content="Free flashcards with no ads: spaced repetition that schedules every card for when you are about to forget it, flip cards, write, practice tests, a match game, cards from your notes, Quizlet import, share links and printing.">
@@ -28,11 +32,11 @@
   so it opens on any school computer without an account. Decks live in this
   browser; the planner carries them to the account when signed in.
 -->
-<link rel="stylesheet" href="public/css/flux-hub.css?v=4e2aebfb">
-<link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=673aab02">
-<link rel="stylesheet" href="public/css/flux-flashcards.css?v=81e569ca">
+<link rel="stylesheet" href="public/css/flux-hub.css?v=a473f365">
+<link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
+<link rel="stylesheet" href="public/css/flux-flashcards.css?v=63d411ee">
 <style>
-  :root { --bg: #0c0a14; --text: #eef1fb; --muted2: #a3acc6; --accent: #f472b6; --border: rgba(255,255,255,.08); --border2: rgba(255,255,255,.14); --card: rgba(22,22,36,.86); --card2: rgba(34,34,54,.9); }
+  :root { --bg: #0c0a14; --accent: #f472b6; } /* the rest: public/css/flux-standalone-dark.css */
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background-color: #0c0a14; }
   body {
@@ -73,9 +77,10 @@
   }
   @media (max-width: 560px) { .title small { display: none; } }
 </style>
-<script src="public/js/flux-theme-carry.js?v=41b239bd"></script>
-<script src="public/js/flux-purple-day.js?v=1966eb3d"></script>
+<script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
+<script src="public/js/flux-purple-day.js?v=b8cd878a"></script>
 <style>/* Off-screen until focused, so keyboard users can jump past the header. */.flux-skip{position:absolute;left:12px;top:-60px;z-index:10000;padding:10px 16px;border-radius:10px;background:#0b0f1a;color:#fff;font:600 14px/1.2 system-ui,sans-serif;text-decoration:none;box-shadow:0 0 0 2px #38bdf8}.flux-skip:focus{top:12px}</style>
+<link rel="stylesheet" href="public/css/flux-look-flat.css?v=8156dbe3">
 </head>
 <body>
 <a class="flux-skip" href="#ffHost">Skip to content</a>
@@ -85,15 +90,20 @@
       <span class="title">Flux Flashcards<small>Remember everything</small></span>
     </a>
     <span class="grow"></span>
+    <button type="button" class="ftx-btn" data-flux-tool="spell.html" data-flux-tool-title="Spelling" title="Spelling, homophones and punctuation"><span aria-hidden="true">Aa</span><span class="ftx-lbl">Spelling</span></button>
     <div data-flux-hub="flashcards"></div>
   </header>
   <main id="ffHost" class="ff-app" aria-label="Flux Flashcards"></main>
 
   <!-- Plain script tags, not the app bundles: this page has to stand alone. -->
-  <script src="public/js/flux-hub.js?v=68b4d34f"></script>
-  <script src="public/js/flux-flash-core.js?v=e5298768"></script>
+  <script src="public/data/products.js?v=9634bc03"></script>
+<script src="public/js/flux-hub.js?v=eb42b549"></script>
+<script src="public/js/flux-tool-embed.js?v=aa0e3f08"></script>
+<script src="public/js/flux-suite-timer.js?v=998cda1e"></script>
+  <script src="public/js/flux-flash-core.js?v=23848655"></script>
+  <script src="public/js/flux-quizlet.js?v=bc25f655"></script>
   <script src="public/js/flux-flash-samples.js?v=ecf2071f"></script>
-  <script src="public/js/flux-flashcards.js?v=2f75da46"></script>
+  <script src="public/js/flux-flashcards.js?v=25f85ec0"></script>
   <script>
     (function () {
       var host = document.getElementById('ffHost');

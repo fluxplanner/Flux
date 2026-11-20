@@ -47,8 +47,6 @@ body:not([data-theme="light"]) #app {
     radial-gradient(1100px 620px at 88% -12%, rgba(var(--accent-rgb), .09), transparent 62%),
     radial-gradient(900px 560px at 8% 112%, color-mix(in oklab, var(--fx-accent-2) 22%, transparent), transparent 64%);
 }
-#fluxMeshCanvas { opacity: .32 !important; }
-body[data-theme="light"] #fluxMeshCanvas { opacity: .5 !important; }
 /* The drifting lines at the foot of each tab showed through the cards
    above them; they stay, but as a faint texture. */
 #app .panel .flux-dash-scroll-paths,
@@ -610,3 +608,125 @@ html.flux-lowend #app * { transition: none !important; }
 .flux-no-ai #ecAICard,
 .flux-no-ai #obScheduleImportRoot,
 .flux-no-ai #weeklyReviewBanner { display: none !important; }
+
+/* Printing: paper is white whatever the theme. A dark theme printed its pale
+   text onto white paper (browsers leave backgrounds out by default), so it
+   came out faint grey. Printing always uses the Cloud (light) colours, with
+   the accent darkened so links and highlights still read on paper. */
+@media print {
+  :root, body, body[data-theme] {
+    --bg: #ffffff !important; --bg2: #ffffff !important; --bg3: #ffffff !important;
+    --card: #ffffff !important; --card2: #f6f8fa !important; --card3: #f6f8fa !important; --card-solid: #ffffff !important;
+    --border: #d8dee4 !important; --border2: #d0d7de !important;
+    --text: #1f2328 !important; --text2: #424a53 !important;
+    --muted: #57606a !important; --muted2: #424a53 !important;
+    --accent: #0969da !important; --accent2: #0969da !important; --accent-rgb: 9, 105, 218 !important;
+    --green: #1a7f37 !important; --red: #cf222e !important; --gold: #9a6700 !important;
+    --purple: #8250df !important; --orange: #bc4c00 !important;
+  }
+  html, body { background: #ffffff !important; color: #1f2328 !important; }
+  body::before, body::after { display: none !important; }
+}
+
+/* The page background holds still.
+   body::before / ::after carry the ambient wash, and four different
+   stylesheets each gave it a never-ending drift (mesh-drift, fluxMeshDrift,
+   fluxAuroraDrift, ...), one stacked over the next — taking one away only
+   uncovered the one beneath. A full-screen layer that never stops moving
+   makes the browser restyle and redraw the page 60 times a second while
+   nobody is touching it, which is what made everything else feel slow.
+   e2e/idle-work.spec.ts fails if anything on the dashboard loops for ever. */
+html body::before,
+html body::after {
+  animation: none !important;
+}
+
+/* The sidebar and bottom nav change instantly.
+   A tab click used to start five things on the nav at once: the highlight
+   gliding to the new item, its text fading colour for a third of a second,
+   the icon growing, an icon "pop", and a wiggle on hover. They all ran while
+   the new panel was being built, which is the one moment the browser has no
+   time to spare. The owner reported the switch as laggy, so none of them run:
+   the highlight, colour and icon are simply in their new state. */
+#sidebar .nav-item,
+#sidebar .nav-item .ni,
+#sidebar .nav-item .ni-svg-wrap,
+#sidebar .school-work-tab,
+.bottom-nav .bnav-item {
+  transition: none !important;
+  animation: none !important;
+}
+html.flux-apple-motion #sidebar .nav-item.active .ni {
+  transform: none;
+}
+
+/* A tab's content appears in place.
+   Five stylesheets each define an entry animation for .flux-panel-enter and
+   the script layer added a tween on top. All of it ran on the whole panel
+   while the panel was being built. nav() still sets the class (other code
+   watches for it); it just no longer moves anything. */
+html .panel.flux-panel-enter,
+html .main-content .panel.active {
+  animation: none !important;
+}
+
+/* ── Font picker (Settings → Look) ───────────────────────────────────────
+   app.js sets html[data-flux-font] and --flux-font once a font is chosen
+   (and fetches it from Google Fonts). Code, maths and the deliberately
+   monospaced bits keep their own face. */
+html[data-flux-font] body,
+html[data-flux-font] body :not(code, pre, kbd, samp, svg, svg *, .katex, .katex *, .mono, [class*="mono"], [style*="Mono"], [style*="monospace"]) {
+  font-family: var(--flux-font) !important;
+}
+
+/* ── Background textures (Settings → Look) ───────────────────────────────
+   Small tiling SVGs, no image downloads. Each sits under a scrim of the
+   theme's own background colour, so it reads as a tint of the theme and
+   cards and text keep their contrast in dark and light themes alike. */
+html[data-flux-texture="wood"] { --fx-tex: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .32' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 .55 .32  0 0 0 .38 .18  0 0 0 .22 .08  0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E") 0 0 / 400px 400px, #7a4a24; }
+html[data-flux-texture="metal"] { --fx-tex: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.002 .9' numOctaves='2' seed='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)' opacity='.55'/%3E%3C/svg%3E") 0 0 / 300px 300px, linear-gradient(135deg, #8a9099, #c9ced6 45%, #7d838c 70%, #b4b9c1); }
+html[data-flux-texture="bakery"] { --fx-tex: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect width='120' height='120' fill='%23f3dfc1'/%3E%3Cpath d='M0 0h60v120H0z' fill='%23c96a5a' opacity='.32'/%3E%3Cpath d='M0 0h120v60H0z' fill='%23c96a5a' opacity='.32'/%3E%3Ccircle cx='30' cy='90' r='9' fill='%23a8643a' opacity='.55'/%3E%3Ccircle cx='90' cy='30' r='9' fill='%23a8643a' opacity='.55'/%3E%3Cpath d='M84 84l12 12M96 84L84 96' stroke='%23fff6e6' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E") 0 0 / 120px 120px; }
+html[data-flux-texture="marble"] { --fx-tex: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='500'%3E%3Cfilter id='v'%3E%3CfeTurbulence type='turbulence' baseFrequency='.006 .012' numOctaves='5' seed='9'/%3E%3CfeColorMatrix values='0 0 0 -1.4 1.1  0 0 0 -1.4 1.1  0 0 0 -1.3 1.12  0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23v)'/%3E%3C/svg%3E") 0 0 / 500px 500px, #e9e6e1; }
+html[data-flux-texture="felt"] { --fx-tex: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' seed='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)' opacity='.35'/%3E%3C/svg%3E") 0 0 / 160px 160px, #1f6b3c; }
+html[data-flux-texture="parchment"] { --fx-tex: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.02' numOctaves='4' seed='6'/%3E%3CfeColorMatrix values='0 0 0 .3 .78  0 0 0 .3 .68  0 0 0 .26 .5  0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E") 0 0 / 400px 400px, #e8d5a8; }
+html[data-flux-texture="slate"] { --fx-tex: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.04 .015' numOctaves='4' seed='11'/%3E%3CfeColorMatrix values='0 0 0 .35 .18  0 0 0 .35 .22  0 0 0 .35 .27  0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)'/%3E%3C/svg%3E") 0 0 / 300px 300px, #2f3a44; }
+html[data-flux-texture="checker"] { --fx-tex: repeating-conic-gradient(#b58863 0 25%, #f0d9b5 0 50%) 0 0 / 96px 96px; }
+
+/* The scrim: the theme background at 84% over the texture (82% in light). */
+html[data-flux-texture] body #app {
+  background:
+    radial-gradient(1100px 620px at 88% -12%, rgba(var(--accent-rgb), .09), transparent 62%),
+    linear-gradient(color-mix(in srgb, var(--bg, #0d1117) 84%, transparent), color-mix(in srgb, var(--bg, #0d1117) 84%, transparent)),
+    var(--fx-tex) !important;
+  background-attachment: fixed !important;
+}
+html[data-flux-texture] body[data-theme="light"] #app {
+  background:
+    linear-gradient(color-mix(in srgb, var(--bg, #f6f8fa) 82%, transparent), color-mix(in srgb, var(--bg, #f6f8fa) 82%, transparent)),
+    var(--fx-tex) !important;
+}
+
+/* Picker tiles. Each tile previews its own texture, without the scrim. */
+.fx-tex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px; }
+#app .fx-tex-grid .fx-tex-tile {
+  display: flex; flex-direction: column; align-items: stretch; gap: 6px;
+  padding: 6px !important; border-radius: 12px !important;
+  background: var(--card2) !important; border: 1px solid var(--border2) !important;
+  color: var(--text) !important; box-shadow: none !important; font-size: .74rem; font-weight: 600;
+  cursor: pointer; min-height: 0; height: auto; width: auto;
+}
+#app .fx-tex-grid .fx-tex-tile.active { border-color: var(--accent) !important; box-shadow: 0 0 0 2px rgba(var(--accent-rgb), .35) !important; }
+.fx-tex-swatch { display: block; height: 44px; border-radius: 8px; border: 1px solid var(--fx-hair-2); background: var(--card); }
+.fx-tex-tile[data-tex="wood"] .fx-tex-swatch { --fx-tex: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .32' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 .55 .32  0 0 0 .38 .18  0 0 0 .22 .08  0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E") 0 0 / 400px 400px, #7a4a24; }
+.fx-tex-tile[data-tex="metal"] .fx-tex-swatch { --fx-tex: linear-gradient(135deg, #8a9099, #c9ced6 45%, #7d838c 70%, #b4b9c1); }
+.fx-tex-tile[data-tex="bakery"] .fx-tex-swatch { --fx-tex: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect width='120' height='120' fill='%23f3dfc1'/%3E%3Cpath d='M0 0h60v120H0z' fill='%23c96a5a' opacity='.32'/%3E%3Cpath d='M0 0h120v60H0z' fill='%23c96a5a' opacity='.32'/%3E%3Ccircle cx='30' cy='90' r='9' fill='%23a8643a' opacity='.55'/%3E%3Ccircle cx='90' cy='30' r='9' fill='%23a8643a' opacity='.55'/%3E%3C/svg%3E") 0 0 / 40px 40px; }
+.fx-tex-tile[data-tex="marble"] .fx-tex-swatch { --fx-tex: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='500'%3E%3Cfilter id='v'%3E%3CfeTurbulence type='turbulence' baseFrequency='.006 .012' numOctaves='5' seed='9'/%3E%3CfeColorMatrix values='0 0 0 -1.4 1.1  0 0 0 -1.4 1.1  0 0 0 -1.3 1.12  0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23v)'/%3E%3C/svg%3E") 0 0 / 300px 300px, #e9e6e1; }
+.fx-tex-tile[data-tex="felt"] .fx-tex-swatch { --fx-tex: #1f6b3c; }
+.fx-tex-tile[data-tex="parchment"] .fx-tex-swatch { --fx-tex: #e8d5a8; }
+.fx-tex-tile[data-tex="slate"] .fx-tex-swatch { --fx-tex: #2f3a44; }
+.fx-tex-tile[data-tex="checker"] .fx-tex-swatch { --fx-tex: repeating-conic-gradient(#b58863 0 25%, #f0d9b5 0 50%) 0 0 / 22px 22px; }
+.fx-tex-tile:not([data-tex=""]) .fx-tex-swatch { background: var(--fx-tex); }
+
+/* The dashboard date became an h2 (#dashGreeting is the page's one h1); keep
+   the size and spacing it had as an h1. */
+h2.fx-head-date { font-size: 2em; margin: .67em 0; }

@@ -43,6 +43,16 @@
       },
     });
 
+    list.push({
+      icon: '📋', title: 'Paste a list',
+      desc: 'Paste an assignment sheet or syllabus — each line becomes a task. Works offline.',
+      run: function () {
+        close();
+        if (window.FluxPasteImport) window.FluxPasteImport.open();
+        else toast('Paste import is still loading. Try again in a moment.', 'info');
+      },
+    });
+
     if (!isEducator()) {
       list.push({
         icon: '📷', title: 'Class schedule (photo or PDF)',
@@ -57,6 +67,15 @@
           if (clickInput('fluxIcsFile')) return;
           go('school');
           setTimeout(function () { if (!clickInput('fluxIcsFile')) toast('Open School Info → Timetable to import your .ics file.', 'info'); }, 400);
+        },
+      });
+      list.push({
+        icon: '🏫', title: 'Schoology',
+        desc: 'Paste your calendar link once, and assignments keep coming in.',
+        run: function () {
+          close();
+          if (window.FluxSchoology) window.FluxSchoology.open();
+          else go('canvas');
         },
       });
       list.push({

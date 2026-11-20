@@ -30,7 +30,7 @@
    ROUTES (location.hash, so a reload comes back to the same place)
      #library                     the library (also the default)
      #new                         a new set; it is saved once something is typed or added
-     #set/<id>/<tab>              tab: notes | guide | learn | test | cards | ask | plan
+     #set/<id>/<tab>              tab: notes | guide | learn | test | ib | cards | ask | plan
      #set/<id>/ask?q=<question>   "Ask your notes" with its last question
    UI-only state (an unfinished practice test, the flashcard on screen) stays
    out of the set: the test in progress lives in sessionStorage for a reload.
@@ -52,15 +52,24 @@
   }
 
   const PROMISE = 'Flux Tutor works only from your notes — it doesn\'t make things up.';
+  /* IB-style practice, mock exams and predicted grades. Paused on 24 Oct,
+     switched back on with the IB syllabus. False hides all of it again. */
+  const DP_EXAMS = true;
+  /** The IB DP syllabus (flux-ib-syllabus.js); null if it failed to load. */
+  const IB = window.FluxIbSyllabus || null;
+  const unitLabel = (id) => (IB && id ? IB.label(IB.unit(id)) : '');
   const TABS = [
     { id: 'notes', label: 'Notes', icon: 'notes' },
     { id: 'guide', label: 'Study guide', icon: 'guide' },
+    { id: 'topics', label: 'Topics', icon: 'guide' },
     { id: 'learn', label: 'Learn', icon: 'learn' },
     { id: 'test', label: 'Practice test', icon: 'test' },
+    { id: 'ib', label: 'IB practice', icon: 'test' },
+    { id: 'exam', label: 'Mock exam', icon: 'plan' },
     { id: 'cards', label: 'Flashcards', icon: 'cards' },
     { id: 'ask', label: 'Ask your notes', icon: 'ask' },
     { id: 'plan', label: 'Study plan', icon: 'plan' },
-  ];
+  ].filter((t) => DP_EXAMS || (t.id !== 'ib' && t.id !== 'exam'));
   const TAB_IDS = TABS.map((t) => t.id);
   const TEST_KEY = 'flux_tutor.v2.test.';
   const MAX_FILE_BYTES = 15 * 1024 * 1024;
@@ -70,6 +79,12 @@
   const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   const MAMMOTH_SRC = 'https://cdn.jsdelivr.net/npm/mammoth@1.13.0/mammoth.browser.min.js';
   const TESSERACT_SRC = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+  /* Integrity hash: the browser refuses the file if the CDN ever serves different bytes. Update it whenever the version in the URL changes. */
+  const READER_SRI = {
+    [PDFJS_SRC]: 'sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e',
+    [MAMMOTH_SRC]: 'sha384-8NWE3bZDrmRI4IePMoQaEoLhAQ1MmRMJkdNgnGiHRFanTqsFKr0TmK6aSZvFJ/PO',
+    [TESSERACT_SRC]: 'sha384-GJqSu7vueQ9qN0E9yLPb3Wtpd7OrgK8KmYzC8T1IysG1bcvxvIO4qtYR/D3A991F',
+  };
   const TESSERACT_PATHS = {
     workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
     corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
@@ -139,6 +154,8 @@
     test: '<path d="M9 3h6v3H9z"/><path d="M8 4.5H6V21h12V4.5h-2"/><path d="m9 13 2 2 4-4"/>',
     cards: '<rect x="2" y="7" width="15" height="13" rx="2"/><path d="M7 3h13a2 2 0 0 1 2 2v11"/>',
     ask: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+    listen: '<path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>',
+    stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
     plan: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8.5 15.5l2 2 4-4"/>',
   };
   function icon(name, size) {
@@ -147,8 +164,12 @@
   }
 
   /** "Biology notes.pdf · page 3 · paragraph 2" as a citation. */
-  function cite(ref) {
-    return '<cite class="ft-cite">' + esc(T.formatRef(ref)) + '</cite>';
+  function cite(ref, text) {
+    const label = esc(T.formatRef(ref));
+    // With the passage's words, the citation opens the notes with it selected.
+    if (!text || !ref || ref.edited || !ref.sourceId || !app.open) return '<cite class="ft-cite">' + label + '</cite>';
+    const href = setHash(app.open.set.id, 'notes', 'src=' + enc(ref.sourceId) + '&find=' + enc(String(text).slice(0, 80)));
+    return '<cite class="ft-cite"><a class="ft-cite-link" href="' + esc(href) + '" title="Show this in your notes">' + label + '</a></cite>';
   }
   /** A text with the matched words marked; each piece is escaped on its own. */
   function highlight(text, stems) {
@@ -160,7 +181,7 @@
     if (!p) return '';
     const own = !p.ref || p.ref.edited;
     return '<figure class="ft-quote"><figcaption class="ft-quote-label">' + (own ? 'From your study guide' : 'From your notes') + '</figcaption>'
-      + '<blockquote><p>' + highlight(p.text, stems) + '</p></blockquote>' + cite(p.ref) + '</figure>';
+      + '<blockquote><p>' + highlight(p.text, stems) + '</p></blockquote>' + cite(p.ref, p.text) + '</figure>';
   }
 
   /* ── App state ──────────────────────────────────────────────────────── */
@@ -177,9 +198,11 @@
     libError: '',
     storeError: null,
     ui: freshUi(),
+    sylSubject: '',      // the subject the library's IB syllabus shows
+    pendingUnit: '',     // a syllabus unit "New set" was pressed for
   };
   function freshUi() {
-    return { editing: null, learnPick: false, learnNote: '', test: null, cards: null, askQuery: '', planNote: '' };
+    return { editing: null, learnPick: false, learnNote: '', test: null, exam: null, cards: null, ib: null, askQuery: '', planNote: '', guideMap: false, mapPick: null };
   }
   let busy = false;
 
@@ -233,7 +256,7 @@
     return o.index;
   }
   function guideChanged() { app.open.guideVer++; }
-  function studied() { app.open.set.studiedAt = nowIso(); }
+  function studied() { app.open.set.studiedAt = nowIso(); T.logActivity(app.open.set); }
 
   /* ── Saving ─────────────────────────────────────────────────────────── */
 
@@ -511,6 +534,7 @@
     const query = new URLSearchParams(qi >= 0 ? raw.slice(qi + 1) : '');
     const parts = path.split('/');
     if (parts[0] === 'new') return { view: 'new' };
+    if (parts[0] === 'learn') return { view: 'learn', subject: parts[1] || '', skill: parts[2] || '' };
     if (parts[0] === 'set' && parts[1]) {
       let id = '';
       try { id = decodeURIComponent(parts[1]); } catch (_) { id = ''; }
@@ -558,10 +582,23 @@
       afterRoute('#ftLibTitle');
       return;
     }
+    if (r.view === 'learn') {
+      await leaveSet();
+      if (seq !== routeSeq) return;
+      app.view = 'learn';
+      document.title = 'Learn · Flux Tutor';
+      if (window.FluxTeachUI) window.FluxTeachUI.render(root, r);
+      else root.innerHTML = '<p class="ft-alert" role="alert">Lessons did not load. Reload the page.</p>';
+      afterRoute('#ftScreenTitle');
+      return;
+    }
     if (r.view === 'new') {
       await leaveSet();
       if (seq !== routeSeq) return;
-      const set = T.newSet({});
+      const u = IB && app.pendingUnit ? IB.unit(app.pendingUnit) : null;
+      const subj = u ? IB.subjects().find((s) => s.id === app.pendingUnit.split(':')[0]) : null;
+      app.pendingUnit = '';
+      const set = T.newSet(u ? { title: subj.name + ': ' + unitLabel(u.id), subject: subj.name, unit: u.id } : {});
       set.sources = [T.newSource('Your notes', 'Notes', '')];
       openSet(set, true);
       app.tab = 'notes';
@@ -580,13 +617,47 @@
     if (set.deletedAt) { renderDeleted(); afterRoute('#ftScreenTitle'); return; }
     const tab = r.tab || (set.guide || set.legacy ? 'guide' : 'notes');
     if (!r.tab) replaceHash(setHash(set.id, tab));
-    if (app.tab !== tab) { app.ui.editing = null; app.ui.planNote = ''; }
+    if (app.tab !== tab) { app.ui.editing = null; app.ui.planNote = ''; stopListening(); }
     app.tab = tab;
     if (tab === 'ask') app.ui.askQuery = r.query.get('q') || '';
     prepareTab(tab);
     renderSet();
     afterRoute(focusTarget());
+    if (tab === 'notes' && r.query.get('src')) showPassage(r.query.get('src'), r.query.get('find') || '');
     if (tab === 'test') startTestTimer();
+    if (tab === 'exam') startExamTimer();
+  }
+
+  /** A citation was opened: select its passage in that source's notes. */
+  function showPassage(srcId, find) {
+    const box = Array.from(root.querySelectorAll('textarea[data-src-text]')).find((t) => t.dataset.srcText === srcId);
+    if (!box) return;
+    const flat = (x) => x.replace(/\s+/g, ' ');
+    let at = box.value.indexOf(find);
+    let len = find.length;
+    if (at < 0) {
+      // PDF text is joined differently from the sentence; match on spacing-free words.
+      const probe = flat(find).slice(0, 40);
+      const map = [];
+      let squashed = '';
+      for (let i = 0; i < box.value.length; i++) {
+        if (/\s/.test(box.value[i]) && /\s$/.test(squashed)) continue;
+        squashed += /\s/.test(box.value[i]) ? ' ' : box.value[i];
+        map.push(i);
+      }
+      const k = squashed.indexOf(probe);
+      if (k < 0) { focusEl(box); return; }
+      at = map[k];
+      len = map[Math.min(map.length - 1, k + probe.length - 1)] - at + 1;
+    }
+    box.focus({ preventScroll: true });
+    box.setSelectionRange(at, at + len);
+    // Scroll the textarea so the selection is in view, then the page to the textarea.
+    const before = box.value.slice(0, at).split('\n').length - 1;
+    const line = parseFloat(getComputedStyle(box).lineHeight) || 20;
+    box.scrollTop = Math.max(0, before * line - box.clientHeight / 3);
+    box.scrollIntoView({ block: 'center' });
+    announce('Showing that passage in ' + (app.open.set.sources.find((x) => x.id === srcId) || {}).name + '.');
   }
 
   async function leaveSet() {
@@ -595,7 +666,7 @@
     if (!o) return;
     app.open = null;
     app.ui = freshUi();
-    app.tab = '';
+    app.tab = ''; stopListening();
     if (!o.draft) await app.store.flush();
     setSaveLabel(idleLabel(), app.store.persistent ? 'idle' : 'warn');
   }
@@ -605,8 +676,8 @@
     app.ui = freshUi();
     app.view = 'set';
     app.notice = '';
-    app.tab = '';
-    if (!draft) restoreTest();
+    app.tab = ''; stopListening();
+    if (!draft) { restoreTest(); restoreExam(); }
     // The beta's sets (and any set saved before its guide) get a guide when opened.
     if (!draft && !set.guide && T.hasNotes(set)) buildGuide();
     setSaveLabel(draft ? '' : (app.store.persistent ? 'Saved' : 'Only kept in this tab'), app.store.persistent ? 'saved' : 'warn');
@@ -660,26 +731,43 @@
     if (focusSel) focusEl(focusSel) || focusEl('#ftLibTitle');
   }
 
+  /* The library has two halves: IB notes (every unit of every IB subject,
+     with Flux's starter notes ready to study) and My notes (sets built from
+     the student's own uploads). Which one shows is remembered. */
+  const LIB_MODE_KEY = 'flux_tutor_lib_mode';
+  function libMode() {
+    let m = '';
+    try { m = localStorage.getItem(LIB_MODE_KEY) || ''; } catch (e) { /* storage blocked */ }
+    if (m === 'ib' && IB) return 'ib';
+    if (m === 'mine' || !IB) return 'mine';
+    return 'ib';
+  }
+  function setLibMode(m) {
+    try { localStorage.setItem(LIB_MODE_KEY, m); } catch (e) { /* storage blocked */ }
+  }
+
   function renderLibrary() {
     app.view = 'library';
     document.title = 'Flux Tutor · Study from your notes';
     setSaveLabel(idleLabel(), app.store.persistent ? 'idle' : 'warn');
     const sets = app.metas;
+    const mode = libMode();
+    const mine = sets.filter((m) => !m.unit);
+    const tab = (id, label, count) => '<button type="button" role="tab" class="ft-mode-tab" id="ftMode-' + id + '" data-act="lib-mode" data-mode="' + id + '" aria-selected="' + (mode === id) + '" aria-controls="ftLibBody"' + (mode === id ? '' : ' tabindex="-1"') + '>'
+      + label + (count ? ' <span class="ft-count">' + count + '</span>' : '') + '</button>';
     root.innerHTML = storeBanners()
       + '<section class="ft-library" aria-labelledby="ftLibTitle">'
       + '<div class="ft-lib-head"><div class="ft-lib-intro">'
       + '<h1 id="ftLibTitle" class="ft-h1" tabindex="-1">Your study sets</h1>'
       + '<p class="ft-promise">' + icon('shield', 17) + '<span>' + esc(PROMISE) + '</span></p></div>'
-      + '<div class="ft-lib-actions">'
-      + '<a class="ft-btn" href="#new">' + icon('plus') + 'New study set</a>'
-      + '<button type="button" class="ft-btn ft-btn--quiet" data-act="sample">' + icon('sparkle') + 'Try it with a sample</button>'
-      + '<button type="button" class="ft-btn ft-btn--quiet" data-act="import">' + icon('upload') + 'Import</button>'
-      + (sets.length ? '<button type="button" class="ft-btn ft-btn--quiet" data-act="export-all">' + icon('download') + 'Back up all</button>' : '')
       + '<input type="file" id="ftImportFile" class="ft-visually-hidden" accept=".json,application/json" tabindex="-1" aria-label="Choose a Flux Tutor export to import">'
-      + '</div></div>'
+      + '</div>'
       + (app.notice ? '<p class="ft-notice" role="status">' + icon('info', 17) + '<span>' + esc(app.notice) + '</span></p>' : '')
-      + '<p id="ftLibAlert" class="ft-alert" role="alert"' + (app.libError ? '' : ' hidden') + '>' + esc(app.libError) + '</p>'
-      + (sets.length ? startHere(sets) + '<ul class="ft-sets" aria-label="Study sets">' + sets.map(setCard).join('') + '</ul>' : emptyLibrary())
+      + (IB ? '<div class="ft-modes" role="tablist" aria-label="What to study">' + tab('ib', 'IB notes', 0) + tab('mine', 'My notes', mine.length) + '</div>' : '')
+      + progressHtml(sets)
+      + '<div id="ftLibBody" role="tabpanel" aria-labelledby="ftMode-' + mode + '">'
+      + (mode === 'ib' ? ibHtml(sets) : mineHtml(mine))
+      + '</div>'
       + (app.bin.length ? binHtml() : '')
       + '<p class="ft-storage-note">' + esc(app.store.backend === 'memory'
         ? 'Nothing here is saved after you close this tab. Use Export to keep a copy.'
@@ -706,11 +794,116 @@
       + '<a href="' + esc(setHash(pick.id, '')) + '" data-open="' + esc(pick.id) + '">' + esc(go) + ' →</a></p>';
   }
 
+  /** IB notes: pick a subject, then any unit opens with Flux's notes ready. */
+  function ibHtml(sets) {
+    return '<p class="ft-mode-lead">Every unit of every IB subject comes with Flux starter notes. Pick a unit to get its study guide, flashcards and practice straight away, then add your class notes to it.'
+      + (window.FluxTeach ? ' <a href="#learn">Step-by-step lessons</a> are there for many units too.' : '') + '</p>'
+      + syllabusHtml(sets)
+      + '<p id="ftLibAlert" class="ft-alert" role="alert"' + (app.libError ? '' : ' hidden') + '>' + esc(app.libError) + '</p>';
+  }
+
+  /** My notes: the student's own uploads, and where to add more. */
+  function mineHtml(mine) {
+    return '<div class="ft-lib-actions">'
+      + '<a class="ft-btn" href="#new">' + icon('upload') + 'New study set</a>'
+      + '<button type="button" class="ft-btn ft-btn--quiet" data-act="sample">' + icon('sparkle') + 'Try it with a sample</button>'
+      + '<button type="button" class="ft-btn ft-btn--quiet" data-act="import">' + icon('upload') + 'Import</button>'
+      + (app.metas.length ? '<button type="button" class="ft-btn ft-btn--quiet" data-act="export-all">' + icon('download') + 'Back up all</button>' : '')
+      + '</div>'
+      + '<p id="ftLibAlert" class="ft-alert" role="alert"' + (app.libError ? '' : ' hidden') + '>' + esc(app.libError) + '</p>'
+      + (mine.length ? startHere(mine) + '<ul class="ft-sets" aria-label="Study sets">' + mine.map(setCard).join('') + '</ul>' : emptyLibrary());
+  }
+
+  /** The progress dashboard: streak, cards due and a predicted grade per subject, from every set. */
+  function progressHtml(sets) {
+    if (!sets.length) return '';
+    const streak = T.studyStreak(sets.map((m) => m.activity));
+    const due = sets.reduce((n, m) => n + (Number(m.cardsDue) || 0), 0);
+    const exams = sets.reduce((n, m) => n + (Number(m.exams) || 0), 0);
+    const subjects = new Map();
+    sets.forEach((m) => {
+      if (!m.predicted) return;
+      const name = m.subject || m.title || 'Untitled study set';
+      const row = subjects.get(name) || { name, pct: 0, n: 0, href: setHash(m.id, 'exam') };
+      row.pct += m.predicted.pct;
+      row.n++;
+      subjects.set(name, row);
+    });
+    const tile = (num, label) => '<li class="ft-stat"><span class="ft-stat-num">' + num + '</span><span class="ft-stat-label">' + esc(label) + '</span></li>';
+    return '<section class="ft-progress" aria-labelledby="ftProgTitle"><h2 class="ft-h2" id="ftProgTitle">Your progress</h2>'
+      + '<ul class="ft-stats">'
+      + tile(streak.current, streak.current === 1 ? 'day streak' : 'days streak')
+      + tile(streak.best, 'best streak')
+      + tile(due, due === 1 ? 'flashcard due' : 'flashcards due')
+      + (DP_EXAMS ? tile(exams, exams === 1 ? 'mock exam' : 'mock exams') : '')
+      + '</ul>'
+      + (!DP_EXAMS ? '' : subjects.size
+        ? '<h3 class="ft-h3">Predicted grades</h3><ul class="ft-grades">' + Array.from(subjects.values()).map((r) => {
+          const pct = Math.round(r.pct / r.n);
+          return '<li><a href="' + esc(r.href) + '"><span class="ft-grade-num">' + T.gradeFor(pct) + '</span><span>' + esc(r.name) + ' <span class="ft-help">' + pct + '%</span></span></a></li>';
+        }).join('') + '</ul><p class="ft-help">A guide from your mock exams, practice tests and mastered terms. Real IB grade boundaries change each exam session.</p>'
+        : '<p class="ft-help">Take a mock exam or a practice test in any set to see a predicted grade for that subject.</p>')
+      + '</section>';
+  }
+
+  /** Every unit of one IB subject, with the sets filed under each: what is covered and what is left. */
+  function syllabusHtml(sets) {
+    if (!IB) return '';
+    const subjects = IB.subjects();
+    let sid = app.sylSubject;
+    if (!subjects.some((s) => s.id === sid)) {
+      const mine = sets.map((m) => IB.find(m.subject)).find(Boolean);
+      sid = mine ? mine.id : subjects[0].id;
+    }
+    const subj = subjects.find((s) => s.id === sid);
+    const filed = new Map();
+    sets.forEach((m) => { if (m.unit) (filed.get(m.unit) || filed.set(m.unit, []).get(m.unit)).push(m); });
+    const covered = subj.units.filter((u) => filed.has(u.id)).length;
+    const groups = [];
+    subj.units.forEach((u) => {
+      let g = groups[groups.length - 1];
+      if (!g || g.name !== u.section) groups.push(g = { name: u.section, units: [] });
+      g.units.push(u);
+    });
+    const byGroup = {};
+    subjects.forEach((s) => { (byGroup[s.group] || (byGroup[s.group] = [])).push(s); });
+    return '<section class="ft-syllabus" aria-labelledby="ftSylTitle"><div class="ft-syl-head"><div>'
+      + '<h2 class="ft-h2" id="ftSylTitle">' + esc(subj.name) + '</h2>'
+      + '<p class="ft-help">' + covered + ' of ' + subj.units.length + ' units started.</p></div>'
+      + '<div class="ft-field"><label class="ft-label" for="ftSylSubject">Subject</label><select class="ft-select" id="ftSylSubject">'
+      + Object.keys(byGroup).map((g) => '<optgroup label="' + esc(g) + '">' + byGroup[g].map((s) => '<option value="' + esc(s.id) + '"' + (s.id === sid ? ' selected' : '') + '>' + esc(s.name) + '</option>').join('') + '</optgroup>').join('')
+      + '</select></div></div>'
+      + '<div class="ft-meter" role="progressbar" aria-label="Units with a study set" aria-valuemin="0" aria-valuemax="' + subj.units.length + '" aria-valuenow="' + covered + '"><span style="width:' + Math.round(covered / subj.units.length * 100) + '%"></span></div>'
+      + groups.map((g) => '<h3 class="ft-h3 ft-syl-sec">' + esc(g.name) + '</h3><ul class="ft-syl-units">' + g.units.map((u) => {
+        const mine = filed.get(u.id) || [];
+        const has = window.FluxIbNotes && window.FluxIbNotes.has(u.id);
+        return '<li class="ft-syl-unit' + (mine.length ? ' is-covered' : '') + '">'
+          + '<span class="ft-syl-code">' + (/\d/.test(u.code) && !/^\d+$/.test(u.code) ? esc(u.code) : '') + '</span>'
+          + '<span class="ft-syl-name">' + esc(u.title)
+          + (u.hl ? ' <span class="ft-chip ft-chip--hl" title="Higher level only">HL</span>' : '')
+          + (mine.length ? ' <span class="ft-chip ft-chip--good">' + (mine.length > 1 ? plural(mine.length, 'set') : 'Started') + '</span>' : '') + '</span>'
+          + '<span class="ft-syl-acts">' + learnLink(u)
+          + (mine.length
+            ? '<a class="ft-mini ft-mini--go" href="' + esc(setHash(mine[0].id, '')) + '" aria-label="Open ' + esc(u.title) + '">Open</a>'
+            : '<button type="button" class="ft-mini ft-mini--go" data-act="syl-new" data-unit="' + esc(u.id) + '" aria-label="' + (has ? 'Study ' : 'New study set for ') + esc(u.title) + '">' + (has ? 'Study' : 'New set') + '</button>')
+          + '</span></li>';
+      }).join('') + '</ul>').join('')
+      + '</section>';
+  }
+
+  /** A Learn link for a syllabus unit that has step-by-step lessons. */
+  function learnLink(u) {
+    const ks = window.FluxTeach ? window.FluxTeach.forUnit(u.id) : [];
+    if (!ks.length) return '';
+    const sid = u.id.split(':')[0];
+    return '<a class="ft-mini ft-mini--learn" href="#learn/' + esc(sid) + (ks.length === 1 ? '/' + esc(ks[0].id) : '') + '" aria-label="Lessons for ' + esc(u.title) + '">Lessons' + (ks.length > 1 ? ' (' + ks.length + ')' : '') + '</a>';
+  }
+
   function emptyLibrary() {
     return '<div class="ft-empty"><h2 class="ft-h2">Start with your notes</h2><ol class="ft-steps">'
       + '<li><strong>Add your notes.</strong> Paste them, or add a PDF, a Word document or a photo of your notes.</li>'
       + '<li><strong>Get a study guide.</strong> An outline, key terms, key facts and short summaries, each with where in your notes it came from.</li>'
-      + '<li><strong>Study it.</strong> Learn one step at a time, take practice tests, review flashcards, ask your notes, and plan the days to your exam.</li>'
+      + '<li><strong>Study it.</strong> Learn one step at a time, revise topic pages, take practice tests' + (DP_EXAMS ? ' and timed mock exams' : '') + ', review flashcards, ask your notes, and plan the days to your exam. Your ' + (DP_EXAMS ? 'predicted grade and ' : '') + 'streak show here.</li>'
       + '</ol><p class="ft-help">New here? “Try it with a sample” opens a short set of biology notes to explore.</p></div>';
   }
 
@@ -719,6 +912,7 @@
     const studied = m.studiedAt ? 'Last studied ' + ago(m.studiedAt) : 'Not studied yet';
     const exam = examLine(m.daysLeft);
     const chips = (m.subject ? '<span class="ft-chip">' + esc(m.subject) + '</span>' : '')
+      + (unitLabel(m.unit) ? '<span class="ft-chip ft-chip--accent">' + esc(unitLabel(m.unit)) + '</span>' : '')
       + (m.sample ? '<span class="ft-chip ft-chip--accent">Sample</span>' : '')
       + (!m.hasGuide ? '<span class="ft-chip">' + (m.words ? 'Guide not built yet' : 'No notes yet') + '</span>' : '');
     const num = (v) => Math.max(0, Math.round(Number(v) || 0));
@@ -832,6 +1026,26 @@
     await refreshLibrary(n ? '[data-open="' + cssId(res.sets[0].id) + '"]' : '#ftLibTitle');
     toast('Imported ' + plural(n, 'study set') + '.' + (res.skipped ? ' ' + plural(res.skipped, 'set') + ' in the file could not be read.' : ''));
   }
+  /**
+   * A new set filed under a syllabus unit. With Flux starter notes for the
+   * unit it is built straight away (guide, cards, questions) and opens on the
+   * guide; without them it opens the notes screen, titled and filed, as before.
+   */
+  async function startUnitSet(unitId) {
+    const N = window.FluxIbNotes;
+    const text = N && N.has(unitId) ? await N.load(unitId) : '';
+    if (!text) { app.pendingUnit = unitId; location.hash = '#new'; return; }
+    const subj = IB.subjects().find((s) => s.id === unitId.split(':')[0]);
+    const set = T.newSet({ title: subj.name + ': ' + unitLabel(unitId), subject: subj.name, unit: unitId });
+    set.sources = [T.newSource(N.SOURCE_NAME, 'Notes', text)];
+    const corpus = T.buildCorpus(set.sources);
+    set.guide = T.buildGuide(set.sources, { corpus });
+    const res = await app.store.save(set);
+    if (!res.ok) { libAlert(res.error.message); return; }
+    app.notice = '';
+    go(setHash(res.set.id, 'guide'));
+  }
+
   async function createSample() {
     const set = T.sampleSet();
     const corpus = T.buildCorpus(set.sources);
@@ -856,6 +1070,7 @@
   function subline(set) {
     const bits = [];
     if (set.subject) bits.push(esc(set.subject));
+    if (unitLabel(set.unit)) bits.push(esc(unitLabel(set.unit)));
     if (set.examDate) bits.push(esc(examLine(T.daysBetween(T.ymd(), set.examDate))) + ' (' + esc(fmtDay(set.examDate)) + ')');
     return '<p class="ft-set-sub" id="ftSetSub"' + (bits.length ? '' : ' hidden') + '>' + bits.join(' · ') + '</p>';
   }
@@ -869,6 +1084,9 @@
       case 'guide': screen = guideScreen(); break;
       case 'learn': screen = learnScreen(); break;
       case 'test': screen = testScreen(); break;
+      case 'ib': screen = ibScreen(); break;
+      case 'exam': screen = examScreen(); break;
+      case 'topics': screen = topicsScreen(); break;
       case 'cards': screen = cardsScreen(); break;
       case 'ask': screen = askScreen(); break;
       case 'plan': screen = planScreen(); break;
@@ -882,7 +1100,15 @@
       + (o.draft ? '' : tabsNav())
       + '</div>'
       + '<div id="ftOtherTab">' + (o.conflict ? conflictBanner() : '') + '</div>'
-      + screen;
+      + screen
+      + (o.draft ? '' : stuckPanel(set));
+    // The tab row scrolls sideways on narrow screens: keep the current tab in view.
+    const bar = root.querySelector('.ft-tabs ul');
+    const on = bar && bar.querySelector('[aria-current="page"]');
+    if (on) {
+      const li = on.parentElement;
+      if (li.offsetLeft < bar.scrollLeft || li.offsetLeft + li.offsetWidth > bar.scrollLeft + bar.clientWidth) bar.scrollLeft = li.offsetLeft - 24;
+    }
   }
   function renderScreen(target) {
     renderSet();
@@ -920,6 +1146,21 @@
 
   /* ── Notes (and creating a set) ─────────────────────────────────────── */
 
+  /** The unit choices for the set's subject; the filed unit stays listed even if the subject changed. */
+  function unitOptions(set) {
+    const subj = IB && IB.find(set.subject);
+    const units = subj ? subj.units : [];
+    const keep = set.unit && !units.some((u) => u.id === set.unit) ? IB.unit(set.unit) : null;
+    let last = '';
+    return '<option value="">' + (subj ? 'Not filed under a unit' : 'Type an IB subject first') + '</option>'
+      + (keep ? '<option value="' + esc(keep.id) + '" selected>' + esc(unitLabel(keep.id)) + '</option>' : '')
+      + units.map((u) => {
+        const head = u.section !== last ? (last ? '</optgroup>' : '') + '<optgroup label="' + esc(u.section) + '">' : '';
+        last = u.section;
+        return head + '<option value="' + esc(u.id) + '"' + (u.id === set.unit ? ' selected' : '') + '>' + esc(unitLabel(u.id)) + (u.hl ? ' (HL)' : '') + '</option>';
+      }).join('') + (last ? '</optgroup>' : '');
+  }
+
   function notesScreen() {
     const o = app.open;
     const set = o.set;
@@ -932,7 +1173,10 @@
       + '<div class="ft-field ft-field--wide"><label class="ft-label" for="ftTitle">Title</label>'
       + '<input class="ft-input" id="ftTitle" data-field="title" maxlength="' + T.LIMITS.title + '" value="' + esc(set.title) + '" placeholder="e.g. Biology unit 3: cells" autocomplete="off"></div>'
       + '<div class="ft-field"><label class="ft-label" for="ftSubject">Subject <span class="ft-optional">(optional)</span></label>'
-      + '<input class="ft-input" id="ftSubject" data-field="subject" maxlength="' + T.LIMITS.subject + '" value="' + esc(set.subject) + '" placeholder="e.g. Biology" autocomplete="off"></div>'
+      + '<input class="ft-input" id="ftSubject" data-field="subject" maxlength="' + T.LIMITS.subject + '" value="' + esc(set.subject) + '" placeholder="e.g. Biology" autocomplete="off"' + (IB ? ' list="ftIbSubjects"' : '') + '>'
+      + (IB ? '<datalist id="ftIbSubjects">' + IB.subjects().map((s) => '<option value="' + esc(s.name) + '"></option>').join('') + '</datalist>' : '') + '</div>'
+      + (IB ? '<div class="ft-field"><label class="ft-label" for="ftUnit">IB unit <span class="ft-optional">(optional)</span></label>'
+        + '<select class="ft-select" id="ftUnit" data-field="unit">' + unitOptions(set) + '</select></div>' : '')
       + '<div class="ft-field"><label class="ft-label" for="ftExam">Exam date <span class="ft-optional">(optional)</span></label>'
       + '<input class="ft-input" id="ftExam" type="date" data-field="examDate" value="' + esc(set.examDate) + '"></div>'
       + '</div>'
@@ -997,7 +1241,15 @@
         const h = document.getElementById('ftSetName');
         if (h) h.textContent = set.title || (o.draft ? 'New study set' : 'Untitled study set');
         document.title = (set.title || 'New study set') + ' · Flux Tutor';
-      } else if (f === 'subject') set.subject = target.value.slice(0, T.LIMITS.subject);
+      } else if (f === 'subject') {
+        set.subject = target.value.slice(0, T.LIMITS.subject);
+        const sel = document.getElementById('ftUnit');
+        if (sel) sel.innerHTML = unitOptions(set);
+      } else if (f === 'unit') {
+        set.unit = target.value.slice(0, T.LIMITS.unit);
+        const sub = document.getElementById('ftSetSub');
+        if (sub) sub.outerHTML = subline(set);
+      }
       else if (f === 'examDate') {
         set.examDate = T.isYmd(target.value) ? target.value : '';
         const sub = document.getElementById('ftSetSub');
@@ -1108,6 +1360,7 @@
       script.src = src;
       script.async = true;
       script.crossOrigin = 'anonymous';
+      if (READER_SRI[src]) script.integrity = READER_SRI[src];
       script.onload = () => (window[globalName] ? resolve(window[globalName]) : reject(new Error('The file reader did not start. Reload the page and try again.')));
       script.onerror = () => reject(new Error('The file reader could not be downloaded. Check your connection and try again.'));
       document.head.appendChild(script);
@@ -1317,11 +1570,90 @@
     const stale = guideStale();
     return '<section class="ft-panel" aria-labelledby="ftScreenTitle">'
       + '<div class="ft-panel-head"><h2 class="ft-h2" id="ftScreenTitle" tabindex="-1">Study guide</h2>'
-      + '<button type="button" class="ft-btn ft-btn--quiet ft-btn--small" data-act="guide-download">' + icon('download', 16) + 'Download</button></div>'
+      + '<div class="ft-row">' + (canSpeak() ? '<button type="button" class="ft-btn ft-btn--quiet ft-btn--small" data-act="guide-listen" aria-pressed="' + speaking + '">' + icon(speaking ? 'stop' : 'listen', 16) + (speaking ? 'Stop' : 'Listen') + '</button>' : '')
+      + '<button type="button" class="ft-btn ft-btn--quiet ft-btn--small" data-act="guide-map" aria-pressed="' + !!app.ui.guideMap + '">' + (app.ui.guideMap ? 'Show as list' : 'Mind map') + '</button>'
+      + '<button type="button" class="ft-btn ft-btn--quiet ft-btn--small" data-act="guide-download">' + icon('download', 16) + 'Download</button></div></div>'
       + '<p class="ft-promise">' + icon('shield', 17) + '<span>' + esc(PROMISE) + ' Every line says where in your notes it came from. Fix it, delete it or add your own.</span></p>'
       + (stale ? '<p class="ft-banner" role="note">Your notes changed, but there is too little text in them now to rebuild this guide, so it still shows your earlier notes.</p>' : '')
-      + outlineHtml(g) + itemsHtml('terms') + itemsHtml('facts') + legacyHtml(set)
+      + (app.ui.guideMap ? mindMapHtml(set) : outlineHtml(g) + itemsHtml('terms') + itemsHtml('facts') + legacyHtml(set))
       + '</section>';
+  }
+  /* ── Mind map ──────────────────────────────────────────────────────────
+     The guide's sections as branches and its key terms as leaves, coloured
+     by how well each term is known. Tapping a bubble shows what the guide
+     says about it, with its citation, under the map. */
+  const MAP_STATUS = { new: 'Not studied yet', learning: 'Learning', weak: 'Needs work', mastered: 'Known' };
+  function mindMapHtml(set) {
+    const map = T.buildMindMap(set.guide, corpusNow(), set.mastery);
+    if (!map.size) return '<p class="ft-help">Your study guide has no sections or key terms to draw yet. Add headings to your notes, or add key terms, then come back.</p>';
+    const pick = app.ui.mapPick;
+    const on = (kind, id) => !!pick && pick.kind === kind && pick.id === id;
+    const leaf = (t) => '<button type="button" class="ft-map-node ft-map-term" data-act="map-pick" data-kind="term" data-id="' + esc(t.id) + '" data-status="' + t.status + '" aria-pressed="' + on('term', t.id) + '">'
+      + esc(t.term) + '<span class="ft-visually-hidden"> (' + MAP_STATUS[t.status] + ')</span></button>';
+    // The tapped bubble's details sit right under its own group, not below the whole map.
+    const detailFor = (n) => (pick && (on('sec', n.id) || (pick.kind === 'term' && n.terms.some((t) => t.id === pick.id))) ? mapDetailHtml(set) : '');
+    const leaves = (list) => (list.length ? '<li class="ft-map-leaves">' + list.map(leaf).join('') + '</li>' : '');
+    const branch = (n) => '<li><button type="button" class="ft-map-node ft-map-sec" data-act="map-pick" data-kind="sec" data-id="' + esc(n.id) + '" aria-pressed="' + on('sec', n.id) + '">' + esc(n.title) + '</button>'
+      + (on('sec', n.id) ? detailFor(n) : '')
+      + (n.children.length || n.terms.length ? '<ul>' + n.children.map(branch).join('') + leaves(n.terms) + '</ul>' : '')
+      + (pick && pick.kind === 'term' ? detailFor(n) : '') + '</li>';
+    const rootKids = map.branches.map(branch).join('')
+      + (map.loose.length ? '<li><span class="ft-map-node ft-map-sec ft-map-other">Other key terms</span><ul>' + leaves(map.loose) + '</ul>' + (pick && pick.kind === 'term' && map.loose.some((t) => t.id === pick.id) ? mapDetailHtml(set) : '') + '</li>' : '');
+    return '<section class="ft-guide-sec" aria-labelledby="ftMapTitle"><h3 class="ft-h3" id="ftMapTitle">Mind map</h3>'
+      + '<p class="ft-help">Tap a bubble to see what your notes say about it.</p>'
+      + '<p class="ft-map-key">' + Object.keys(MAP_STATUS).map((k) => '<span class="ft-map-dot" data-status="' + k + '"></span>' + MAP_STATUS[k]).join(' ') + '</p>'
+      + '<div class="ft-map-scroll"><ul class="ft-map" role="list"><li><span class="ft-map-node ft-map-root">' + esc(set.title || 'Study set') + '</span>'
+      + '<ul>' + rootKids + '</ul></li></ul></div></section>';
+  }
+  function mapDetailHtml(set) {
+    const pick = app.ui.mapPick;
+    if (!pick) return '';
+    const g = set.guide;
+    let body = '';
+    if (pick.kind === 'term') {
+      const t = g.terms.find((x) => x.id === pick.id);
+      if (!t) return '';
+      body = '<p class="ft-item-main"><dfn class="ft-term">' + esc(t.term) + '</dfn> <span class="ft-def">' + esc(t.def || '') + '</span></p>' + itemCite(t);
+    } else {
+      const o = g.outline.find((x) => x.id === pick.id);
+      if (!o) return '';
+      body = '<p class="ft-outline-title">' + esc(o.title) + '</p>'
+        + (o.summary.length ? '<ul class="ft-summary">' + o.summary.map((p) => '<li><span>' + esc(p.text) + '</span> ' + cite(p.ref, p.text) + '</li>').join('') + '</ul>' : '<p class="ft-outline-ref">' + cite(o.ref) + '</p>');
+    }
+    return '<div class="ft-map-detail" id="ftMapDetail" role="region" aria-live="polite" aria-label="Selected bubble">' + body + '</div>';
+  }
+  /* ── Audio overview ────────────────────────────────────────────────────
+     The study guide read aloud by the browser's own voice: each section's
+     summary, then the key terms and facts. The words are the guide's own
+     (copied from the notes), so it keeps the grounding rule; only the
+     joining phrases are Flux's. Nothing is sent anywhere. */
+  let speaking = false;
+  function canSpeak() { return typeof window.speechSynthesis !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function'; }
+  function audioScript(set) {
+    const g = set.guide, parts = ['Audio overview of ' + (set.title || 'your notes') + '.'];
+    g.outline.forEach((o) => { if (o.summary.length) parts.push(o.title + '. ' + o.summary.map((x) => x.text).join(' ')); });
+    if (g.terms.length) parts.push('Key terms.', ...g.terms.map((t) => t.term + ': ' + t.def));
+    if (g.facts.length) parts.push('Key facts.', ...g.facts.map((f) => f.text));
+    return parts;
+  }
+  function stopListening() {
+    if (!speaking) return;
+    speaking = false;
+    try { window.speechSynthesis.cancel(); } catch (e) { /* no speech */ }
+  }
+  function toggleListen() {
+    if (speaking) { stopListening(); renderScreen('[data-act="guide-listen"]'); announce('Stopped.'); return; }
+    const parts = audioScript(app.open.set);
+    speaking = true;
+    window.speechSynthesis.cancel();
+    // One utterance per part: a single long one is cut off by some browsers.
+    parts.forEach((text, i) => {
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 1;
+      if (i === parts.length - 1) u.onend = () => { if (speaking) { speaking = false; if (app.tab === 'guide') renderScreen(); } };
+      window.speechSynthesis.speak(u);
+    });
+    renderScreen('[data-act="guide-listen"]');
   }
   function outlineHtml(g) {
     if (!g.outline.length) return '';
@@ -1329,7 +1661,7 @@
       + '<ol class="ft-outline">' + g.outline.map((o) => '<li class="ft-outline-item" data-level="' + o.level + '">'
         + '<p class="ft-outline-title">' + esc(o.title) + '</p>'
         + (o.summary.length
-          ? '<ul class="ft-summary">' + o.summary.map((p) => '<li><span>' + esc(p.text) + '</span> ' + cite(p.ref) + '</li>').join('') + '</ul>'
+          ? '<ul class="ft-summary">' + o.summary.map((p) => '<li><span>' + esc(p.text) + '</span> ' + cite(p.ref, p.text) + '</li>').join('') + '</ul>'
           : '<p class="ft-outline-ref">' + cite(o.ref) + '</p>')
         + '</li>').join('') + '</ol></section>';
   }
@@ -2027,6 +2359,317 @@
     const d = app.open.set.examDate;
     return T.isYmd(d) ? dateOf(d).getTime() + 9 * 3600000 : null;
   }
+  /* ── IB practice ────────────────────────────────────────────────────── */
+
+  function ibScreen() {
+    const set = app.open.set;
+    if (!set.guide) return needGuide('IB practice');
+    const concepts = conceptsNow();
+    if (!concepts.length) return noTerms('IB practice');
+    const ui = app.ui.ib;
+    const weak = T.weakTopics(concepts, set.mastery, 5);
+    const weakHtml = '<section class="ft-guide-sec" aria-labelledby="ftWeakTitle"><h3 class="ft-h3" id="ftWeakTitle">Your weak topics</h3>'
+      + (weak.length
+        ? '<ul class="ft-weak">' + weak.map((w) => '<li><strong>' + esc(w.label) + '</strong> <span class="ft-help">' + esc(statusText(w.status)) + ' · ' + plural(w.right, 'right') + ', ' + plural(w.wrong, 'wrong') + '</span></li>').join('') + '</ul>'
+          + (DP_EXAMS ? '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="ib-weak">Practise my weak topics</button></div>' : '')
+        : '<p class="ft-help">Answer some questions here, in Learn or in a practice test, and the terms you find hardest will show up here.</p>')
+      + '</section>';
+    const head = '<section class="ft-panel" aria-labelledby="ftScreenTitle"><h2 class="ft-h2" id="ftScreenTitle" tabindex="-1">IB practice</h2>'
+      + '<p class="ft-lead">A question bank in the IB style: pick a paper, topic and difficulty. Questions use IB command terms and marks, and the markscheme comes only from your notes, so you can see where each mark comes from.</p>';
+    if (!ui || !ui.qs.length) {
+      return head + (ui ? '<p class="ft-alert" role="alert">Your notes do not have enough on these terms for these questions yet. Try another paper, “All topics” or “Any” difficulty, or add more notes.</p>' : '')
+        + '<form data-form="ib-setup" novalidate><div class="ft-grid">'
+        + '<div class="ft-field"><label class="ft-label" for="ftIbPaper">Paper</label><select class="ft-select" id="ftIbPaper" name="paper"><option value="2">Paper 2 · written answers</option><option value="1">Paper 1 · multiple choice</option></select></div>'
+        + '<div class="ft-field"><label class="ft-label" for="ftIbTopic">Topic</label><select class="ft-select" id="ftIbTopic" name="topic"><option value="">All topics</option>'
+        + T.topicsFor(corpusNow(), concepts).filter((t) => t.id).map((t) => '<option value="' + esc(t.id) + '"' + (t.id === app.ui.ibTopic ? ' selected' : '') + '>' + esc(t.title) + '</option>').join('') + '</select></div>'
+        + '<div class="ft-field"><label class="ft-label" for="ftIbProg">Programme</label><select class="ft-select" id="ftIbProg" name="programme"><option value="DP">DP (Diploma)</option><option value="MYP">MYP</option></select></div>'
+        + '<div class="ft-field"><label class="ft-label" for="ftIbLevel">Difficulty</label><select class="ft-select" id="ftIbLevel" name="level"><option value="0">Any</option><option value="1">1 · Recall (Define, State)</option><option value="2">2 · Understand (Outline, Describe)</option><option value="3">3 · Apply (Explain, Compare)</option></select></div>'
+        + '<div class="ft-field"><label class="ft-label" for="ftIbCount">Questions</label><select class="ft-select" id="ftIbCount" name="count">' + [3, 6, 10].map((n) => '<option value="' + n + '"' + (n === 6 ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></div>'
+        + '</div><div class="ft-row"><button type="submit" class="ft-btn">Make the questions</button></div></form>'
+        + weakHtml + '</section>';
+    }
+    const total = ui.qs.reduce((n, q) => n + q.marks, 0);
+    const got = ui.qs.reduce((n, q) => n + (ui.done[q.id] != null ? ui.done[q.id] : 0), 0);
+    const marked = ui.qs.filter((q) => ui.done[q.id] != null).length;
+    return head + '<p class="ft-help">' + esc(ui.programme) + ' · ' + plural(ui.qs.length, 'question') + ' · ' + plural(total, 'mark')
+      + (marked ? ' · You have ' + got + ' of ' + ui.qs.filter((q) => ui.done[q.id] != null).reduce((n, q) => n + q.marks, 0) + ' so far' : '') + '</p>'
+      + '<ol class="ft-ib-list">' + ui.qs.map((q) => {
+        const term = T.COMMAND_TERMS[q.command];
+        const shown = !!ui.shown[q.id];
+        const ticks = ui.ticks[q.id] || [];
+        const done = ui.done[q.id];
+        return '<li class="ft-ib-q" id="ftIb-' + esc(q.id) + '"><p class="ft-ib-meta"><span class="ft-score-pill" title="' + esc(term.meaning) + '">' + esc(q.command) + '</span> '
+          + '<span class="ft-help">Paper ' + (q.paper || 2) + ' · Difficulty ' + q.level + ' · [' + plural(q.marks, 'mark') + ']</span></p>'
+          + '<p class="ft-ib-prompt"><strong>' + esc(q.prompt) + '</strong></p>'
+          + '<p class="ft-help"><em>' + esc(q.command) + '</em>: ' + esc(term.meaning) + '</p>'
+          + (q.paper === 1
+            ? '<fieldset class="ft-fieldset"><legend class="ft-visually-hidden">Your answer</legend>' + q.options.map((opt, i) => '<label class="ft-check ft-check--plain' + (done != null && opt === q.answer ? ' ft-ib-right' : '') + '"><input type="radio" name="ib-' + esc(q.id) + '" data-ib-answer="' + esc(q.id) + '" value="' + esc(opt) + '"' + (ui.answers[q.id] === opt ? ' checked' : '') + (done != null ? ' disabled' : '') + '> ' + 'ABCD'[i] + '. ' + esc(opt) + '</label>').join('') + '</fieldset>'
+            : '<label class="ft-visually-hidden" for="ftIbA-' + esc(q.id) + '">Your answer</label>'
+              + '<textarea class="ft-textarea" id="ftIbA-' + esc(q.id) + '" data-ib-answer="' + esc(q.id) + '" rows="3"' + (done != null ? ' readonly' : '') + '>' + esc(ui.answers[q.id] || '') + '</textarea>')
+          + (shown && q.paper === 1
+            ? '<div class="ft-ib-scheme"><p class="ft-label">Markscheme</p><p><strong>' + esc(q.answer) + '</strong> [1]</p>' + quote(q.scheme[0]) + '</div>'
+              + '<p class="ft-ib-score" role="status">' + (done ? 'Right: 1 of 1.' : 'Not this time: 0 of 1.') + '</p>'
+            : shown
+            ? '<fieldset class="ft-fieldset ft-ib-scheme"><legend class="ft-label">Markscheme: tick each point your answer makes</legend>'
+              + q.scheme.map((p, i) => '<label class="ft-check ft-check--plain"><input type="checkbox" data-ib-tick="' + esc(q.id) + '" value="' + i + '"' + (ticks[i] ? ' checked' : '') + (done != null ? ' disabled' : '') + '> <span>' + esc(p.text) + ' ' + cite(p.ref, p.text) + '</span></label>').join('')
+              + '</fieldset>'
+              + (done != null
+                ? '<p class="ft-ib-score" role="status">You gave yourself ' + done + ' of ' + q.marks + '.</p>'
+                : '<div class="ft-row"><button type="button" class="ft-btn" data-act="ib-mark" data-q="' + esc(q.id) + '">Save my mark</button></div>')
+            : '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="ib-show" data-q="' + esc(q.id) + '">' + (q.paper === 1 ? 'Check my answer' : 'Show the markscheme') + '</button></div>')
+          + '</li>';
+      }).join('') + '</ol>'
+      + '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="ib-new">New questions</button></div>'
+      + weakHtml + '</section>';
+  }
+  function startIb(form, focus) {
+    const set = app.open.set;
+    const fd = form ? new FormData(form) : null;
+    const prev = app.ui.ib || {};
+    const programme = fd ? String(fd.get('programme')) : (prev.programme || 'DP');
+    const qs = T.buildIbQuestions(corpusNow(), conceptsNow(), set.mastery, {
+      programme, paper: fd ? Number(fd.get('paper')) : 2, topic: fd ? String(fd.get('topic') || '') : '',
+      level: fd ? Number(fd.get('level')) : 0, count: fd ? Number(fd.get('count')) : 6, focus: focus || 'all',
+    });
+    app.ui.ib = { qs, programme, answers: {}, shown: {}, ticks: {}, done: {} };
+    renderScreen('#ftScreenTitle');
+    announce(qs.length ? plural(qs.length, 'question') + ' ready.' : 'No questions could be made from these notes.');
+  }
+  function showIbScheme(qid) {
+    const ui = app.ui.ib;
+    const q = ui && ui.qs.find((x) => x.id === qid);
+    if (!q) return;
+    ui.shown[qid] = true;
+    if (q.paper === 1) {
+      // Multiple choice marks itself.
+      ui.ticks[qid] = [ui.answers[qid] === q.answer];
+      markIb(qid);
+      return;
+    }
+    // Points the answer already seems to make are ticked; the student decides.
+    ui.ticks[qid] = T.ibSuggest(q, ui.answers[qid] || '');
+    renderScreen('#ftIb-' + qid + ' input[type=checkbox]');
+  }
+  function markIb(qid) {
+    const set = app.open.set;
+    const ui = app.ui.ib;
+    const q = ui && ui.qs.find((x) => x.id === qid);
+    if (!q) return;
+    const awarded = (ui.ticks[qid] || []).filter(Boolean).length;
+    ui.done[qid] = awarded;
+    const verdict = T.ibVerdict(awarded, q.marks);
+    q.conceptIds.forEach((id) => { set.mastery[id] = T.applyResult(set.mastery[id], verdict, nowIso()); });
+    studied();
+    save();
+    renderScreen('#ftIb-' + qid);
+    announce('Saved: ' + awarded + ' of ' + q.marks + '.');
+  }
+
+  /* ── Mock exam ──────────────────────────────────────────────────────── */
+
+  // A timed paper under exam conditions: answer everything, then mark it
+  // yourself against the markscheme. Kept in this tab's session so a reload
+  // does not lose a paper half done.
+  const EXAM_KEY = 'flux_tutor.v2.exam.';
+  function persistExam() {
+    if (!app.open) return;
+    try {
+      const x = app.ui.exam;
+      if (!x) sessionStorage.removeItem(EXAM_KEY + app.open.set.id);
+      else sessionStorage.setItem(EXAM_KEY + app.open.set.id, JSON.stringify(x));
+    } catch (_) { /* a reload then starts again */ }
+  }
+  function restoreExam() {
+    try {
+      const raw = sessionStorage.getItem(EXAM_KEY + app.open.set.id);
+      const x = raw ? JSON.parse(raw) : null;
+      if (x && Array.isArray(x.qs) && x.qs.length && ['running', 'marking', 'done'].includes(x.phase)) app.ui.exam = x;
+    } catch (_) { app.ui.exam = null; }
+  }
+  function startExamTimer() {
+    stopTestTimer();
+    const x = app.ui.exam;
+    if (!app.open || app.tab !== 'exam' || !x || x.phase !== 'running') return;
+    const tick = () => {
+      if (app.ui.exam !== x || x.phase !== 'running') { stopTestTimer(); return; }
+      const left = x.deadline - Date.now();
+      const el = document.getElementById('ftTimerText');
+      if (el) el.textContent = clock(left);
+      if (left <= 5 * 60000 && !x.warned) { x.warned = true; persistExam(); announce('Five minutes left.'); }
+      if (left <= 0) { stopTestTimer(); endExam(true); }
+    };
+    tick();
+    if (app.ui.exam === x && x.phase === 'running') timerHandle = setInterval(tick, 1000);
+  }
+  function gradeHtml(p) {
+    if (!p) return '<p class="ft-help">Do a mock exam or a practice test and your predicted grade shows here.</p>';
+    return '<p class="ft-grade"><span class="ft-grade-num">' + p.grade + '</span><span>Predicted grade <span class="ft-help">(' + p.pct + '% · '
+      + ({ high: 'good evidence', medium: 'some evidence', low: 'early guess' })[p.confidence] + ')</span></span></p>';
+  }
+  function examScreen() {
+    const set = app.open.set;
+    if (!set.guide) return needGuide('Mock exam');
+    const concepts = conceptsNow();
+    if (!concepts.length) return noTerms('Mock exam');
+    const x = app.ui.exam;
+    const head = (sticky) => '<section class="ft-panel" aria-labelledby="ftScreenTitle"><div class="ft-panel-head' + (sticky ? ' ft-panel-head--sticky' : '') + '"><h2 class="ft-h2" id="ftScreenTitle" tabindex="-1">Mock exam</h2>'
+      + (sticky ? '<p class="ft-timer"><span class="ft-visually-hidden">Time left: </span>' + icon('plan', 16) + '<span id="ftTimerText">' + clock(x.deadline - Date.now()) + '</span></p>' : '') + '</div>';
+    if (!x) {
+      return head(false)
+        + '<p class="ft-lead">A full timed paper from your notes: a Paper 1 section (multiple choice) and a Paper 2 section (written answers with IB command terms). When the time is up you mark it yourself against the markscheme, and your predicted grade updates.</p>'
+        + gradeHtml(T.predictGrade(set))
+        + '<form data-form="exam-setup" novalidate><div class="ft-grid">'
+        + '<div class="ft-field"><label class="ft-label" for="ftExSize">Length</label><select class="ft-select" id="ftExSize" name="size"><option value="short">Short (about 15 minutes)</option><option value="normal" selected>Standard (about 30 minutes)</option><option value="long">Long (about 50 minutes)</option></select></div>'
+        + '<div class="ft-field"><label class="ft-label" for="ftExTopic">Topic</label><select class="ft-select" id="ftExTopic" name="topic"><option value="">All topics</option>'
+        + T.topicsFor(corpusNow(), concepts).filter((t) => t.id).map((t) => '<option value="' + esc(t.id) + '">' + esc(t.title) + '</option>').join('') + '</select></div>'
+        + '<div class="ft-field"><label class="ft-label" for="ftExProg">Programme</label><select class="ft-select" id="ftExProg" name="programme"><option value="DP">DP (Diploma)</option><option value="MYP">MYP</option></select></div>'
+        + '</div><p class="ft-error" role="alert"></p><div class="ft-row"><button type="submit" class="ft-btn">Start the exam</button></div></form>'
+        + examHistoryHtml(set) + '</section>';
+    }
+    const qHtml = (q, i) => {
+      const locked = x.phase !== 'running';
+      const ans = x.answers[q.id] || '';
+      let body = q.paper === 1
+        ? '<fieldset class="ft-fieldset"><legend class="ft-visually-hidden">Your answer</legend>' + q.options.map((opt, k) => '<label class="ft-check ft-check--plain' + (locked && opt === q.answer ? ' ft-ib-right' : '') + '"><input type="radio" name="ex-' + esc(q.id) + '" data-ex-answer="' + esc(q.id) + '" value="' + esc(opt) + '"' + (ans === opt ? ' checked' : '') + (locked ? ' disabled' : '') + '> ' + 'ABCD'[k] + '. ' + esc(opt) + '</label>').join('') + '</fieldset>'
+        : '<label class="ft-visually-hidden" for="ftExA-' + esc(q.id) + '">Your answer</label><textarea class="ft-textarea" id="ftExA-' + esc(q.id) + '" data-ex-answer="' + esc(q.id) + '" rows="3"' + (locked ? ' readonly' : '') + '>' + esc(ans) + '</textarea>';
+      if (locked && q.paper === 1) {
+        body += '<div class="ft-ib-scheme"><p class="ft-label">Markscheme</p><p><strong>' + esc(q.answer) + '</strong> [1]</p>' + quote(q.scheme[0]) + '</div>';
+      } else if (locked) {
+        const ticks = x.ticks[q.id] || [];
+        body += '<fieldset class="ft-fieldset ft-ib-scheme"><legend class="ft-label">Markscheme: tick each point your answer makes</legend>'
+          + q.scheme.map((p, k) => '<label class="ft-check ft-check--plain"><input type="checkbox" data-ex-tick="' + esc(q.id) + '" value="' + k + '"' + (ticks[k] ? ' checked' : '') + (x.phase === 'done' ? ' disabled' : '') + '> <span>' + esc(p.text) + ' ' + cite(p.ref, p.text) + '</span></label>').join('') + '</fieldset>';
+      }
+      return '<li class="ft-ib-q" id="ftEx-' + esc(q.id) + '"><p class="ft-ib-meta"><span class="ft-score-pill" title="' + esc(T.COMMAND_TERMS[q.command].meaning) + '">' + esc(q.command) + '</span> <span class="ft-help">Question ' + (i + 1) + ' · [' + plural(q.marks, 'mark') + ']</span></p>'
+        + '<p class="ft-ib-prompt"><strong>' + esc(q.prompt) + '</strong></p>' + body + '</li>';
+    };
+    const section = (paper, title) => {
+      const qs = x.qs.filter((q) => q.paper === paper);
+      if (!qs.length) return '';
+      return '<h3 class="ft-h3">' + title + ' <span class="ft-help">[' + plural(qs.reduce((n, q) => n + q.marks, 0), 'mark') + ']</span></h3><ol class="ft-ib-list">' + qs.map((q) => qHtml(q, x.qs.indexOf(q))).join('') + '</ol>';
+    };
+    const papers = section(1, 'Paper 1 · multiple choice') + section(2, 'Paper 2 · written answers');
+    if (x.phase === 'running') {
+      return head(true) + '<p class="ft-help">' + esc(x.programme) + ' · ' + plural(x.marks, 'mark') + ' · ' + x.minutes + ' minutes. Nothing is marked until you finish or the time runs out.</p>'
+        + papers + '<div class="ft-row"><button type="button" class="ft-btn" data-act="exam-end">Finish the exam</button>'
+        + '<button type="button" class="ft-btn ft-btn--quiet" data-act="exam-quit">Stop without marking</button></div></section>';
+    }
+    if (x.phase === 'marking') {
+      return head(false) + '<p class="ft-lead">' + (x.timeUp ? 'Time is up. ' : '') + 'Now mark your paper. Paper 1 is marked for you. For Paper 2, tick each markscheme point your answer makes (points it already seems to make are ticked; you decide).</p>'
+        + papers + '<div class="ft-row"><button type="button" class="ft-btn" data-act="exam-save">Save my marks</button></div></section>';
+    }
+    const rec = set.exams.find((e) => e.id === x.recordId) || set.exams[set.exams.length - 1];
+    return head(false) + (rec ? '<p class="ft-lead" role="status">You scored <strong>' + rec.got + ' of ' + rec.total + '</strong> (' + rec.pct + '%): Paper 1 ' + rec.p1.got + '/' + rec.p1.total + ', Paper 2 ' + rec.p2.got + '/' + rec.p2.total + ', about grade ' + T.gradeFor(rec.pct) + '.</p>' : '')
+      + gradeHtml(T.predictGrade(set))
+      + '<div class="ft-row"><button type="button" class="ft-btn" data-act="exam-new">Take another exam</button><a class="ft-btn ft-btn--quiet" href="' + esc(setHash(set.id, 'topics')) + '">Revise my topics</a></div>'
+      + papers + '</section>';
+  }
+  function examHistoryHtml(set) {
+    if (!set.exams.length) return '';
+    return '<section class="ft-guide-sec" aria-labelledby="ftExHist"><h3 class="ft-h3" id="ftExHist">Your past exams</h3><ul class="ft-history">'
+      + set.exams.slice().reverse().map((r) => '<li><span class="ft-score-pill">' + r.pct + '%</span> <span>' + esc(fmtWhen(r.at)) + ' · ' + r.got + ' of ' + r.total + ' marks · about grade ' + T.gradeFor(r.pct) + '</span></li>').join('')
+      + '</ul></section>';
+  }
+  function startExam(form) {
+    const set = app.open.set;
+    const fd = new FormData(form);
+    const programme = String(fd.get('programme')) === 'MYP' ? 'MYP' : 'DP';
+    const m = T.buildMockExam(corpusNow(), conceptsNow(), set.mastery, { programme, size: String(fd.get('size')), topic: String(fd.get('topic') || '') });
+    if (!m.questions.length) { form.querySelector('.ft-error').textContent = 'Your notes do not have enough on these terms for an exam yet. Try “All topics”, or add more notes.'; return; }
+    const now = Date.now();
+    app.ui.exam = { phase: 'running', qs: m.questions, marks: m.marks, minutes: m.minutes, programme, answers: {}, ticks: {}, startedAt: now, deadline: now + m.minutes * 60000, warned: false };
+    persistExam();
+    renderScreen('#ftScreenTitle');
+    startExamTimer();
+    announce('Exam started: ' + m.minutes + ' minutes.');
+  }
+  function endExam(timeUp) {
+    const x = app.ui.exam;
+    if (!x || x.phase !== 'running') return;
+    stopTestTimer();
+    x.phase = 'marking';
+    x.timeUp = !!timeUp;
+    x.seconds = Math.min(x.minutes * 60, Math.round((Date.now() - x.startedAt) / 1000));
+    x.qs.forEach((q) => {
+      x.ticks[q.id] = q.paper === 1 ? [x.answers[q.id] === q.answer] : T.ibSuggest(q, x.answers[q.id] || '');
+    });
+    persistExam();
+    if (app.tab === 'exam') { renderScreen(); window.scrollTo(0, 0); focusEl('#ftScreenTitle'); }
+    announce((timeUp ? 'Time is up. ' : '') + 'Now mark your paper.');
+  }
+  function saveExam() {
+    const set = app.open.set;
+    const x = app.ui.exam;
+    if (!x || x.phase !== 'marking') return;
+    const awarded = {};
+    const at = nowIso();
+    x.qs.forEach((q) => {
+      awarded[q.id] = (x.ticks[q.id] || []).filter(Boolean).length;
+      const verdict = (x.answers[q.id] || '').trim() ? T.ibVerdict(awarded[q.id], q.marks) : 'incorrect';
+      q.conceptIds.forEach((id) => { set.mastery[id] = T.applyResult(set.mastery[id], verdict, at); });
+    });
+    const rec = T.examRecord(x.qs, awarded, { programme: x.programme, minutes: x.minutes, seconds: x.seconds });
+    set.exams.push(rec);
+    if (set.exams.length > T.LIMITS.tests) set.exams.splice(0, set.exams.length - T.LIMITS.tests);
+    x.phase = 'done';
+    x.recordId = rec.id;
+    studied();
+    save();
+    persistExam();
+    renderScreen('#ftScreenTitle');
+    announce('Saved: ' + rec.got + ' of ' + rec.total + ' marks.');
+  }
+
+  /* ── Topic notes ────────────────────────────────────────────────────── */
+
+  function topicsScreen() {
+    const set = app.open.set;
+    if (!set.guide) return needGuide('Topics');
+    const pages = T.topicPages(corpusNow(), set.guide, conceptsNow(), set.mastery);
+    if (!pages.length) return noTerms('Topics');
+    const st = (m) => (m.total ? m.mastered + ' of ' + plural(m.total, 'term') + ' mastered' : 'No terms');
+    return '<section class="ft-panel" aria-labelledby="ftScreenTitle"><h2 class="ft-h2" id="ftScreenTitle" tabindex="-1">Topics</h2>'
+      + '<p class="ft-lead">A notes page for each topic in your notes: the summary, the key terms and facts, and how well you know them. Open one to revise it, then practise just that topic.</p>'
+      + '<ul class="ft-topics">' + pages.map((p) => {
+        const pct = p.mastery.percent;
+        return '<li><details class="ft-details ft-topic" id="ftTopic-' + esc(p.id) + '"><summary><span class="ft-topic-title">' + esc(p.title) + '</span>'
+          + '<span class="ft-meter ft-meter--small" role="progressbar" aria-label="' + esc(p.title) + ' mastered" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><span style="width:' + pct + '%"></span></span>'
+          + '<span class="ft-help">' + esc(st(p.mastery)) + '</span></summary>'
+          + (p.summary.length ? '<h3 class="ft-h4">Summary</h3><ul class="ft-summary">' + p.summary.map((s) => '<li><span>' + esc(s.text) + '</span> ' + cite(s.ref, s.text) + '</li>').join('') + '</ul>' : '')
+          + (p.terms.length ? '<h3 class="ft-h4">Key terms</h3><dl class="ft-topic-terms">' + p.terms.map((t) => '<dt>' + esc(t.term) + ' <span class="ft-help">' + esc(statusText(T.statusOf(set.mastery[t.id]))) + '</span></dt><dd>' + esc(t.def) + ' ' + itemCite(t) + '</dd>').join('') + '</dl>' : '')
+          + (p.facts.length ? '<h3 class="ft-h4">Key facts</h3><ul class="ft-summary">' + p.facts.map((f) => '<li><span>' + esc(f.text) + '</span> ' + itemCite(f) + '</li>').join('') + '</ul>' : '')
+          + (DP_EXAMS && p.id !== 'own' ? '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="topic-ib" data-topic="' + esc(p.id) + '">Practise this topic</button></div>' : '')
+          + '</details></li>';
+      }).join('') + '</ul></section>';
+  }
+
+  /* ── If you're stuck ────────────────────────────────────────────────── */
+
+  // Free, well-known study sites, matched by the set's subject (or title).
+  const STUCK = [
+    [/math|calc|algebra|geometr|statistic|aa\b|ai\b/i, [['Khan Academy: Math', 'https://www.khanacademy.org/math'], ['Desmos graphing calculator', 'https://www.desmos.com/calculator'], ['Revision Village (IB Maths)', 'https://www.revisionvillage.com/'], ['Wolfram Alpha', 'https://www.wolframalpha.com/']]],
+    [/physic/i, [['PhET simulations: Physics', 'https://phet.colorado.edu/en/simulations/filter?subjects=physics'], ['Khan Academy: Physics', 'https://www.khanacademy.org/science/physics'], ['HyperPhysics', 'http://hyperphysics.phy-astr.gsu.edu/hbase/index.html']]],
+    [/chem/i, [['PhET simulations: Chemistry', 'https://phet.colorado.edu/en/simulations/filter?subjects=chemistry'], ['Khan Academy: Chemistry', 'https://www.khanacademy.org/science/chemistry'], ['Chemistry LibreTexts', 'https://chem.libretexts.org/']]],
+    [/bio|life|cell|ecolog|genet/i, [['Khan Academy: Biology', 'https://www.khanacademy.org/science/biology'], ['PhET simulations: Biology', 'https://phet.colorado.edu/en/simulations/filter?subjects=biology'], ['Biology LibreTexts', 'https://bio.libretexts.org/']]],
+    [/histor|civics|govern|politic/i, [['Khan Academy: World history', 'https://www.khanacademy.org/humanities/world-history'], ['Crash Course on YouTube', 'https://www.youtube.com/@crashcourse'], ['BBC Bitesize: History', 'https://www.bbc.co.uk/bitesize/subjects/zk26n39']]],
+    [/econ|business/i, [['Khan Academy: Economics', 'https://www.khanacademy.org/economics-finance-domain'], ['Tutor2u Economics', 'https://www.tutor2u.net/economics']]],
+    [/english|literat|language a|writing|essay/i, [['Purdue OWL (writing)', 'https://owl.purdue.edu/owl/purdue_owl.html'], ['Poetry Foundation glossary', 'https://www.poetryfoundation.org/learn/glossary-terms'], ['SparkNotes', 'https://www.sparknotes.com/']]],
+    [/comput|program|coding|\bcs\b/i, [['Khan Academy: Computing', 'https://www.khanacademy.org/computing'], ['W3Schools', 'https://www.w3schools.com/'], ['CS50 (Harvard, free)', 'https://cs50.harvard.edu/x/']]],
+    [/psych/i, [['Khan Academy: Psychology', 'https://www.khanacademy.org/science/health-and-medicine/mental-health'], ['Simply Psychology', 'https://www.simplypsychology.org/']]],
+    [/geog|environment|ess\b/i, [['National Geographic Education', 'https://education.nationalgeographic.org/'], ['BBC Bitesize: Geography', 'https://www.bbc.co.uk/bitesize/subjects/zrw76sg']]],
+    [/spanish|french|german|chinese|mandarin|language b|languag/i, [['Duolingo', 'https://www.duolingo.com/'], ['WordReference dictionary', 'https://www.wordreference.com/']]],
+  ];
+  const STUCK_ALWAYS = [['IB: subjects and programmes', 'https://www.ibo.org/programmes/'], ['Khan Academy', 'https://www.khanacademy.org/']];
+  function stuckLinks(set) {
+    const text = (set.subject || '') + ' ' + (set.title || '');
+    const hit = STUCK.find(([re]) => re.test(text));
+    return (hit ? hit[1] : []).concat(STUCK_ALWAYS);
+  }
+  function stuckPanel(set) {
+    return '<details class="ft-panel ft-stuck"><summary class="ft-h3">If you’re stuck</summary>'
+      + '<p class="ft-help">Good free sites for ' + esc(set.subject || 'this subject') + '. They open in a new tab and are not part of Flux, so check them against your notes.</p>'
+      + '<ul class="ft-stuck-list">' + stuckLinks(set).map(([label, href]) => '<li><a href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">' + esc(label) + '<span class="ft-visually-hidden"> (opens in a new tab)</span></a></li>').join('') + '</ul></details>';
+  }
+
   function cardQueueIds() { return T.cardQueue(app.open.set, Date.now(), 20).map((c) => c.id); }
   function cardsScreen() {
     const set = app.open.set;
@@ -2043,9 +2686,9 @@
       const now = Date.now();
       const pv = FF.preview({ s: card.s }, now, { examAt: examAt() });
       const grades = [[FF.AGAIN, 'Again'], [FF.HARD, 'Hard'], [FF.GOOD, 'Good'], [FF.EASY, 'Easy']];
-      stage = '<div class="ft-flash" id="ftFlash">'
+      stage = '<div class="ft-flash' + (ui.flipped ? ' is-flipped' : '') + '" id="ftFlash">'
         + '<p class="ft-flash-label">Term</p><p class="ft-flash-term">' + esc(card.term) + '</p>'
-        + (ui.flipped ? '<div class="ft-flash-back"><p class="ft-flash-label">Definition</p><p class="ft-flash-def" id="ftFlashDef">' + esc(card.def) + '</p>' + itemCite(set.guide.terms.find((t) => t.id === card.id) || card) + '</div>' : '')
+        + (ui.flipped ? '<div class="ft-flash-back ft-flip-in"><p class="ft-flash-label">Definition</p><p class="ft-flash-def" id="ftFlashDef">' + esc(card.def) + '</p>' + itemCite(set.guide.terms.find((t) => t.id === card.id) || card) + '</div>' : '')
         + '</div>'
         + (ui.flipped
           ? '<div class="ft-rate" role="group" aria-label="How well did you know it?">' + grades.map(([g, label]) => {
@@ -2126,7 +2769,7 @@
     if (!T.hasNotes(set)) return needGuide('Ask your notes');
     const q = app.ui.askQuery;
     return '<section class="ft-panel" aria-labelledby="ftScreenTitle"><h2 class="ft-h2" id="ftScreenTitle" tabindex="-1">Ask your notes</h2>'
-      + '<p class="ft-lead">Type a question or a few key words. You see the passages in your notes that match, best first, with where each one is. Flux Tutor does not write answers of its own.</p>'
+      + '<p class="ft-lead">Type a question or a few key words. You get a short answer made only of sentences from your notes, then the passages it came from, best first. Click a number or a source to see the passage in your notes.</p>'
       + '<form class="ft-ask" data-form="ask" role="search" novalidate><label class="ft-label" for="ftAsk">Your question</label>'
       + '<div class="ft-ask-row"><input class="ft-input" id="ftAsk" name="q" type="search" value="' + esc(q) + '" maxlength="300" autocomplete="off" placeholder="e.g. What does the cell wall do?">'
       + '<button type="submit" class="ft-btn">' + icon('ask', 17) + 'Search</button></div></form>'
@@ -2142,7 +2785,7 @@
     if (r.empty) return '<p class="ft-help">Add a word or two about the topic. Question words like “what” and “why” are not searched.</p>';
     const result = (x) => '<li class="ft-result"><article>' + (x.section ? '<p class="ft-result-section">' + esc(x.section) + '</p>' : '')
       + '<p class="ft-result-text">' + x.sentences.map((p) => highlight(p.text, r.stems)).join(' ') + (x.trimmed ? ' <span class="ft-help">(part of a longer paragraph)</span>' : '') + '</p>'
-      + cite(x.ref) + '</article></li>';
+      + cite(x.ref, x.sentences[0] && x.sentences[0].text) + '</article></li>';
     if (!r.covered) {
       return '<div class="ft-none"><p class="ft-none-title"><strong>' + (r.related.length
         ? 'Nothing in your notes matches all of that.</strong> These passages share some of its words; check whether they answer it.'
@@ -2151,9 +2794,84 @@
         + (r.related.length ? '<h3 class="ft-h4">Closest passages</h3><ol class="ft-results ft-results--near">' + r.related.map(result).join('') + '</ol>' : '')
         + '</div>';
     }
-    return (r.terms.length ? '<div class="ft-ask-terms"><h3 class="ft-h4">Key terms</h3><ul class="ft-term-list">'
+    return answerHtml(r, query) + (r.terms.length ? '<div class="ft-ask-terms"><h3 class="ft-h4">Key terms</h3><ul class="ft-term-list">'
       + r.terms.map((t) => '<li><strong>' + esc(t.term) + '</strong>: ' + esc(t.def) + ' ' + cite(t.ref) + '</li>').join('') + '</ul></div>' : '')
-      + '<h3 class="ft-h4">' + plural(r.results.length, 'passage') + ' from your notes</h3><ol class="ft-results">' + r.results.map(result).join('') + '</ol>';
+      + '<h3 class="ft-h4">' + plural(r.results.length, 'passage') + ' from your notes</h3><ol class="ft-results">' + r.results.map((x, i) => result(x).replace('<li class="ft-result">', '<li class="ft-result" id="ftPassage' + (i + 1) + '">')).join('') + '</ol>';
+  }
+  /** "[2]" linking to passage 2 in the list below and, through it, to the notes. */
+  function citeMark(n, r) {
+    const x = r.results[n - 1];
+    return '<a class="ft-cite-num" href="#ftPassage' + n + '" data-act="ask-passage" data-n="' + n + '" title="' + esc(x ? T.formatRef(x.ref) : '') + '">[' + n + ']</a>';
+  }
+  function answerHtml(r, query) {
+    const parts = T.answerFromNotes(r, 3);
+    if (!parts.length) return '';
+    const ai = app.ui.askAi && app.ui.askAi.query === query ? app.ui.askAi : null;
+    let body = '<p class="ft-answer-label">From your notes</p><ul class="ft-answer-list">'
+      + parts.map((p) => '<li>' + esc(p.text) + ' ' + citeMark(p.n, r) + '</li>').join('') + '</ul>';
+    if (ai && ai.state === 'done') {
+      body = '<p class="ft-answer-label">Written by Flux AI from your notes only. Check each part against its passage.</p><p class="ft-answer-text">'
+        + ai.parts.map((p) => esc(p.text) + ' ' + p.cites.map((n) => citeMark(n, r)).join('')).join(' ') + '</p>';
+    }
+    return '<section class="ft-answer" aria-labelledby="ftAnswerTitle"><h3 class="ft-h4" id="ftAnswerTitle">Answer</h3>' + body
+      + (ai && ai.state === 'busy' ? '<p class="ft-help" role="status">Flux AI is writing an answer from these passages…</p>' : '')
+      + (ai && ai.state === 'error' ? '<p class="ft-help" role="status">' + esc(ai.message) + '</p>' : '')
+      + (tutorAiOn() && (!ai || ai.state === 'error') ? '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="ask-ai">' + icon('sparkle', 16) + 'Write it as a paragraph with Flux AI</button></div>' : '')
+      + '</section>';
+  }
+
+  /* Flux AI is paused across the suite (FLUX_AI_ENABLED in the planner), so
+     this stays off until that switch is turned back on here too. When on, it
+     goes through the same ai-proxy as the planner, with the planner's session. */
+  const TUTOR_AI_ENABLED = false;
+  const SB_URL = window.FluxSB.url;
+  const SB_ANON = window.FluxSB.anon;
+  const PLANNER_KEY = 'sb-lfigdijuqmbensebnevo-auth-token';
+  function tutorAiOn() { return TUTOR_AI_ENABLED || window.FLUX_TUTOR_AI === true; }
+  function plannerToken() {
+    try {
+      let s = JSON.parse(localStorage.getItem(PLANNER_KEY) || 'null');
+      if (s && s.currentSession) s = s.currentSession;
+      return s && s.access_token && s.expires_at * 1000 > Date.now() + 60000 ? s.access_token : '';
+    } catch (_) { return ''; }
+  }
+  const ASK_AI_SYSTEM = 'You answer a student\'s question using ONLY the numbered passages from their own notes. '
+    + 'Write 2 to 4 short sentences. End every sentence with the number of the passage it comes from, like [1] or [2][3]. '
+    + 'Do not add facts that are not in the passages. If the passages do not answer the question, reply exactly: NOT IN NOTES';
+  async function askAi() {
+    const query = app.ui.askQuery;
+    const r = app.ui.askResult;
+    if (!r || !r.covered) return;
+    const token = plannerToken();
+    const redraw = () => { const box = document.getElementById('ftAskResults'); if (box) box.innerHTML = askResultsHtml(query); };
+    if (!token) {
+      app.ui.askAi = { query, state: 'error', message: 'Sign in to Flux Planner in this browser to use Flux AI here. The answer from your notes above still works.' };
+      redraw();
+      return;
+    }
+    app.ui.askAi = { query, state: 'busy' };
+    redraw();
+    const passages = r.results.map((x, i) => '[' + (i + 1) + '] ' + x.sentences.map((p) => p.text).join(' ')).join('\n');
+    try {
+      const res = await fetch(SB_URL + '/functions/v1/ai-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, apikey: SB_ANON },
+        body: JSON.stringify({ messages: [{ role: 'system', content: ASK_AI_SYSTEM }, { role: 'user', content: 'Passages:\n' + passages + '\n\nQuestion: ' + query }] }),
+      });
+      if (!res.ok) throw new Error('Flux AI is not available right now (' + res.status + ').');
+      const data = await res.json();
+      const text = (data && data.content && data.content[0] && data.content[0].text) || '';
+      const parts = /NOT IN NOTES/.test(text) ? [] : T.groundedParts(text, r.results.length);
+      if (app.ui.askQuery !== query) return;
+      app.ui.askAi = parts.length
+        ? { query, state: 'done', parts }
+        : { query, state: 'error', message: 'Flux AI could not write an answer that cites your notes, so none is shown. Use the answer from your notes above.' };
+    } catch (e) {
+      if (app.ui.askQuery !== query) return;
+      app.ui.askAi = { query, state: 'error', message: (e && e.message) || 'Flux AI is not available right now.' };
+    }
+    redraw();
+    announce(app.ui.askAi.state === 'done' ? 'Flux AI answer ready.' : app.ui.askAi.message);
   }
   function runAsk(form) {
     const q = String(form.elements.q.value || '').trim().slice(0, 300);
@@ -2280,7 +2998,9 @@
     const act = btn.dataset.act;
     const id = btn.dataset.id;
     switch (act) {
+      case 'lib-mode': setLibMode(btn.dataset.mode); renderLibrary(); focusEl('#ftMode-' + btn.dataset.mode); break;
       case 'sample': guarded(createSample); break;
+      case 'syl-new': guarded(() => startUnitSet(btn.dataset.unit || '')); break;
       case 'import': { const f = document.getElementById('ftImportFile'); if (f) f.click(); break; }
       case 'export-all': guarded(libExportAll); break;
       case 'rename': guarded(() => libRename(id)); break;
@@ -2334,6 +3054,30 @@
       case 'step-example': stepHelp('example'); break;
       case 'test-quit': app.ui.test = null; persistTest(); stopTestTimer(); renderScreen('#ftScreenTitle'); announce('Test stopped. Nothing was marked.'); break;
       case 'test-new': app.ui.test = null; persistTest(); renderScreen('#ftScreenTitle'); break;
+      case 'ib-show': showIbScheme(btn.dataset.q); break;
+      case 'ib-mark': markIb(btn.dataset.q); break;
+      case 'ib-new': app.ui.ib = null; renderScreen('#ftScreenTitle'); break;
+      case 'ib-weak': startIb(null, 'weak'); break;
+      case 'topic-ib': app.ui.ib = null; app.ui.ibTopic = btn.dataset.topic; go(setHash(app.open.set.id, 'ib')); break;
+      case 'exam-end': endExam(false); break;
+      case 'exam-save': saveExam(); break;
+      case 'exam-quit': app.ui.exam = null; persistExam(); stopTestTimer(); renderScreen('#ftScreenTitle'); announce('Exam stopped. Nothing was marked.'); break;
+      case 'exam-new': app.ui.exam = null; persistExam(); renderScreen('#ftScreenTitle'); break;
+      case 'ask-ai': askAi(); break;
+      case 'ask-passage': {
+        e.preventDefault();
+        const li = document.getElementById('ftPassage' + btn.dataset.n);
+        if (li) { li.classList.add('is-target'); li.scrollIntoView({ block: 'center' }); const a = li.querySelector('.ft-cite-link'); if (a) a.focus({ preventScroll: true }); setTimeout(() => li.classList.remove('is-target'), 1600); }
+        break;
+      }
+      case 'guide-listen': toggleListen(); break;
+      case 'guide-map': app.ui.guideMap = !app.ui.guideMap; app.ui.mapPick = null; renderScreen('[data-act="guide-map"]'); break;
+      case 'map-pick': {
+        const same = app.ui.mapPick && app.ui.mapPick.kind === btn.dataset.kind && app.ui.mapPick.id === btn.dataset.id;
+        app.ui.mapPick = same ? null : { kind: btn.dataset.kind, id: btn.dataset.id };
+        renderScreen('[data-act="map-pick"][data-kind="' + btn.dataset.kind + '"][data-id="' + CSS.escape(btn.dataset.id) + '"]');
+        break;
+      }
       case 'card-flip': flipCard(); break;
       case 'card-rate': rateCard(Number(btn.dataset.grade)); break;
       case 'cards-ahead': cardsAhead(); break;
@@ -2364,6 +3108,8 @@
       case 'check': answerCheckQ(form, false); break;
       case 'step': answerStepQ(form, false); break;
       case 'test-setup': startTest(form); break;
+      case 'ib-setup': startIb(form); break;
+      case 'exam-setup': startExam(form); break;
       case 'test': finishTest(false); break;
       case 'ask': runAsk(form); break;
       case 'exam': saveExamDate(form); break;
@@ -2374,10 +3120,26 @@
   root.addEventListener('input', (e) => {
     const t = e.target;
     if (t.dataset && (t.dataset.field || t.dataset.srcText)) { onNotesInput(t); return; }
+    if (t.dataset && t.dataset.ibAnswer && app.ui.ib && t.type !== 'radio') { app.ui.ib.answers[t.dataset.ibAnswer] = t.value; return; }
+    if (t.dataset && t.dataset.exAnswer && app.ui.exam && t.type !== 'radio') { app.ui.exam.answers[t.dataset.exAnswer] = t.value; persistExam(); return; }
     if (t.closest && t.closest('form[data-form="test"]')) collectTestAnswer(t);
   });
   root.addEventListener('change', (e) => {
     const t = e.target;
+    if (t.id === 'ftSylSubject') { app.sylSubject = t.value; renderLibrary(); const s = document.getElementById('ftSylSubject'); if (s) s.focus(); return; }
+    if (t.dataset && t.dataset.ibAnswer && t.type === 'radio' && app.ui.ib) { app.ui.ib.answers[t.dataset.ibAnswer] = t.value; return; }
+    if (t.dataset && t.dataset.exAnswer && t.type === 'radio' && app.ui.exam) { app.ui.exam.answers[t.dataset.exAnswer] = t.value; persistExam(); return; }
+    if (t.dataset && t.dataset.exTick && app.ui.exam) {
+      const list = app.ui.exam.ticks[t.dataset.exTick] || (app.ui.exam.ticks[t.dataset.exTick] = []);
+      list[Number(t.value)] = t.checked;
+      persistExam();
+      return;
+    }
+    if (t.dataset && t.dataset.ibTick && app.ui.ib) {
+      const list = app.ui.ib.ticks[t.dataset.ibTick] || (app.ui.ib.ticks[t.dataset.ibTick] = []);
+      list[Number(t.value)] = t.checked;
+      return;
+    }
     if (t.id === 'ftPhotoFiles' || t.id === 'ftMaterialFiles') {
       importFiles(t.files, t.id === 'ftPhotoFiles' ? 'Photo' : 'File');
       t.value = '';

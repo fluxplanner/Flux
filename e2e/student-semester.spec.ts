@@ -58,14 +58,9 @@ test.describe('Student semester path', () => {
     await checkEl.scrollIntoViewIfNeeded();
     await checkEl.click();
     // Look up the task by its known seeded id rather than text in a filter.
-    // After toggle, the task moves into #completedTasksWrap (display:none by
-    // default), but the .check element itself still gets the `done` class —
-    // an ID-anchored locator finds it regardless of which list it sits in,
-    // and avoids interference from the optional "Log actual time" prompt.
-    // Confirm via the in-memory task state (DOM lookup is brittle: the task
-    // moves into #completedTasksWrap which renderTasks may strip in some
-    // re-render orderings; what we actually care about is that toggle wrote
-    // through to the persistent state).
+    // After toggle the task leaves the dashboard list (finished tasks show in
+    // the calendar only), so confirm via the in-memory task state: what we
+    // care about is that toggle wrote through to the persistent state.
     await expect.poll(
       async () => page.evaluate(() => (window as any).tasks?.find?.((t: any) => t.id === 91001)?.done),
       { timeout: 10_000 },

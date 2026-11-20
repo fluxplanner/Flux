@@ -216,17 +216,17 @@ test.describe('Name + password sign-in', () => {
       if (!el) return null;
       return {
         display: getComputedStyle(el).display,
-        mentionsNoReset: /no reset link/i.test(el.textContent || ''),
-        saysHowToRecover: /request a reset/i.test(el.textContent || ''),
+        mentionsResetLink: /reset link/i.test(el.textContent || ''),
+        saysHowToRecover: /forgot your password/i.test(el.textContent || ''),
       };
     });
 
     expect(keepsafe, 'the keepsafe notice is missing').not.toBeNull();
     // Hidden on arrival — it is for the moment just after an account is made.
     expect(keepsafe!.display).toBe('none');
-    /* The whole reason the notice exists: with no email there is no recovery,
-       so the copy has to say that, not just "keep it safe". */
-    expect(keepsafe!.mentionsNoReset, 'the notice must explain there is no reset').toBe(true);
+    /* The notice has to say how a forgotten password comes back (a reset
+       link to the recovery email), not just "keep it safe". */
+    expect(keepsafe!.mentionsResetLink, 'the notice must mention the reset link').toBe(true);
     expect(keepsafe!.saysHowToRecover, 'the notice must say how to get back in').toBe(true);
   });
 
@@ -244,6 +244,34 @@ test.describe('Name + password sign-in', () => {
     expect(help.present, 'there is no way to ask for help').toBe(true);
     expect(help.wired, 'the help button is not wired to anything').toBe(true);
     expect(help.text).toMatch(/forgot your password/i);
+  });
+
+  /*
+   * The security watch alerts on bursts of wrong passwords. Supabase Auth keeps
+   * no record of them this project can read, so the sign-in screen reports
+   * each one. Only a wrong name/password counts, and only the name is sent.
+   */
+  test('a wrong password is reported to the security watch, by name only', async ({ page }) => {
+    const reported: unknown[] = [];
+    await page.route('**/auth/v1/token**', (route) => route.fulfill({
+      status: 400,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'invalid_grant', error_description: 'Invalid login credentials', code: 'invalid_credentials', msg: 'Invalid login credentials' }),
+    }));
+    await page.route('**/rest/v1/rpc/flux_note_failed_login', async (route) => {
+      reported.push(route.request().postDataJSON());
+      await route.fulfill({ status: 204, body: '' });
+    });
+
+    await page.evaluate(() => {
+      (document.querySelector('#loginUsername') as HTMLInputElement).value = 'Tester One';
+      (document.querySelector('#loginPassword') as HTMLInputElement).value = 'not-the-password-123';
+      (window as unknown as { handleEmailAuth: () => Promise<void> }).handleEmailAuth();
+    });
+    await expect.poll(() => reported.length, { timeout: 10000 }).toBe(1);
+    expect(reported[0]).toEqual({ p_username: await page.evaluate(() =>
+      (window as unknown as { fluxNormalizeUsername: (s: string) => string }).fluxNormalizeUsername('Tester One')) });
+    expect(JSON.stringify(reported[0])).not.toContain('not-the-password');
   });
 
   test('asking for help with an empty name says so instead of sending', async ({ page }) => {

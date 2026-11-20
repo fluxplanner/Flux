@@ -126,6 +126,8 @@
   /* ───────── file upload (PDF text + image OCR via vision) ───────── */
 
   var PDFJS_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  /* Integrity hash: the browser refuses the file if the CDN ever serves different bytes. Update it whenever the version in the URL changes. */
+  var PDFJS_SRI = 'sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e';
   var PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   var _pdfjsP = null;
   function loadPdfJs() {
@@ -134,6 +136,8 @@
     _pdfjsP = new Promise(function (res, rej) {
       var s = document.createElement('script');
       s.src = PDFJS_SRC;
+      s.integrity = PDFJS_SRI;
+      s.crossOrigin = 'anonymous';
       s.onload = function () {
         try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; } catch (e) {}
         res(window.pdfjsLib);

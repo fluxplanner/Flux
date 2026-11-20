@@ -11,6 +11,11 @@
   inline boot scripts on every standalone page.
 -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net 'wasm-unsafe-eval'; worker-src 'self' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; frame-src 'self'; form-action 'self'">
+<script src="public/js/flux-frame-guard.js?v=9afa87b3"></script>
+<script src="public/js/flux-look.js?v=81a3e0d1"></script>
+<script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
+<script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="teacher"></script>
+<script defer src="public/js/flux-site-notices.js?v=5e36c924"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flux Tutor · Study from your notes</title>
 <meta name="description" content="Turn your class notes, PDFs, Word documents and photos into a study guide with sources, step-by-step lessons, practice tests, flashcards and a plan to your exam, built only from your own notes.">
@@ -26,11 +31,13 @@
   scripts, no app bundles and no account needed: sets are saved in this
   browser (IndexedDB) by flux-tutor-store.js. Flux AI is never called.
 -->
-<link rel="stylesheet" href="public/css/flux-hub.css?v=4e2aebfb">
-<link rel="stylesheet" href="public/css/flux-teacher-app.css?v=42bb6723">
-<script src="public/js/flux-theme-carry.js?v=41b239bd"></script>
+<link rel="stylesheet" href="public/css/flux-hub.css?v=a473f365">
+<link rel="stylesheet" href="public/css/flux-loader.css?v=cd68603a">
+<link rel="stylesheet" href="public/css/flux-teacher-app.css?v=28ffd9bb">
+<script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
 <script src="public/js/flux-tutor-theme.js?v=85252ce1"></script>
 <style>/* Off-screen until focused, so keyboard users can jump past the header. */.flux-skip{position:absolute;left:12px;top:-60px;z-index:10000;padding:10px 16px;border-radius:10px;background:#0b0f1a;color:#fff;font:600 14px/1.2 system-ui,sans-serif;text-decoration:none;box-shadow:0 0 0 2px #38bdf8}.flux-skip:focus{top:12px}</style>
+<link rel="stylesheet" href="public/css/flux-look-flat.css?v=8156dbe3">
 </head>
 <body>
 <a class="flux-skip" href="#teacherApp">Skip to content</a>
@@ -47,17 +54,38 @@
   </header>
 
   <main id="teacherApp" class="ft-main">
-    <p class="ft-loading">Opening your study sets…</p>
+    <div class="flux-loader flux-loader--quick ft-loading" role="status">
+      <svg class="flux-loader__mark" viewBox="0 0 440 220" aria-hidden="true">
+        <defs><linearGradient id="ftLoaderMark" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#00c2ff"/><stop offset="100%" stop-color="#7c5cff"/></linearGradient></defs>
+        <path class="flux-loader__path" pathLength="1" transform="translate(268,110)" stroke="url(#ftLoaderMark)" d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"/>
+        <path class="flux-loader__run" pathLength="1" transform="translate(268,110)" d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"/>
+        <circle class="flux-loader__dot" cx="268" cy="110" r="13"/>
+      </svg>
+      <div class="flux-loader__label">Opening your study sets</div>
+    </div>
     <noscript><p class="ft-alert">Flux Tutor needs JavaScript to run.</p></noscript>
   </main>
   <div class="ft-toasts" id="ftToasts"></div>
   <div class="ft-visually-hidden" id="ftLive" aria-live="polite" aria-atomic="true"></div>
 
-  <script src="public/js/flux-hub.js?v=68b4d34f"></script>
+  <script src="public/data/products.js?v=9634bc03"></script>
+<script src="public/js/flux-hub.js?v=eb42b549"></script>
   <script src="public/js/core/flux-file-sniff.js"></script>
-  <script src="public/js/flux-tutor-core.js?v=d396ef48"></script>
+  <script src="public/js/flux-ib-syllabus.js?v=3b55e681"></script>
+  <script src="public/js/flux-ib-notes.js?v=7e0459a8"></script>
+  <script src="public/js/flux-tutor-core.js?v=c55ca063"></script>
   <script src="public/js/flux-tutor-store.js?v=d29051a8"></script>
-  <script src="public/js/flux-flash-core.js?v=e5298768"></script>
-  <script src="public/js/flux-teacher-app.js?v=30beaf96"></script>
+  <script src="public/js/flux-flash-core.js?v=23848655"></script>
+  <script src="public/js/flux-conj.js?v=1962084d"></script>
+  <script src="public/js/flux-conj-lexicon.js?v=b7d77aab"></script>
+  <script src="public/js/flux-lang-practice.js?v=7493c2e2"></script>
+  <script src="public/js/flux-teach-core.js?v=3fb71dd1"></script>
+  <script src="public/js/flux-teach-math.js?v=b664afb7"></script>
+  <script src="public/js/flux-teach-sciences.js?v=813dadc6"></script>
+  <script src="public/js/flux-teach-social.js?v=5ace17f9"></script>
+  <script src="public/js/flux-teach-languages.js?v=930a4b72"></script>
+  <script src="public/js/flux-teach-methods.js?v=37a2a0c9"></script>
+  <script src="public/js/flux-teach-ui.js?v=fd47f509"></script>
+  <script src="public/js/flux-teacher-app.js?v=1703e716"></script>
 </body>
 </html>

@@ -34,7 +34,6 @@ html[data-flux-lowend="1"] .edu-modal {
 }
 
 /* ── 2. Stop decorative, always-on animation + heavy full-screen canvases ── */
-html[data-flux-lowend="1"] #fluxMeshCanvas,
 html[data-flux-lowend="1"] #loginParticles,
 html[data-flux-lowend="1"] #cursorSpotlight,
 html[data-flux-lowend="1"] #fluxCursorAmbient,

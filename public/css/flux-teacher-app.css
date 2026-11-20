@@ -47,6 +47,7 @@
   --ft-dialog-bg: #0f1729;
   --ft-glow: radial-gradient(100% 70% at 50% -18%, rgba(99, 102, 241, .17), transparent 60%), radial-gradient(70% 55% at 100% 8%, rgba(14, 165, 233, .10), transparent 62%);
 }
+
 @media (prefers-color-scheme: light) {
   :root:not([data-flux-theme]):not([data-ft-theme]) {
     color-scheme: light;
@@ -219,6 +220,8 @@ a { color: var(--ft-accent); }
   overflow-wrap: anywhere;
 }
 .ft-loading { color: var(--ft-dim); animation: ft-appear .2s ease .6s both; }
+/* The Flux loading screen (flux-loader.css), shown while the study sets open. */
+.ft-main > .flux-loader { --fl-label: var(--ft-dim); --fl-size: 132px; min-height: 52vh; }
 @keyframes ft-appear { from { opacity: 0; } to { opacity: 1; } }
 
 /* ── Type ────────────────────────────────────────────────────────────── */
@@ -381,14 +384,18 @@ a { color: var(--ft-accent); }
 .ft-set-name { margin: 4px 0 0; font-size: clamp(1.5rem, 4.6vw, 2.1rem); line-height: 1.15; letter-spacing: -.03em; }
 .ft-set-sub { margin: 6px 0 0; color: var(--ft-muted); font-size: .9rem; }
 .ft-tabs ul {
-  display: flex; flex-wrap: wrap; gap: 4px;
+  /* One row; it scrolls sideways rather than wrapping into a second row. */
+  display: flex; flex-wrap: nowrap; gap: 2px; overflow-x: auto; scrollbar-width: none; scroll-padding: 0 24px;
   margin: 16px 0 0; padding: 4px; list-style: none;
   border: 1px solid var(--ft-line); border-radius: 14px; background: var(--ft-surface);
 }
-.ft-tabs li { min-width: 0; }
+.ft-tabs ul::-webkit-scrollbar { display: none; }
+/* Ten tabs fit one row on a laptop only without their icons; phones keep them. */
+@media (min-width: 641px) { .ft-tabs a .ft-icon { display: none; } }
+.ft-tabs li { flex: none; }
 .ft-tabs a {
   display: inline-flex; align-items: center; gap: 7px;
-  min-height: 40px; padding: 8px 12px; border-radius: 10px;
+  min-height: 40px; padding: 8px 11px; border-radius: 10px; white-space: nowrap;
   color: var(--ft-muted); font-size: .86rem; font-weight: 700; text-decoration: none;
 }
 .ft-tabs a:hover { color: var(--ft-text); background: var(--ft-surface-2); }
@@ -716,15 +723,35 @@ a { color: var(--ft-accent); }
 
 /* ── Phones ──────────────────────────────────────────────────────────── */
 
+/* Progress dashboard, predicted grades, topic pages */
+.ft-progress { margin: 18px 0; padding: 18px; border: 1px solid var(--ft-line); border-radius: 18px; background: var(--ft-surface); }
+.ft-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 12px 0 4px; padding: 0; list-style: none; }
+.ft-stat { display: flex; flex-direction: column; gap: 2px; padding: 12px; border: 1px solid var(--ft-line); border-radius: 14px; background: var(--ft-surface-2); }
+.ft-stat-num { font-size: 1.6rem; font-weight: 800; color: var(--ft-accent); font-variant-numeric: tabular-nums; }
+.ft-stat-label { color: var(--ft-muted); font-size: .88rem; }
+.ft-grades { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin: 8px 0; padding: 0; list-style: none; }
+.ft-grades a { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 10px 12px; border: 1px solid var(--ft-line); border-radius: 14px; color: var(--ft-text); text-decoration: none; }
+.ft-grades a:hover { border-color: var(--ft-accent-line); }
+.ft-grade { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+.ft-grade-num { display: inline-grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 12px; background: var(--ft-accent-soft); border: 1px solid var(--ft-accent-line); color: var(--ft-accent); font-size: 1.4rem; font-weight: 800; }
+.ft-topics { display: grid; gap: 10px; margin: 12px 0 0; padding: 0; list-style: none; }
+.ft-topic { padding: 12px 14px; border: 1px solid var(--ft-line); border-radius: 14px; background: var(--ft-surface); }
+.ft-topic summary { display: grid; grid-template-columns: minmax(0, 1fr) 90px; gap: 4px 12px; align-items: center; min-height: 44px; cursor: pointer; }
+.ft-topic summary .ft-help { grid-column: 1 / -1; }
+.ft-topic-title { font-weight: 700; overflow-wrap: anywhere; }
+.ft-meter--small { margin-top: 0; height: 6px; }
+.ft-topic-terms dt { margin-top: 10px; font-weight: 700; }
+.ft-topic-terms dd { margin: 2px 0 0; color: var(--ft-muted); }
+
 @media (max-width: 640px) {
+  .ft-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ft-grid { grid-template-columns: minmax(0, 1fr); }
   .ft-field--wide { grid-column: auto; }
   .ft-lib-actions { width: 100%; }
   .ft-lib-actions .ft-btn { flex: 1 1 auto; }
-  .ft-tabs ul { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .ft-tabs a {
     display: flex; flex-direction: column; justify-content: center; gap: 3px;
-    min-height: 54px; padding: 6px 2px; font-size: .68rem; line-height: 1.15; text-align: center;
+    min-width: 68px; min-height: 54px; padding: 6px 8px; font-size: .7rem; line-height: 1.15; text-align: center;
   }
   .ft-match-row { grid-template-columns: minmax(0, 1fr) 22px; }
   .ft-match-def { grid-column: 1 / -1; }
@@ -749,6 +776,22 @@ a { color: var(--ft-accent); }
 }
 
 @media print {
+  /* Paper is white whatever the screen theme: the dark theme's pale text
+     printed as faint grey on it. Printing always uses the light colours. */
+  :root, :root[data-ft-theme], :root[data-flux-theme] {
+    --ft-bg: #fff !important;
+    --ft-text: #0f172a !important;
+    --ft-muted: #364459 !important;
+    --ft-surface: #fff !important;
+    --ft-surface-2: #f3f6fb !important;
+    --ft-line: rgba(15, 23, 42, .18) !important;
+    --ft-line-strong: rgba(15, 23, 42, .32) !important;
+    --ft-accent: #0369a1 !important;
+    --ft-good: #15803d !important;
+    --ft-bad: #be123c !important;
+    --ft-warn: #92400e !important;
+  }
+  html, body { background: #fff !important; color: #0f172a !important; }
   .ft-top, .ft-tabs, .ft-toasts, .ft-row, .ft-item-actions, .ft-add, .ft-back { display: none !important; }
   .ft-panel, .ft-set-card { box-shadow: none; border-color: #ccc; }
 }
@@ -757,3 +800,169 @@ a { color: var(--ft-accent); }
 .ft-start-here { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin: 18px 0 0; padding: 12px 16px; border: 1px solid var(--ft-line-strong); border-radius: 14px; }
 .ft-start-here .ft-help { margin: 0; }
 .ft-start-label { font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ft-accent, currentColor); }
+
+/* Flashcard reveal: the card turns over and the answer settles in.
+   The reduced-motion block above cuts both animations to an instant. */
+.ft-flash.is-flipped { animation: ft-card-turn .42s cubic-bezier(.3, .7, .25, 1); }
+.ft-flip-in { animation: ft-flip-in .42s cubic-bezier(.3, .7, .25, 1) both; transform-origin: top center; }
+@keyframes ft-card-turn { 0% { transform: perspective(900px) rotateY(0); } 50% { transform: perspective(900px) rotateY(-12deg); } 100% { transform: none; } }
+@keyframes ft-flip-in { from { transform: perspective(900px) rotateX(-70deg); } to { transform: none; } }
+
+/* IB practice */
+.ft-ib-list { margin: 16px 0 0; padding-left: 1.4em; display: grid; gap: 18px; }
+.ft-ib-q { padding: 14px 16px; border: 1px solid var(--ft-line); border-radius: 14px; }
+.ft-ib-meta, .ft-ib-prompt { margin: 0 0 6px; }
+.ft-ib-scheme { margin-top: 10px; }
+.ft-ib-scheme .ft-check { align-items: flex-start; }
+.ft-ib-score { margin: 8px 0 0; font-weight: 700; color: var(--ft-accent); }
+.ft-weak { margin: 8px 0; padding-left: 1.2em; }
+
+/* If you're stuck */
+.ft-stuck { margin-top: 16px; }
+.ft-stuck summary { cursor: pointer; margin: 0; }
+.ft-stuck-list { margin: 8px 0 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.ft-ib-right { font-weight: 700; color: var(--ft-accent); }
+
+/* Ask your notes: the answer and its numbered citations */
+.ft-answer { margin: 16px 0; padding: 14px 16px; border: 1px solid var(--ft-line-strong); border-left-width: 4px; border-left-color: var(--ft-accent); border-radius: 14px; background: var(--ft-surface-2); }
+.ft-answer-label { margin: 0 0 6px; color: var(--ft-muted); font-size: .8rem; }
+.ft-answer-list { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.ft-answer-text { margin: 0; }
+.ft-cite-num { margin-left: 2px; font-size: .8em; font-weight: 800; text-decoration: none; color: var(--ft-accent); }
+.ft-cite-num:hover, .ft-cite-num:focus-visible { text-decoration: underline; }
+.ft-cite-link { color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; }
+.ft-result.is-target { outline: 2px solid var(--ft-accent); outline-offset: 4px; border-radius: 10px; }
+
+/* ── IB syllabus (library) ── */
+.ft-syllabus { margin: 0 0 24px; padding: 18px 20px; border: 1px solid var(--ft-line); border-radius: 18px; background: var(--ft-surface); }
+.ft-syl-head { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: flex-end; justify-content: space-between; margin-bottom: 12px; }
+.ft-syl-head > div:first-child { flex: 1 1 320px; min-width: 0; }
+.ft-syl-head .ft-help { margin: 4px 0 0; }
+.ft-syl-head .ft-field { flex: 0 1 300px; min-width: 220px; margin: 0; }
+.ft-syl-sec { margin: 18px 0 8px; font-size: .82rem; letter-spacing: .04em; text-transform: uppercase; color: var(--ft-muted); }
+.ft-syl-units { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr)); gap: 8px 12px; }
+.ft-syl-unit { display: grid; grid-template-columns: 3.4em minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; min-height: 52px; padding: 8px 8px 8px 12px; border: 1px solid var(--ft-line); border-radius: 12px; background: var(--ft-surface); }
+.ft-syl-unit.is-covered { border-color: color-mix(in srgb, var(--ft-good) 55%, transparent); }
+.ft-syl-name { min-width: 0; line-height: 1.3; overflow-wrap: normal; word-break: normal; hyphens: auto; }
+.ft-syl-code { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--ft-accent); }
+.ft-syl-acts { display: flex; gap: 6px; }
+/* Units with no code (themes, assessment parts) use the code's column too. */
+.ft-syl-code:empty { display: none; }
+.ft-syl-code:empty + .ft-syl-name { grid-column: 1 / span 2; }
+.ft-syl-unit .ft-mini { flex: none; min-height: 36px; text-decoration: none; }
+.ft-mini--go { font-weight: 800; color: var(--ft-btn-text) !important; background: var(--ft-btn-bg) !important; border-color: transparent !important; }
+.ft-chip--good { color: var(--ft-good); border-color: var(--ft-good-line); background: var(--ft-good-soft); }
+/* IB notes / My notes */
+.ft-modes { display: inline-flex; gap: 4px; margin: 0 0 14px; padding: 4px; border: 1px solid var(--ft-line); border-radius: 999px; background: var(--ft-surface); }
+.ft-mode-tab { min-height: 44px; padding: 0 20px; border: 0; border-radius: 999px; background: none; color: var(--ft-muted); font: inherit; font-weight: 800; cursor: pointer; }
+.ft-mode-tab[aria-selected="true"] { color: var(--ft-btn-text); background: var(--ft-btn-bg); }
+.ft-mode-tab:focus-visible { outline: 2px solid var(--ft-focus); outline-offset: 2px; }
+.ft-mode-lead { max-width: 70ch; margin: 0 0 14px; color: var(--ft-muted); }
+#ftLibBody > .ft-lib-actions { margin: 0 0 16px; }
+@media (max-width: 560px) {
+  .ft-syllabus { padding: 14px; }
+  .ft-syl-head .ft-field { flex: 1 1 100%; }
+  .ft-syl-units { grid-template-columns: 1fr; }
+  .ft-syl-unit { grid-template-columns: minmax(0, 1fr) auto; }
+  .ft-syl-code { grid-column: 1 / -1; font-size: .82rem; }
+  .ft-syl-code:empty + .ft-syl-name { grid-column: auto; }
+  .ft-modes { display: flex; }
+  .ft-mode-tab { flex: 1; }
+}
+.ft-syl-name { flex: 1 1 auto; }
+.ft-mini--learn { color: var(--ft-accent); border-color: color-mix(in srgb, var(--ft-accent) 50%, transparent); }
+
+/* ── Learn (flux-teach-ui.js) ── */
+.ft-learn { max-width: 860px; margin: 0 auto; padding-bottom: 40px; }
+.ft-crumbs { margin: 0 0 10px; font-size: .9rem; color: var(--ft-dim); }
+.ft-crumbs a { color: var(--ft-accent); }
+.ft-learn .ft-lead { max-width: 70ch; }
+.ft-learn-subjects { list-style: none; margin: 18px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.ft-learn-subject, .ft-learn-skill {
+  display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border: 1px solid var(--ft-line); border-radius: 16px;
+  background: var(--ft-surface); color: var(--ft-text); text-decoration: none; min-height: 44px;
+}
+.ft-learn-subject:hover, .ft-learn-skill:hover { border-color: color-mix(in srgb, var(--ft-accent) 60%, transparent); }
+.ft-learn-subject:focus-visible, .ft-learn-skill:focus-visible { outline: 2px solid var(--ft-focus); outline-offset: 2px; }
+.ft-learn-sname { font-weight: 750; }
+.ft-learn-skill.is-done { border-color: color-mix(in srgb, var(--ft-good) 55%, transparent); }
+.ft-learn .ft-meter { margin: 4px 0; }
+.ft-meter.is-done span { background: var(--ft-good); }
+.ft-learn-unit { margin: 0 0 14px; }
+.ft-learn-uname { margin: 6px 0 8px; font-size: 1rem; }
+.ft-learn-skills { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
+.ft-learn-mastery { margin: 12px 0 8px; }
+.ft-learn-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 16px; }
+.ft-learn-kind {
+  appearance: none; min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--ft-line);
+  background: var(--ft-surface); color: var(--ft-text); font: inherit; font-size: .86rem; font-weight: 600; cursor: pointer;
+}
+.ft-learn-kind.is-met { border-color: color-mix(in srgb, var(--ft-good) 60%, transparent); color: var(--ft-good); }
+.ft-learn-kind.is-on { border-color: var(--ft-accent); background: color-mix(in srgb, var(--ft-accent) 14%, transparent); color: var(--ft-text); }
+.ft-learn-card { margin: 0 0 16px; padding: 18px 20px; border: 1px solid var(--ft-line); border-radius: 18px; background: var(--ft-surface); }
+.ft-learn-card .ft-h2 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin: 0 0 12px; }
+.ft-learn-n { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--ft-accent); color: var(--ft-bg); font-size: .9rem; font-weight: 800; flex: none; }
+.ft-learn-method, .ft-learn-steps { margin: 0 0 12px; padding-left: 22px; line-height: 1.6; }
+.ft-learn-method li, .ft-learn-steps li { margin: 4px 0; }
+.ft-learn-steps li { padding: 6px 10px; border-left: 3px solid color-mix(in srgb, var(--ft-accent) 60%, transparent); background: color-mix(in srgb, var(--ft-accent) 6%, transparent); border-radius: 0 10px 10px 0; list-style-position: outside; }
+.ft-learn-q { font-size: 1.08rem; line-height: 1.55; margin: 0 0 12px; }
+.ft-learn-optlist { margin: 0 0 12px; padding-left: 20px; }
+.ft-learn-answer { margin: 6px 0 8px; font-size: 1.05rem; }
+.ft-learn-answer .ft-label { display: inline; margin-right: 6px; }
+.ft-learn-tip { margin: 6px 0; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, var(--ft-warn) 10%, transparent); color: var(--ft-text); font-size: .92rem; }
+.ft-learn-form { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 6px; }
+.ft-learn-in { flex: 1 1 220px; min-height: 46px; font-size: 1.05rem; }
+.ft-learn-opts { display: grid; gap: 8px; margin: 0 0 10px; }
+.ft-learn-opt {
+  appearance: none; text-align: left; min-height: 46px; padding: 10px 14px; border-radius: 12px; border: 1.5px solid var(--ft-line);
+  background: var(--ft-field); color: var(--ft-text); font: inherit; cursor: pointer; line-height: 1.4;
+}
+.ft-learn-opt:hover:not(:disabled) { border-color: var(--ft-accent); }
+.ft-learn-opt.is-right { border-color: var(--ft-good); background: color-mix(in srgb, var(--ft-good) 12%, transparent); }
+.ft-learn-opt.is-wrong { border-color: var(--ft-bad); background: color-mix(in srgb, var(--ft-bad) 12%, transparent); }
+.ft-learn-opt:disabled { cursor: default; opacity: 1; }
+.ft-learn-fb { margin: 8px 0; font-weight: 700; }
+.ft-learn-fb.is-ok { color: var(--ft-good); }
+.ft-learn-fb.is-no { color: var(--ft-bad); }
+.ft-learn-fb.is-close { color: var(--ft-warn); }
+.ft-learn-hints { margin: 10px 0; }
+.ft-learn-foot { margin-top: 10px; }
+.ft-learn sup, .ft-learn sub { font-size: .72em; line-height: 0; }
+@media (max-width: 560px) {
+  .ft-learn-card { padding: 14px; }
+  .ft-learn-form .ft-btn { width: 100%; }
+}
+
+/* Mind map: the study guide as a tree. Each level hangs off a line on its
+   left; terms are coloured by how well they are known. */
+.ft-map-key { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0 0 12px; color: var(--ft-muted); font-size: .86rem; }
+.ft-map-dot { display: inline-block; width: 10px; height: 10px; margin-right: 5px; border-radius: 50%; border: 2px solid var(--ft-line-strong); vertical-align: -1px; }
+.ft-map-scroll { overflow-x: auto; padding-bottom: 4px; }
+.ft-map, .ft-map ul { margin: 0; padding: 0; list-style: none; }
+.ft-map ul { margin-left: 14px; padding-left: 16px; border-left: 2px solid var(--ft-accent-line); }
+.ft-map li { position: relative; padding: 4px 0; }
+.ft-map ul > li::before { content: ""; position: absolute; left: -16px; top: 50%; width: 14px; border-top: 2px solid var(--ft-accent-line); }
+.ft-map ul > li:has(> ul)::before { top: 22px; }
+.ft-map-node { display: inline-flex; align-items: center; min-height: 36px; max-width: 100%; padding: 6px 14px; border: 1px solid var(--ft-line-strong); border-radius: 999px; background: var(--ft-surface); color: var(--ft-text); font: inherit; text-align: left; overflow-wrap: anywhere; }
+button.ft-map-node { cursor: pointer; }
+button.ft-map-node:hover { border-color: var(--ft-accent-line); }
+.ft-map-node[aria-pressed="true"] { border-color: var(--ft-accent); background: var(--ft-accent-soft); box-shadow: 0 0 0 2px var(--ft-accent-line); }
+.ft-map-root { font-weight: 800; font-size: 1.05rem; background: var(--ft-accent-soft); border-color: var(--ft-accent-line); }
+.ft-map-sec { font-weight: 700; }
+.ft-map-other { color: var(--ft-muted); }
+.ft-map-term { font-size: .92rem; border-left-width: 5px; }
+.ft-map-term[data-status="learning"], .ft-map-dot[data-status="learning"] { border-left-color: var(--ft-warn); }
+.ft-map-term[data-status="weak"], .ft-map-dot[data-status="weak"] { border-left-color: var(--ft-bad); }
+.ft-map-term[data-status="mastered"], .ft-map-dot[data-status="mastered"] { border-left-color: var(--ft-good); }
+.ft-map-dot[data-status="learning"] { border-color: var(--ft-warn); }
+.ft-map-dot[data-status="weak"] { border-color: var(--ft-bad); }
+.ft-map-dot[data-status="mastered"] { border-color: var(--ft-good); }
+.ft-map-leaves { display: flex; flex-wrap: wrap; gap: 6px; }
+.ft-map-detail { max-width: 560px; margin: 8px 0 4px; padding: 14px 16px; border: 1px solid var(--ft-accent-line); border-radius: 14px; background: var(--ft-accent-soft); }
+.ft-map-detail .ft-item-main, .ft-map-detail .ft-outline-title { margin: 0 0 6px; }
+.ft-map ul > li.ft-map-leaves::before { top: 22px; }
+@media (max-width: 640px) {
+  .ft-map ul { margin-left: 8px; padding-left: 12px; }
+  .ft-map ul > li::before { left: -12px; width: 10px; }
+  .ft-map-node { min-height: 44px; }
+}

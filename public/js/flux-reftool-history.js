@@ -5,8 +5,12 @@
 
   const EPOCH_MIN = -5000;
   const EPOCH_MAX = 2030;
-  const LEAFLET_CSS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css';
-  const LEAFLET_JS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js';
+  /* The package's own files, not jsDelivr's on-the-fly ".min" copies: only a
+     file that never changes can carry an integrity hash. leaflet.js ships minified. */
+  const LEAFLET_CSS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
+  const LEAFLET_JS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
+  /* Integrity hash: the browser refuses the file if the CDN ever serves different bytes. Update it whenever the version in the URL changes. */
+  const LEAFLET_SRI = { [LEAFLET_CSS]: 'sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H', [LEAFLET_JS]: 'sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH' };
   const ICON_PNG = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/images/marker-icon.png';
   const ICON2X = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/images/marker-icon-2x.png';
   const SHADOW = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/images/marker-shadow.png';
@@ -76,6 +80,7 @@
       const l = document.createElement('link');
       l.rel = 'stylesheet';
       l.href = href;
+      if (LEAFLET_SRI[href]) { l.integrity = LEAFLET_SRI[href]; l.crossOrigin = 'anonymous'; }
       l.onload = () => resolve();
       l.onerror = () => resolve();
       document.head.appendChild(l);
@@ -87,6 +92,7 @@
       const s = document.createElement('script');
       s.src = src;
       s.async = true;
+      if (LEAFLET_SRI[src]) { s.integrity = LEAFLET_SRI[src]; s.crossOrigin = 'anonymous'; }
       s.onload = () => resolve(window.L);
       s.onerror = () => reject(new Error('Could not load map library'));
       document.body.appendChild(s);

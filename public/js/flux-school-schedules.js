@@ -28,6 +28,11 @@
     try { return !!window.FluxFeatureFlags?.isEnabled(FLAG, false); } catch (_) { return false; }
   }
   function ls(k, d) { return typeof window.load === 'function' ? window.load(k, d) : d; }
+  /* A school admin writes these labels and every member's planner shows them. */
+  function escText(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
   function lsSave(k, v) { if (typeof window.save === 'function') window.save(k, v); }
   function client() { return typeof window.getSB === 'function' ? window.getSB() : null; }
   function mySchool() {
@@ -208,11 +213,11 @@
     card.id = 'fluxSchedAuthority';
     card.className = 'card';
     card.style.cssText = 'margin-top:14px;padding:16px';
-    const varOpts = c.variants.map((v) => `<option value="${v.id}">${(v.label || '').replace(/</g, '&lt;')}</option>`).join('');
+    const varOpts = c.variants.map((v) => `<option value="${escText(v.id)}">${escText(v.label)}</option>`).join('');
     const upcoming = Object.keys(c.days).sort().slice(0, 8).map((d) => {
       const x = c.days[d];
       const v = c.variants.find((q) => q.id === x.scheduleId);
-      return `<div style="font-size:.78rem;padding:3px 0;color:var(--text2)">${d} — ${x.closed ? '❄ Closed' : (v ? v.label : 'variant')}${x.note ? ' · ' + String(x.note).replace(/</g, '&lt;') : ''}</div>`;
+      return `<div style="font-size:.78rem;padding:3px 0;color:var(--text2)">${escText(d)} — ${x.closed ? '❄ Closed' : (v ? escText(v.label) : 'variant')}${x.note ? ' · ' + escText(x.note) : ''}</div>`;
     }).join('') || '<div style="font-size:.78rem;color:var(--muted)">No exceptions published.</div>';
     card.innerHTML = `
       <div style="font-weight:800;margin-bottom:4px">Schedule authority</div>

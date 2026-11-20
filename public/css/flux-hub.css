@@ -31,7 +31,9 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 12px;
+  padding: 10px 13px;
+  min-height: 44px;
+  box-sizing: border-box;
   border-radius: 11px;
   cursor: pointer;
   font: inherit;
@@ -70,9 +72,87 @@
 
 /* A second planner mount sits beside the avatar on phones, where the desktop
    top-bar cluster is hidden. */
-.fxhub.topbar-mob-hub { display: none; }
+.fxhub.topbar-mob-hub, [data-flux-hub].topbar-mob-hub { display: none; }
 @media (max-width: 768px) {
-  .fxhub.topbar-mob-hub { display: inline-flex; }
+  .fxhub.topbar-mob-hub, [data-flux-hub].topbar-mob-hub { display: inline-flex; }
   .topbar-mob-hub .fxhub-btn-label { display: none; }
   .topbar-mob-hub .fxhub-btn { padding: 8px 9px; }
 }
+
+/* ── Quick switcher: the chevron beside the Flux button and its menu ── */
+.fxhub { align-items: center; gap: 4px; }
+.fxhub .fxhub-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  margin: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--text, #eaf1ff);
+  background: var(--card2, rgba(28, 36, 58, .8));
+  border: 1px solid var(--border2, rgba(255, 255, 255, .14));
+  box-shadow: none;
+}
+.fxhub .fxhub-more:hover,
+.fxhub .fxhub-more[aria-expanded="true"] { border-color: rgba(0, 194, 255, .5); background: rgba(0, 194, 255, .1); }
+.fxhub .fxhub-more:focus-visible { outline: 2px solid var(--accent, #00c2ff); outline-offset: 2px; }
+
+.fxhub-menu {
+  position: fixed;
+  z-index: 2147483000;
+  width: 270px;
+  max-width: calc(100vw - 16px);
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 14px;
+  font: 600 .86rem/1.2 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: #eaf1ff;
+  background: #0d1424;
+  border: 1px solid rgba(255, 255, 255, .14);
+  box-shadow: 0 18px 48px -12px rgba(0, 0, 0, .7);
+}
+.fxhub-row { display: flex; align-items: stretch; gap: 2px; }
+.fxhub-menu a { color: inherit; text-decoration: none; border-radius: 9px; }
+.fxhub-menu a:hover, .fxhub-menu a:focus-visible { background: rgba(0, 194, 255, .12); outline: none; }
+.fxhub-item { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 8px 9px; }
+.fxhub-item[aria-current="page"] { background: rgba(0, 194, 255, .08); color: #7fe3ff; }
+.fxhub-item-mark { display: inline-flex; color: #7fe3ff; }
+.fxhub-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fxhub-newtab { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 36px; color: #9fb0cc; }
+.fxhub-newtab:hover, .fxhub-newtab:focus-visible { color: #fff; }
+.fxhub-split, .fxhub-all { display: flex; align-items: center; gap: 10px; padding: 9px; }
+.fxhub-split { margin-top: 4px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, .1); color: #7fe3ff; }
+.fxhub-all { color: #9fb0cc; font-weight: 600; }
+@media (max-width: 768px) { .topbar-mob-hub .fxhub-more { width: 34px; height: 34px; } }
+
+/* ── Suite card colours ──
+   A new PRODUCTS entry needs a --c1/--c2 pair here, a blurb, and a static
+   card. Miss one and the card falls back to the default blue with no error.
+   suite.html carries the cards' layout; the pairs live here so every page
+   that draws a product tile agrees on its colour. */
+.app--translate { --c1: #86efac; --c2: #22d3ee; }
+.app--owner { --c1: #fca5a5; --c2: #a78bfa; }
+.hub-tab--owner[aria-selected="true"] { color: #fff; background: linear-gradient(135deg, #fca5a5, #a78bfa); }
+
+/* ── Product marks in the switcher ──
+   Synara's violet tile is a CSS gradient rather than an SVG <linearGradient>:
+   the planner mounts this menu's host twice, and a gradient defined inside a
+   hidden SVG draws nothing where it is referenced from elsewhere. */
+.fxhub-item-mark { flex: none; width: 22px; height: 22px; align-items: center; justify-content: center; }
+.fxhub-item-mark svg, .fxhub-item-mark img { width: 18px; height: 18px; display: block; }
+.fxhub-item--synara .fxhub-item-mark { padding: 2px; border-radius: 6px; color: #fff; background: linear-gradient(135deg, #9c7aff, #5926d4); }
+.fxhub-item--aorta .fxhub-item-mark { overflow: hidden; border-radius: 6px; background: #f5f5f2; }
+.fxhub-item--aorta .fxhub-item-mark img { width: 22px; height: 22px; object-fit: cover; }
+
+/* ── Light themes ── The menu was always the dark navy, glaring on Cloud
+   and the other light themes. */
+[data-theme="light"] .fxhub-menu { background: #fff; color: #1f2328; border-color: #d0d7de; box-shadow: 0 18px 48px -12px rgba(0,0,0,.25); }
+[data-theme="light"] .fxhub-menu a:hover, [data-theme="light"] .fxhub-menu a:focus-visible { background: rgba(0,120,180,.1); }
+[data-theme="light"] .fxhub-item[aria-current="page"] { background: rgba(0,120,180,.08); color: #0b6c8f; }
+[data-theme="light"] .fxhub-item-mark { color: #0b6c8f; }
+[data-theme="light"] .fxhub-newtab, [data-theme="light"] .fxhub-all { color: #57606a; }
+[data-theme="light"] .fxhub-split { color: #0b6c8f; border-top-color: #d0d7de; }
+

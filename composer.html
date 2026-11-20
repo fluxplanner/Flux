@@ -11,6 +11,10 @@
   inline boot scripts on every standalone page.
 -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com; frame-src 'self'; form-action 'self'">
+<script src="public/js/flux-look.js?v=81a3e0d1"></script>
+<script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
+<script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="composer"></script>
+<script defer src="public/js/flux-site-notices.js?v=5e36c924"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flux Composer</title>
 <meta name="description" content="A free music theory studio from Flux: a table of every key, a playable keyboard that writes what you play, scales and modes, chords and inversions, cadences, an ear trainer, a metronome, a beat maker, the orchestra, a glossary and IB DP Music. No account needed.">
@@ -28,11 +32,11 @@
   school computer without an account. The planner's Study tools ▸ Arts ▸ Music
   links here.
 -->
-<link rel="stylesheet" href="public/css/flux-hub.css?v=4e2aebfb">
-<link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=673aab02">
-<link rel="stylesheet" href="public/css/flux-composer.css?v=4d84e390">
+<link rel="stylesheet" href="public/css/flux-hub.css?v=a473f365">
+<link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
+<link rel="stylesheet" href="public/css/flux-composer.css?v=3985c0bd">
 <style>
-  :root { --bg: #0a0816; --text: #eaf1ff; --muted2: #9fb0cc; --accent: #a78bfa; --border: rgba(255,255,255,.07); --border2: rgba(255,255,255,.14); --card: rgba(18,25,42,.78); --card2: rgba(28,36,58,.8); }
+  :root { --bg: #0a0816; --accent: #a78bfa; } /* the rest: public/css/flux-standalone-dark.css */
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background-color: #0a0816; }
   body {
@@ -75,8 +79,9 @@
   }
   @media (max-width: 560px) { .title small { display: none; } }
 </style>
-<script src="public/js/flux-theme-carry.js?v=41b239bd"></script>
-<script src="public/js/flux-purple-day.js?v=1966eb3d"></script>
+<script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
+<script src="public/js/flux-purple-day.js?v=b8cd878a"></script>
+<link rel="stylesheet" href="public/css/flux-look-flat.css?v=8156dbe3">
 </head>
 <body>
   <header class="top">
@@ -92,9 +97,11 @@
   <main id="fcHost" aria-label="Flux Composer"></main>
 
   <!-- Plain script tags, not the app bundles: this page has to stand alone. -->
-  <script src="public/js/flux-hub.js?v=68b4d34f"></script>
+  <script src="public/data/products.js?v=9634bc03"></script>
+<script src="public/js/flux-hub.js?v=eb42b549"></script>
+<script src="public/js/flux-suite-timer.js?v=998cda1e"></script>
   <script src="public/js/flux-music-theory.js?v=f272dfc4"></script>
-  <script src="public/js/flux-composer.js?v=8ff1e6fd"></script>
+  <script src="public/js/flux-composer.js?v=50a6f70e"></script>
   <script>
     (function () {
       var host = document.getElementById('fcHost');

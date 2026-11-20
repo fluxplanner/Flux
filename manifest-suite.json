@@ -1,0 +1,82 @@
+{
+  "name": "Flux Suite",
+  "short_name": "Flux Suite",
+  "description": "Every Flux app in one place.",
+  "start_url": "./suite.html",
+  "display": "standalone",
+  "background_color": "#0B0F1A",
+  "theme_color": "#0B0F1A",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "public/flux-planner-logo.png",
+      "sizes": "680x680",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "education",
+    "productivity"
+  ],
+  "screenshots": [
+    {
+      "src": "public/flux-planner-logo.png",
+      "sizes": "680x680",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Flux Planner"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New task",
+      "short_name": "Task",
+      "description": "Open quick add for a new task",
+      "url": "./?quick=task",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Flux AI",
+      "short_name": "AI",
+      "description": "Open Flux AI chat",
+      "url": "./?quick=ai",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "./",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "id": "./suite.html"
+}

@@ -6,6 +6,11 @@
    on an SVG page, so it can be picked up, moved, resized, recoloured and
    undone, and exported as a sharp PNG or SVG.
 
+   Whiteboard tools too: sticky notes, a laser pointer for presenting, shape
+   snap (a rough circle, box, triangle or line is tidied up), pinch and
+   Ctrl+scroll zoom round the pointer, a hand tool (or hold Space) to move
+   the view, and Present, which fills the screen with just the page.
+
    ROUTES
      #/          your drawings
      #/d/<id>    the editor
@@ -43,6 +48,17 @@
     requestAnimationFrame(function () { t.classList.add('is-in'); });
     setTimeout(function () { t.classList.remove('is-in'); setTimeout(function () { t.remove(); }, 300); }, 2400);
   }
+  /** A message with one button in it, like “Deleted · Undo”. */
+  function toastAct(text, label, fn) {
+    var t = document.createElement('div');
+    t.className = 'px-toast px-toast--act';
+    t.setAttribute('role', 'status');
+    t.innerHTML = '<span>' + esc(text) + '</span><button type="button" class="px-toast-b">' + esc(label) + '</button>';
+    t.querySelector('button').addEventListener('click', function () { fn(); t.remove(); });
+    document.body.appendChild(t);
+    requestAnimationFrame(function () { t.classList.add('is-in'); });
+    setTimeout(function () { t.classList.remove('is-in'); setTimeout(function () { t.remove(); }, 300); }, 5000);
+  }
   function svgIcon(d, extra) {
     return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"' + (extra || '') + '>' + d + '</svg>';
   }
@@ -69,7 +85,31 @@
     front: svgIcon('<rect x="8" y="8" width="12" height="12" rx="1.5"/><path d="M4 16V5a1 1 0 0 1 1-1h11"/>'),
     vector: svgIcon('<path d="M4 20 18 6"/><path d="M19 5l-1.2 6.2L12.8 6.2z" fill="currentColor"/><path d="M4 20h7" stroke-dasharray="2 2.5"/>'),
     figure: svgIcon('<path d="M3 20h12L3 6z"/><path d="M3 16h4v4"/><circle cx="17.5" cy="7.5" r="3.5"/>'),
+    ruler: svgIcon('<path d="M3 16 16 3l5 5L8 21z"/><path d="M7 12l2 2M10 9l2 2M13 6l2 2"/>'),
+    protractor: svgIcon('<path d="M2 18a10 10 0 0 1 20 0z"/><path d="M12 18l5-7"/>'),
+    square: svgIcon('<path d="M4 20V4l16 16z"/><path d="M4 14h4v6"/>'),
+    compass: svgIcon('<circle cx="12" cy="4" r="1.6"/><path d="M11 5.5 6 20M13 5.5 18 20M8.5 13h7"/>'),
+    panel: svgIcon('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>'),
+    hand: svgIcon('<path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/>'),
+    note: svgIcon('<path d="M15 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z"/><path d="M15 21v-6h6M7 8h10M7 12h6"/>'),
+    laser: svgIcon('<circle cx="18" cy="6" r="3" fill="currentColor"/><path d="M15.5 8.5 4 20"/><path d="M13 5 11 3M21 11l2 2M18 1v1"/>'),
+    present: svgIcon('<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4M10 7l5 3-5 3z"/>'),
     link: svgIcon('<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>'),
+  };
+  /* Flux Figures mode: one button per kind of figure down the left. */
+  var KIND_ICON = {
+    grid: svgIcon('<path d="M4 20V4M4 20h16"/><path d="M6 17c3-9 6-9 12-12"/>'),
+    numline: svgIcon('<path d="M2 12h20M5 9v6M9 10v4M12 9v6M15 10v4M19 9v6"/>'),
+    triangle: svgIcon('<path d="M4 19h16L9 5z"/>'),
+    rect: svgIcon('<rect x="3" y="6" width="18" height="12" rx="1"/>'),
+    para: svgIcon('<path d="M7 6h14l-4 12H3z"/>'),
+    trap: svgIcon('<path d="M8 6h8l5 12H3z"/>'),
+    kite: svgIcon('<path d="M12 3l6 7-6 11-6-11z"/>'),
+    reg: svgIcon('<path d="M7 4h10l5 8-5 8H7l-5-8z"/>'),
+    circle: svgIcon('<circle cx="12" cy="12" r="9"/><path d="M12 12l7-5"/>'),
+    angle: svgIcon('<path d="M20 19H4l12-12"/><path d="M10 19a6 6 0 0 0-2-4.5"/>'),
+    parallel: svgIcon('<path d="M2 8h20M2 16h20M8 3l8 18"/>'),
+    solid: svgIcon('<path d="M4 8l8-4 8 4v9l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v9"/>'),
   };
   var ERASE_PREF = 'flux_pixel_eraser';
   var ERASE_MODES = [
@@ -78,11 +118,14 @@
     ['box', 'Box', 'Drag a box: everything inside it is rubbed out'],
   ];
   var TOOLS = [
-    ['select', 'Select and move', 'V'], ['pen', 'Pen', 'P'], ['hl', 'Highlighter', 'H'], ['eraser', 'Eraser', 'E'],
+    ['select', 'Select and move', 'V'], ['hand', 'Move the view (or hold Space)', 'G'], ['pen', 'Pen', 'P'], ['hl', 'Highlighter', 'H'], ['eraser', 'Eraser', 'E'],
     ['line', 'Line', 'L'], ['arrow', 'Arrow', 'A'], ['vector', 'Vector', 'W'], ['rect', 'Box', 'R'], ['ellipse', 'Circle', 'O'],
-    ['text', 'Text', 'T'], ['label', 'Label with a line', 'B'], ['stamp', 'Stamps', 'S'], ['image', 'Picture', 'I'],
-    ['figure', 'Maths figures', 'M'],
+    ['text', 'Text', 'T'], ['note', 'Sticky note', 'N'], ['label', 'Label with a line', 'B'], ['stamp', 'Stamps', 'S'], ['image', 'Picture', 'I'],
+    ['laser', 'Laser pointer', 'X'], ['compass', 'Compass', 'K'], ['figure', 'Flux Figures panel', 'M'],
   ];
+  var NOTE_COLORS = [['#fef08a', 'Yellow'], ['#fbcfe8', 'Pink'], ['#bfdbfe', 'Blue'], ['#bbf7d0', 'Green'], ['#fed7aa', 'Orange'], ['#e9d5ff', 'Purple']];
+  var SNAP_PREF = 'flux_pixel_snap';
+  var ZOOM_MIN = 0.25, ZOOM_MAX = 6;
   var VEC_PREF = 'flux_pixel_vector';
   var VEC_DIRS = [['angle', 'Angle from +x'], ['bearing', 'Bearing'], ['compass', 'Compass (N 30\u00b0 E)']];
   var RESULTANT = '#dc2626';
@@ -138,10 +181,10 @@
     return figCache[key];
   }
   /** A new figure item, centred on c (page units), at a size that suits the page. */
-  function figureItem(spec, c) {
+  function figureItem(spec, c, scale) {
     var b = window.FluxFigures.build(spec);
     if (b.error) return null;
-    var k = Math.min(1.3, (W * 0.8) / b.w, (H * 0.8) / b.h), w = b.w * k, h = b.h * k;
+    var k = Math.min(1.3, (W * 0.8) / b.w, (H * 0.8) / b.h) * (scale || 1), w = b.w * k, h = b.h * k;
     c = c || [W / 2, H / 2];
     return { type: 'figure', fig: window.FluxFigures.clean(spec), color: '#111827',
       x: Math.max(0, Math.min(W - w, c[0] - w / 2)), y: Math.max(0, Math.min(H - h, c[1] - h / 2)), w: w, h: h };
@@ -153,6 +196,87 @@
     var longest = lines.reduce(function (m, l) { return Math.max(m, l.length); }, 1);
     return { w: Math.max(it.size * 0.6, longest * it.size * 0.56), h: lines.length * it.size * 1.25 };
   }
+  /* Sticky notes wrap their text to the note and shrink it until it fits. */
+  var measureCtx = null;
+  function textWidth(str, size) {
+    try {
+      measureCtx = measureCtx || document.createElement('canvas').getContext('2d');
+      measureCtx.font = size + 'px Inter, system-ui, -apple-system, Segoe UI, sans-serif';
+      return measureCtx.measureText(str).width;
+    } catch (e) { return str.length * size * 0.56; }
+  }
+  function wrapText(text, maxW, size) {
+    var out = [];
+    textLines(text).forEach(function (para) {
+      var line = '';
+      para.split(/\s+/).forEach(function (word) {
+        while (textWidth(word, size) > maxW && word.length > 1) {
+          var n = word.length - 1;
+          while (n > 1 && textWidth(word.slice(0, n), size) > maxW) n--;
+          if (line) { out.push(line); line = ''; }
+          out.push(word.slice(0, n)); word = word.slice(n);
+        }
+        var next = line ? line + ' ' + word : word;
+        if (line && textWidth(next, size) > maxW) { out.push(line); line = word; } else line = next;
+      });
+      out.push(line);
+    });
+    return out;
+  }
+  var NOTE_PAD = 16;
+  function noteText(it) {
+    var size = it.size || 26, maxW = Math.max(20, it.w - NOTE_PAD * 2), maxH = Math.max(20, it.h - NOTE_PAD * 2), lines;
+    for (;;) {
+      lines = wrapText(it.text, maxW, size);
+      if (lines.length * size * 1.25 <= maxH || size <= 10) break;
+      size = Math.max(10, size * 0.9);
+    }
+    return { lines: lines, size: size };
+  }
+
+  /* ── Shape snap ─────────────────────────────────────────────────────────
+     A pen stroke that is nearly a straight line, a circle, a box or a
+     triangle is redrawn as that shape. Anything else stays as drawn. */
+  function rdp(pts, eps) {
+    if (pts.length < 3) return pts.slice();
+    var a = pts[0], b = pts[pts.length - 1], far = 0, at = 0;
+    for (var i = 1; i < pts.length - 1; i++) { var d = distPtSeg(pts[i], a, b); if (d > far) { far = d; at = i; } }
+    if (far <= eps) return [a, b];
+    return rdp(pts.slice(0, at + 1), eps).slice(0, -1).concat(rdp(pts.slice(at), eps));
+  }
+  function recognise(pts) {
+    if (pts.length < 6) return null;
+    var L = 0;
+    for (var i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    if (L < 60) return null;
+    var first = pts[0], last = pts[pts.length - 1], chord = Math.hypot(last[0] - first[0], last[1] - first[1]);
+    if (chord / L > 0.94) return { kind: 'line', item: { type: 'line', x1: first[0], y1: first[1], x2: last[0], y2: last[1] } };
+    if (chord > Math.max(30, L * 0.2)) return null;
+    var xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
+    var x0 = Math.min.apply(0, xs), y0 = Math.min.apply(0, ys), w = Math.max.apply(0, xs) - x0, h = Math.max.apply(0, ys) - y0;
+    if (w < 16 || h < 16) return null;
+    var cx = x0 + w / 2, cy = y0 + h / 2;
+    // How far each point is from the ellipse that fits the box (1 = on it).
+    var dev = pts.reduce(function (m, p) { return m + Math.abs(Math.hypot((p[0] - cx) / (w / 2), (p[1] - cy) / (h / 2)) - 1); }, 0) / pts.length;
+    var loop = rdp(pts.concat([first]), L * 0.05);
+    var corners = loop.slice(0, -1);
+    // Drop a corner that is only the stroke's start and end meeting.
+    if (corners.length > 3 && Math.hypot(corners[0][0] - corners[corners.length - 1][0], corners[0][1] - corners[corners.length - 1][1]) < L * 0.08) corners.pop();
+    if (corners.length === 4) {
+      var square = corners.every(function (c, k) {
+        var n = corners[(k + 1) % 4], ang = Math.abs(Math.atan2(n[1] - c[1], n[0] - c[0]) * 180 / Math.PI) % 90;
+        return ang < 14 || ang > 76;
+      });
+      if (square && dev > 0.08) return { kind: 'box', item: { type: 'rect', x: x0, y: y0, w: w, h: h, fill: false, dash: false } };
+    }
+    if (corners.length === 3 && dev > 0.1) return { kind: 'triangle', item: { type: 'pen', poly: true, closed: true, pts: corners } };
+    if (dev < 0.14) {
+      if (Math.abs(w - h) / Math.max(w, h) < 0.18) { var m = (w + h) / 2; x0 = cx - m / 2; y0 = cy - m / 2; w = h = m; }
+      return { kind: 'circle', item: { type: 'ellipse', x: x0, y: y0, w: w, h: h, fill: false, dash: false } };
+    }
+    return null;
+  }
+
   function bbox(it) {
     var xs, ys, pad = (it.width || 0) / 2;
     switch (it.type) {
@@ -336,7 +460,7 @@
     var c = it.color || '#111827', w = it.width || 3, out = '', fat = 'stroke="transparent" fill="none" stroke-width="' + (w + 16) + '" pointer-events="stroke" stroke-linecap="round"';
     switch (it.type) {
       case 'pen': case 'hl': {
-        var d = smoothPath(it.pts);
+        var d = it.poly ? 'M' + it.pts.map(function (q) { return r1(q[0]) + ' ' + r1(q[1]); }).join(' L') + (it.closed ? ' Z' : '') : smoothPath(it.pts);
         out = '<path d="' + d + '" fill="none" stroke="' + c + '" stroke-width="' + w + '" stroke-linecap="round" stroke-linejoin="round"' + (it.type === 'hl' ? ' opacity=".38"' : '') + '/>';
         if (it.pts.length === 1) out = '<circle cx="' + r1(it.pts[0][0]) + '" cy="' + r1(it.pts[0][1]) + '" r="' + w / 2 + '" fill="' + c + '"' + (it.type === 'hl' ? ' opacity=".38"' : '') + '/>';
         if (hit) out += '<path d="' + d + '" ' + fat + '/>';
@@ -390,6 +514,13 @@
         var vv = vecDrawn(it);
         out = vv ? vv.svg : '';
         if (hit) out += '<line x1="' + r1(it.x1) + '" y1="' + r1(it.y1) + '" x2="' + r1(it.x2) + '" y2="' + r1(it.y2) + '" ' + fat + '/>';
+        break;
+      }
+      case 'note': {
+        var nt = noteText(it), bg = it.bg || NOTE_COLORS[0][0];
+        out = '<rect x="' + r1(it.x + 3) + '" y="' + r1(it.y + 6) + '" width="' + r1(it.w) + '" height="' + r1(it.h) + '" rx="6" fill="#0f172a" opacity=".14"/>'
+          + '<rect x="' + r1(it.x) + '" y="' + r1(it.y) + '" width="' + r1(it.w) + '" height="' + r1(it.h) + '" rx="6" fill="' + esc(bg) + '" stroke="#0f172a" stroke-opacity=".12" stroke-width="1.5"/>'
+          + (it.text ? textSVG(nt.lines, it.x + NOTE_PAD, it.y + NOTE_PAD, nt.size, c, 'start', it.bold) : '');
         break;
       }
       case 'image':
@@ -453,6 +584,7 @@
         var g = cv.getContext('2d');
         g.drawImage(img, 0, 0, cv.width, cv.height);
         URL.revokeObjectURL(url);
+        if (window.FluxHub && window.FluxHub.markCanvas) window.FluxHub.markCanvas(cv);
         cv.toBlob(function (b) { b ? resolve(b) : reject(new Error('Could not make the picture')); }, 'image/png');
       };
       img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('Could not make the picture')); };
@@ -510,6 +642,8 @@
 
     function render() {
       if (cleanup) { try { cleanup(); } catch (e) {} cleanup = null; }
+      // The editor takes the whole window; the gallery keeps the page's own header.
+      document.body.classList.toggle('px-full', /^#\/d\//.test(location.hash || ''));
       var fl = (location.hash || '').match(/^#\/fig\/(.+)$/);
       if (fl) {
         // A share link: the gallery behind, the figure's settings in the panel.
@@ -531,7 +665,7 @@
 
     /** Open the Maths figures panel; Insert puts the figure on a new page. */
     function figureToNewPage(spec, fromLink) {
-      if (!window.FluxPixelFigures) { toast('Maths figures could not load. Try refreshing.', 'warn'); return; }
+      if (!window.FluxPixelFigures) { toast('Flux Figures could not load. Try refreshing.', 'warn'); return; }
       window.FluxPixelFigures.open({
         spec: spec,
         onDone: function (sp) {
@@ -551,11 +685,11 @@
     function gallery() {
       var list = docs();
       host.innerHTML = '<section class="px-hero"><div><h1>Draw it, label it, export it</h1>'
-        + '<p>Diagrams for science, maps for geography, sketches for anything. Stamps for lab equipment and circuits, labels with leader lines, maths figures for tests and worksheets drawn to scale, vectors you can add tip to tail, and a crisp PNG for your notes or lab report. Free, no account, no ads.</p></div>'
+        + '<p>Diagrams, labels and maths figures for school, exported as a PNG. Free, no account.</p></div>'
         + '<div class="px-new"><span class="px-new-h">Start a new page</span><div class="px-new-row">'
         + BGS.map(function (b) {
           return '<button type="button" class="px-new-btn" data-new="' + b[0] + '"><span class="px-paper px-paper--' + b[0] + '"></span>' + esc(b[1]) + '</button>';
-        }).join('') + '<button type="button" class="px-new-btn" data-fig-new><span class="px-paper px-paper--fig">' + ICON.figure + '</span>Maths figure</button>'
+        }).join('') + '<button type="button" class="px-new-btn" data-fig-new><span class="px-paper px-paper--fig">' + ICON.figure + '</span>Flux Figures</button>'
         + '</div></div></section>'
         + (list.length ? '<h2 class="px-h2">Your drawings</h2><div class="px-grid">' + list.map(function (d) {
           return '<div class="px-card"><a class="px-thumb" href="#/d/' + encodeURIComponent(d.id) + '" aria-label="Open ' + esc(d.title) + '">' + docSVG(d) + '</a>'
@@ -567,7 +701,7 @@
       host.onclick = function (e) {
         var t = e.target.closest('[data-new],[data-del],[data-example],[data-fig-new]');
         if (!t) return;
-        if (t.hasAttribute('data-fig-new')) { figureToNewPage(null, false); return; }
+        if (t.hasAttribute('data-fig-new')) { var fd = newDoc({ title: 'Flux Figures', bg: 'plain' }); fd.mode = 'figures'; putDoc(fd); location.hash = '#/d/' + encodeURIComponent(fd.id); return; }
         if (t.dataset.new) { var d = newDoc({ bg: t.dataset.new }); putDoc(d); location.hash = '#/d/' + encodeURIComponent(d.id); return; }
         if (t.hasAttribute('data-example')) { var ex = exampleDoc(); putDoc(ex); location.hash = '#/d/' + encodeURIComponent(ex.id); return; }
         if (t.dataset.del) {
@@ -586,7 +720,9 @@
         sel: null, zoom: 1, stamp: null, drag: null, draft: null,
         hist: [JSON.stringify(doc.items)], hi: 0,
         eraseMode: 'whole', eraseR: 18,
+        noteBg: NOTE_COLORS[0][0], snap: true,
       };
+      try { st.snap = localStorage.getItem(SNAP_PREF) !== '0'; } catch (e) {}
       try {
         var ep = JSON.parse(localStorage.getItem(ERASE_PREF) || 'null');
         if (ep && ERASE_MODES.some(function (m) { return m[0] === ep.mode; })) st.eraseMode = ep.mode;
@@ -825,7 +961,7 @@
 
       /* ── Maths figures ──────────────────────────────────────────────── */
       function openFigures(existing) {
-        if (!window.FluxPixelFigures) { toast('Maths figures could not load. Try refreshing.', 'warn'); return; }
+        if (!window.FluxPixelFigures) { toast('Flux Figures could not load. Try refreshing.', 'warn'); return; }
         var id = existing && existing.id;
         window.FluxPixelFigures.open({
           spec: existing ? existing.fig : null,
@@ -838,7 +974,7 @@
         });
       }
       function insertFigure(spec) {
-        var it = figureItem(spec, visibleCentre());
+        var it = freeSpot(spec);
         if (!it) return;
         addItem(it);
         st.tool = 'select'; svg.setAttribute('data-mode', 'select');
@@ -862,10 +998,34 @@
         return window.FluxPixelFigures.svgToPng(text, w * 2, h * 2);
       }
       function figSelHTML(it) {
-        return '<div class="px-sec"><span class="px-sec-h">Maths figure</span><p class="px-hint">' + esc(window.FluxFigures ? window.FluxFigures.describe(it.fig) : '') + '</p><div class="px-row">'
-          + '<button type="button" class="px-btn px-btn--small px-btn--primary" data-act="figedit">' + ICON.figure + 'Edit figure</button>'
+        return '<div class="px-sec px-fi" id="pxFigInline"><span class="px-sec-h">Change this figure</span><div data-fi-box></div></div>'
+          + '<div class="px-sec"><div class="px-row">'
           + '<button type="button" class="px-btn px-btn--small" data-act="itemcopy">' + ICON.copy + 'Copy figure</button>'
           + '<button type="button" class="px-btn px-btn--small" data-act="figlink">' + ICON.link + 'Share link</button></div></div>';
+      }
+      /* The figure follows the side panel as it is typed into: same middle, same
+         scale. One undo step for a burst of typing, not one per key. */
+      var figCommitTimer = 0;
+      function liveFigure(id, spec) {
+        var it = doc.items.filter(function (i) { return i.id === id; })[0];
+        if (!it) return;
+        var old = figureBuilt(it), nb = window.FluxFigures.build(spec);
+        if (nb.error) return;
+        var k = old && !old.error ? Math.min(it.w / old.w, it.h / old.h) : Math.min(1, (W * 0.8) / nb.w, (H * 0.8) / nb.h);
+        var cx = it.x + it.w / 2, cy = it.y + it.h / 2;
+        it.fig = spec; it.w = nb.w * k; it.h = nb.h * k; it.x = cx - it.w / 2; it.y = cy - it.h / 2;
+        drawItems();
+        clearTimeout(figCommitTimer);
+        figCommitTimer = setTimeout(function () { commit('Changed the figure'); }, 500);
+      }
+      function mountFigInline(it) {
+        var box = props.querySelector('[data-fi-box]');
+        if (!box || !window.FluxPixelFigures || !window.FluxPixelFigures.inline) return;
+        var id = it.id;
+        window.FluxPixelFigures.inline(box, it.fig, {
+          onChange: function (spec) { liveFigure(id, spec); },
+          onMore: function () { var cur = doc.items.filter(function (i) { return i.id === id; })[0]; if (cur) openFigures(cur); },
+        });
       }
       var saveTimer = null;
 
@@ -877,27 +1037,92 @@
         + '<button type="button" class="px-icon" data-act="undo" aria-label="Undo" title="Undo (Ctrl+Z)">' + ICON.undo + '</button>'
         + '<button type="button" class="px-icon" data-act="redo" aria-label="Redo" title="Redo (Ctrl+Shift+Z)">' + ICON.redo + '</button>'
         + '<span class="px-zoom"><button type="button" class="px-icon" data-act="zoomout" aria-label="Zoom out">−</button><button type="button" class="px-zoom-v" data-act="zoomfit" title="Fit to screen">100%</button><button type="button" class="px-icon" data-act="zoomin" aria-label="Zoom in">+</button></span>'
-        + '<button type="button" class="px-btn px-btn--small" data-act="figures" aria-label="Maths figures">' + ICON.figure + '<span>Maths figures</span></button>'
+        + '<div class="px-modes" role="group" aria-label="Mode">'
+        + '<button type="button" class="px-mode" data-mode-set="draw">' + ICON.pen + '<span>Draw</span></button>'
+        + '<button type="button" class="px-mode" data-mode-set="figures">' + ICON.figure + '<span>Flux Figures</span></button></div>'
+        + '<button type="button" class="px-btn px-btn--small" data-act="present" title="Fill the screen with the page">' + ICON.present + '<span>Present</span></button>'
         + '<button type="button" class="px-btn px-btn--small" data-act="copy">' + ICON.copy + '<span>Copy</span></button>'
         + '<button type="button" class="px-btn px-btn--small px-btn--primary" data-act="png">' + ICON.download + '<span>PNG</span></button>'
         + '<button type="button" class="px-btn px-btn--small" data-act="svg"><span>SVG</span></button>'
+        + '<button type="button" class="px-icon px-panel-t" data-act="panel" aria-label="Options" title="Show or hide the options" aria-controls="pxProps">' + ICON.panel + '</button>'
+        + '<div class="px-hub" data-flux-hub="pixel"></div>'
         + '</div>'
         + '<div class="px-body">'
-        + '<div class="px-tools" role="toolbar" aria-label="Tools">' + TOOLS.map(function (t) {
-          return '<button type="button" class="px-tool" data-tool="' + t[0] + '" aria-label="' + esc(t[1]) + '" title="' + esc(t[1]) + ' (' + t[2] + ')">' + ICON[t[0]] + '</button>';
-        }).join('') + '</div>'
+        + '<div class="px-tools" role="toolbar" aria-label="Tools"></div>'
         + '<div class="px-stage" id="pxStage"><div class="px-wrap" id="pxWrap">'
         + '<svg class="px-svg" id="pxSvg" viewBox="0 0 ' + W + ' ' + H + '" xmlns="' + NS + '"><defs id="pxDefs"></defs>'
         + '<rect width="' + W + '" height="' + H + '" fill="#fff"/><rect id="pxBgRect" width="' + W + '" height="' + H + '" fill="none"/>'
-        + '<g id="pxItems"></g><g id="pxDraft"></g><g id="pxSel"></g></svg>'
-        + '<textarea class="px-textin" id="pxText" hidden rows="1" aria-label="Text"></textarea></div></div>'
+        + '<g id="pxItems"></g><g id="pxInst"></g><g id="pxDraft"></g><g id="pxSel"></g><g id="pxLaser"></g></svg>'
+        + '<textarea class="px-textin" id="pxText" hidden rows="1" aria-label="Text"></textarea>'
+        + '<div class="px-float" id="pxFloat" role="toolbar" aria-label="Selected" hidden></div></div></div>'
         + '<div class="px-props" id="pxProps"></div>'
+        + '<button type="button" class="px-btn px-btn--small px-present-exit" data-act="present">Exit (Esc)</button>'
         + '</div>'
         + '<input type="file" accept="image/*" id="pxFile" hidden>'
         + '</div>';
 
       var svg = $('#pxSvg', host), itemsG = $('#pxItems', host), draftG = $('#pxDraft', host), selG = $('#pxSel', host);
       var wrap = $('#pxWrap', host), stage = $('#pxStage', host), props = $('#pxProps', host), textIn = $('#pxText', host);
+
+      /* ── Ruler, protractor, set square and compass ────────────────────
+         The instruments sit on the page, are dragged by their body and turned
+         by their round handle, and are kept with the drawing (not in it: they
+         never print). A pen stroke or a line started on an edge follows it; a
+         line from the protractor's centre snaps to whole degrees. The compass
+         draws a circle, or an arc, round a point. */
+      var IN = window.FluxPixelInstruments || null, instG = $('#pxInst', host);
+      st.inst = IN ? IN.defaults(W, H) : {};
+      if (IN && doc.inst) Object.keys(st.inst).forEach(function (k) { if (doc.inst[k]) Object.assign(st.inst[k], doc.inst[k]); });
+      st.compass = 'circle';
+      function drawInst() {
+        if (!IN) return;
+        var k = 1 / (pageScale() || 1);
+        instG.innerHTML = IN.NAMES.map(function (n) { return IN.svg(n[0], st.inst[n[0]], k); }).join('');
+      }
+      function saveInst() { doc.inst = JSON.parse(JSON.stringify(st.inst)); save(); }
+      function allEdges() {
+        if (!IN) return [];
+        var out = [];
+        IN.NAMES.forEach(function (n) { out = out.concat(IN.edges(n[0], st.inst[n[0]])); });
+        return out;
+      }
+      /** Points worth landing on: ends of lines, corners, centres, and the protractor's centre. */
+      function snapPoints() {
+        var pts = [];
+        doc.items.forEach(function (it) {
+          if ('x1' in it) { pts.push([it.x1, it.y1], [it.x2, it.y2]); return; }
+          if (it.pts && it.pts.length) { pts.push(it.pts[0], it.pts[it.pts.length - 1]); return; }
+          if (it.type === 'ellipse') { pts.push([it.x + it.w / 2, it.y + it.h / 2]); return; }
+          if (it.type === 'rect') pts.push([it.x, it.y], [it.x + it.w, it.y], [it.x, it.y + it.h], [it.x + it.w, it.y + it.h]);
+        });
+        if (IN && st.inst.protractor.on) pts.push([st.inst.protractor.x, st.inst.protractor.y]);
+        return pts;
+      }
+      function tol() { return 14 / (pageScale() || 1); }
+      function snapPoint(p) {
+        var best = null, d0 = tol();
+        snapPoints().forEach(function (q) { var d = Math.hypot(q[0] - p[0], q[1] - p[1]); if (d <= d0) { d0 = d; best = q; } });
+        return best;
+      }
+      /** A small readout beside the pointer: a length in cm, an angle. */
+      function readout(at, textStr) {
+        var k = 1 / (pageScale() || 1), fs = 15 * k;
+        return '<g pointer-events="none"><rect x="' + r1(at[0] + 12 * k) + '" y="' + r1(at[1] - 30 * k) + '" width="' + r1((textStr.length * 8.6 + 14) * k) + '" height="' + r1(24 * k) + '" rx="' + r1(6 * k) + '" fill="#0f172a" fill-opacity=".86"/>'
+          + '<text x="' + r1(at[0] + 19 * k) + '" y="' + r1(at[1] - 13 * k) + '" font-size="' + r1(fs) + '" font-family="Inter, system-ui, sans-serif" font-weight="700" fill="#fff">' + esc(textStr) + '</text></g>';
+      }
+      function fmtCm(v) { return (Math.round(v * 10) / 10).toFixed(1) + ' cm'; }
+      function arcPts(c, r, a0, a1) {
+        var n = Math.max(8, Math.ceil(Math.abs(a1 - a0) / (Math.PI / 90))), out = [];
+        for (var i = 0; i <= n; i++) { var t = a0 + (a1 - a0) * i / n; out.push([r1(c[0] + r * Math.cos(t)), r1(c[1] + r * Math.sin(t))]); }
+        return out;
+      }
+      function drawCompass(c, r, a0, a1, at) {
+        var k = 1 / (pageScale() || 1);
+        var guide = '<g pointer-events="none"><circle cx="' + r1(c[0]) + '" cy="' + r1(c[1]) + '" r="' + r1(r) + '" fill="none" stroke="#2563eb" stroke-width="' + r1(1.2 * k) + '" stroke-dasharray="' + r1(6 * k) + ' ' + r1(5 * k) + '"/>'
+          + '<line x1="' + r1(c[0]) + '" y1="' + r1(c[1]) + '" x2="' + r1(at[0]) + '" y2="' + r1(at[1]) + '" stroke="#2563eb" stroke-width="' + r1(1.5 * k) + '"/><circle cx="' + r1(c[0]) + '" cy="' + r1(c[1]) + '" r="' + r1(4 * k) + '" fill="#2563eb"/></g>';
+        var arc = a1 != null ? '<path d="' + smoothPath(arcPts(c, r, a0, a1)) + '" fill="none" stroke="' + st.color + '" stroke-width="' + st.width + '" stroke-linecap="round"/>' : '';
+        draftG.innerHTML = guide + arc + readout(at, 'r = ' + fmtCm(r / IN.CM));
+      }
 
       /* Rendering */
       function drawBg() {
@@ -908,10 +1133,31 @@
       function selected() { return st.sel ? doc.items.filter(function (i) { return i.id === st.sel; })[0] || null : null; }
       function drawSel() {
         var it = selected();
-        if (!it) { selG.innerHTML = ''; return; }
-        var b = bbox(it), p = 8;
-        selG.innerHTML = '<rect x="' + (b.x - p) + '" y="' + (b.y - p) + '" width="' + (b.w + p * 2) + '" height="' + (b.h + p * 2) + '" fill="none" stroke="#2563eb" stroke-width="2" stroke-dasharray="6 5" pointer-events="none"/>'
-          + '<rect data-handle="1" x="' + (b.x + b.w + p - 9) + '" y="' + (b.y + b.h + p - 9) + '" width="18" height="18" rx="4" fill="#fff" stroke="#2563eb" stroke-width="2.5" style="cursor:nwse-resize"/>';
+        if (!it) { selG.innerHTML = ''; drawFloat(null); return; }
+        var b = bbox(it), p = 8, k = 1 / (pageScale() || 1), hs = Math.max(18, 14 * k);
+        // A grab corner at each corner, big enough for a finger at any zoom.
+        var corners = [['nw', b.x - p, b.y - p, 'nwse'], ['ne', b.x + b.w + p, b.y - p, 'nesw'], ['sw', b.x - p, b.y + b.h + p, 'nesw'], ['se', b.x + b.w + p, b.y + b.h + p, 'nwse']];
+        selG.innerHTML = '<rect x="' + r1(b.x - p) + '" y="' + r1(b.y - p) + '" width="' + r1(b.w + p * 2) + '" height="' + r1(b.h + p * 2) + '" fill="none" stroke="#2563eb" stroke-width="' + r1(2 * k) + '" stroke-dasharray="' + r1(6 * k) + ' ' + r1(5 * k) + '" pointer-events="none"/>'
+          + corners.map(function (c) {
+            return '<rect data-handle="' + c[0] + '" x="' + r1(c[1] - hs / 2) + '" y="' + r1(c[2] - hs / 2) + '" width="' + r1(hs) + '" height="' + r1(hs) + '" rx="' + r1(hs / 4) + '" fill="#fff" stroke="#2563eb" stroke-width="' + r1(2.5 * k) + '" style="cursor:' + c[3] + '-resize"/>';
+          }).join('');
+        drawFloat(it, b);
+      }
+      /** A small bar of the obvious things to do, just above what is selected. */
+      function drawFloat(it, b) {
+        var bar = $('#pxFloat', host);
+        if (!bar) return;
+        if (!it || st.drag) { bar.hidden = true; return; }
+        var s = pageScale(), edit = it.type === 'figure' ? 'Change' : (it.type === 'text' || it.type === 'label' || it.type === 'note') ? 'Edit text' : '';
+        bar.innerHTML = (edit ? '<button type="button" class="px-fl-b px-fl-b--main" data-act="' + (it.type === 'figure' ? 'figfocus' : 'edittext') + '">' + (it.type === 'figure' ? ICON.figure : ICON.text) + '<span>' + edit + '</span></button>' : '')
+          + '<button type="button" class="px-fl-b" data-act="dup" aria-label="Duplicate" title="Duplicate (Ctrl+D)">' + ICON.copy + '</button>'
+          + '<button type="button" class="px-fl-b" data-act="front" aria-label="To front" title="To front">' + ICON.front + '</button>'
+          + '<button type="button" class="px-fl-b px-fl-b--danger" data-act="delete" aria-label="Delete" title="Delete (Del)">' + ICON.trash + '</button>';
+        bar.hidden = false;
+        var w = bar.offsetWidth || 160, x = (b.x + b.w / 2) * s - w / 2, y = (b.y - 8) * s - 48;
+        if (y < 4) y = (b.y + b.h + 8) * s + 10;
+        bar.style.left = Math.max(4, Math.min(wrap.clientWidth - w - 4, x)) + 'px';
+        bar.style.top = Math.max(4, y) + 'px';
       }
       function drawProps() {
         var it = selected();
@@ -920,12 +1166,30 @@
         var showFill = it ? (it.type === 'rect' || it.type === 'ellipse') : (st.tool === 'rect' || st.tool === 'ellipse');
         var showDash = it ? /^(line|arrow|rect|ellipse|vector)$/.test(it.type) : /^(line|arrow|rect|ellipse)$/.test(st.tool);
         var erasing = st.tool === 'eraser' && !it;
+        var isNote = it ? it.type === 'note' : st.tool === 'note';
+        var texty = it && (it.type === 'text' || it.type === 'label' || it.type === 'note');
+        if (st.mode === 'figures' && !it) {
+          props.innerHTML = figStartHTML() + '<div class="px-sec"><span class="px-sec-h">Paper</span><div class="px-row">' + BGS.map(function (b) {
+            return '<button type="button" class="px-chip' + (doc.bg === b[0] ? ' is-on' : '') + '" data-bg="' + b[0] + '">' + esc(b[1]) + '</button>';
+          }).join('') + '</div></div>';
+          return;
+        }
         var html = erasing ? eraserHTML() : '<div class="px-sec"><span class="px-sec-h">Colour</span><div class="px-colors">' + COLORS.map(function (c) {
           return '<button type="button" class="px-color' + (c === color ? ' is-on' : '') + '" data-color="' + c + '" style="--c:' + c + '" aria-label="Colour ' + c + '"></button>';
         }).join('') + '<label class="px-color px-color--pick" title="Any colour"><input type="color" value="' + color + '" data-pick aria-label="Pick any colour"></label></div></div>';
         if (!erasing && (!it || (it.type !== 'image' && it.type !== 'figure'))) {
-          html += '<div class="px-sec"><span class="px-sec-h">' + (it && (it.type === 'text' || it.type === 'label') ? 'Text size' : 'Thickness') + '</span>'
-            + (it && (it.type === 'text' || it.type === 'label')
+          if (isNote) {
+            var nbg = it ? (it.bg || NOTE_COLORS[0][0]) : st.noteBg;
+            html += '<div class="px-sec"><span class="px-sec-h" id="pxNoteH">Note colour</span><div class="px-colors" role="group" aria-labelledby="pxNoteH">' + NOTE_COLORS.map(function (n) {
+              return '<button type="button" class="px-color' + (n[0] === nbg ? ' is-on' : '') + '" data-notebg="' + n[0] + '" style="--c:' + n[0] + '" aria-label="' + n[1] + ' note" aria-pressed="' + (n[0] === nbg) + '"></button>';
+            }).join('') + '</div><p class="px-hint">The colour above is the writing. Click the page to add a note; double-click one to write on it.</p></div>';
+          }
+          if (!it && st.tool === 'pen') {
+            html += '<div class="px-sec px-toggles"><button type="button" class="px-chip' + (st.snap ? ' is-on' : '') + '" data-act="snap" aria-pressed="' + st.snap + '">Shape snap</button>'
+              + '<p class="px-hint">Draw a rough circle, box, triangle or straight line and it is tidied up. Undo keeps it as you drew it.</p></div>';
+          }
+          html += '<div class="px-sec"><span class="px-sec-h">' + (texty ? 'Text size' : 'Thickness') + '</span>'
+            + (texty
               ? '<input type="range" min="12" max="120" value="' + Math.round(it.size) + '" data-size aria-label="Text size">'
               : '<input type="range" min="1" max="' + (st.tool === 'hl' || (it && it.type === 'hl') ? 60 : 24) + '" value="' + width + '" data-width aria-label="Thickness">') + '</div>';
         }
@@ -935,7 +1199,7 @@
             + (showDash ? '<button type="button" class="px-chip' + ((it ? it.dash : st.dash) ? ' is-on' : '') + '" data-toggle="dash">Dashed</button>' : '')
             + '</div>';
         }
-        if (it && (it.type === 'text' || it.type === 'label')) html += '<div class="px-sec px-toggles"><button type="button" class="px-chip' + (it.bold ? ' is-on' : '') + '" data-toggle="bold">Bold</button><button type="button" class="px-chip" data-act="edittext">Edit text</button></div>';
+        if (texty) html += '<div class="px-sec px-toggles"><button type="button" class="px-chip' + (it.bold ? ' is-on' : '') + '" data-toggle="bold">Bold</button><button type="button" class="px-chip" data-act="edittext">Edit text</button></div>';
         if (st.tool === 'stamp') {
           html += '<div class="px-sec px-stamps"><span class="px-sec-h">Stamps — pick one, then tap the page</span>'
             + '<input type="search" class="px-stamp-q" placeholder="Search stamps" aria-label="Search stamps" value="' + esc(st.stampQ || '') + '">'
@@ -944,6 +1208,24 @@
               return '<button type="button" class="px-stamp' + (st.stamp === s.id ? ' is-on' : '') + '" data-stamp="' + s.id + '" data-name="' + esc(s.name.toLowerCase()) + '" title="' + esc(s.name) + '" aria-label="' + esc(s.name) + '"><svg viewBox="-6 -6 112 112"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">' + s.svg + '</g></svg></button>';
             }).join('') + '</div></div>';
           }).join('') + '</div>';
+        }
+        if (!it && st.tool === 'compass') {
+          html += '<div class="px-sec"><span class="px-sec-h" id="pxCompH">Compass</span><div class="px-row" role="group" aria-labelledby="pxCompH">'
+            + chip('data-compass', 'circle', st.compass !== 'arc', 'Circle') + chip('data-compass', 'arc', st.compass === 'arc', 'Arc') + '</div>'
+            + '<p class="px-hint">Press where the point goes and drag out to the radius. It lands on the ends of lines and on corners nearby' + (st.compass === 'arc' ? ', then move round and press again to end the arc' : '') + '.</p></div>';
+        }
+        if (IN && st.inst.square.on) {
+          html += '<div class="px-sec"><span class="px-sec-h" id="pxSqH">Set square</span><div class="px-row" role="group" aria-labelledby="pxSqH">'
+            + chip('data-sqkind', '45', st.inst.square.kind !== '30', '45° 45°') + chip('data-sqkind', '30', st.inst.square.kind === '30', '30° 60°') + '</div></div>';
+        }
+        if (IN && IN.NAMES.some(function (n) { return st.inst[n[0]].on; })) {
+          html += '<div class="px-sec"><span class="px-sec-h">Instruments</span>'
+            + ['ruler', 'protractor'].filter(function (n) { return st.inst[n].on; }).map(function (n) {
+              var z = IN.SIZE[n], v = IN.size(n, st.inst[n]);
+              return '<label class="px-sec-h" for="pxInstSize-' + n + '">' + z.label + ' <output data-inst-size-out="' + n + '">' + v + ' ' + z.unit + '</output></label>'
+                + '<input type="range" id="pxInstSize-' + n + '" min="' + z.min + '" max="' + z.max + '" step="' + z.step + '" value="' + v + '" data-inst-size="' + n + '">';
+            }).join('')
+            + '<p class="px-hint">Drag one by its body, turn it by its round handle (hold Shift for 15° steps; it snaps level at 0°). Start a line or a pen stroke on an edge to draw along it; start a line at the protractor’s centre for whole degrees. They never print.</p></div>';
         }
         if (it && it.type === 'figure') html += figSelHTML(it);
         if (FV && it && it.type === 'vector') html += vecSelHTML(it);
@@ -959,8 +1241,9 @@
           return '<button type="button" class="px-chip' + (doc.bg === b[0] ? ' is-on' : '') + '" data-bg="' + b[0] + '">' + esc(b[1]) + '</button>';
         }).join('') + '</div></div>'
           + '<div class="px-sec"><button type="button" class="px-link px-danger" data-act="clear">Clear the page</button></div>'
-          + '<p class="px-keys">V select · P pen · H highlight · E erase · L line · A arrow · W vector · R box · O circle · T text · B label · S stamps · M maths figures · Del delete · Ctrl+Z undo</p>';
+          + '<p class="px-keys">V select · G move the view (or hold Space) · Ctrl+scroll or pinch to zoom · N sticky note · X laser · P pen · H highlight · E erase · L line · A arrow · W vector · R box · O circle · T text · B label · S stamps · M Flux Figures panel · Del delete · Ctrl+Z undo</p>';
         props.innerHTML = html;
+        if (it && it.type === 'figure') mountFigInline(it);
         if (st.stampQ) filterStamps();
         if (it && it.type === 'vector') labCheck();
       }
@@ -971,10 +1254,109 @@
         }).join('') + '</div><p class="px-hint">' + esc(cur[2]) + '.</p></div>'
           + (cur[0] === 'circle' ? '<div class="px-sec"><label class="px-sec-h" for="pxEraseSize">Eraser size</label><input type="range" id="pxEraseSize" min="4" max="80" value="' + st.eraseR + '" data-erase-size></div>' : '');
       }
+      /* The left rail: drawing tools, or in Flux Figures mode the kinds of figure. */
+      function drawRail() {
+        var rail = $('.px-tools', host);
+        if (st.mode === 'figures') {
+          rail.setAttribute('aria-label', 'Add a figure');
+          rail.innerHTML = '<button type="button" class="px-tool" data-tool="select" aria-label="Select and move" title="Select and move (V)">' + ICON.select + '</button><span class="px-tools-sep" role="separator"></span>'
+            + (window.FluxFigures ? window.FluxFigures.KINDS : []).map(function (k) {
+              return '<button type="button" class="px-tool px-tool--fig" data-figkind="' + k[0] + '" aria-label="Add a ' + esc(k[1].toLowerCase()) + '" title="Add a ' + esc(k[1].toLowerCase()) + '">' + (KIND_ICON[k[0]] || ICON.figure) + '<span>' + esc(k[1].replace('Coordinate grid', 'Graph').replace('Regular polygon', 'Polygon').replace('Parallel lines', 'Parallels')) + '</span></button>';
+            }).join('');
+        } else {
+          rail.setAttribute('aria-label', 'Tools');
+          rail.innerHTML = TOOLS.map(function (t) {
+            return '<button type="button" class="px-tool" data-tool="' + t[0] + '" aria-label="' + esc(t[1]) + '" title="' + esc(t[1]) + ' (' + t[2] + ')">' + ICON[t[0]] + '</button>';
+          }).join('');
+        }
+        if (IN) rail.innerHTML += '<span class="px-tools-sep" role="separator"></span>' + IN.NAMES.map(function (n) {
+          return '<button type="button" class="px-tool px-tool--inst" data-inst-toggle="' + n[0] + '" aria-pressed="' + !!st.inst[n[0]].on + '" aria-label="' + n[1] + '" title="' + n[1] + ' (put it on the page)">' + ICON[n[0]] + '</button>';
+        }).join('');
+        drawTools();
+      }
       function drawTools() { $$('[data-tool]', host).forEach(function (b) { b.classList.toggle('is-on', b.dataset.tool === st.tool); b.setAttribute('aria-pressed', b.dataset.tool === st.tool); }); }
+      function setMode(m) {
+        st.mode = m === 'figures' ? 'figures' : 'draw';
+        if (doc.mode !== st.mode) { doc.mode = st.mode; save(); }
+        $$('[data-mode-set]', host).forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.modeSet === st.mode)); });
+        host.querySelector('.px-editor').classList.toggle('is-figures', st.mode === 'figures');
+        if (st.mode === 'figures') { st.tool = 'select'; svg.setAttribute('data-mode', 'select'); setPanel(true); }
+        drawRail(); drawProps();
+      }
+      /** A new figure in the middle of what is on screen, selected, with its settings beside it. */
+      /** Where a new figure goes: the middle of the screen, or the nearest spot clear of what is already there. */
+      function freeSpot(spec) {
+        var c = visibleCentre(), first = figureItem(spec, c);
+        if (!first) return null;
+        var boxes = doc.items.map(bbox), gap = 24;
+        var clear = function (it) {
+          return it.x >= 0 && it.y >= 0 && it.x + it.w <= W && it.y + it.h <= H && boxes.every(function (b) {
+            return it.x + it.w + gap <= b.x || b.x + b.w + gap <= it.x || it.y + it.h + gap <= b.y || b.y + b.h + gap <= it.y;
+          });
+        };
+        if (clear(first)) return first;
+        // Beside what is there; on a crowded page, smaller, so it still fits in a gap.
+        var tries = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1], [2, 0], [-2, 0]];
+        for (var sc = 1; sc >= 0.3; sc -= 0.2) {
+          var probe = figureItem(spec, c, sc), dx = probe.w + gap, dy = probe.h + gap;
+          if (sc < 1 && clear(probe)) return probe;
+          for (var i = 0; i < tries.length; i++) {
+            var cand = figureItem(spec, [c[0] + tries[i][0] * dx, c[1] + tries[i][1] * dy], sc);
+            if (cand && clear(cand)) return cand;
+          }
+        }
+        // A full page: a little down and to the right of the last one, so it can still be seen and grabbed.
+        var last = boxes[boxes.length - 1];
+        return figureItem(spec, last ? [last.x + last.w / 2 + 40, last.y + last.h / 2 + 40] : c);
+      }
+      function addFigure(spec, focus) {
+        var it = freeSpot(spec);
+        if (!it) return null;
+        addItem(it, 'Added a figure');
+        st.tool = 'select'; svg.setAttribute('data-mode', 'select');
+        st.sel = it.id; drawTools(); drawSel(); drawProps();
+        if (focus) {
+          setPanel(true);
+          var first = props.querySelector('#pxFigInline .px-fi-form .px-f-in');
+          if (first) first.focus();
+        }
+        return it;
+      }
+      /* Flux Figures mode with nothing selected: say what to do, in words or by picking. */
+      var FIG_TRY = ['right triangle 3 4 5', 'y = x^2 − 4', 'circle r 5 sector 60', 'cylinder r 3 h 8', 'number line x ≥ −2', 'angles on a straight line 40 70'];
+      function figStartHTML() {
+        return '<div class="px-sec px-fstart"><span class="px-sec-h">Flux Figures</span>'
+          + '<p class="px-hint">Maths figures drawn to scale. Pick one from the tools, or type it:</p>'
+          + '<form class="px-fi-ask" id="pxNewFig" autocomplete="off"><label class="px-f-lab" for="pxNewFigIn">Describe it</label><div class="px-fig-ask-row">'
+          + '<input class="px-f-in" id="pxNewFigIn" type="text" spellcheck="false" enterkeyhint="go" placeholder="right triangle 3 4 5" aria-describedby="pxNewFigHint">'
+          + '<button type="submit" class="px-btn px-btn--small px-btn--primary">Add</button></div>'
+          + '<p class="px-hint" id="pxNewFigHint" aria-live="polite"></p></form>'
+          + '<div class="px-fig-try" role="group" aria-label="Examples">' + FIG_TRY.map(function (x) { return '<button type="button" class="px-fig-try-b" data-newfig="' + esc(x) + '">' + esc(x) + '</button>'; }).join('') + '</div>'
+          + '<p class="px-hint">Then change it beside the page, drag it, or pull a corner to resize it. Ctrl+Z undoes.</p></div>';
+      }
+      function newFigFromText(text) {
+        var hint = $('#pxNewFigHint', host), r = window.FluxFigures.fromText(text);
+        if (r.error && !r.spec) { if (hint) { hint.textContent = r.error; hint.classList.add('is-err'); } return; }
+        addFigure(r.spec, false);
+        toast('Added: ' + (r.said || window.FluxFigures.describe(r.spec)));
+      }
+      /** The page's width at 100%: as big as fits the space it has, whole. */
+      function fitWidth() {
+        var r = stage.getBoundingClientRect(), pad = r.width < 500 ? 8 : 20;
+        return Math.max(160, Math.min(r.width - pad * 2, (r.height - pad * 2) * W / H));
+      }
       function applyZoom() {
-        wrap.style.width = Math.round(st.zoom * 100) + '%';
+        wrap.style.width = Math.round(fitWidth() * st.zoom) + 'px';
+        if (typeof drawInst === 'function') requestAnimationFrame(function () { drawInst(); drawSel(); });
         $('.px-zoom-v', host).textContent = Math.round(st.zoom * 100) + '%';
+      }
+      /** Options on the right (a sheet from the bottom on a phone), shown or hidden. */
+      function setPanel(open) {
+        st.panel = open;
+        host.querySelector('.px-editor').classList.toggle('is-panel', open);
+        var b = $('[data-act="panel"]', host);
+        if (b) b.setAttribute('aria-expanded', String(open));
+        applyZoom();
       }
 
       /* Saving and history */
@@ -984,17 +1366,43 @@
           if (putDoc(doc)) { var s = $('.px-saved', host); if (s) { s.textContent = 'Saved'; clearTimeout(s._t); s._t = setTimeout(function () { s.textContent = ''; }, 1200); } }
         }, 350);
       }
-      function commit() {
+      /* Every step remembers what it was, so undo can say what it took back. */
+      st.what = [''];
+      function commit(what) {
         var snap = JSON.stringify(doc.items);
         if (snap === st.hist[st.hi]) return;
         st.hist = st.hist.slice(0, st.hi + 1);
+        st.what = st.what.slice(0, st.hi + 1);
         st.hist.push(snap);
-        if (st.hist.length > 80) st.hist.shift();
+        st.what.push(what || 'Change');
+        if (st.hist.length > 80) { st.hist.shift(); st.what.shift(); }
         st.hi = st.hist.length - 1;
         save();
+        drawUndo();
       }
-      function undo() { if (st.hi <= 0) return; st.hi--; doc.items = JSON.parse(st.hist[st.hi]); st.sel = null; drawItems(); drawProps(); save(); }
-      function redo() { if (st.hi >= st.hist.length - 1) return; st.hi++; doc.items = JSON.parse(st.hist[st.hi]); st.sel = null; drawItems(); drawProps(); save(); }
+      function drawUndo() {
+        var u = $('[data-act="undo"]', host), r = $('[data-act="redo"]', host);
+        if (u) { u.disabled = st.hi <= 0; u.title = st.hi > 0 ? 'Undo: ' + st.what[st.hi] + ' (Ctrl+Z)' : 'Nothing to undo'; }
+        if (r) { r.disabled = st.hi >= st.hist.length - 1; r.title = st.hi < st.hist.length - 1 ? 'Redo: ' + st.what[st.hi + 1] + ' (Ctrl+Shift+Z)' : 'Nothing to redo'; }
+      }
+      function restore(sel) {
+        doc.items = JSON.parse(st.hist[st.hi]);
+        st.sel = sel && doc.items.some(function (i) { return i.id === sel; }) ? sel : null;
+        drawItems(); drawProps(); save(); drawUndo();
+      }
+      function undo() {
+        if (st.hi <= 0) return;
+        clearTimeout(figCommitTimer);
+        var what = st.what[st.hi], keep = st.sel;
+        st.hi--; restore(keep);
+        toast('Undone: ' + what.toLowerCase());
+      }
+      function redo() {
+        if (st.hi >= st.hist.length - 1) return;
+        var keep = st.sel;
+        st.hi++; restore(keep);
+        toast('Redone: ' + st.what[st.hi].toLowerCase());
+      }
 
       /* Coordinates */
       function toPage(e) {
@@ -1009,15 +1417,17 @@
       function setTool(t) {
         if (t === 'image') { $('#pxFile', host).click(); return; }
         if (t === 'figure') { openFigures(null); return; }
+        if (st.mode === 'figures' && t !== 'select') { st.mode = 'draw'; doc.mode = 'draw'; save(); host.querySelector('.px-editor').classList.remove('is-figures'); $$('[data-mode-set]', host).forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.modeSet === 'draw')); }); drawRail(); }
         st.tool = t;
         if (t !== 'select') st.sel = null;
         if (t === 'stamp' && !st.stamp) st.stamp = 'beaker';
-        svg.setAttribute('data-mode', t);
+        svg.setAttribute('data-mode', spaceDown ? 'hand' : t);
         svg.setAttribute('data-eraser', st.eraseMode);
         draftG.innerHTML = '';
         drawTools(); drawSel(); drawProps();
       }
-      function addItem(it) { it.id = uid(); doc.items.push(it); drawItems(); commit(); return it; }
+      var ADDED = { pen: 'Drew a line', hl: 'Highlighted', line: 'Added a line', arrow: 'Added an arrow', vector: 'Added a vector', rect: 'Added a box', ellipse: 'Added a circle', text: 'Added text', label: 'Added a label', note: 'Added a sticky note', stamp: 'Added a stamp', image: 'Added a picture', figure: 'Added a figure' };
+      function addItem(it, what) { it.id = uid(); doc.items.push(it); drawItems(); commit(what || ADDED[it.type] || 'Added'); return it; }
 
       /* Text entry, for text and labels */
       var editing = null;
@@ -1031,10 +1441,14 @@
         textIn.style.top = (sr.top - wr.top + at[1] * s) + 'px';
         textIn.style.fontSize = Math.max(12, size * s) + 'px';
         textIn.style.color = existing ? existing.color : st.color;
-        editing = { onDone: onDone };
+        editing = { onDone: onDone, fixedW: existing && existing.width ? existing.width * s : 0 };
         setTimeout(function () { textIn.focus(); autosize(); }, 0);
       }
-      function autosize() { textIn.style.height = 'auto'; textIn.style.height = textIn.scrollHeight + 'px'; textIn.style.width = 'auto'; textIn.style.width = Math.max(140, textIn.scrollWidth + 20) + 'px'; }
+      function autosize() {
+        textIn.style.height = 'auto'; textIn.style.height = textIn.scrollHeight + 'px';
+        if (editing && editing.fixedW) { textIn.style.width = editing.fixedW + 'px'; return; }
+        textIn.style.width = 'auto'; textIn.style.width = Math.max(140, textIn.scrollWidth + 20) + 'px';
+      }
       function closeText(keep) {
         if (!editing) return;
         var ed = editing; editing = null;
@@ -1051,6 +1465,15 @@
       textIn.addEventListener('blur', function () { closeText(true); });
 
       function editTextOf(it) {
+        if (it.type === 'note') {
+          var was = it.text;
+          it.text = ''; drawItems();
+          openText([it.x + NOTE_PAD, it.y + NOTE_PAD], { size: noteText({ text: was, w: it.w, h: it.h, size: it.size }).size, color: it.color, text: was, width: it.w - NOTE_PAD * 2 }, function (v) {
+            it.text = v == null ? was : v;
+            drawItems(); drawProps(); commit(was ? 'Changed a note' : 'Wrote on a note');
+          });
+          return;
+        }
         var at = it.type === 'label' ? [it.x2 + (it.x2 >= it.x1 ? 8 : -160), it.y2 - it.size * 0.6] : [it.x, it.y];
         var before = it.text;
         it.text = '';
@@ -1062,6 +1485,81 @@
           drawItems(); drawProps(); commit();
         });
       }
+
+      /* ── Zoom and pan ──────────────────────────────────────────────────
+         Zoom keeps the point under the pointer (or the middle of the view)
+         where it is. Pan scrolls the stage: the hand tool, Space held down,
+         the middle mouse button, or two fingers. */
+      function zoomTo(z, cx, cy) {
+        z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
+        var sr = stage.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+        if (cx == null) { cx = sr.left + sr.width / 2; cy = sr.top + sr.height / 2; }
+        var fx = (cx - wr.left) / (wr.width || 1), fy = (cy - wr.top) / (wr.height || 1);
+        st.zoom = z; applyZoom();
+        var nr = wrap.getBoundingClientRect();
+        stage.scrollLeft += nr.left + fx * nr.width - cx;
+        stage.scrollTop += nr.top + fy * nr.height - cy;
+      }
+      function onWheel(e) {
+        if (!(e.ctrlKey || e.metaKey)) return;   // a plain scroll moves the view
+        e.preventDefault();
+        zoomTo(st.zoom * Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.0025)), e.clientX, e.clientY);
+      }
+      stage.addEventListener('wheel', onWheel, { passive: false });
+      var touches = {}, pinch = null, spaceDown = false;
+      function touchList() { return Object.keys(touches).map(function (k) { return touches[k]; }); }
+      function startPinch() {
+        var t = touchList(); if (t.length < 2) return;
+        // A second finger means zoom: drop whatever the first one started.
+        st.drag = null; st.draft = null; draftG.innerHTML = '';
+        pinch = { d0: Math.hypot(t[0].x - t[1].x, t[0].y - t[1].y) || 1, z0: st.zoom, mx: (t[0].x + t[1].x) / 2, my: (t[0].y + t[1].y) / 2 };
+      }
+      function movePinch() {
+        var t = touchList(); if (!pinch || t.length < 2) return;
+        var d = Math.hypot(t[0].x - t[1].x, t[0].y - t[1].y), mx = (t[0].x + t[1].x) / 2, my = (t[0].y + t[1].y) / 2;
+        stage.scrollLeft -= mx - pinch.mx; stage.scrollTop -= my - pinch.my;
+        pinch.mx = mx; pinch.my = my;
+        zoomTo(pinch.z0 * d / pinch.d0, mx, my);
+      }
+      function panning(e) { return st.tool === 'hand' || spaceDown || e.button === 1; }
+      function setHandCursor() { svg.setAttribute('data-mode', spaceDown ? 'hand' : st.tool); }
+
+      /* ── Laser pointer ─────────────────────────────────────────────────
+         A red trail that fades after a moment. It is never saved. */
+      var laserG = $('#pxLaser', host), laserPts = [], laserRaf = 0, LASER_MS = 700;
+      function drawLaser() {
+        var now = Date.now();
+        laserPts = laserPts.filter(function (q) { return now - q.t < LASER_MS; });
+        var k = 1 / (pageScale() || 1), out = '';
+        for (var i = 1; i < laserPts.length; i++) {
+          var a = laserPts[i - 1], b = laserPts[i], o = 1 - (now - b.t) / LASER_MS;
+          out += '<line x1="' + r1(a.p[0]) + '" y1="' + r1(a.p[1]) + '" x2="' + r1(b.p[0]) + '" y2="' + r1(b.p[1]) + '" stroke="#ef4444" stroke-opacity="' + o.toFixed(2) + '" stroke-width="' + r1(6 * k) + '" stroke-linecap="round"/>';
+        }
+        var head = laserPts[laserPts.length - 1];
+        if (head && st.drag && st.drag.mode === 'laser') out += '<circle cx="' + r1(head.p[0]) + '" cy="' + r1(head.p[1]) + '" r="' + r1(9 * k) + '" fill="#ef4444" opacity=".9"/><circle cx="' + r1(head.p[0]) + '" cy="' + r1(head.p[1]) + '" r="' + r1(18 * k) + '" fill="#ef4444" opacity=".2"/>';
+        laserG.innerHTML = out;
+        laserRaf = laserPts.length || (st.drag && st.drag.mode === 'laser') ? requestAnimationFrame(drawLaser) : 0;
+      }
+      function laserAt(p) {
+        laserPts.push({ p: p, t: Date.now() });
+        if (!laserRaf) laserRaf = requestAnimationFrame(drawLaser);
+      }
+
+      /* ── Present ───────────────────────────────────────────────────────
+         Just the page and the tools, filling the screen. Esc leaves. */
+      function setPresent(on) {
+        var ed = host.querySelector('.px-editor');
+        st.present = on;
+        ed.classList.toggle('is-present', on);
+        try {
+          if (on && ed.requestFullscreen && !document.fullscreenElement) ed.requestFullscreen().catch(function () {});
+          if (!on && document.fullscreenElement) document.exitFullscreen().catch(function () {});
+        } catch (e) {}
+        if (on) { st.zoom = 1; setTool('laser'); toast('Presenting. The laser is on; Esc leaves.'); }
+        applyZoom();
+      }
+      function onFullscreen() { if (!document.fullscreenElement && st.present) setPresent(false); }
+      document.addEventListener('fullscreenchange', onFullscreen);
 
       /* Pointer */
       function eraseAt(e) {
@@ -1117,21 +1615,74 @@
         return changed;
       }
       svg.addEventListener('pointerdown', function (e) {
-        if (e.button && e.button !== 0) return;
+        if (e.button && e.button !== 0 && e.button !== 1) return;
+        if (e.pointerType === 'touch') {
+          touches[e.pointerId] = { x: e.clientX, y: e.clientY };
+          if (touchList().length >= 2) { startPinch(); return; }
+        }
         if (editing) { closeText(true); return; }
-        var p = toPage(e);
         try { svg.setPointerCapture(e.pointerId); } catch (er) {}
+        if (panning(e)) {
+          e.preventDefault();
+          st.drag = { mode: 'pan', x: e.clientX, y: e.clientY, sl: stage.scrollLeft, st: stage.scrollTop };
+          svg.classList.add('is-panning');
+          return;
+        }
+        var p = toPage(e);
         var t = st.tool;
+        if (t === 'laser') { st.drag = { mode: 'laser' }; laserAt(p); return; }
+        if (t === 'note') {
+          var hitN = e.target.closest('#pxItems [data-id]');
+          var hn = hitN && doc.items.filter(function (i) { return i.id === hitN.getAttribute('data-id'); })[0];
+          if (hn && hn.type === 'note') { st.sel = hn.id; drawSel(); editTextOf(hn); return; }
+          var ns = 220;
+          var note = addItem({ type: 'note', x: Math.max(0, Math.min(W - ns, p[0] - ns / 2)), y: Math.max(0, Math.min(H - ns, p[1] - ns / 2)), w: ns, h: ns, text: '', size: 26, color: st.color, bg: st.noteBg });
+          st.sel = note.id; drawSel();
+          editTextOf(note);
+          return;
+        }
+        // A compass arc in progress: this press puts it down.
+        if (st.arc) {
+          var A = st.arc; st.arc = null; draftG.innerHTML = '';
+          var a1 = Math.atan2(p[1] - A.c[1], p[0] - A.c[0]);
+          while (a1 < A.a0) a1 += Math.PI * 2;
+          if (a1 - A.a0 > 0.02) addItem({ type: 'pen', pts: arcPts(A.c, A.r, A.a0, a1), color: st.color, width: st.width }, 'Drew an arc');
+          return;
+        }
+        var drawsLine = /^(line|arrow|pen|hl|compass)$/.test(t);
+        var onInst = e.target.closest && e.target.closest('[data-inst]');
+        var pro = st.inst.protractor;
+        var atCentre = IN && pro && pro.on && Math.hypot(p[0] - pro.x, p[1] - pro.y) <= tol();
+        var edgeHit = IN && drawsLine && t !== 'compass' ? IN.snapEdge(p, allEdges(), tol()) : null;
+        if (onInst && !(drawsLine && (atCentre || edgeHit))) {
+          var nm = onInst.getAttribute('data-inst'), I = st.inst[nm];
+          if (e.target.closest('[data-inst-rot]')) st.drag = { mode: 'instrot', name: nm, a0: Math.atan2(p[1] - I.y, p[0] - I.x), rot0: I.rot || 0 };
+          else st.drag = { mode: 'instmove', name: nm, last: p };
+          return;
+        }
+        if (t === 'compass') {
+          var cc = snapPoint(p) || p;
+          st.drag = { mode: 'compass', c: cc, r: 0, a0: 0 };
+          drawCompass(cc, 0, 0, null, cc);
+          return;
+        }
+        if (drawsLine && t !== 'compass') {
+          if (atCentre && (t === 'line' || t === 'arrow')) p = [pro.x, pro.y];
+          else if (edgeHit) p = edgeHit.q;
+          else if (t === 'line' || t === 'arrow') p = snapPoint(p) || p;
+        }
         if (t === 'select') {
-          if (e.target.getAttribute('data-handle')) {
+          var hd = e.target.getAttribute('data-handle');
+          if (hd) {
             var it0 = selected(); var b0 = bbox(it0);
-            st.drag = { mode: 'resize', start: p, box: b0, orig: JSON.parse(JSON.stringify(it0)) };
+            st.drag = { mode: 'resize', start: p, box: b0, orig: JSON.parse(JSON.stringify(it0)), cx: hd.indexOf('w') >= 0 ? -1 : 1, cy: hd.indexOf('n') >= 0 ? -1 : 1 };
+            drawFloat(null);
             return;
           }
           var g = e.target.closest('#pxItems [data-id]');
           st.sel = g ? g.getAttribute('data-id') : null;
           drawSel(); drawProps();
-          if (st.sel) st.drag = { mode: 'move', last: p, moved: false };
+          if (st.sel) { st.drag = { mode: 'move', last: p, moved: false }; drawFloat(null); }
           return;
         }
         if (t === 'eraser') {
@@ -1164,12 +1715,58 @@
         if (t === 'pen' || t === 'hl') st.draft = Object.assign(base, { type: t, pts: [p], width: t === 'hl' ? Math.max(st.width * 4, 18) : st.width });
         else if (t === 'line' || t === 'arrow' || t === 'label') st.draft = Object.assign(base, { type: t === 'label' ? 'line' : t, x1: p[0], y1: p[1], x2: p[0], y2: p[1], dash: t === 'label' ? false : st.dash, _label: t === 'label' });
         else if (t === 'rect' || t === 'ellipse') st.draft = Object.assign(base, { type: t, x: p[0], y: p[1], w: 0, h: 0, fill: st.fill, dash: st.dash, _ox: p[0], _oy: p[1] });
-        st.drag = { mode: 'draw' };
+        var fromCentre = !!(atCentre && (t === 'line' || t === 'arrow'));
+        // From the protractor's centre the angle rules; anywhere else an edge does.
+        st.drag = { mode: 'draw', edge: edgeHit && !fromCentre ? edgeHit.seg : null, pro: fromCentre };
         drawDraft();
       });
       svg.addEventListener('pointermove', function (e) {
+        if (e.pointerType === 'touch' && touches[e.pointerId]) {
+          touches[e.pointerId] = { x: e.clientX, y: e.clientY };
+          if (pinch) { movePinch(); return; }
+        }
+        if (st.drag && st.drag.mode === 'pan') {
+          stage.scrollLeft = st.drag.sl - (e.clientX - st.drag.x);
+          stage.scrollTop = st.drag.st - (e.clientY - st.drag.y);
+          return;
+        }
+        if (st.drag && st.drag.mode === 'laser') { laserAt(toPage(e)); return; }
+        if (st.arc && !st.drag) {
+          var pa = toPage(e), A = st.arc, a1 = Math.atan2(pa[1] - A.c[1], pa[0] - A.c[0]);
+          while (a1 < A.a0) a1 += Math.PI * 2;
+          drawCompass(A.c, A.r, A.a0, a1, [A.c[0] + A.r * Math.cos(a1), A.c[1] + A.r * Math.sin(a1)]);
+          return;
+        }
         if (!st.drag) { if (st.tool === 'eraser' && st.eraseMode === 'circle') ring(toPage(e)); return; }
         var p = toPage(e);
+        if (st.drag.mode === 'instmove') {
+          var I = st.inst[st.drag.name];
+          I.x += p[0] - st.drag.last[0]; I.y += p[1] - st.drag.last[1]; st.drag.last = p;
+          drawInst(); return;
+        }
+        if (st.drag.mode === 'instrot') {
+          var J = st.inst[st.drag.name], ang = Math.atan2(p[1] - J.y, p[0] - J.x);
+          var deg = st.drag.rot0 + (ang - st.drag.a0) * 180 / Math.PI;
+          J.rot = IN.snapRot(Math.round(e.shiftKey ? deg / 15 : deg) * (e.shiftKey ? 15 : 1));
+          drawInst();
+          draftG.innerHTML = readout(p, Math.round(J.rot) + '°');
+          return;
+        }
+        if (st.drag.mode === 'compass') {
+          var C = st.drag;
+          var snapR = snapPoint(p);
+          var at = snapR || p, rr = Math.hypot(at[0] - C.c[0], at[1] - C.c[1]);
+          if (!snapR) rr = Math.round(rr / (IN.CM / 10)) * (IN.CM / 10);   // whole millimetres
+          C.r = rr; C.a0 = Math.atan2(at[1] - C.c[1], at[0] - C.c[0]);
+          drawCompass(C.c, rr, 0, null, [C.c[0] + rr * Math.cos(C.a0), C.c[1] + rr * Math.sin(C.a0)]);
+          return;
+        }
+        // Along an instrument's edge, or round the protractor in whole degrees.
+        if (st.drag.mode === 'draw' && st.draft) {
+          if (st.drag.edge) p = IN.onLine(p, st.drag.edge);
+          else if (st.drag.pro) { var pl = IN.protractorLine(st.inst.protractor, [st.draft.x1, st.draft.y1], p); if (pl) { p = pl.end; st.drag.deg = pl.deg; } }
+          else if ('x1' in st.draft && st.draft.type !== 'vector' && !e.shiftKey) p = snapPoint(p) || p;
+        }
         if (st.drag.mode === 'erase') { eraseAt(e); return; }
         if (st.drag.mode === 'cut') { cutAlong(st.drag.last, p); st.drag.last = p; ring(p); return; }
         if (st.drag.mode === 'boxerase') { st.drag.end = p; drawEraseBox(); return; }
@@ -1181,12 +1778,13 @@
           return;
         }
         if (st.drag.mode === 'resize') {
-          var b = st.drag.box, it2 = selected();
-          var sx = Math.max(0.05, (b.w + p[0] - st.drag.start[0]) / Math.max(1, b.w));
-          var sy = Math.max(0.05, (b.h + p[1] - st.drag.start[1]) / Math.max(1, b.h));
+          var b = st.drag.box, it2 = selected(), dr = st.drag;
+          var sx = Math.max(0.05, (b.w + dr.cx * (p[0] - dr.start[0])) / Math.max(1, b.w));
+          var sy = Math.max(0.05, (b.h + dr.cy * (p[1] - dr.start[1])) / Math.max(1, b.h));
           if (e.shiftKey || it2.type === 'stamp' || it2.type === 'image' || it2.type === 'figure') { var s = Math.max(sx, sy); sx = sy = s; }
           var fresh = JSON.parse(JSON.stringify(st.drag.orig));
-          scaleItem(fresh, sx, sy, b.x, b.y);
+          // The opposite corner stays where it is.
+          scaleItem(fresh, sx, sy, dr.cx > 0 ? b.x : b.x + b.w, dr.cy > 0 ? b.y : b.y + b.h);
           Object.assign(it2, fresh);
           drawItems();
           return;
@@ -1212,9 +1810,23 @@
         }
         drawDraft();
       });
-      function endPointer() {
+      function endPointer(e) {
+        if (e && e.pointerType === 'touch') {
+          delete touches[e.pointerId];
+          if (pinch) { if (touchList().length < 2) pinch = null; st.drag = null; return; }
+        }
         var drag = st.drag; st.drag = null;
         if (!drag) return;
+        if (drag.mode === 'pan') { svg.classList.remove('is-panning'); return; }
+        if (drag.mode === 'laser') return;
+        if (drag.mode === 'instmove' || drag.mode === 'instrot') { draftG.innerHTML = ''; saveInst(); return; }
+        if (drag.mode === 'compass') {
+          draftG.innerHTML = '';
+          if (drag.r < 4) return;
+          if (st.compass === 'arc') { st.arc = { c: drag.c, r: drag.r, a0: drag.a0 }; drawCompass(drag.c, drag.r, drag.a0, drag.a0, [drag.c[0] + drag.r * Math.cos(drag.a0), drag.c[1] + drag.r * Math.sin(drag.a0)]); toast('Move round to draw the arc, then press to put it down.'); return; }
+          addItem({ type: 'ellipse', x: drag.c[0] - drag.r, y: drag.c[1] - drag.r, w: drag.r * 2, h: drag.r * 2, color: st.color, width: st.width, fill: false, dash: false }, 'Drew a circle');
+          return;
+        }
         if (drag.mode === 'cut') {
           doc.items = doc.items.filter(function (it) { return !(drag.touched[it.id] && rubbedOut(it)); });
           drawItems(); commit(); return;
@@ -1224,7 +1836,11 @@
           if (applyEraseBox(drag)) { drawItems(); commit(); }
           return;
         }
-        if (drag.mode === 'erase' || (drag.mode === 'move' && drag.moved) || drag.mode === 'resize') { commit(); drawProps(); return; }
+        if (drag.mode === 'erase' || (drag.mode === 'move' && drag.moved) || drag.mode === 'resize') {
+          commit(drag.mode === 'erase' ? 'Rubbed out' : drag.mode === 'move' ? 'Moved' : 'Resized');
+          drawProps(); drawSel(); return;
+        }
+        if (drag.mode === 'move') { drawSel(); return; }
         if (drag.mode !== 'draw') return;
         var d = st.draft; st.draft = null; draftG.innerHTML = '';
         if (!d) return;
@@ -1248,9 +1864,26 @@
           });
           return;
         }
-        if (d.pts && d.pts.length) { addItem(clean(d)); return; }
+        if (d.pts && d.pts.length) {
+          var stroke = addItem(clean(d));
+          if (d.type === 'pen' && st.snap && !drag.edge) snapStroke(stroke);
+          return;
+        }
         if ('x1' in d && Math.hypot(d.x2 - d.x1, d.y2 - d.y1) > 4) { addItem(clean(d)); return; }
         if ('w' in d && d.w > 4 && d.h > 4) { addItem(clean(d)); }
+      }
+      /** Shape snap: the stroke just drawn becomes the shape it looks like, as its own undo step. */
+      function snapStroke(it) {
+        var got = recognise(it.pts);
+        if (!got) return;
+        var shape = Object.assign(got.item, { id: it.id, color: it.color, width: it.width });
+        var i = doc.items.indexOf(it);
+        if (i < 0) return;
+        doc.items[i] = shape;
+        drawItems();
+        var what = 'Tidied into a ' + got.kind;
+        commit(what);
+        toastAct(what, 'Undo', undo);
       }
       function clean(d) { var o = {}; Object.keys(d).forEach(function (k) { if (k[0] !== '_') o[k] = d[k]; }); return o; }
       svg.addEventListener('pointerup', endPointer);
@@ -1261,10 +1894,19 @@
         var under = document.elementFromPoint(e.clientX, e.clientY);
         var g = (under && under.closest && under.closest('#pxItems [data-id]')) || e.target.closest('#pxItems [data-id]');
         var it = g && doc.items.filter(function (i) { return i.id === g.getAttribute('data-id'); })[0];
-        if (it && (it.type === 'text' || it.type === 'label')) { st.sel = it.id; editTextOf(it); }
+        if (it && (it.type === 'text' || it.type === 'label' || it.type === 'note')) { st.sel = it.id; editTextOf(it); }
         if (it && it.type === 'figure') { st.sel = it.id; drawSel(); drawProps(); openFigures(it); }
       });
-      function drawDraft() { draftG.innerHTML = st.draft ? itemSVG(Object.assign({ id: 'draft' }, st.draft, { type: st.draft.type }), false) : ''; }
+      function drawDraft() {
+        var d = st.draft;
+        draftG.innerHTML = d ? itemSVG(Object.assign({ id: 'draft' }, d, { type: d.type }), false) : '';
+        if (!d || !IN || !('x1' in d) || d.type === 'vector') return;
+        var anyOn = IN.NAMES.some(function (n) { return st.inst[n[0]].on; });
+        if (!anyOn && !(st.drag && st.drag.edge)) return;
+        var label = fmtCm(IN.cm([d.x1, d.y1], [d.x2, d.y2]));
+        if (st.drag && st.drag.pro && st.drag.deg != null) label = st.drag.deg + '° · ' + label;
+        draftG.innerHTML += readout([d.x2, d.y2], label);
+      }
 
       /* Pictures */
       $('#pxFile', host).addEventListener('change', function (e) {
@@ -1297,9 +1939,27 @@
 
       /* Buttons */
       host.onclick = function (e) {
-        var t = e.target.closest('[data-tool],[data-act],[data-color],[data-toggle],[data-bg],[data-stamp],[data-erase],[data-vtog],[data-ventry]');
+        var t = e.target.closest('[data-tool],[data-act],[data-color],[data-toggle],[data-bg],[data-stamp],[data-erase],[data-vtog],[data-ventry],[data-mode-set],[data-figkind],[data-newfig],[data-inst-toggle],[data-compass],[data-sqkind],[data-notebg]');
         if (!t) return;
         var it = selected();
+        if (t.dataset.modeSet) { setMode(t.dataset.modeSet); return; }
+        if (t.dataset.instToggle) {
+          var inm = t.dataset.instToggle, I0 = st.inst[inm];
+          I0.on = !I0.on;
+          // Taken out somewhere it cannot be seen (off the page): back to where it starts.
+          if (I0.on && (I0.x < -200 || I0.x > W + 200 || I0.y < -200 || I0.y > H + 200)) { var dflt = IN.defaults(W, H)[inm]; I0.x = dflt.x; I0.y = dflt.y; I0.rot = 0; }
+          t.setAttribute('aria-pressed', String(I0.on));
+          drawInst(); saveInst(); drawProps();
+          return;
+        }
+        if (t.dataset.compass) { st.compass = t.dataset.compass; drawProps(); return; }
+        if (t.dataset.sqkind) { st.inst.square.kind = t.dataset.sqkind; drawInst(); saveInst(); drawProps(); return; }
+        if (t.dataset.figkind) {
+          var ks = window.FluxPixelFigures ? window.FluxPixelFigures.lastSpec(t.dataset.figkind) : window.FluxFigures.defaults(t.dataset.figkind);
+          addFigure(ks, true);
+          return;
+        }
+        if (t.dataset.newfig) { var ni = $('#pxNewFigIn', host); if (ni) ni.value = t.dataset.newfig; newFigFromText(t.dataset.newfig); return; }
         if (t.dataset.tool) return setTool(t.dataset.tool);
         if (t.dataset.erase) {
           st.eraseMode = t.dataset.erase; saveErasePref();
@@ -1331,16 +1991,31 @@
           if (it) { it[k] = !it[k]; drawItems(); commit(); } else st[k] = !st[k];
           drawProps(); return;
         }
+        if (t.dataset.notebg) {
+          if (it && it.type === 'note') { it.bg = t.dataset.notebg; drawItems(); commit('Changed the note colour'); } else st.noteBg = t.dataset.notebg;
+          drawProps(); return;
+        }
         if (t.dataset.bg) { doc.bg = t.dataset.bg; drawBg(); drawProps(); save(); return; }
         var a = t.dataset.act;
         if (a === 'undo') undo();
         else if (a === 'redo') redo();
-        else if (a === 'zoomin') { st.zoom = Math.min(4, st.zoom + 0.25); applyZoom(); }
-        else if (a === 'zoomout') { st.zoom = Math.max(0.5, st.zoom - 0.25); applyZoom(); }
+        else if (a === 'zoomin') zoomTo(st.zoom * 1.25);
+        else if (a === 'zoomout') zoomTo(st.zoom / 1.25);
+        else if (a === 'present') setPresent(!st.present);
+        else if (a === 'snap') { st.snap = !st.snap; try { localStorage.setItem(SNAP_PREF, st.snap ? '1' : '0'); } catch (er) {} drawProps(); var sb = props.querySelector('[data-act="snap"]'); if (sb) sb.focus(); }
         else if (a === 'zoomfit') { st.zoom = 1; applyZoom(); }
-        else if (a === 'delete' && it) { doc.items = doc.items.filter(function (x) { return x !== it; }); st.sel = null; drawItems(); drawProps(); commit(); }
-        else if (a === 'dup' && it) { var copy = JSON.parse(JSON.stringify(it)); moveItem(copy, 30, 30); var n = addItem(copy); st.sel = n.id; drawSel(); drawProps(); }
-        else if (a === 'front' && it) { doc.items = doc.items.filter(function (x) { return x !== it; }).concat([it]); drawItems(); commit(); }
+        else if (a === 'panel') setPanel(!st.panel);
+        else if (a === 'delete' && it) {
+          doc.items = doc.items.filter(function (x) { return x !== it; }); st.sel = null; drawItems(); drawProps(); commit('Deleted');
+          toastAct('Deleted', 'Undo', undo);
+        }
+        else if (a === 'dup' && it) { var copy = JSON.parse(JSON.stringify(it)); moveItem(copy, 30, 30); var n = addItem(copy, 'Duplicated'); st.sel = n.id; drawSel(); drawProps(); }
+        else if (a === 'front' && it) { doc.items = doc.items.filter(function (x) { return x !== it; }).concat([it]); drawItems(); commit('Moved to the front'); }
+        else if (a === 'figfocus' && it) {
+          setPanel(true);
+          var first = props.querySelector('#pxFigInline .px-fi-form .px-f-in, #pxFigInline #pxiAsk');
+          if (first) first.focus();
+        }
         else if (a === 'edittext' && it) editTextOf(it);
         else if (a === 'figures') openFigures(null);
         else if (a === 'figedit' && it && it.type === 'figure') openFigures(it);
@@ -1380,6 +2055,11 @@
         var none = $('.px-stamp-none', host);
         if (none) none.hidden = any;
       }
+      host.onsubmit = function (e) {
+        if (e.target.id !== 'pxNewFig') return;
+        e.preventDefault();
+        newFigFromText($('#pxNewFigIn', host).value);
+      };
       host.oninput = function (e) {
         if (e.target.matches('.px-stamp-q')) { st.stampQ = e.target.value; filterStamps(); return; }
         if (e.target.matches('[data-vset]') && e.target.tagName === 'INPUT') {
@@ -1393,6 +2073,12 @@
         var it = selected();
         if (e.target.matches('.px-title')) { doc.title = e.target.value.trim() || 'Untitled drawing'; save(); return; }
         if (e.target.matches('[data-erase-size]')) { st.eraseR = +e.target.value; saveErasePref(); return; }
+        if (e.target.matches('[data-inst-size]')) {
+          var inm2 = e.target.getAttribute('data-inst-size'), z = IN.SIZE[inm2];
+          st.inst[inm2][z.key] = +e.target.value; drawInst(); saveInst();
+          var out = props.querySelector('[data-inst-size-out="' + inm2 + '"]'); if (out) out.textContent = IN.size(inm2, st.inst[inm2]) + ' ' + z.unit;
+          return;
+        }
         if (e.target.matches('[data-width]')) { var v = +e.target.value; if (it) { it.width = v; drawItems(); } else st.width = v; return; }
         if (e.target.matches('[data-size]')) { if (it) { it.size = +e.target.value; drawItems(); } return; }
         if (e.target.matches('[data-pick]')) { var c = e.target.value; if (it) { it.color = c; drawItems(); } else st.color = c; }
@@ -1413,27 +2099,66 @@
       var KEYS = {}; TOOLS.forEach(function (t) { KEYS[t[2].toLowerCase()] = t[0]; });
       function onKey(e) {
         if (e.target && e.target.closest && e.target.closest('dialog')) return;
+        // Escape in a field beside the page leaves the field, so the keys work on the page again.
+        if (e.key === 'Escape' && !editing && e.target && e.target.closest && e.target.closest('#pxProps') && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.target.blur(); return; }
         if (editing || /INPUT|TEXTAREA|SELECT/.test((e.target && e.target.tagName) || '')) return;
         var mod = e.metaKey || e.ctrlKey;
+        if (e.key === ' ' && !mod && !(e.target && e.target.closest && e.target.closest('button,a'))) { e.preventDefault(); if (!spaceDown) { spaceDown = true; setHandCursor(); } return; }
+        if (mod && (e.key === '=' || e.key === '+')) { e.preventDefault(); zoomTo(st.zoom * 1.25); return; }
+        if (mod && e.key === '-') { e.preventDefault(); zoomTo(st.zoom / 1.25); return; }
+        if (mod && e.key === '0') { e.preventDefault(); zoomTo(1); return; }
+        if (e.key === 'Escape' && st.present && !document.fullscreenElement) { setPresent(false); return; }
         if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
         if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
         if (mod && e.key.toLowerCase() === 'd' && selected()) { e.preventDefault(); host.querySelector('[data-act="dup"]').click(); return; }
         if ((e.key === 'Delete' || e.key === 'Backspace') && selected()) { e.preventDefault(); host.querySelector('[data-act="delete"]').click(); return; }
-        if (e.key === 'Escape') { st.sel = null; drawSel(); drawProps(); return; }
+        if (e.key === 'Escape') { if (st.arc) { st.arc = null; draftG.innerHTML = ''; } st.sel = null; drawSel(); drawProps(); return; }
+        var nudge = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+        if (nudge && selected()) {
+          e.preventDefault();
+          var step = e.shiftKey ? 20 : 2;
+          moveItem(selected(), nudge[0] * step, nudge[1] * step); drawItems();
+          clearTimeout(st.nudgeT); st.nudgeT = setTimeout(function () { commit('Moved'); }, 400);
+          return;
+        }
         if (mod || e.altKey) return;
         var tool = KEYS[e.key.toLowerCase()];
         if (tool) { e.preventDefault(); setTool(tool); }
       }
+      function onKeyUp(e) { if (e.key === ' ' && spaceDown) { spaceDown = false; setHandCursor(); } }
+      function onBlur() { if (spaceDown) { spaceDown = false; setHandCursor(); } }
       document.addEventListener('keydown', onKey);
+      document.addEventListener('keyup', onKeyUp);
+      window.addEventListener('blur', onBlur);
       document.addEventListener('paste', onPaste);
 
-      drawBg(); drawItems(); setTool(doc.items.length ? 'select' : 'pen'); applyZoom();
+      st.mode = doc.mode === 'figures' ? 'figures' : 'draw';
+      drawRail();
+      drawInst();
+      drawBg(); drawItems(); setTool(doc.items.length || st.mode === 'figures' ? 'select' : 'pen');
+      setPanel(window.innerWidth > 760);
+      setMode(st.mode);
+      drawUndo();
+      if (window.FluxHub) window.FluxHub.mountAll();
+      // Saving waits a moment after each change; closing or reloading the page in that moment must not lose it.
+      function flush() { if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; putDoc(doc); } }
+      window.addEventListener('pagehide', flush);
+            var ro = typeof ResizeObserver === 'function' ? new ResizeObserver(function () { applyZoom(); }) : null;
+      if (ro) ro.observe(stage); else window.addEventListener('resize', applyZoom);
       cleanup = function () {
+        if (ro) ro.disconnect(); else window.removeEventListener('resize', applyZoom);
+        window.removeEventListener('pagehide', flush);
         if (editing) closeText(true);
         clearTimeout(saveTimer); putDoc(doc);
         document.removeEventListener('keydown', onKey);
+        document.removeEventListener('keyup', onKeyUp);
+        window.removeEventListener('blur', onBlur);
+        document.removeEventListener('fullscreenchange', onFullscreen);
+        stage.removeEventListener('wheel', onWheel);
+        if (laserRaf) cancelAnimationFrame(laserRaf);
+        if (st.present && document.fullscreenElement) document.exitFullscreen().catch(function () {});
         document.removeEventListener('paste', onPaste);
-        host.onclick = host.oninput = host.onchange = null;
+        host.onclick = host.oninput = host.onchange = host.onsubmit = null;
       };
     }
 
@@ -1444,6 +2169,6 @@
 
   window.FluxPixel = {
     mount: mount,
-    _bbox: bbox, _scaleItem: scaleItem, _moveItem: moveItem, _smoothPath: smoothPath, _docSVG: docSVG,
+    _bbox: bbox, _recognise: recognise, _wrapText: wrapText, _scaleItem: scaleItem, _moveItem: moveItem, _smoothPath: smoothPath, _docSVG: docSVG,
   };
 })();

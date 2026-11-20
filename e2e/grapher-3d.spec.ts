@@ -26,6 +26,9 @@ async function open(page: Page, opts: { mode?: string; hash?: string } = {}) {
   }, { mode: opts.mode === undefined ? '3d' : opts.mode });
   await page.goto('/grapher.html' + (opts.hash || ''));
   await page.waitForTimeout(700);
+  // The grapher always opens on Measurements; go to the tab under test.
+  const tabId = ({ functions: '#modeFunctions', '3d': '#mode3d' } as Record<string, string>)[(opts.hash ? '' : opts.mode === undefined ? '3d' : opts.mode) || ''];
+  if (tabId) { await page.locator(tabId).click(); await page.waitForTimeout(500); }
 }
 
 const inst = (page: Page) => page.evaluate(() => (window as any).fluxGrapherPage.instance.kind);
@@ -54,7 +57,7 @@ test.describe('Grapher 3D', () => {
     await page.setViewportSize({ width: 1280, height: 900 });
   });
 
-  test('the 3D tab opens the 3D grapher, and stays chosen after a reload', async ({ page }) => {
+  test('the 3D tab opens the 3D grapher, and a reload goes back to Measurements', async ({ page }) => {
     await open(page, { mode: 'functions' });
     await page.locator('#mode3d').click();
     await expect(page.locator('#mode3d')).toHaveAttribute('aria-selected', 'true');
@@ -66,8 +69,10 @@ test.describe('Grapher 3D', () => {
     await expect(page.locator('.fl3-info').first()).toContainText('(6, 0, 0)');
     await page.reload();
     await page.waitForTimeout(700);
-    await expect(page.locator('#mode3d')).toHaveAttribute('aria-selected', 'true');
-    expect(await inst(page)).toBe('3d');
+    await expect(page.locator('#modeData')).toHaveAttribute('aria-selected', 'true');
+    expect(await inst(page)).toBe('data');
+    await page.locator('#mode3d').click();
+    await page.waitForTimeout(500);
     // The other halves keep working.
     await page.locator('#modeFunctions').click();
     await expect(page.locator('.flg--functions')).toBeVisible();

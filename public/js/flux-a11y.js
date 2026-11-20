@@ -56,7 +56,8 @@
       typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     document.documentElement.classList.toggle('flux-reduce-motion', user || sys);
     const el = document.getElementById('reduceMotionToggle');
-    if (el) el.classList.toggle('on', user);
+    // Class and aria-pressed together (app.js fluxSetToggle), so they cannot drift.
+    if (el) { el.classList.toggle('on', !!user); el.setAttribute('aria-pressed', user ? 'true' : 'false'); }
   }
 
   function applyHighContrast() {

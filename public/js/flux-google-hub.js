@@ -203,7 +203,10 @@
         canvasToken: String(tok),
         canvasHost: String(host),
         canvasUrl: typeof load === 'function' ? load('flux_canvas_url', '') : '',
-        updatedAt: Date.now(),
+        // No clock stamp here. This is read on every push, and a Date.now()
+        // made the payload differ every 2.5s: a device with Canvas connected
+        // rewrote the row nonstop, so every other device's write found the
+        // row moved and lost the race — ticks made there never stuck.
       };
     } catch (_) {
       return null;
@@ -464,7 +467,7 @@
     if (!googleOn()) {
       // This is a Canvas tab now — do not advertise Gmail/Tasks/Docs to a
       // student who may not have a Google account at all.
-      sub.textContent = 'Connect Canvas, Schoology or Moodle to pull your assignments and due dates into Flux.';
+      sub.textContent = 'Canvas, Schoology and Moodle in one place. Google is paused, so Gmail, Tasks and Docs are not connected.';
       return;
     }
     if (isStaffHub()) {
@@ -553,7 +556,6 @@
         <textarea id="gHubDocsPush" class="flux-field--mono" rows="4" maxlength="480000" placeholder="Paste notes to send to your primary Google Doc…"></textarea>
         <button type="button" style="margin-top:8px" onclick="FluxGoogle.pushDocsFromHub()">Replace doc body</button>
       </div>
-      ${window.FluxDocsGhostSync?.enabled?.() && typeof FluxDocsGhostSync.hubExtraHtml === 'function' ? FluxDocsGhostSync.hubExtraHtml() : ''}
     </div>`;
   }
 
@@ -614,15 +616,16 @@
       <div id="gHubClassroomSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'classroom' ? '' : 'style="display:none"'}></div>
       <div id="gHubDriveSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'drive' ? '' : 'style="display:none"'}></div>
       <div id="gHubCanvasSlot" class="g-hub-pane" ${tab === 'canvas' ? '' : 'style="display:none"'}></div>
-      <div id="gHubSchoologySlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'schoology' ? '' : 'style="display:none"'}></div>
-      <div id="gHubMoodleSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'moodle' ? '' : 'style="display:none"'}></div>
+      <div id="fluxSchoologySlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'schoology' ? '' : 'style="display:none"'}></div>
+      <div id="fluxMoodleSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'moodle' ? '' : 'style="display:none"'}></div>
     </div>`;
 
     if (tab === 'canvas') {
       if (typeof window.__fluxRenderCanvasPanelCore === 'function') window.__fluxRenderCanvasPanelCore();
     } else if (tab === 'schoology' || tab === 'moodle') {
-      if (window.FluxLmsFeeds && typeof FluxLmsFeeds.render === 'function') {
-        FluxLmsFeeds.render(document.getElementById(tab === 'moodle' ? 'gHubMoodleSlot' : 'gHubSchoologySlot'), tab);
+      const sync = tab === 'moodle' ? window.FluxMoodle : window.FluxSchoology;
+      if (sync && typeof sync.render === 'function') {
+        sync.render(document.getElementById(tab === 'moodle' ? 'fluxMoodleSlot' : 'fluxSchoologySlot'));
       }
     } else if (tab === 'drive') {
       if (window.FluxDriveImport && typeof FluxDriveImport.render === 'function') {

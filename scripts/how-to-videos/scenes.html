@@ -1,0 +1,129 @@
+<!doctype html><html><head><meta charset="utf-8">
+<!-- Simplified redraws of the Schoology, Canvas and Flux screens for the how-to
+     videos. Every name, class and link is made up. render.cjs drives seek(). -->
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1280px;height:800px;overflow:hidden;font-family:Inter,-apple-system,Helvetica,Arial,sans-serif;background:#111}
+#bar{height:40px;background:#e6e8ec;display:flex;align-items:center;gap:7px;padding:0 14px}
+#bar i{width:11px;height:11px;border-radius:50%;background:#bbb}
+#addr{margin-left:14px;background:#fff;border-radius:7px;padding:4px 14px;font-size:14px;color:#444;width:560px}
+#tag{margin-left:auto;font-size:13px;font-weight:700;color:#7a5b00;background:#ffe9a8;border-radius:6px;padding:3px 9px}
+.scr{position:absolute;left:0;top:40px;width:1280px;height:650px;display:none;overflow:hidden;background:#f0f3f4;color:#222}
+.scr.on{display:block}
+#cap{position:absolute;left:0;bottom:0;width:1280px;height:110px;background:#0b1018;color:#fff;display:flex;align-items:center;gap:20px;padding:0 34px;font-size:27px;font-weight:600;line-height:1.25}
+#num{flex:none;width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,#00bfff,#8f6bff);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#061018}
+#cur{position:absolute;width:30px;height:30px;z-index:50;left:0;top:0}
+#ring{position:absolute;z-index:40;border:4px solid #ff3d71;border-radius:12px;box-shadow:0 0 0 7px rgba(255,61,113,.22);display:none}
+#pulse{position:absolute;z-index:45;width:50px;height:50px;border-radius:50%;background:rgba(255,61,113,.42);display:none}
+.top{height:62px;background:#fff;display:flex;align-items:center;gap:30px;padding:0 44px;box-shadow:0 1px 4px #0002;font-size:16px}
+.logo{font-weight:800;color:#2a6db5;font-size:19px}.top .r{margin-left:auto;display:flex;gap:22px;align-items:center}
+.ico{width:38px;height:38px;border:2px solid #333;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.card{background:#fff;border-radius:4px;box-shadow:0 1px 4px #0002;padding:18px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);background:#fff;border:1px solid #ccc;margin:0 44px}
+.grid div{height:88px;border:1px solid #ddd;padding:5px;font-size:13px}.ev{display:block;background:#dcecff;color:#174a80;border-radius:3px;padding:2px 4px;margin-top:5px;font-size:12px}
+.lnk{color:#2a6db5;font-weight:600}
+.dim{position:absolute;inset:0;background:#0007;z-index:5}
+.dlg{position:absolute;z-index:6;left:290px;top:110px;width:700px;background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 12px 50px #0006}
+.dlg h3{background:#3d3d3d;color:#fff;padding:14px 20px;font-size:22px}
+.two{display:flex;text-align:center}.two>div{flex:1;padding:34px 22px;border-right:1px solid #ddd;font-size:15px;color:#666}.two b{display:block;font-size:21px;color:#2a6db5;margin-bottom:9px}
+.link{margin:22px;padding:16px;background:#eaf2fa;border:1px solid #bcd;color:#2a6db5;font-size:18px;word-break:break-all;text-align:center}
+.cv{position:absolute;left:0;top:0;bottom:0;width:96px;background:#1c4587;color:#fff;font-size:14px;text-align:center;padding-top:14px}.cv div{padding:15px 0}
+.cvm{position:absolute;left:96px;right:0;top:0;bottom:0;background:#fff;padding:24px 44px;font-size:17px}
+.row{display:flex;justify-content:space-between;border-top:1px solid #ccc;padding:15px 8px;font-size:17px}
+.btn{display:inline-block;background:#1c3f6e;color:#fff;border-radius:4px;padding:13px 22px;font-size:18px;font-weight:600}
+.tray{position:absolute;left:96px;top:0;bottom:0;width:360px;background:#fff;z-index:4;box-shadow:6px 0 22px #0003;padding:34px;font-size:20px}.tray p{color:#17702f;text-decoration:underline;padding:11px 0}
+.inp{display:block;width:100%;height:50px;border:1px solid #999;border-radius:6px;padding:0 14px;font-size:18px;background:#fff;line-height:48px;white-space:nowrap;overflow:hidden}
+.fx{background:#0d1117;color:#f2f5fa}.side{position:absolute;left:0;top:0;bottom:0;width:230px;background:#141a23;padding:22px;font-size:18px;color:#aab}
+.side p{padding:11px 12px;border-radius:9px}.side .a{background:#123447;color:#fff}.side small{display:block;font-size:12px;letter-spacing:.14em;margin:14px 0 4px}
+.main{position:absolute;left:230px;right:0;top:0;bottom:0;padding:34px 60px}
+.fc{background:#1b212c;border:1px solid #333c4a;border-radius:16px;padding:28px;font-size:18px;color:#b7c0ce}.fc h2{color:#fff;font-size:27px;margin-bottom:12px}
+.fx .inp{background:#29303c;border-color:#465064;color:#fff;margin:14px 0}
+.fb{display:inline-block;background:#00bfff;color:#06121b;font-weight:700;border-radius:99px;padding:13px 26px;font-size:18px}
+.t{display:flex;justify-content:space-between;padding:17px 4px;border-bottom:1px solid #2c3442;color:#fff;font-size:21px}
+</style></head><body>
+<div id="bar"><i></i><i></i><i></i><span id="addr"></span><span id="tag">Example data</span></div>
+
+<div class="scr" id="sHome"><div class="top"><span class="logo">Riverside High</span><span>Courses</span><span>Groups</span><span>Resources</span><span>Grades</span><span class="r"><span class="ico" id="sCal">CAL</span><span>Alex Rivera</span></span></div>
+<div style="display:flex;gap:26px;padding:26px 90px"><div class="card" style="flex:2;height:190px">Recent activity<p style="color:#888;margin-top:50px;text-align:center">There are no posts</p></div><div class="card" style="flex:1;height:190px"><b>Upcoming Events</b><p style="margin-top:16px">Biology Quiz: Tue</p><p>English essay: Thu</p></div></div></div>
+
+<div class="scr" id="sMonth"><div class="top"><span class="logo">Riverside High</span><span>Courses</span><span>Groups</span><span class="r"><span>Alex Rivera</span></span></div>
+<p style="font-size:22px;font-weight:700;padding:10px 44px">November 2026</p>
+<div class="grid" id="days"></div><p style="text-align:center;padding-top:10px;font-size:18px"><span class="lnk">Import</span> &nbsp;·&nbsp; <span class="lnk" id="sExport">Export</span></p></div>
+
+<div class="scr" id="sExp"><div class="dim"></div><div class="dlg"><h3>Export iCal Feed</h3><div class="two"><div id="sShare"><b>Share Calendar</b>Subscribe to your Schoology calendar from a different calendar</div><div><b>Download Calendar</b>Import your Schoology calendar into other calendar software</div></div></div></div>
+
+<div class="scr" id="sLink"><div class="dim"></div><div class="dlg"><h3>Export iCal Feed</h3><p style="text-align:center;padding-top:22px;color:#555">Copy and paste this into your calendar program:</p><div class="link" id="sUrl">webcal://yourschool.schoology.com/calendar/feed/ical/0000000000/exampleonly/ical.ics</div></div></div>
+
+<div class="scr fx" id="fS"><div class="side"><small>LEARN</small><p>Study tools</p><p>Canvas</p><p class="a" id="fSTab">Schoology</p></div><div class="main"><div class="fc"><h2>Connect Schoology</h2><p>Schoology calendar link</p><div class="inp" id="fSIn"></div><span class="fb" id="fSGo">Connect Schoology</span></div></div></div>
+
+<div class="scr fx" id="fSDone"><div class="side"><small>PLAN</small><p class="a">Dashboard</p><small>LEARN</small><p>Schoology</p></div><div class="main"><div class="fc"><h2>Your week</h2><div class="t"><span>Biology Quiz 4</span><span>Tue</span></div><div class="t"><span>English essay draft</span><span>Thu</span></div><div class="t"><span>History project</span><span>Fri</span></div></div></div></div>
+
+<div class="scr fx" id="fC"><div class="side"><small>LEARN</small><p>Study tools</p><p class="a">Canvas</p><p>Schoology</p></div><div class="main"><div class="fc"><h2>What's your school's Canvas address?</h2><div class="inp" id="fCHost"></div><span class="fb" id="fCGo">Continue →</span></div></div></div>
+
+<div class="scr" id="cDash"><div class="cv"><div id="cAcct">Account</div><div>Dashboard</div><div>Courses</div><div>Calendar</div></div><div class="cvm"><h1 style="margin-bottom:20px">Dashboard</h1><div class="row"><span>Biology: Cell Lab Report</span><b>Due today</b></div><div class="row"><span>English: Reading Response</span><b>Due tomorrow</b></div><div class="row"><span>Algebra II: Problem Set 6</span><b>Due Sunday</b></div></div></div>
+
+<div class="scr" id="cTray"><div class="cv"><div>Account</div><div>Dashboard</div><div>Courses</div></div><div class="cvm"></div><div class="tray"><h2 style="margin-bottom:18px">Alex Rivera</h2><p>Notifications</p><p>Profile</p><p>Files</p><p id="cSet" style="display:inline-block">Settings</p></div></div>
+
+<div class="scr" id="cSetS"><div class="cv"><div>Account</div><div>Dashboard</div></div><div class="cvm"><h1 style="margin-bottom:16px">Approved Integrations</h1><div class="row"><b>App</b><b>Status</b></div><div class="row"><span>Canvas for iOS</span><span>active</span></div><div class="row" style="margin-bottom:20px"><span>Google Drive</span><span>active</span></div><span class="btn" id="cNew">+ New Access Token</span></div></div>
+
+<div class="scr" id="cForm"><div class="dim"></div><div class="dlg"><h3>New Access Token</h3><div style="padding:24px"><p style="margin-bottom:7px">Purpose</p><div class="inp" id="cPur"></div><p style="margin:16px 0 7px">Expiration date (optional)</p><div class="inp"></div><p style="margin-top:22px;text-align:right"><span class="btn" id="cGen">Generate Token</span></p></div></div></div>
+
+<div class="scr" id="cTok"><div class="dim"></div><div class="dlg"><h3>Access Token Details</h3><div style="padding:20px 8px"><p style="text-align:center;color:#555">Token</p><div class="link" id="cVal">0000~EXAMPLExONLYxNOTxAxREALxTOKENx000000000000</div></div></div></div>
+
+<div class="scr fx" id="fP"><div class="side"><small>LEARN</small><p>Study tools</p><p class="a">Canvas</p><p>Schoology</p></div><div class="main"><div class="fc"><h2>Paste your access key</h2><p>Treat it like a password.</p><div class="inp" id="fPIn"></div><span class="fb" id="fPGo">Connect to Canvas</span></div></div></div>
+
+<div id="cap"><span id="num"></span><span id="txt"></span></div>
+<div id="ring"></div><div id="pulse"></div>
+<svg id="cur" viewBox="0 0 24 24"><path d="M4 2l15 12h-8l-4 8z" fill="#fff" stroke="#000" stroke-width="1.6"/></svg>
+<script>
+const $=id=>document.getElementById(id);
+const ev={4:'Spanish vocab',10:'Biology Quiz 4',12:'English essay',13:'History project',19:'Algebra test'};
+let h='';for(let d=1;d<=28;d++)h+=`<div>${d}${ev[d]?`<span class="ev">${ev[d]}</span>`:''}</div>`;$('days').innerHTML=h;
+const S='yourschool.schoology.com',C='yourschool.instructure.com',F='fluxplanner.github.io/Flux';
+const LINK=$('sUrl').textContent,TOK=$('cVal').textContent;
+// n: step number · s: screen · to: what the cursor moves to · type: fill a field as it plays
+const VIDEOS={
+schoology:[
+ {n:1,s:'sHome',a:S,to:'sCal',d:5,c:'Sign in to Schoology on a computer. Click the calendar icon at the top.'},
+ {n:2,s:'sMonth',a:S+'/calendar',to:'sExport',d:5,c:'Scroll to the bottom of the calendar and click Export.'},
+ {n:3,s:'sExp',a:S+'/calendar',to:'sShare',d:5,c:'Choose Share Calendar, not Download Calendar.'},
+ {n:4,s:'sLink',a:S+'/calendar',to:'sUrl',d:6,c:'Copy the whole link. Keep it private: anyone who has it can read your calendar.'},
+ {n:5,s:'fS',a:F,to:'fSTab',d:4,c:'Open Flux and go to Schoology under Learn.'},
+ {n:6,s:'fS',a:F,to:'fSIn',d:5,type:['fSIn',LINK],c:'Paste the link into the box.'},
+ {n:7,s:'fS',a:F,to:'fSGo',d:4,keep:['fSIn',LINK],c:'Click Connect Schoology.'},
+ {n:'✓',s:'fSDone',a:F,d:6,c:'Done. Your assignments show up as tasks, and Flux keeps checking for new ones.'},
+],
+canvas:[
+ {n:1,s:'fC',a:F,to:'fCHost',d:5,type:['fCHost',C],c:"In Flux, open Canvas under Learn and type your school's Canvas address."},
+ {n:2,s:'fC',a:F,to:'fCGo',d:4,keep:['fCHost',C],c:'Click Continue. Flux opens Canvas for you to sign in.'},
+ {n:3,s:'cDash',a:C,to:'cAcct',d:4,c:'In Canvas, click Account.'},
+ {n:4,s:'cTray',a:C,to:'cSet',d:4,c:'Click Settings.'},
+ {n:5,s:'cSetS',a:C+'/profile/settings',to:'cNew',d:6,c:'Scroll down to Approved Integrations and click New Access Token.'},
+ {n:6,s:'cForm',a:C+'/profile/settings',to:'cPur',d:5,type:['cPur','Flux Planner'],c:'Type Flux Planner as the purpose. Leave the date empty unless your school requires one.'},
+ {n:7,s:'cForm',a:C+'/profile/settings',to:'cGen',d:4,keep:['cPur','Flux Planner'],c:'Click Generate Token.'},
+ {n:8,s:'cTok',a:C+'/profile/settings',to:'cVal',d:6,c:'Copy the token now. Canvas only shows it once. Treat it like a password.'},
+ {n:9,s:'fP',a:F,to:'fPIn',d:5,type:['fPIn',TOK],c:'Back in Flux, paste the token.'},
+ {n:10,s:'fP',a:F,to:'fPGo',d:5,keep:['fPIn',TOK],c:'Click Connect to Canvas. Then you can bring your assignments into Flux.'},
+]};
+window.duration=v=>VIDEOS[v].reduce((a,s)=>a+s.d,0);
+window.steps=v=>VIDEOS[v].map(s=>s.c);
+const ease=x=>x<0?0:x>1?1:x*x*(3-2*x);
+function centre(id){const r=$(id).getBoundingClientRect();return[r.left+Math.min(r.width/2,260),r.top+r.height/2]}
+window.seek=function(v,t){
+ const list=VIDEOS[v];let i=0,at=t;while(i<list.length-1&&at>=list[i].d){at-=list[i].d;i++}
+ const st=list[i];
+ document.querySelectorAll('.scr').forEach(e=>e.classList.toggle('on',e.id===st.s));
+ $('addr').textContent=st.a;$('num').textContent=st.n;$('txt').textContent=st.c;
+ document.querySelectorAll('.inp[id]').forEach(e=>e.textContent='');
+ if(st.keep)$(st.keep[0]).textContent=st.keep[1];
+ if(st.type){const p=ease((at-2)/.5);$(st.type[0]).textContent=st.type[1].slice(0,Math.round(p*st.type[1].length))}
+ const end=st.to?centre(st.to):[900,400];
+ let start=[640,330];for(let j=i-1;j>=0;j--){if(list[j].s===st.s&&list[j].to){start=centre(list[j].to);break}}
+ const m=ease(at/1.1),x=start[0]+(end[0]-start[0])*m,y=start[1]+(end[1]-start[1])*m;
+ $('cur').style.transform=`translate(${x}px,${y}px)`;
+ const ring=$('ring');
+ if(st.to&&at>1.1){const r=$(st.to).getBoundingClientRect();ring.style.cssText=`display:block;left:${r.left-7}px;top:${r.top-7}px;width:${r.width+14}px;height:${r.height+14}px`}else ring.style.display='none';
+ const pl=$('pulse'),k=at-(st.d-1);
+ if(st.to&&!st.type&&k>0&&k<.45){pl.style.cssText=`display:block;left:${end[0]-25}px;top:${end[1]-25}px;opacity:${1-k/.45};transform:scale(${.5+k*2})`}else pl.style.display='none';
+};
+</script></body></html>

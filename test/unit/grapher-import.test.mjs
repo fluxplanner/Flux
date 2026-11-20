@@ -14,6 +14,8 @@ const sandbox = {
   window: {}, document: {}, console, TextDecoder, TextEncoder, Blob, Response, DecompressionStream, Uint8Array,
 };
 vm.createContext(sandbox);
+// Pages load flux-sb-config.js first; so does this sandbox.
+vm.runInContext(readFileSync(new URL('../../public/js/flux-sb-config.js', import.meta.url), 'utf8'), sandbox);
 vm.runInContext(readFileSync(new URL('../../public/js/flux-grapher-import.js', import.meta.url), 'utf8'), sandbox, { filename: 'flux-grapher-import.js' });
 const I = sandbox.window.FluxGrapherImport;
 const same = (a, b, m) => assert.deepEqual(JSON.parse(JSON.stringify(a)), b, m);

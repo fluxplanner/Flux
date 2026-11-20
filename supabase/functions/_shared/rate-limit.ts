@@ -36,6 +36,20 @@ export async function bumpDailyGuard(bucket: string): Promise<number | null> {
 }
 
 /**
+ * Daily cap for a function that does not call an AI provider. Same table as
+ * the AI guard, bucket "<fn>:<key>". Fails open: when the guard itself is
+ * down, a person must still reach their own data.
+ */
+export async function overDailyLimit(
+  fn: string,
+  key: string,
+  max: number,
+): Promise<boolean> {
+  const n = await bumpDailyGuard(`${fn}:${key}`);
+  return n !== null && n > max;
+}
+
+/**
  * Give one count back — the provider failed, so the request did nothing and
  * should not use up the day's allowance. Best effort: a read then a write,
  * so a request counted in between is lost — at worst one extra request that
@@ -67,11 +81,17 @@ export async function sha256Hex(s: string): Promise<string> {
     .join("");
 }
 
-/** First hop of x-forwarded-for — the client IP as seen by the edge. */
+/**
+ * The caller's address. cf-connecting-ip first: Cloudflare sets it and refuses
+ * a client's own copy. x-forwarded-for is only the fallback, because a client
+ * can put anything in its first hop, and a guest allowance counted on that is
+ * reset by changing one header.
+ */
 export function clientIp(req: Request): string {
+  const cf = (req.headers.get("cf-connecting-ip") ?? "").trim();
+  if (cf) return cf;
   const xff = req.headers.get("x-forwarded-for") ?? "";
-  const first = xff.split(",")[0].trim();
-  return first || req.headers.get("cf-connecting-ip") || "unknown";
+  return xff.split(",")[0].trim() || "unknown";
 }
 
 /**

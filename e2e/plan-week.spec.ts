@@ -201,8 +201,6 @@ test.describe('Plan my week', () => {
     // Finishing the essay itself clears its unfinished blocks.
     await page.evaluate(() => (window as any).toggleTask(881002));
     await expect.poll(async () => (await blocks(page)).filter((x) => x.of === 881002 && !x.done).length).toBe(0);
-    // (The essay had an estimate, so Flux asks how long it really took.)
-    await page.locator('#fluxEffortSkip').click();
 
     // Work finished some other way (a sync, say) no longer needs its blocks,
     // even one the student moved: planning again offers to take it off.

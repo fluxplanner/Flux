@@ -216,7 +216,7 @@ test.describe('Synara', () => {
     const hrefs = await page.locator('#apps .app').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
     // Flux's own apps first, then the partner app it builds for someone else.
     expect(hrefs[0]).toBe('index.html');
-    expect(hrefs[hrefs.length - 1], 'Synara closes the list, under Partners').toBe('synara.html');
+    expect(hrefs.slice(-2), 'the partner apps close the list, under Partners').toEqual(['synara.html', 'aorta-tracker.html']);
     await page.getByRole('tab', { name: /Partners/ }).click();
     await expect(page.locator('#apps-partner a.app--synara')).toHaveCount(1);
     const card = page.locator('#apps a.app--synara');
@@ -225,7 +225,7 @@ test.describe('Synara', () => {
     // Set apart from the other apps: its own logo tile and a violet gradient frame.
     await expect(card.locator('.app-icon--logo svg')).toBeVisible();
     expect(await card.evaluate((a) => getComputedStyle(a, '::before').backgroundImage)).toContain('linear-gradient');
-    await expect(page.locator('#apps .app-icon--logo'), 'only Synara wears its own logo').toHaveCount(1);
+    await expect(page.locator('#apps .app-icon--logo'), 'only the partner apps wear their own logos').toHaveCount(2);
     await card.click();
     await expect(page.locator('#welcome')).toBeVisible();
   });

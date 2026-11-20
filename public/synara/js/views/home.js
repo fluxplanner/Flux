@@ -19,6 +19,7 @@ import * as store from '../store.js';
 import { summary, topInsight } from '../insights.js';
 import { icon, toast } from '../ui.js';
 import { setupCard } from '../intro.js';
+import * as sync from '../sync.js';
 
 /* ============================================================
    Header
@@ -103,6 +104,21 @@ function firstTomorrow(state) {
    Render
    ============================================================ */
 
+/* Another device already syncs this Flux account (sync.js connect()). */
+function syncKeyCard() {
+  if (sync.getStatus().phase !== 'needs-key') return '';
+  return html`
+    <section class="card sync-prompt" aria-labelledby="sync-prompt-h">
+      <span class="med-dot" data-color="blue" aria-hidden="true">${raw(icon('sync', 20))}</span>
+      <div class="grow">
+        <h2 class="setup-h" id="sync-prompt-h">Synara is synced on another device</h2>
+        <p class="t-sm ink-3">Enter its sync key to see the same medication, seizures and contacts here.</p>
+      </div>
+      <button class="btn btn-primary" data-action="sync-open">Enter sync key</button>
+    </section>
+  `;
+}
+
 export function render(state) {
   const hasMeds = store.activeMeds(state).length > 0;
   const stats = summary(state);
@@ -112,6 +128,7 @@ export function render(state) {
   return html`
     <div class="home-grid">
       <div class="home-main">
+        ${raw(syncKeyCard())}
         ${raw(hasMeds ? nextDoseCard(state) : noMedsCard(state))}
         ${raw(setupCard(state))}
         ${raw(hasMeds ? todayCard(state) : '')}
@@ -254,7 +271,7 @@ function statsStrip(stats) {
         <span class="stat-l">Days since last seizure</span>
       </div>
       <div class="stat" data-tone="${stats.streak >= 7 ? 'ok' : ''}" role="listitem">
-        <span class="stat-n">${stats.streak}</span>
+        <span class="stat-n">${stats.adherence == null ? '—' : stats.streak}</span>
         <span class="stat-l">Day streak, every dose on time</span>
       </div>
     </div>

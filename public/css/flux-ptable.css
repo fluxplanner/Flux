@@ -107,9 +107,16 @@
   border-radius: 7px; border: 1px solid color-mix(in srgb, var(--c, #888) 45%, transparent);
   background: color-mix(in srgb, var(--c, #888) 20%, var(--fpt-cell)); color: var(--fpt-ink);
   cursor: pointer; overflow: hidden; text-align: center; line-height: 1.05;
+  /* !important because the planner's styles.css gives every button
+     `transition: all .12s !important`: in Study tools each click then started
+     a transition on every property of all 118 cells (scrollbar colour
+     included), restyling the whole table for a frame after frame. Only the
+     fill fades now; the text colour is left out because it is inherited, so
+     animating it restyles every label inside the cell too. */
   transition: transform .14s ease, box-shadow .14s ease, opacity .2s ease, filter .2s ease,
-    background-color .35s ease, border-color .35s ease, color .35s ease;
+    background-color .35s ease !important;
 }
+.fpt.is-switching .fpt-el { transition: none !important; }
 .fpt .fpt-el::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--c, transparent); opacity: .9; }
 .fpt .fpt-el:hover { transform: translateY(-1px) scale(1.06); z-index: 3; box-shadow: 0 8px 20px -8px rgba(0, 0, 0, .6); }
 .fpt .fpt-el:focus-visible { outline: 2px solid var(--fpt-accent); outline-offset: 1px; z-index: 3; }
@@ -512,3 +519,53 @@
 .fpt-fulllinks > span { display: block; margin-bottom: 8px; font-size: .78rem; font-weight: 700; color: var(--fpt-mut); }
 .fpt-fulllinks .fpt-more { margin: 0; }
 :is(#app, #ptHost) .fpt a.fpt-chip, .fpt a.fpt-chip { color: var(--fpt-ink); text-decoration: none; }
+
+/* The Trends picker: the trend showing, Change, pinned quick picks; the
+   panel lists every trend by group with which way it goes. */
+.fpt-tpick { position: relative; margin-bottom: 10px; }
+.fpt-tpick[hidden] { display: none; }
+.fpt-tbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.fpt .fpt-tcur {
+  appearance: none; display: inline-flex; align-items: baseline; gap: 8px; min-height: 40px; margin: 0; padding: 8px 14px;
+  border: 1px solid var(--fpt-soft); border-radius: 12px; background: var(--fpt-panel); color: var(--fpt-ink); font: inherit; cursor: pointer;
+}
+.fpt .fpt-tcur:hover, .fpt .fpt-tcur[aria-expanded="true"] { border-color: var(--fpt-accent); }
+.fpt-tcur-k { font-size: .7rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--fpt-mut); }
+.fpt-tcur-n { font-size: .95rem; }
+.fpt-tcur-g { font-size: .78rem; color: var(--fpt-mut); }
+.fpt-tcur-x { margin-left: 6px; font-size: .78rem; font-weight: 700; color: var(--fpt-accent); }
+.fpt-tpins { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.fpt-tpins[hidden] { display: none; }
+.fpt-tpins-h { color: #f2b53a; font-size: .85rem; }
+.fpt-tpanel {
+  position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; right: 0; display: grid; gap: 10px; padding: 12px;
+  border: 1px solid var(--fpt-soft); border-radius: 14px; background: var(--fpt-pop); box-shadow: 0 18px 40px -16px rgba(0, 0, 0, .55);
+  max-height: min(70vh, 520px); overflow-y: auto;
+}
+.fpt-tpanel[hidden] { display: none; }
+.fpt-tlist { columns: 3 210px; column-gap: 14px; }
+.fpt-tgrp { break-inside: avoid; margin: 0 0 10px; }
+.fpt-tgrp[hidden], .fpt-tchip[hidden] { display: none; }
+.fpt-tgrp-h { margin: 0 0 4px; font-size: .7rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--fpt-mut); }
+.fpt-tchips { list-style: none; margin: 0; padding: 0; }
+.fpt-tchip { display: flex; align-items: center; }
+.fpt .fpt-trow {
+  appearance: none; flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; margin: 0; padding: 6px 8px;
+  border: 0; border-radius: 9px; background: transparent; color: var(--fpt-ink); font: inherit; text-align: left; cursor: pointer;
+}
+.fpt .fpt-trow:hover, .fpt .fpt-trow:focus-visible { background: color-mix(in srgb, var(--fpt-accent) 12%, transparent); }
+.fpt .fpt-trow.is-on { background: color-mix(in srgb, var(--fpt-accent) 20%, transparent); box-shadow: inset 3px 0 0 var(--fpt-accent); }
+.fpt-trow-n { font-size: .86rem; font-weight: 700; }
+.fpt-trow-d { font-size: .72rem; color: var(--fpt-mut); }
+.fpt .fpt-tpin { appearance: none; flex: none; width: 28px; height: 28px; padding: 0; margin: 0; border: 0; border-radius: 50%; background: transparent; color: var(--fpt-mut); font-size: 14px; line-height: 1; cursor: pointer; opacity: 0; }
+.fpt-tchip:hover .fpt-tpin, .fpt .fpt-tpin:focus-visible, .fpt .fpt-tpin.is-on { opacity: 1; }
+@media (hover: none) { .fpt .fpt-tpin { opacity: .6; } }
+.fpt .fpt-tpin:hover, .fpt .fpt-tpin.is-on { color: #f2b53a; }
+.fpt-keyh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin-bottom: 6px; }
+.fpt-keyh small { color: var(--fpt-mut); }
+.fpt-keyhint { margin-left: auto; font-size: .75rem; color: var(--fpt-mut); }
+
+/* How the element was discovered, under the 3D model. */
+.fpx-hist { margin-top: 14px; }
+.fpx-hist:empty { display: none; }
+.fpx-hist-how { margin: 10px 0 0; line-height: 1.55; }

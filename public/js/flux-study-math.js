@@ -190,6 +190,9 @@
       /* The frame reports back rather than being polled: a cross-origin script
          failing inside it is invisible from out here. */
       function onMsg(e) {
+        /* Only our own frame may report: another site's window could otherwise
+           post this message and knock the student onto the fallback plotter. */
+        if (e.origin !== location.origin) return;
         if (!e.data || e.data.source !== 'flux-desmos') return;
         if (e.data.ok) { settled = true; window.removeEventListener('message', onMsg); return; }
         fallback('Desmos could not load — you are offline or it is blocked on this network. Using the built-in plotter.');

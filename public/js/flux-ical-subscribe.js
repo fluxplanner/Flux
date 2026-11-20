@@ -8,7 +8,7 @@
   const FLAG = 'enable_ical_subscribe';
   const STORE_KEY = 'flux_ical_subscribe_v1';
   const CARD_ID = 'fluxIcalSubscribeCard';
-  const SB_URL = 'https://lfigdijuqmbensebnevo.supabase.co';
+  const SB_URL = window.FluxSB.url;
 
   function enabled() {
     try {

@@ -1,5 +1,5 @@
 /* Flux's own pages beside the planner (grapher, calculator, periodic table,
- * composer, flashcards, pixel, hub, partners) are drawn dark. Telling the
+ * composer, flashcards, pixel, suite, partners) are drawn dark. Telling the
  * browser so makes the parts it draws itself dark as well. Without it, an
  * open dropdown on Windows put the select's light text on the system's white
  * list, so the options could not be read. Not loaded by the planner, which
@@ -7,4 +7,25 @@
 @media screen {
   :root { color-scheme: dark; }
   select option, select optgroup { background-color: #141a26; color: #eaf1ff; }
+}
+
+/* The colours every one of those pages shares. Each page used to copy these
+ * into its own <style>, and the copies had drifted apart: two shades of
+ * white text, two greys, three card colours, and no grey at all for the
+ * periodic table's notes, which fell back to a third. A page now sets only
+ * what makes it itself — its --accent and, if it wants one, a tinted --bg —
+ * after this file. Text and greys all pass WCAG AA on --card. */
+:root {
+  --bg: #070b14;
+  --text: #eaf1ff;
+  --muted: #8f9fbc;
+  --muted2: #9fb0cc;
+  --accent: #00c2ff;
+  --border: rgba(255, 255, 255, .08);
+  --border2: rgba(255, 255, 255, .14);
+  --card: rgba(18, 25, 42, .78);
+  --card2: rgba(28, 36, 58, .8);
+  --good: #34d399;
+  --warn: #fbbf24;
+  --bad: #fb7185;
 }

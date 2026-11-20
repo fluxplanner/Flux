@@ -11,6 +11,10 @@
   inline boot scripts on every standalone page.
 -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com; frame-src 'self'; form-action 'self'">
+<script src="public/js/flux-look.js?v=81a3e0d1"></script>
+<script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
+<script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="grapher"></script>
+<script defer src="public/js/flux-site-notices.js?v=5e36c924"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flux Grapher</title>
 <meta name="description" content="Free graphing from Flux: functions like Desmos, and lab data with uncertainty columns, error bars and a best-fit gradient with its uncertainty. No account needed.">
@@ -41,23 +45,13 @@
 <link rel="stylesheet" href="public/css/flux-tex.css?v=b68bf637">
 <link rel="stylesheet" href="public/css/flux-grapher.css?v=dc3bbf37">
 <link rel="stylesheet" href="public/css/flux-grapher-3d.css?v=8bc1f300">
-<link rel="stylesheet" href="public/css/flux-hub.css?v=4e2aebfb">
-<link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=673aab02">
+<link rel="stylesheet" href="public/css/flux-hub.css?v=a473f365">
+<link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
 <link rel="stylesheet" href="public/css/flux-print-watermark.css?v=b7067319">
 <style>
   /* No page margin when printing, so the browser has nowhere to put its own
      date, time and address; the print sheet pads itself instead. */
   @page { margin: 0; }
-  :root {
-    --bg: #070b14;
-    --text: #eaf1ff;
-    --muted2: #9fb0cc;
-    --accent: #00c2ff;
-    --border: rgba(255,255,255,.07);
-    --border2: rgba(255,255,255,.14);
-    --card: rgba(18,25,42,.78);
-    --card2: rgba(28,36,58,.8);
-  }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
   /* A solid colour behind everything, so no edge of the screen can show white. */
@@ -105,6 +99,7 @@
     background: rgba(10,14,24,.6); border: 1px solid var(--border);
     border-radius: 11px;
   }
+  [data-theme='light'] .modes { background: rgba(255,255,255,.7); }
   .mode-btn {
     appearance: none; border: 0; cursor: pointer;
     font: inherit; font-size: .8rem; font-weight: 700; letter-spacing: -.01em;
@@ -197,11 +192,12 @@
     * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
   }
 </style>
-<script src="public/js/flux-theme-carry.js?v=41b239bd"></script>
-<script src="public/js/flux-purple-day.js?v=1966eb3d"></script>
+<script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
+<script src="public/js/flux-purple-day.js?v=b8cd878a"></script>
+<link rel="stylesheet" href="public/css/flux-look-flat.css?v=8156dbe3">
 <style>/* Off-screen until focused, so keyboard users can jump past the header. */.flux-skip{position:absolute;left:12px;top:-60px;z-index:10000;padding:10px 16px;border-radius:10px;background:#0b0f1a;color:#fff;font:600 14px/1.2 system-ui,sans-serif;text-decoration:none;box-shadow:0 0 0 2px #38bdf8}.flux-skip:focus{top:12px}</style>
 </head>
-<body class="flux-print-wm">
+<body>
 <a class="flux-skip" href="#grapherHost">Skip to content</a>
   <div class="wrap">
     <header class="top">
@@ -238,6 +234,8 @@
         <button type="button" class="hbtn" id="ghShare" title="Copy a link to the grapher" aria-label="Share the grapher">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
         </button>
+        <button type="button" class="hbtn" data-flux-tool="data.html" data-flux-tool-title="Statistics" title="Statistics: SD, regression, chi-squared" aria-label="Statistics"><span aria-hidden="true">σ</span></button>
+        <button type="button" class="hbtn" data-flux-tool="lab.html" data-flux-tool-title="Lab helper" title="Uncertainties and lab report criteria" aria-label="Lab helper"><span aria-hidden="true">🧪</span></button>
         <button type="button" class="hbtn" id="ghHelp" title="Tour" aria-label="Take the tour"><span class="qm" aria-hidden="true">?</span></button>
         <span class="sep" aria-hidden="true"></span>
         <button type="button" class="hbtn" id="ghAcct" title="Account" aria-label="Account">
@@ -252,16 +250,19 @@
   </div>
 
   <!-- Plain script tags, not the app bundles: this page has to stand alone. -->
-  <script src="public/js/flux-hub.js?v=68b4d34f"></script>
+  <script src="public/data/products.js?v=9634bc03"></script>
+<script src="public/js/flux-hub.js?v=eb42b549"></script>
+<script src="public/js/flux-tool-embed.js?v=aa0e3f08"></script>
+<script src="public/js/flux-suite-timer.js?v=998cda1e"></script>
   <script src="public/js/flux-expr.js?v=8f27a6da"></script>
   <script src="public/js/flux-lab-fit.js?v=da22f751"></script>
   <script src="public/js/flux-formula-typeset.js?v=4b6135e4"></script>
   <script src="public/js/flux-mathfield.js?v=603e2d55"></script>
-  <script src="public/js/flux-grapher.js?v=96d04341"></script>
+  <script src="public/js/flux-grapher.js?v=475dd98a"></script>
   <script src="public/js/flux-space3d.js?v=21ef9ce8"></script>
-  <script src="public/js/flux-grapher-3d.js?v=3205e263"></script>
-  <script src="public/js/flux-grapher-cloud.js?v=3f32ffcb"></script>
-  <script src="public/js/flux-grapher-import.js?v=e69aafc4"></script>
+  <script src="public/js/flux-grapher-3d.js?v=934f12ee"></script>
+  <script src="public/js/flux-grapher-cloud.js?v=98591826"></script>
+  <script src="public/js/flux-grapher-import.js?v=7d2d85e3"></script>
   <script src="public/js/flux-grapher-tour.js?v=1f80fcc9"></script>
   <script>
     (function () {
@@ -330,10 +331,10 @@
         if (!linked) setTimeout(function () { G.toast('That 3D link is damaged — it may have been cut short when it was copied.', 'warning'); }, 300);
       }
 
-      var saved = 'data';
-      try { saved = localStorage.getItem(G.MODE_KEY) || 'data'; } catch (e) {}
-      if (!window.FluxGrapher3D && saved === '3d') saved = 'data';
-      show(linked ? '3d' : hand ? modeOk(hand.kind) : modeOk(saved));
+      /* Always opens on Measurements: reopening on whichever tab was used last
+         dropped students into 3D. A shared 3D link, or a graph carried over
+         from the planner, still opens on its own tab. */
+      show(linked ? '3d' : hand ? modeOk(hand.kind) : 'data');
       if (linked) inst.loadDoc(linked, null);
       else if (hand) inst.loadDoc(hand.payload, hand.cloud);
 

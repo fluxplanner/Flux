@@ -64,16 +64,20 @@ if (!window.FluxSynaraVault) {
 
   async function get() {
     await need();
-    const { data, error } = await client().from(TABLE).select('ciphertext, iv, version, updated_at').maybeSingle();
+    const { data, error } = await client().from(TABLE).select('ciphertext, iv, version, updated_at, sync_key').maybeSingle();
     if (error) throw wrap(error);
-    return data || null;
+    // The key rides with the row as `key` (column sync_key, see the
+    // 20261025 migration): a signed-in device can then open the copy.
+    if (!data) return null;
+    const { sync_key: key, ...row } = data;
+    return key ? { ...row, key } : row;
   }
 
-  async function put({ ciphertext, iv }) {
+  async function put({ ciphertext, iv, key }) {
     const who = await need();
     const { data, error } = await client()
       .from(TABLE)
-      .upsert({ user_id: who.id, ciphertext, iv, version: 1 })
+      .upsert({ user_id: who.id, ciphertext, iv, version: 1, ...(key ? { sync_key: key } : {}) })
       .select('updated_at')
       .single();
     if (error) throw wrap(error);

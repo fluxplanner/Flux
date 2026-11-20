@@ -9,28 +9,30 @@ import { gotoScenario, openSidebarTab } from './helpers';
 test.describe('feature organization', () => {
   test('Flux Suite: the planner as a bar on top, then Study apps and Partners tabs', async ({ page }) => {
     await page.goto('/suite.html');
-    await expect(page.locator('#apps .app')).toHaveCount(9);
+    await expect(page.locator('#apps .app')).toHaveCount(11);
     // The planner is the wide bar above the tabs.
     const bar = page.locator('#apps > a.app--feature');
     await expect(bar).toHaveAttribute('href', 'index.html');
     await expect(bar).toContainText('Open the planner');
     const tabs = page.getByRole('tab');
-    await expect(tabs).toHaveText(['Study apps7', 'Partners1']);
+    // The free tool pages open inside other apps, not as Suite tabs (2026-11-18).
+    await expect(tabs).toHaveText(['Study apps8', 'Partners2']);
     await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
 
     const study = page.getByRole('tabpanel', { name: /Study apps/ });
     const hrefs = await study.locator('a.app').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
-    expect(hrefs).toEqual(['teacher.html', 'grapher.html', 'calculator.html', 'flashcards.html', 'pixel.html', 'periodic.html', 'composer.html']);
+    expect(hrefs).toEqual(['teacher.html', 'grapher.html', 'calculator.html', 'flashcards.html', 'pixel.html', 'periodic.html', 'composer.html', 'translate.html']);
     await expect(page.locator('#apps a.app--synara')).toBeHidden();
     // The descriptions name what shipped: 3D, maths figures, the Evo layout.
     await expect(page.locator('#apps a.app--grapher')).toContainText('3D');
     await expect(page.locator('#apps a.app--pixel')).toContainText('maths figures');
     await expect(page.locator('#apps a.app--calculator')).toContainText('Evo');
 
-    // Partners holds Synara and the Flux Partners note, and the address remembers it.
+    // Partners holds Synara, the Aorta Project and the Flux Partners note, and the address remembers it.
     await page.getByRole('tab', { name: /Partners/ }).click();
     const partners = page.getByRole('tabpanel', { name: /Partners/ });
     await expect(partners.locator('a.app--synara')).toBeVisible();
+    await expect(partners.locator('a.app--aorta')).toHaveAttribute('href', 'aorta-tracker.html');
     await expect(partners.locator('.partners-strip')).toBeVisible();
     await expect(study).toBeHidden();
     await expect(page).toHaveURL(/#partners$/);
@@ -58,9 +60,9 @@ test.describe('feature organization', () => {
     const shelf = page.getByRole('navigation', { name: 'More Flux apps' });
     await expect(shelf).toBeVisible();
     const links = shelf.locator('a.fsh-app');
-    await expect(links).toHaveCount(7);
+    await expect(links).toHaveCount(8);
     const hrefs = await links.evaluateAll((as) => as.map((a) => a.getAttribute('href')));
-    expect(hrefs).toEqual(['teacher.html', 'grapher.html', 'calculator.html', 'flashcards.html', 'pixel.html', 'periodic.html', 'composer.html']);
+    expect(hrefs).toEqual(['teacher.html', 'grapher.html', 'calculator.html', 'flashcards.html', 'pixel.html', 'periodic.html', 'composer.html', 'translate.html']);
     await expect(links.first()).toHaveAttribute('target', '_blank');
     await expect(links.first()).toContainText('Tutor');
     // The partner app is not a study tool.

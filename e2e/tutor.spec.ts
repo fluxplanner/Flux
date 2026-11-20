@@ -65,6 +65,8 @@ async function answer(scope: Locator, q: any, right: boolean) {
 async function openSample(page: Page) {
   await page.goto(APP);
   await expect(page.getByRole('heading', { name: 'Your study sets' })).toBeVisible();
+  // The sample lives under My notes.
+  await page.getByRole('tab', { name: /^My notes/ }).click();
   await page.getByRole('button', { name: 'Try it with a sample' }).click();
   await expect(page).toHaveURL(/#set\/[^/]+\/guide$/);
   await expect(page.getByRole('heading', { name: 'Study guide' })).toBeVisible();
@@ -74,7 +76,84 @@ function tab(page: Page, name: string) {
   return page.getByRole('navigation', { name: 'Study set' }).getByRole('link', { name, exact: true });
 }
 
+/* Mirrors DP_EXAMS in flux-teacher-app.js: IB practice, mock exams and
+   predicted grades are paused. Set both to true to test them again. */
+const DP_EXAMS = true;
+
 test.describe('Flux Tutor', () => {
+  /* The library opens on IB notes for a new student; these tests work with
+     their own notes, so they start on My notes unless a test says otherwise. */
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => { try { if (!sessionStorage.getItem('ftMode')) { sessionStorage.setItem('ftMode', '1'); if (!localStorage.getItem('flux_tutor_lib_mode')) localStorage.setItem('flux_tutor_lib_mode', 'mine'); } } catch (e) { /* storage blocked */ } });
+  });
+
+  test('IB syllabus: every unit listed, a set started from a unit is filed under it', async ({ page }) => {
+    const D = '/private/tmp/claude-503/-Users-AzferMohammed-dev-Flux-Planner/90d122e6-8ef4-4284-a24d-18026299ae02/scratchpad/shots/';
+    await page.goto('/teacher.html');
+    await page.getByRole('tab', { name: 'IB notes' }).click();
+    const syl = page.locator('.ft-syllabus');
+    await expect(syl).toBeVisible();
+    await page.locator('#ftSylSubject').selectOption('biology');
+    await expect(syl.locator('.ft-syl-unit')).toHaveCount(40);
+    await page.locator('#ftSylSubject').selectOption('physics');
+    await expect(syl.locator('.ft-syl-unit')).toHaveCount(24);
+    if (process.env.FT_SHOTS) await page.screenshot({ path: D + 'syl.png', fullPage: true });
+    // Without the starter notes (here: they fail to load) the unit opens a new, empty set filed under it.
+    await page.route('**/public/data/ib-notes/**', (r) => r.abort());
+    await syl.getByRole('button', { name: 'Study Kinematics' }).click();
+    await expect(page.locator('#ftTitle')).toHaveValue('Physics: A.1 Kinematics');
+    await expect(page.locator('#ftSubject')).toHaveValue('Physics');
+    await expect(page.locator('#ftUnit')).toHaveValue('physics:A.1');
+    // Changing the subject offers that subject's units.
+    await page.locator('#ftSubject').fill('Economics');
+    await expect(page.locator('#ftUnit option[value="economics:2.5"]')).toHaveText('2.5 Elasticity of demand');
+  });
+
+  test('IB notes: "Study" makes a set from Flux IB notes and opens its guide, and My notes keeps it apart', async ({ page }) => {
+    await page.goto('/teacher.html');
+    await page.getByRole('tab', { name: 'IB notes' }).click();
+    const syl = page.locator('.ft-syllabus');
+    await page.locator('#ftSylSubject').selectOption('physics');
+    const start = syl.getByRole('button', { name: 'Study Kinematics' });
+    await expect(start).toHaveText('Study');
+    await start.click();
+    await expect(page).toHaveURL(/#set\/[^/]+\/guide$/);
+    await expect(page.getByRole('heading', { name: 'Study guide' })).toBeVisible();
+    await expect(page.getByText('Displacement', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('Projectile', { exact: true }).first()).toBeVisible();
+    // The set says where its notes came from, and is filed under the unit.
+    await tab(page, 'Notes').click();
+    await expect(page.getByText('Flux IB notes').first()).toBeVisible();
+    await page.goto('/teacher.html');
+    // The library remembers IB notes was the last half used.
+    await expect(page.getByRole('tab', { name: 'IB notes' })).toHaveAttribute('aria-selected', 'true');
+    await page.locator('#ftSylSubject').selectOption('physics');
+    await expect(syl.locator('.ft-syl-unit', { hasText: 'Kinematics' }).getByRole('link', { name: 'Open Kinematics' })).toBeVisible();
+    // An IB unit's set is not listed among the student's own uploads.
+    await page.getByRole('tab', { name: 'My notes' }).click();
+    await expect(page.locator('.ft-set-card')).toHaveCount(0);
+    // Every subject in the list has notes for every unit.
+    await page.getByRole('tab', { name: 'IB notes' }).click();
+    for (const sid of ['sehs', 'philosophy', 'film', 'spanish-ab']) {
+      await page.locator('#ftSylSubject').selectOption(sid);
+      const units = syl.locator('.ft-syl-unit');
+      expect(await units.count()).toBeGreaterThan(3);
+      expect(await syl.getByRole('button', { name: /^New study set for / }).count()).toBe(0);
+    }
+  });
+
+  test('IB practice and mock exams stay hidden while paused', async ({ page }) => {
+    test.skip(DP_EXAMS, 'DP exam features are on');
+    await openSample(page);
+    await expect(tab(page, 'Practice test')).toBeVisible();
+    await expect(page.locator('.ft-tabs a', { hasText: /IB practice|Mock exam/ })).toHaveCount(0);
+    await tab(page, 'Topics').click();
+    await expect(page.getByRole('button', { name: 'Practise this topic' })).toHaveCount(0);
+    await page.getByRole('link', { name: 'All study sets' }).click();
+    await expect(page.locator('.ft-progress')).toContainText('day');
+    await expect(page.locator('.ft-progress')).not.toContainText(/mock exam|Predicted/i);
+  });
+
   test('a sample set: guide, Learn, practice test, flashcards, ask, plan, and all of it after a reload', async ({ page }) => {
     test.setTimeout(150_000);
     const errors: string[] = [];
@@ -696,6 +775,21 @@ test.describe('Flux Tutor', () => {
     await page.getByLabel('Exam date').fill(exam);
     await page.getByRole('button', { name: 'Make my plan' }).click();
     await check('plan');
+    await tab(page, 'Topics').click();
+    await page.locator('details.ft-topic summary').first().click();
+    await check('topics');
+    if (DP_EXAMS) {
+      await tab(page, 'Mock exam').click();
+      await page.getByRole('button', { name: 'Start the exam' }).click();
+      await check('mock exam');
+      await page.getByRole('button', { name: 'Finish the exam' }).click();
+      await check('mock exam marking');
+      await page.getByRole('button', { name: 'Save my marks' }).click();
+      await check('mock exam result');
+    }
+    await page.getByRole('link', { name: 'All study sets' }).click();
+    await expect(page.locator('.ft-progress')).toBeVisible();
+    await check('library with progress');
   });
 
   test('no BETA badge; the light / dark switch flips the page, is remembered, and wins over the device and the planner\'s theme', async ({ page }) => {
@@ -779,4 +873,176 @@ test.describe('Flux Tutor', () => {
       expect(await wide()).toBeLessThanOrEqual(390);
     }
   });
+
+  test('IB practice: command terms, a cited markscheme, self-marking that feeds weak topics, and the stuck links', async ({ page }) => {
+    test.skip(!DP_EXAMS, 'DP exam features are paused');
+    await openSample(page);
+    const stuck = page.locator('details.ft-stuck');
+    await stuck.locator('summary').click();
+    const khan = stuck.getByRole('link', { name: /Khan Academy: Biology/ });
+    await expect(khan).toHaveAttribute('target', '_blank');
+    await expect(khan).toHaveAttribute('rel', /noopener/);
+
+    await tab(page, 'IB practice').click();
+    await expect(page.getByRole('heading', { name: 'IB practice' })).toBeVisible();
+    await page.getByRole('button', { name: 'Make the questions' }).click();
+    const first = page.locator('.ft-ib-q').first();
+    await expect(first.locator('.ft-score-pill')).toHaveText(/^(Define|State|Outline|Describe|Explain|Compare)$/);
+    await first.locator('textarea').fill('no idea');
+    await first.getByRole('button', { name: 'Show the markscheme' }).click();
+    await expect(first.locator('.ft-ib-scheme cite').first()).toContainText('Sample biology notes');
+    await expect(first.locator('.ft-ib-scheme input:checked')).toHaveCount(0);
+    await first.getByRole('button', { name: 'Save my mark' }).click();
+    await expect(first.locator('.ft-ib-score')).toContainText('You gave yourself 0 of');
+    await saved(page);
+    await expect(page.locator('.ft-weak li')).not.toHaveCount(0);
+    await page.reload();
+    await expect(page.locator('.ft-weak li')).not.toHaveCount(0);
+  });
+
+  test('Listen reads the study guide aloud in the browser, and stops when asked or on leaving', async ({ page }) => {
+    await page.addInitScript(() => {
+      const w = window as any; w.__spoken = []; w.__cancels = 0;
+      w.SpeechSynthesisUtterance = function (this: any, text: string) { this.text = text; };
+      Object.defineProperty(window, 'speechSynthesis', { value: { speak: (u: any) => w.__spoken.push(u.text), cancel: () => { w.__cancels++; } } });
+    });
+    await openSample(page);
+    await page.getByRole('button', { name: 'Listen' }).click();
+    await expect(page.getByRole('button', { name: 'Stop' })).toHaveAttribute('aria-pressed', 'true');
+    const spoken: string[] = await page.evaluate(() => (window as any).__spoken);
+    expect(spoken[0]).toMatch(/^Audio overview of /);
+    expect(spoken).toContain('Key terms.');
+    await page.getByRole('button', { name: 'Stop' }).click();
+    await expect(page.getByRole('button', { name: 'Listen' })).toBeVisible();
+    await page.getByRole('button', { name: 'Listen' }).click();
+    const before = await page.evaluate(() => (window as any).__cancels);
+    await tab(page, 'Flashcards').click();
+    await expect.poll(() => page.evaluate(() => (window as any).__cancels)).toBeGreaterThan(before);
+  });
+
+  test('flashcard reveal animates, and not at all with reduced motion', async ({ page }) => {
+    await openSample(page);
+    await tab(page, 'Flashcards').click();
+    await page.locator('#ftFlipBtn').click();
+    expect(await page.locator('.ft-flip-in').evaluate((e) => getComputedStyle(e).animationName)).toBe('ft-flip-in');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    expect(await page.locator('.ft-flip-in').evaluate((e) => parseFloat(getComputedStyle(e).animationDuration))).toBeLessThan(0.01);
+  });
+
+  test('ask: a cited answer from the notes, numbers jump to passages, sources open the notes with the passage selected', async ({ page }) => {
+    await openSample(page);
+    await tab(page, 'Ask your notes').click();
+    await page.locator('#ftAsk').fill('what does the cell wall do');
+    await page.getByRole('button', { name: 'Search' }).click();
+    const answer = page.locator('.ft-answer');
+    await expect(answer).toContainText('From your notes');
+    await expect(answer).toContainText('cell wall');
+    await expect(page.getByRole('button', { name: /Flux AI/ })).toHaveCount(0);
+    await answer.locator('.ft-cite-num').first().click();
+    await expect(page.locator('#ftPassage1')).toHaveClass(/is-target/);
+    await page.locator('#ftPassage1 .ft-cite-link').click();
+    await expect(page).toHaveURL(/\/notes\?src=/);
+    await expect(page.locator('textarea[data-src-text]').first()).toBeFocused();
+    const sel = await page.evaluate(() => { const t = document.activeElement as HTMLTextAreaElement; return t.value.slice(t.selectionStart, t.selectionEnd); });
+    expect(sel.length).toBeGreaterThan(10);
+  });
+
+  test('ask with Flux AI switched on: only sentences that cite a given passage are kept', async ({ page }) => {
+    await page.addInitScript(() => {
+      (window as any).FLUX_TUTOR_AI = true;
+      localStorage.setItem('sb-lfigdijuqmbensebnevo-auth-token', JSON.stringify({ access_token: 't', expires_at: Math.floor(Date.now() / 1000) + 3600 }));
+    });
+    let sent = '';
+    await page.route('**/functions/v1/ai-proxy', async (route) => {
+      sent = route.request().postData() || '';
+      await route.fulfill({ json: { content: [{ type: 'text', text: 'The cell wall is a rigid layer [1]. It is purple [7]. Unsupported claim.' }] } });
+    });
+    await openSample(page);
+    await tab(page, 'Ask your notes').click();
+    await page.locator('#ftAsk').fill('what does the cell wall do');
+    await page.getByRole('button', { name: 'Search' }).click();
+    await page.getByRole('button', { name: /Flux AI/ }).click();
+    const text = page.locator('.ft-answer-text');
+    await expect(text).toContainText('The cell wall is a rigid layer');
+    await expect(text).not.toContainText('purple');
+    await expect(text).not.toContainText('Unsupported');
+    expect(sent).toContain('ONLY the numbered passages');
+  });
+
+  test('question bank: paper 1 multiple choice marks itself; topic filter limits the questions', async ({ page }) => {
+    test.skip(!DP_EXAMS, 'DP exam features are paused');
+    await openSample(page);
+    await tab(page, 'IB practice').click();
+    await page.locator('#ftIbPaper').selectOption('1');
+    await page.locator('#ftIbTopic').selectOption({ label: 'Cell structure' });
+    await page.getByRole('button', { name: 'Make the questions' }).click();
+    const first = page.locator('.ft-ib-q').first();
+    await expect(first).toContainText('Paper 1');
+    await first.locator('input[type=radio]').first().check();
+    await first.getByRole('button', { name: 'Check my answer' }).click();
+    await expect(first.locator('.ft-ib-score')).toContainText(/of 1/);
+    await expect(first.locator('.ft-ib-scheme cite')).toContainText('Sample biology notes');
+  });
+
+  test('mock exam, topic pages and the progress dashboard, at phone width', async ({ page }) => {
+    test.skip(!DP_EXAMS, 'DP exam features are paused');
+    await page.setViewportSize({ width: 390, height: 844 });
+    const wide = () => page.evaluate(() => document.documentElement.scrollWidth);
+    await openSample(page);
+
+    await tab(page, 'Topics').click();
+    const topic = page.locator('details.ft-topic').first();
+    await topic.locator('summary').click();
+    await expect(topic.locator('.ft-topic-terms dt').first()).toBeVisible();
+    await expect(topic.locator('cite').first()).toContainText('Sample biology notes');
+    expect(await wide()).toBeLessThanOrEqual(390);
+
+    await tab(page, 'Mock exam').click();
+    await page.getByLabel('Length').selectOption('short');
+    await page.getByRole('button', { name: 'Start the exam' }).click();
+    await expect(page.locator('#ftTimerText')).toHaveText(/\d+:\d\d/);
+    await expect(page.getByRole('heading', { name: /Paper 1/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Paper 2/ })).toBeVisible();
+    expect(await wide()).toBeLessThanOrEqual(390);
+    const firstMc = page.locator('.ft-ib-q input[type=radio]').first();
+    await firstMc.check();
+    await page.locator('.ft-ib-q textarea').first().fill('something from my notes');
+    await page.reload();
+    await expect(page.locator('.ft-ib-q input[type=radio]').first()).toBeChecked();
+    await page.getByRole('button', { name: 'Finish the exam' }).click();
+    await expect(page.locator('.ft-ib-scheme').first()).toBeVisible();
+    await page.getByRole('button', { name: 'Save my marks' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'You scored' })).toBeVisible();
+    await expect(page.locator('.ft-grade-num').first()).toHaveText(/^[1-7]$/);
+    await saved(page);
+    const set: any = await stored(page);
+    expect(set.exams.length).toBe(1);
+    expect(Object.keys(set.activity).length).toBe(1);
+    expect(await wide()).toBeLessThanOrEqual(390);
+
+    await page.getByRole('link', { name: 'All study sets' }).click();
+    const prog = page.locator('.ft-progress');
+    await expect(prog.locator('.ft-stat').first()).toContainText('1');
+    await expect(prog.locator('.ft-grades .ft-grade-num')).toHaveText(/^[1-7]$/);
+    expect(await wide()).toBeLessThanOrEqual(390);
+  });
+});
+
+test('the study guide draws as a mind map, and a tapped bubble shows its cited definition', async ({ page }) => {
+  await openSample(page);
+  await page.getByRole('button', { name: 'Mind map' }).click();
+  await expect(page.getByRole('heading', { name: 'Mind map' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Key terms' })).toHaveCount(0);
+  const map = page.locator('.ft-map');
+  await expect(map.getByRole('button', { name: 'Photosynthesis', exact: true })).toBeVisible();
+  const term = map.getByRole('button', { name: /^Ribosomes \(/ });
+  await term.click();
+  await expect(term).toHaveAttribute('aria-pressed', 'true');
+  const detail = page.locator('#ftMapDetail');
+  await expect(detail).toContainText('build proteins');
+  await expect(detail.locator('.ft-cite')).toContainText('paragraph');
+  await map.getByRole('button', { name: /^Ribosomes \(/ }).click();
+  await expect(page.locator('#ftMapDetail')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Show as list' }).click();
+  await expect(page.getByRole('heading', { name: 'Key terms' })).toBeVisible();
 });

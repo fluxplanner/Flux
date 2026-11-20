@@ -50,6 +50,26 @@
     // not drop you back on the present every time.
     const tenseOf = {};
 
+    /* "to speak", "speak", "to do" — the verb a student knows in English. The
+       glosses are the ones the irregular sheet and the verb drill already
+       show, so a word found here is one Flux teaches. Null when nothing
+       matches, and for anything that is already a verb Flux knows. */
+    function fromEnglish(lang, typed) {
+      const want = String(typed || '').trim().toLowerCase().replace(/[¿¡?!.,;:"'«»“”‘’]/g, '').replace(/^to\s+/, '').replace(/\s+/g, ' ');
+      if (!/^[a-z][a-z ]*$/.test(want)) return null;
+      if (!/^to\s/i.test(String(typed).trim()) && ENG().known(lang, want)) return null;
+      const pairs = [];
+      try { pairs.push(...ENG().irregulars(lang)); } catch (e) { /* no list */ }
+      const VC = window.FluxVerbCore;
+      if (VC) VC.sets(lang).forEach((st) => { const full = VC.setById(lang, st.id); if (full) pairs.push(...full.verbs); });
+      for (const [verb, gloss] of pairs) {
+        const senses = String(gloss || '').toLowerCase().replace(/\(.*?\)/g, '').split(/[,;/]/)
+          .map((x) => x.trim().replace(/^to\s+/, ''));
+        if (senses.includes(want)) return verb;
+      }
+      return null;
+    }
+
     function renderConj(lang, body) {
       const E = ENG();
       if (!E) { body.innerHTML = loading('Conjugation tables'); return; }
@@ -69,9 +89,11 @@
         const o = document.getElementById('lgOut');
         if (!o) return;
         try {
-          const r = ENG().conjugate(lang, typed, tenseOf[lang]);
-          o.innerHTML = `<table class="fsh-sol" style="min-width:auto;margin-top:6px"><tbody>${r.pronouns.map((p, i) => `<tr><th style="text-align:left">${esc(p)}</th><td style="background:rgba(54,197,214,.14);color:var(--fsh-ink);font-weight:640">${esc(r.forms[i])}</td></tr>`).join('')}</tbody></table><div class="fsh-note">${esc(r.note)}</div>`;
-        } catch (e) { o.innerHTML = `<span class="fsh-err">${esc(e.message)}</span>`; }
+          const en = fromEnglish(lang, typed);
+          const r = ENG().conjugate(lang, en || typed, tenseOf[lang]);
+          const said = en ? `<p class="fsh-note" style="margin:0 0 6px">“${esc(String(typed).trim())}” in ${esc(L.name)} is <b lang="${lang}">${esc(r.verb)}</b>.</p>` : '';
+          o.innerHTML = said + `<table class="fsh-sol" style="min-width:auto;margin-top:6px"><tbody>${r.pronouns.map((p, i) => `<tr><th style="text-align:left">${esc(p)}</th><td style="background:rgba(54,197,214,.14);color:var(--fsh-ink);font-weight:640">${esc(r.forms[i])}</td></tr>`).join('')}</tbody></table><div class="fsh-note">${esc(r.note)}</div>`;
+        } catch (e) { o.innerHTML = `<span class="fsh-err">${esc(e.message)}</span>${String(typed || '').trim() ? '<div class="fsh-note">You can also type it in English, like “to speak”.</div>' : ''}`; }
       };
       const run = () => show(document.getElementById('lgVerb').value);
 

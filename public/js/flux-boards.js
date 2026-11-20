@@ -8,9 +8,9 @@
  *   blur      0–12 px, softens busy boards behind text. Ignored on low-end.
  *   dim       1–2, multiplies the scrim. 1 is the contrast floor, never less.
  *
- * DECISION: the brief says choosing a board clears "the texture". Flux has no
- * texture setting (flux-tex is maths typesetting), so there is nothing to
- * clear. If one is added, clear it in choose() and have it clear flux_board.
+ * A board and a texture (flux_texture, app.js) both paint behind the planner,
+ * so picking one clears the other: here via window.fluxSetTexture(''), and
+ * fluxSetTexture() calls FluxBoards.clear().
  *
  * The settings card injects itself into Settings → Layout (#spane-appearance),
  * like the other self-installing cards. app.js calls FluxBoards.apply() after
@@ -113,6 +113,7 @@
     var tile = e.target.closest('.fx-bg-tile');
     if (tile) {
       var s = read(); s.id = tile.getAttribute('data-board-id');
+      if (s.id !== 'plain' && typeof window.fluxSetTexture === 'function') { try { window.fluxSetTexture(''); } catch (e2) {} }
       write(s); apply(s); render(); focusTile(s.id);
       return;
     }
@@ -147,7 +148,10 @@
     saveTimer = setTimeout(function () { write(s); }, 300);
   }
 
-  window.FluxBoards = Object.freeze({ apply: function () { apply(); render(); }, ids: IDS.slice() });
+  window.FluxBoards = Object.freeze({
+    apply: function () { apply(); render(); },
+    clear: function () { if (read().id === 'plain') return; write(DEF); apply(DEF); render(); },
+    ids: IDS.slice() });
 
   apply();
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { apply(); render(); });

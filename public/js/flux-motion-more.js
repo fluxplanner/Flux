@@ -146,7 +146,7 @@ function pickerReel(nameEl, names, pick) {
     const rows = [];
     for (let i = 0; i < 7; i++) rows.push(others[(Math.random() * others.length) | 0]);
     rows.push(pick);
-    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     // The real name stays in the element (screen readers and copy get the pick);
     // the reel rolls over it and is removed when it lands.
     const win = document.createElement('span');

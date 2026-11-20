@@ -26,6 +26,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify suite.html and products.js match public/data/products.json
+        run: npm run build:suite -- --check
+
       - name: Verify public/bundles is rebuilt from public/js + public/css
         run: node scripts/check-bundles-fresh.mjs
 

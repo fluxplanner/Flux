@@ -49,7 +49,6 @@
       enable_client_error_reporting: false,
       enable_task_friction: false,
       enable_shutdown_v2: false,
-      enable_ghost_draft_v2: false,
       enable_neuro_dashboard: false,
       enable_srs_v2: false,
       enable_predict_v2: false,
@@ -68,7 +67,6 @@
       enable_school_ops: false,
       enable_gcal_2way: false,
       enable_drive_import: false,
-      enable_docs_ghost_sync: false,
       enable_gmail_educator_import: false,
       enable_site_enhancements_pack: true, // CORE: hardcoded ON (Phase 37.1 PR-B)
       enable_staff_productivity_suite: true, // IAE PR-C: global default (was school override)

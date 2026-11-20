@@ -1,4 +1,12 @@
-import { verifyUserJWT, serviceClient, json, corsHeaders } from "../_shared/auth.ts";
+import {
+  corsHeaders,
+  hasRecentMfa,
+  json,
+  serviceClient,
+  serviceClientActingFor,
+  verifyUserJWT,
+} from "../_shared/auth.ts";
+import { overDailyLimit } from "../_shared/rate-limit.ts";
 
 const OWNER_EMAIL = (Deno.env.get("FLUX_OWNER_EMAIL") ||
   "azfermohammed21@gmail.com").toLowerCase();
@@ -27,6 +35,28 @@ function isOwnerCaller(_email: string, userId: string) {
   return !!OWNER_UID && !!userId && userId === OWNER_UID;
 }
 
+/** Owner powers expire 12 hours after the last authenticator code. */
+const OWNER_MFA_MAX_AGE_S = 12 * 60 * 60;
+/** Actions that hand over or remove an account need a code from the last 15 minutes. */
+const STEP_UP_MAX_AGE_S = 15 * 60;
+const STEP_UP_ACTIONS = new Set([
+  "owner_patch_user_role",
+  "auth_set_password",
+  "auth_send_recovery_link",
+  "auth_delete_user",
+  "auth_ban_user",
+]);
+/** Recorded in flux_admin_action_log as well as the owner's own list. */
+const LOGGED_AUTH_ACTIONS = new Set([
+  "auth_set_password",
+  "auth_send_recovery_link",
+  "auth_delete_user",
+  "auth_ban_user",
+  "auth_create_user",
+  "auth_force_password_rotate",
+  "auth_revoke_sessions",
+]);
+
 type JsonRecord = Record<string, unknown>;
 type OwnerRow = { id: string; data: JsonRecord | null; updated_at?: string };
 type DevAccount = {
@@ -53,13 +83,17 @@ function devAccounts(ownerData: JsonRecord): DevAccount[] {
   return Array.isArray(raw) ? raw.filter(Boolean) as DevAccount[] : [];
 }
 
-function findDev(ownerData: JsonRecord, email: string) {
-  return devAccounts(ownerData).find((d) => normEmail(d.email) === email) || null;
+function findDev(ownerData: JsonRecord, userId: string) {
+  return devAccounts(ownerData).find((d) => !!userId && d.userId === userId) || null;
 }
 
-function canPushRelease(ownerData: JsonRecord, email: string, userId: string) {
-  if (isOwnerCaller(email, userId)) return { ok: true, role: "owner" };
-  const dev = findDev(ownerData, email);
+function canPushRelease(
+  ownerData: JsonRecord,
+  userId: string,
+  ownerVerified: boolean,
+) {
+  if (ownerVerified) return { ok: true, role: "owner" };
+  const dev = findDev(ownerData, userId);
   if (!dev) return { ok: false, role: "user" };
   const role = String(dev.role || "viewer").toLowerCase();
   const perms = Array.isArray(dev.perms) ? dev.perms : [];
@@ -69,6 +103,25 @@ function canPushRelease(ownerData: JsonRecord, email: string, userId: string) {
     role === "owner" ||
     role === "dev";
   return { ok, role: ok ? "dev" : "viewer" };
+}
+
+/**
+ * The release gate as this caller may see it.
+ *
+ * Every signed-in planner reads the gate to learn whether an update is live,
+ * but previewEmails and the pushedBy / updatedBy fields are staff addresses.
+ * The owner and release devs get the whole gate. Anyone else gets the list cut
+ * down to their own address, which is all the planner compares it against.
+ */
+function gateForCaller(gate: unknown, email: string, full: boolean) {
+  if (!gate || typeof gate !== "object" || Array.isArray(gate)) return null;
+  if (full) return gate;
+  const g = { ...(gate as JsonRecord) };
+  delete g.pushedBy;
+  delete g.stagingUpdatedBy;
+  delete g.previewUpdatedBy;
+  g.previewEmails = normalizePreviewEmails(g.previewEmails).filter((e) => !!email && e === email);
+  return g;
 }
 
 function normalizePreviewMode(v: unknown) {
@@ -227,22 +280,36 @@ Deno.serve(async (req) => {
 
   const email = normEmail(auth.email);
   const callerUserId = auth.userId; // captured here (narrowed) for use inside nested helpers
-  const db = serviceClient();
+  // Every signed-in user reads the release gate here, and the owner's tools
+  // run here. Owner Controls stays well under this; a stolen session trying
+  // to mass-ban or mass-delete runs into it.
+  if (await overDailyLimit("release-admin", callerUserId, 1500)) {
+    return json({ error: "rate_limited" }, 429, origin);
+  }
+  // Same rule as flux_is_platform_admin(): once the owner has an authenticator,
+  // a session without a recent code is treated as an ordinary account.
+  const ownerVerified = isOwnerCaller(email, callerUserId) &&
+    (!auth.hasMfa || hasRecentMfa(auth, OWNER_MFA_MAX_AGE_S));
+  // Role writes made here are credited to the caller in flux_admin_action_log.
+  const db = serviceClientActingFor(req, callerUserId);
+  if (req.method === "POST" && isOwnerCaller(email, callerUserId) && !ownerVerified) {
+    return json({ error: "owner_mfa_required" }, 403, origin);
+  }
 
   try {
     const ownerRow = await findOwnerRow(db);
     const ownerData = asRecord(ownerRow.data);
     const platformConfig = asRecord(ownerData.platformConfig);
     const gate = platformConfig.releaseGate || null;
-    const pushAuth = canPushRelease(ownerData, email, callerUserId);
+    const pushAuth = canPushRelease(ownerData, callerUserId, ownerVerified);
 
     if (req.method === "GET") {
       return json({
         ok: true,
-        gate,
+        gate: gateForCaller(gate, email, ownerVerified || pushAuth.ok),
         role: pushAuth.role,
         canPush: pushAuth.ok,
-        canManagePreview: isOwnerCaller(email, callerUserId),
+        canManagePreview: ownerVerified,
       }, 200, origin);
     }
 
@@ -289,7 +356,7 @@ Deno.serve(async (req) => {
      * only way in.
      */
     if (action === "set_platform_ui") {
-      if (!isOwnerCaller(email, callerUserId)) {
+      if (!ownerVerified) {
         return json({ error: "Only the owner can change platform UI settings" }, 403, origin);
       }
 
@@ -334,7 +401,7 @@ Deno.serve(async (req) => {
      * are left alone, so a stale client cannot roll back a release.
      */
     if (action === "set_platform_broadcast") {
-      if (!isOwnerCaller(email, callerUserId)) {
+      if (!ownerVerified) {
         return json({ error: "Only the owner can change the platform broadcast" }, 403, origin);
       }
       const next = {
@@ -347,7 +414,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "sync_platform_to_devs") {
-      if (!isOwnerCaller(email, callerUserId)) {
+      if (!ownerVerified) {
         return json({ error: "Only the owner can sync platform config to dev accounts" }, 403, origin);
       }
       const targetMode = String(body.targetMode || "all") === "selected"
@@ -435,11 +502,28 @@ Deno.serve(async (req) => {
       action === "auth_revoke_sessions" ||
       action === "owner_patch_user_role"
     ) {
-      if (!isOwnerCaller(email, callerUserId)) {
+      if (!ownerVerified) {
         return json({ error: "Only the owner may call Auth Admin actions" }, 403, origin);
       }
 
+      // Strict even before the owner adds an authenticator: these hand over or
+      // remove someone else's account.
+      if (STEP_UP_ACTIONS.has(action) && !hasRecentMfa(auth, STEP_UP_MAX_AGE_S)) {
+        return json({ error: "flux_step_up_required" }, 403, origin);
+      }
+
       const adminAuth = db.auth.admin;
+      if (LOGGED_AUTH_ACTIONS.has(action)) {
+        const target = String(body.userId || "").trim();
+        const { error: logErr } = await db.rpc("flux_log_admin_action", {
+          p_action: action,
+          p_target: /^[0-9a-f-]{36}$/i.test(target) ? target : null,
+          p_old: null,
+          p_new: body.email ? { email: normEmail(body.email) } : null,
+        });
+        // No log, no action: a change nobody can trace is what this guards against.
+        if (logErr) throw logErr;
+      }
 
       /** Block destructive actions targeting the owner's identity row. */
       async function guardNotOwnerIdentity(userId: string) {
@@ -637,6 +721,10 @@ Deno.serve(async (req) => {
           email: newEmail,
           password,
           email_confirm,
+          /* Lets the account through while sign-ups are closed or invite-only
+             (flux_enforce_signup_policy). app_metadata, unlike user_metadata,
+             cannot be set by someone signing themselves up. */
+          app_metadata: { flux_owner_created: true },
         });
         if (error) throw error;
         const returnTemp = body.returnTemporaryPassword !== false;
@@ -731,7 +819,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "set_staging_enabled") {
-      if (!isOwnerCaller(email, callerUserId)) {
+      if (!ownerVerified) {
         return json({ error: "Only the owner can enable update mode" }, 403, origin);
       }
       const prevGate = asRecord(platformConfig.releaseGate);
@@ -756,7 +844,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "save_preview_access") {
-      if (!isOwnerCaller(email, callerUserId)) {
+      if (!ownerVerified) {
         return json({ error: "Only the owner can change preview access" }, 403, origin);
       }
       const allowedDevEmails = new Set(devAccounts(ownerData).map((d) => normEmail(d.email)));

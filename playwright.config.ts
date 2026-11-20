@@ -16,6 +16,7 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     ...devices['Desktop Chrome'],
+    launchOptions: process.env.PW_EXEC ? { executablePath: process.env.PW_EXEC } : {},
   },
   webServer: {
     command: `npx serve . -l ${PORT}`,

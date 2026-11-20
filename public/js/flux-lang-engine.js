@@ -1587,9 +1587,11 @@
 
   // ── public API ────────────────────────────────────────────────────────────
 
-  /** Normalise what someone typed: trim, lowercase, drop a leading "to ". */
+  /** Normalise what someone typed: trim, lowercase, drop a leading "to " and
+   *  any punctuation around the word ("tener?", "¡ir!", "\"hablar\""). */
   function clean(verb) {
-    return String(verb == null ? '' : verb).trim().toLowerCase().replace(/^to\s+/, '');
+    return String(verb == null ? '' : verb).normalize('NFC').trim().toLowerCase()
+      .replace(/^[\s¿¡?!.,;:"'«»“”‘’()]+|[\s¿¡?!.,;:"'«»“”‘’()]+$/g, '').replace(/^to\s+/, '');
   }
 
   /** Which of the three tables a language code lands in. */
@@ -1612,13 +1614,51 @@
     var known = TENSES[l].some(function (x) { return x.id === t; });
     if (!known) t = 'present';
     v = resolve(l, v);
-    var r = l === 'es' ? conjugateEs(v, t) : l === 'de' ? conjugateDe(v, t) : conjugateFr(v, t);
+    var r, failed = null;
+    try { r = l === 'es' ? conjugateEs(v, t) : l === 'de' ? conjugateDe(v, t) : conjugateFr(v, t); }
+    catch (e) { r = null; failed = e; if (!window.FluxConj || l === 'de') throw e; }
+    /* Spanish and French forms come from Flux Lingo's conjugator when it is
+       loaded. Its lexicon covers ~1,300 verbs; the tables here cover the
+       common irregulars and conjugated everything else by the regular rule,
+       so a drill on hervir or absolver asked for "hervo" and "absolvo". */
+    var lingo = l !== 'de' ? lingoForms(l, v, t) : null;
+    if (lingo) {
+      r = r || { note: lingo.note };
+      r.forms = lingo.forms;
+      if (lingo.alts) r.alts = lingo.alts; else delete r.alts;
+      if (lingo.agree) r.agree = true;
+      if (l === 'fr' && !r.pronouns) r.pronouns = lingo.pronouns;
+    }
+    if (!r) throw failed;
     // A tense may override the pronoun column — see the passé composé elision.
     var out = { lang: l, verb: v, tense: t, pronouns: r.pronouns || PRONOUNS[l].slice(), forms: r.forms, note: r.note };
     if (r.alts) out.alts = r.alts;
     // French être verbs: the participle agrees with the subject (allée, allés).
     if (r.agree) out.agree = true;
     return out;
+  }
+
+  /** One tense from FluxConj (flux-conj.js), in this engine's shape; null when absent or unknown. */
+  var LINGO_TENSE = { subjunctive: 'subjPresent' };
+  function lingoForms(l, v, t) {
+    var C = window.FluxConj;
+    if (!C || typeof C.conjugate !== 'function') return null;
+    var res;
+    try { res = C.conjugate(l, v); } catch (e) { return null; }
+    var src = res && res.tenses && res.tenses[LINGO_TENSE[t] || t];
+    if (!src) return null;
+    var agree = false;
+    // "allé(e)s" → "allés": the drill marks the masculine and accepts agreement (see `agree`).
+    function plain(f) {
+      if (f == null) return '—';
+      if (/\(e\)/.test(f)) agree = true;
+      return f.replace(/\(e\)/g, '').replace(/\(s\)/g, 's');
+    }
+    var forms = src.map(plain);
+    var altSrc = res.alts && res.alts[LINGO_TENSE[t] || t];
+    var alts = altSrc ? altSrc.map(function (a) { return (a || []).map(plain); }) : null;
+    var pronouns = l === 'fr' && C.subjectFor ? forms.map(function (f, i) { return C.subjectFor('fr', i, f); }) : null;
+    return { forms: forms, alts: alts, agree: agree, pronouns: pronouns, note: res.notes && res.notes[0] || '' };
   }
 
   /* Every verb some table here names, per language — for resolving a verb typed

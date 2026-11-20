@@ -998,3 +998,119 @@ test('speed: a 20-page set builds its guide and search index in well under a sec
   T.searchNotes(corpus, idx, 'why did the pressure increase in 1850');
   assert.ok(performance.now() - t1 < 300, 'concepts + a 30-question test + a search took ' + Math.round(performance.now() - t1) + ' ms');
 });
+
+test('IB-style questions: command terms, one mark per cited markscheme point, weak topics', () => {
+  const qs = T.buildIbQuestions(S.corpus, S.concepts, {}, { count: 8, seed: 'ib' });
+  assert.ok(qs.length >= 4);
+  for (const q of qs) {
+    assert.ok(T.COMMAND_TERMS[q.command], q.command);
+    assert.equal(q.marks, q.scheme.length);
+    for (const p of q.scheme) assert.ok(S.corpus.sentences.some((s) => s.text === p.text) || p.text, 'scheme point comes from the notes');
+  }
+  eq(T.ibSuggest(qs[0], qs[0].scheme[0].text)[0], true);
+  assert.equal(T.ibVerdict(2, 2), 'correct');
+  assert.equal(T.ibVerdict(1, 3), 'incorrect');
+  const m = { [S.concepts[0].id]: T.applyResult(null, 'incorrect', NOW) };
+  eq(T.weakTopics(S.concepts, m).map((w) => w.id), [S.concepts[0].id]);
+  eq(T.weakTopics(S.concepts, {}), []);
+});
+
+test('answers from the notes: only the notes\' own sentences, numbered for their passages; AI text keeps only cited sentences', () => {
+  const idx = T.buildSearchIndex(S.corpus);
+  const r = T.searchNotes(S.corpus, idx, 'what does the cell wall do', S.concepts);
+  const parts = T.answerFromNotes(r, 3);
+  assert.ok(parts.length >= 1);
+  for (const p of parts) assert.ok(S.corpus.sentences.some((s) => s.text === p.text));
+  eq(T.answerFromNotes(T.searchNotes(S.corpus, idx, 'quantum chromodynamics', S.concepts)), []);
+  eq(T.groundedParts('Walls support cells [1]. Purple [7]. No cite here. Both [1][2].', 2),
+    [{ text: 'Walls support cells.', cites: [1] }, { text: 'Both.', cites: [1, 2] }]);
+});
+
+test('question bank: paper 1 is multiple choice with the passage as markscheme; topic filter keeps to one section', () => {
+  const p1 = T.buildIbQuestions(S.corpus, S.concepts, {}, { paper: 1, count: 4, seed: 'p1' });
+  assert.ok(p1.length >= 2);
+  for (const q of p1) { assert.equal(q.paper, 1); assert.ok(q.options.includes(q.answer)); assert.equal(q.marks, 1); }
+  const topic = T.topicsFor(S.corpus, S.concepts).find((t) => t.title === 'Cell structure');
+  const p2 = T.buildIbQuestions(S.corpus, S.concepts, {}, { paper: 2, topic: topic.id, count: 10, seed: 'p2' });
+  assert.ok(p2.length >= 1);
+  for (const q of p2) assert.ok(topic.conceptIds.includes(q.conceptIds[0]));
+});
+
+test('mock exams: both papers, timed by marks, marked and saved', () => {
+  const m = T.buildMockExam(S.corpus, S.concepts, {}, { seed: 'mock' });
+  assert.ok(m.questions.some((q) => q.paper === 1) && m.questions.some((q) => q.paper === 2), 'a Paper 1 and a Paper 2 section');
+  assert.equal(m.marks, m.questions.reduce((n, q) => n + q.marks, 0));
+  assert.equal(m.minutes, Math.max(5, Math.ceil(m.marks * 1.5)));
+  assert.ok(m.questions.every((q) => q.scheme.length && q.scheme.every((p) => p.text)), 'every question has a markscheme from the notes');
+  const awarded = {};
+  m.questions.forEach((q) => { awarded[q.id] = q.marks + 5; });
+  const rec = T.examRecord(m.questions, awarded, { programme: 'DP', minutes: m.minutes, seconds: 60, now: NOW });
+  assert.equal(rec.got, rec.total, 'marks never go above the question total');
+  assert.equal(rec.pct, 100);
+  const set = T.normalizeSet(Object.assign(T.sampleSet(), { exams: [rec, { p1: { got: 9, total: 2 } }, 'junk'] }));
+  assert.equal(set.exams.length, 2);
+  assert.equal(set.exams[1].p1.got, 2, 'a saved mark is clamped to its total');
+});
+
+test('predicted grade: nothing to go on, then from exams and tests', () => {
+  const set = T.sampleSet();
+  set.guide = S.guide;
+  assert.equal(T.predictGrade(set), null);
+  set.tests = [{ pct: 50, total: 10 }];
+  eq(T.predictGrade(set).grade, 4);
+  set.exams = [{ pct: 90, total: 20 }, { pct: 85, total: 20 }];
+  const p = T.predictGrade(set);
+  assert.equal(p.grade, 7);
+  assert.equal(p.confidence, 'high');
+  eq([0, 19, 20, 45, 67, 68, 80, 100].map(T.gradeFor), [1, 1, 2, 4, 5, 6, 7, 7]);
+  assert.ok('predicted' in T.summarizeSet(set, '2026-10-11'));
+});
+
+test('study streak: days in a row across sets, kept until today ends', () => {
+  const a = {};
+  const b = {};
+  T.logActivity({ activity: a }, '2026-10-20');
+  const s1 = { activity: a };
+  T.logActivity(s1, '2026-10-22');
+  T.logActivity(s1, '2026-10-23');
+  const s2 = { activity: b };
+  T.logActivity(s2, '2026-10-21');
+  T.logActivity(s2, '2026-10-21');
+  eq(T.studyStreak([s1.activity, s2.activity], '2026-10-24'), { current: 4, best: 4, today: 0, days: 4 });
+  eq(T.studyStreak([s1.activity], '2026-10-26').current, 0);
+  const n = T.normalizeSet(Object.assign(T.sampleSet(), { activity: { '2026-10-01': 3, bad: 1, '2026-10-02': -1 } }));
+  eq(n.activity, { '2026-10-01': 3 });
+});
+
+test('topic pages: each topic has its summary, terms and facts', () => {
+  const pages = T.topicPages(S.corpus, S.guide, S.concepts, {});
+  assert.ok(pages.length >= 1);
+  const terms = pages.reduce((n, p) => n + p.terms.length, 0);
+  assert.equal(terms, S.concepts.length, 'every term is on one topic page');
+  assert.ok(pages.every((p) => p.mastery.total === p.terms.length));
+  assert.ok(pages.some((p) => p.summary.length));
+});
+
+const plain = (x) => JSON.parse(JSON.stringify(x));
+
+test('mind map nests sections by heading and hangs each term off its own section', () => {
+  const text = '# Cells\n\nCells are the basic unit of life.\n\n## Organelles\n\nThe mitochondria is the organelle that releases energy in respiration. The nucleus is the part of the cell that holds the DNA.\n\n# Genetics\n\nAn allele is a different version of a gene. Alleles are passed from parents.';
+  const sources = [{ id: 's1', name: 'Bio', text }];
+  const corpus = T.buildCorpus(sources);
+  const guide = T.buildGuide(sources, { corpus });
+  guide.terms.push({ id: 'mine', term: 'Ribosome', def: 'Makes proteins.', kind: 'user' });
+  const map = plain(T.buildMindMap(guide, corpus, { [guide.terms[0].id]: { seen: 3, right: 3, wrong: 0, level: 5, streak: 3 } }));
+  assert.deepEqual(map.branches.map((b) => b.title), ['Cells', 'Genetics']);
+  assert.deepEqual(map.branches[0].children.map((b) => b.title), ['Organelles']);
+  const under = (n) => n.terms.map((t) => t.term.toLowerCase()).concat(...n.children.map(under));
+  assert.ok(under(map.branches[0]).some((t) => t.includes('mitochondri')));
+  assert.ok(under(map.branches[1]).some((t) => t.includes('allele')));
+  assert.deepEqual(map.loose.map((t) => t.term), ['Ribosome']);
+  assert.ok(map.size >= 6);
+});
+
+test('mind map of an empty guide is empty', () => {
+  const map = plain(T.buildMindMap(null, null, null));
+  assert.equal(map.size, 0);
+  assert.deepEqual(map.loose, []);
+});

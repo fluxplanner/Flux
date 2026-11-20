@@ -10,10 +10,9 @@
   const KEY_DASH_HIDDEN='flux_dashboard_hidden_sections_v1';
   const KEY_LAYOUT_CAL='flux_layout_calendar_v1';
   const KEY_PERF_SNAPPY='flux_perf_snappy';
-  /* 'reading' is the reading log card (flux-reading-log.js). Listed here as
-     well as in the page so saveDashOrder, which keeps only these ids, does not
-     drop it when someone moves it up or down. */
-  const DEFAULT_DASH_ORDER=['pulse','countdown','schedule','tasks','reading'];
+  /* The reading log card left the dashboard (it has its own tab), so saved
+     orders that still list 'reading' just lose it in saveDashOrder. */
+  const DEFAULT_DASH_ORDER=['pulse','countdown','schedule','tasks'];
   /** Previous factory default (before pulse-first). Used to one-time-migrate users who never customized. */
   const PREVIOUS_DEFAULT_DASH_ORDER=['countdown','pulse','schedule','tasks'];
   const DEFAULT_CAL_ORDER=['hero','schedule'];
@@ -23,7 +22,6 @@
     countdown:'Countdown (top bar)',
     schedule:'Today schedule & focus',
     tasks:'Tasks',
-    reading:'Reading log',
   };
   /* "& Google sync" named a card that is switched off and hidden, so this
      advertised a feature you could not reach from the screen it labels. */
@@ -41,7 +39,6 @@
       countdown:window.fluxT('dash.section.countdown'),
       schedule:window.fluxT('dash.section.schedule'),
       tasks:window.fluxT('dash.section.tasks'),
-      reading:DASH_LABELS.reading,
     };
   }
 

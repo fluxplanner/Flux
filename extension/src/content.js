@@ -9,6 +9,8 @@
  */
 import { ext } from './lib/browser-shim.js';
 import { extractContext } from './lib/page-context.js';
+// The "Send to Flux" button on Quizlet sets (does nothing on other sites).
+import './quizlet.js';
 
 // Auth handoff from the planner page (app.js fluxExtAuthBroadcast): relay the
 // session to the background, which verifies the sender origin, stores it, and

@@ -2,20 +2,6 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "aorta-founder-photos",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": [
-        "-m",
-        "http.server",
-        "3371",
-        "--bind",
-        "127.0.0.1",
-        "--directory",
-        "/Users/AzferMohammed/dev/Flux Planner/.claude/worktrees/aorta-founder-photos"
-      ],
-      "port": 3371
-    },
-    {
       "name": "flux-planner",
       "runtimeExecutable": "npx",
       "runtimeArgs": [
@@ -50,47 +36,6 @@
       "cwd": "web"
     },
     {
-      "name": "pixel-studio",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": [
-        "-y",
-        "serve",
-        "-l",
-        "4631",
-        "../flux-pixel-studio"
-      ],
-      "port": 4631,
-      "autoPort": false
-    },
-    {
-      "name": "aorta-dict-wt",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": [
-        "-m",
-        "http.server",
-        "3362",
-        "--bind",
-        "127.0.0.1",
-        "--directory",
-        "/Users/AzferMohammed/dev/Flux Planner/.claude/worktrees/aorta-dictionary"
-      ],
-      "port": 3362
-    },
-    {
-      "name": "aorta-more-words",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": [
-        "-m",
-        "http.server",
-        "3363",
-        "--bind",
-        "127.0.0.1",
-        "--directory",
-        "/Users/AzferMohammed/dev/flux-aorta-dict"
-      ],
-      "port": 3363
-    },
-    {
       "name": "e2e-server",
       "runtimeExecutable": "npx",
       "runtimeArgs": [
@@ -115,46 +60,6 @@
       "cwd": ".troy-preview"
     },
     {
-      "name": "flux-main-snapshot",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": [
-        "-y",
-        "serve",
-        "-l",
-        "3355",
-        "/private/tmp/claude-503/-Users-AzferMohammed-dev-Flux-Planner/74c687d5-2030-4e37-838b-c4c542039640/scratchpad/main-snap"
-      ],
-      "port": 3355
-    },
-    {
-      "name": "flux-scroll-story",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": [
-        "-m",
-        "http.server",
-        "3397",
-        "--bind",
-        "127.0.0.1",
-        "--directory",
-        "/Users/AzferMohammed/dev/flux-scroll-story"
-      ],
-      "port": 3397
-    },
-    {
-      "name": "aorta-bp",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": [
-        "-m",
-        "http.server",
-        "3372",
-        "--bind",
-        "127.0.0.1",
-        "--directory",
-        "/Users/AzferMohammed/dev/flux-aorta-bp"
-      ],
-      "port": 3372
-    },
-    {
       "name": "flat-look",
       "runtimeExecutable": "python3",
       "runtimeArgs": [
@@ -162,79 +67,9 @@
         "http.server",
         "3381",
         "--bind",
-        "127.0.0.1",
-        "--directory",
-        "/Users/AzferMohammed/dev/Flux Planner/.claude/worktrees/flat-look"
+        "127.0.0.1"
       ],
       "port": 3381
-    },
-    {
-      "name": "suite-plain-look",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": [
-        "-m",
-        "http.server",
-        "3391",
-        "--bind",
-        "127.0.0.1",
-        "--directory",
-        "/Users/AzferMohammed/dev/Flux Planner/.claude/worktrees/suite-plain-look"
-      ],
-      "port": 3391
-    },
-    {
-      "name": "suite-old-look",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": [
-        "-m",
-        "http.server",
-        "3392",
-        "--bind",
-        "127.0.0.1",
-        "--directory",
-        "/Users/AzferMohammed/dev/Flux Planner/.claude/worktrees/suite-old-look"
-      ],
-      "port": 3392
-    },
-    {
-      "name": "unit-underline",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": [
-        "-m",
-        "http.server",
-        "3393",
-        "--bind",
-        "127.0.0.1",
-        "--directory",
-        "/Users/AzferMohammed/dev/flux-unit-underline"
-      ],
-      "port": 3393
-    },
-    {
-      "name": "study-group-tabs",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": [
-        "-m",
-        "http.server",
-        "3388",
-        "--bind",
-        "127.0.0.1",
-        "--directory",
-        "/Users/AzferMohammed/dev/Flux Planner/.claude/worktrees/study-group-tabs"
-      ],
-      "port": 3388
-    },
-    {
-      "name": "flux-fonts-textures",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": [
-        "-m",
-        "http.server",
-        "4391",
-        "-d",
-        "/Users/AzferMohammed/dev/flux-fonts-textures"
-      ],
-      "port": 4391
     }
   ]
 }

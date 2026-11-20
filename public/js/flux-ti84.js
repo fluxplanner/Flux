@@ -23,6 +23,15 @@
   const Ed = () => window.FluxTIEditor;
   const MN = () => window.FluxTIMenus;
   const STORE = 'flux_ti84_v1';
+  /* Regular (keys under the screen) or wide (keys beside it). A choice for
+     this screen, not the calculator's memory, so it lives on this device
+     only. With no choice yet, a short wide screen starts wide. */
+  const VIEW_STORE = 'flux_ti84_view';
+  function loadView() {
+    try { const v = localStorage.getItem(VIEW_STORE); if (v === 'wide' || v === 'regular') return v; } catch (e) { /* private mode */ }
+    const short = window.matchMedia && window.matchMedia('(orientation: landscape) and (min-width: 900px) and (max-height: 1000px)').matches;
+    return short ? 'wide' : 'regular';
+  }
   const HISTORY_MAX = 40;
 
   function esc(s) {
@@ -32,8 +41,10 @@
   /* ── The keypad ─────────────────────────────────────────────────────── */
 
   const K = (id, main, sec, al, cls) => ({ id: id, main: main, sec: sec || '', al: al || '', cls: cls || 'fn' });
-  const TOP = [K('yequ', 'y=', 'stat plot', 'f1', 'top'), K('window', 'window', 'tblset', 'f2', 'top'), K('zoom', 'zoom', 'format', 'f3', 'top'),
-    K('trace', 'trace', 'calc', 'f4', 'top'), K('graph', 'graph', 'table', 'f5', 'top')];
+  /* alpha + a top key opens the CE's shortcut menus. The handheld only prints
+     "f1"–"f4"; the menu name is added so the fraction key can be found. */
+  const TOP = [K('yequ', 'y=', 'stat plot', 'f1 frac', 'top'), K('window', 'window', 'tblset', 'f2 func', 'top'), K('zoom', 'zoom', 'format', 'f3 mtrx', 'top'),
+    K('trace', 'trace', 'calc', 'f4 yvar', 'top'), K('graph', 'graph', 'table', 'f5', 'top')];
   const MID = [[K('2nd', '2nd', '', '', 'second'), K('mode', 'mode', 'quit'), K('del', 'del', 'ins')],
     [K('alpha', 'alpha', 'A-lock', '', 'alpha'), K('xt', 'X,T,θ,n', 'link'), K('stat', 'stat', 'list')]];
   const ROWS = [
@@ -48,7 +59,7 @@
   /* Evo keeps the same math engine and memory, while changing the keys that
      TI changed on the physical model. The fraction template takes the old
      X,T,θ,n key's place; 2nd restores that variable key. */
-  const EVO_TOP = [K('yequ', 'plot', 'stat plot', 'f1', 'top'), TOP[1], TOP[2], TOP[3], TOP[4]];
+  const EVO_TOP = [K('yequ', 'plot', 'stat plot', 'f1 frac', 'top'), TOP[1], TOP[2], TOP[3], TOP[4]];
   const EVO_MID = [[MID[0][0], MID[0][1], K('del', 'del', 'insert')],
     [MID[1][0], K('xt', 'a b/c', 'X,T,θ,n'), K('stat', 'stat', 'list', 'distr')]];
   const EVO_ROWS = [
@@ -184,9 +195,18 @@
       + '<button type="button" class="t84k t84k--' + k.cls + '" data-k="' + esc(k.id) + '" aria-label="' + esc(k.main) + '">'
       + esc(k.main) + '</button></div>';
     // The wrapper is the size container, so the body's own padding and corners scale with it too.
-    this.host.innerHTML = '<div class="t84-wrap"><div class="t84' + (evo ? ' is-evo' : '') + '" tabindex="0" aria-label="Graphing calculator. Click it, then type or use the keys.">'
+    const view = loadView();
+    // A short visible caption says what each switch changes; the group keeps its full name for screen readers.
+    const seg = (name, label, cur, opts, cap) => '<div class="t84-segw"><span class="t84-cap" aria-hidden="true">' + cap + '</span>'
+      + '<div class="t84-seg" role="radiogroup" aria-label="' + label + '" data-seg="' + name + '">'
+      + opts.map((o) => '<button type="button" class="t84-seg-b" role="radio" data-v="' + o[0] + '" aria-checked="' + (o[0] === cur) + '">' + o[1] + '</button>').join('') + '</div></div>';
+    // The switches sit above the body, not on it: the faceplate stays a
+    // faithful calculator, and they read as page controls, not keys.
+    this.host.innerHTML = '<div class="t84-wrap' + (view === 'wide' ? ' is-wide' : '') + '">'
+      + '<div class="t84-bar">' + seg('model', 'Calculator model', evo ? 'evo' : 'ce', [['ce', 'Plus CE'], ['evo', 'Evo']], 'Model')
+      + seg('view', 'Calculator view', view, [['regular', 'Regular'], ['wide', 'Wide']], 'Layout') + '</div>'
+      + '<div class="t84' + (evo ? ' is-evo' : '') + '" tabindex="0" aria-label="Graphing calculator. Click it, then type or use the keys.">'
       + '<div class="t84-brand"><span class="t84-brand-name">Flux<b>·84</b></span>'
-      + '<label class="t84-model-control"><select aria-label="Calculator model"><option value="ce">TI-84 Plus CE</option><option value="evo">TI-84 Evo</option></select></label>'
       + '<span class="t84-brand-model">' + (evo ? 'EVO' : 'PLUS CE') + '</span></div>'
       + '<div class="t84-bezel"><div class="t84-screen" role="application" aria-live="polite">'
       + '<div class="t84-status"></div><div class="t84-scr"></div></div></div>'
@@ -199,13 +219,17 @@
       + '<button type="button" class="t84a t84a--down" data-k="down" aria-label="Down"></button></div></div>'
       + rows.map((r) => '<div class="t84-row' + (r.length === 6 ? ' t84-row--6' : '') + '">' + r.map(keyHTML).join('') + '</div>').join('')
       + '</div></div></div>';
-    const modelSelect = this.host.querySelector('.t84-model-control select');
-    modelSelect.value = evo ? 'evo' : 'ce';
-    modelSelect.addEventListener('change', () => {
-      this.st.mode.model = modelSelect.value === 'evo' ? 'evo' : 'ce';
+    this.host.querySelector('.t84-bar').addEventListener('click', (e) => {
+      const b = e.target.closest('.t84-seg-b');
+      if (!b || b.getAttribute('aria-checked') === 'true') return;
+      const v = b.dataset.v;
+      if (b.parentNode.dataset.seg === 'model') this.st.mode.model = v === 'evo' ? 'evo' : 'ce';
+      else { try { localStorage.setItem(VIEW_STORE, v); } catch (err) { /* private mode: this visit only */ } }
       this.build();
       this.render();
       this.save();
+      const again = this.host.querySelector('[data-seg="' + b.parentNode.dataset.seg + '"] [data-v="' + v + '"]');
+      if (again) again.focus({ preventScroll: true });
     });
     this.el = this.host.querySelector('.t84');
     this.scr = this.host.querySelector('.t84-scr');
@@ -1628,6 +1652,7 @@
     mount: mount,
     core: {
       Calc: Calc, FormApp: FormApp, ReportApp: ReportApp, MenuApp: MenuApp, ConfirmApp: ConfirmApp, AppsHomeApp: AppsHomeApp, ModeApp: ModeApp,
+      KEYPAD: { TOP: TOP, MID: MID, ROWS: ROWS, EVO_TOP: EVO_TOP, EVO_MID: EVO_MID, EVO_ROWS: EVO_ROWS, SEC: SEC, ALPHA: ALPHA, ALPHA_TOP: ALPHA_TOP },
       esc: esc, fmt: fmt, outHTML: outHTML, outNodes: outNodes, YCOLOURS: YCOLOURS, yNames: yNames, MENU_KEYS: MENU_KEYS,
     },
   };

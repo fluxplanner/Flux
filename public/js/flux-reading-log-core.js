@@ -79,6 +79,19 @@
     n = Math.round(n);
     return n < lo || n > hi ? null : n;
   }
+  /** Minutes read, typed the way people say them: "25", "25 min", "1h",
+   *  "1h 30", "1 hour 30 minutes", "1:30" or "1.5 hours". Null for blank,
+   *  nonsense or more than `hi`. */
+  function minutes(v, hi) {
+    if (v === '' || v == null || typeof v === 'boolean') return null;
+    if (typeof v === 'number') return int(v, 0, hi);
+    var s = String(v).toLowerCase().replace(/,/g, '.').replace(/\s+/g, ' ').trim(), m, n;
+    if ((m = s.match(/^(\d+):([0-5]\d)$/))) n = Number(m[1]) * 60 + Number(m[2]);
+    else if ((m = s.match(/^(?:(\d+(?:\.\d+)?) ?(?:h|hr|hrs|hour|hours)(?![a-z]) ?(?:and )?)?(?:(\d+) ?(?:m|min|mins|minute|minutes)?)?$/)) && (m[1] || m[2])) {
+      n = (m[1] ? Number(m[1]) * 60 : 0) + (m[2] ? Number(m[2]) : 0);
+    } else return null;
+    return int(n, 0, hi);
+  }
   function stamp(v) { var n = Number(v); return isFinite(n) && n > 0 ? Math.round(n) : 0; }
   function id(v) { var s = String(v == null ? '' : v); return /^[A-Za-z0-9_-]{1,64}$/.test(s) ? s : ''; }
 
@@ -378,7 +391,7 @@
   root.FluxReadingLogCore = {
     KEY: KEY, STATUSES: STATUSES, LIMITS: LIMITS,
     uid: uid, ymd: ymd, isYMD: isYMD, addDays: addDays, weekday: weekday, weekStart: weekStart,
-    daysBetween: daysBetween, dayNum: dayNum, fromDayNum: fromDayNum, int: int, canon: canon,
+    daysBetween: daysBetween, dayNum: dayNum, fromDayNum: fromDayNum, int: int, minutes: minutes, canon: canon,
     sanitise: sanitise, cleanBook: cleanBook, cleanEntry: cleanEntry, cleanQuote: cleanQuote,
     cleanGoal: cleanGoal, cleanPrefs: cleanPrefs,
     pickNewer: pickNewer, mergeById: mergeById, mergeLog: mergeLog, differs: differs,

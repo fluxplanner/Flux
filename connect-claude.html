@@ -11,6 +11,7 @@
   inline boot scripts on every standalone page.
 -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; worker-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com; frame-src 'self'; form-action 'self'">
+<script src="public/js/flux-frame-guard.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex" />
 <title>Connect Claude · Flux Planner</title>
@@ -84,7 +85,8 @@
     <div id="content"><p class="lede"><span class="spin"></span> Loading…</p></div>
     <div class="msg" id="msg"></div>
   </main>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.1/dist/umd/supabase.js" integrity="sha384-cP+QrKcaFzs7aIG1IzHGLKC5cjjlA05fYF2E7C0hqeDvsLKzwgYAS1cYhsDQB+L1" crossorigin="anonymous"></script>
+  <script src="public/js/flux-sb-config.js"></script>
   <script defer src="public/js/connect-claude.js"></script>
 </body>
 </html>

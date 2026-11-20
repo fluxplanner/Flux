@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="public/js/flux-look.js?v=81a3e0d1"></script>
+<script src="public/js/flux-tool-embed-mode.js?v=22cb5bd5"></script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://lfigdijuqmbensebnevo.supabase.co; media-src 'self' blob: data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
+<script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="plan" data-no-hold></script>
+<script defer src="public/js/flux-site-notices.js?v=5e36c924"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flux Plan</title>
+<meta name="description" content="Free study planner from Flux: give each assignment a deadline and an estimate, and get sessions spread across the days before it, with the reasons and a list of what does not fit. No account needed.">
+<meta name="theme-color" content="#140f04">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/png" href="public/flux-planner-logo.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Flux Plan">
+<!--
+  Flux Plan: a free Flux tool, built like periodic.html — no bundles, no
+  Supabase, no sign-in, nothing fetched, so it opens offline on any school
+  computer. Shared parts: public/js/flux-tool-kit.js, public/css/flux-tools.css.
+  Not a Suite app of its own since 2026-11-18: it opens inside the app it
+  fits (public/js/flux-tool-embed.js says which), and still works on its own.
+-->
+<link rel="stylesheet" href="public/css/flux-hub.css?v=a473f365">
+<link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
+<link rel="stylesheet" href="public/css/flux-tools.css?v=3c01335d">
+<style>
+  :root { --bg: #140f04; --accent: #fbbf24; }
+</style>
+<script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
+<script src="public/js/flux-purple-day.js?v=b8cd878a"></script>
+<link rel="stylesheet" href="public/css/flux-look-flat.css?v=8156dbe3">
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to the planner</a>
+  <header class="top">
+    <a class="ft-back" href="suite.html" aria-label="Back to Flux Suite" title="Back to Flux Suite"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
+    <img class="brand-mark" src="public/flux-planner-logo.png" alt="" width="28" height="28">
+    <span class="title">Flux Plan</span>
+    <span class="grow"></span>
+    <div data-flux-hub="plan"></div>
+  </header>
+  <main id="main" tabindex="-1">
+
+    <h1 class="ft-h1">Plan it out</h1>
+    <p class="ft-lede">Add what is due and roughly how long it takes. Flux spreads the work over the days before, finishing a day early.</p>
+    <div class="ft-grid" style="align-items:start">
+      <form class="ft-card" id="plForm" novalidate>
+        <h2>Add an assignment</h2>
+        <div class="ft-row">
+          <label class="ft-field" style="flex:2 1 200px">Name<input id="plName" type="text" maxlength="80" placeholder="History essay"></label>
+          <label class="ft-field">Kind<select id="plType"><option value="essay">Essay</option><option value="project">Project</option><option value="test">Test</option><option value="quiz">Quiz</option><option value="lab">Lab report</option><option value="reading">Reading</option><option value="other">Other</option></select></label>
+        </div>
+        <div class="ft-row">
+          <label class="ft-field">Due<input id="plDue" type="date"></label>
+          <label class="ft-field">Hours of work<input id="plHours" type="text" inputmode="decimal" placeholder="4"></label>
+        </div>
+        <label class="ft-field">Your own steps, one per line (optional)<textarea id="plSteps" class="ft-in" rows="3" style="min-height:76px"></textarea></label>
+        <button type="submit" class="ft-btn primary" style="margin-top:8px">Add</button>
+      </form>
+      <section class="ft-card">
+        <h2>Your limits</h2>
+        <div class="ft-row">
+          <label class="ft-field">Most minutes a day<input id="plMax" type="number" min="15" max="600" step="15" value="90"></label>
+          <label class="ft-field">Start from<input id="plStart" type="date"></label>
+        </div>
+        <label class="ft-check"><input type="checkbox" id="plWeekends"> Keep weekends free</label>
+        <h3>Assignments</h3>
+        <ul class="ft-list" id="plTasks"></ul>
+      </section>
+    </div>
+    <section class="ft-card" aria-labelledby="plOutH">
+      <div class="ft-row" style="justify-content:space-between;align-items:center"><h2 id="plOutH" style="margin:0">The plan</h2>
+      <div class="ft-row"><button type="button" class="ft-btn small" id="plCopy">Copy</button><button type="button" class="ft-btn small" id="plIcs">Calendar file</button></div></div>
+      <div id="plMiss" aria-live="polite"></div>
+      <div id="plOut"></div>
+      <h3>Why it looks like this</h3>
+      <ul class="ft-work" id="plWhy"></ul>
+    </section>
+  </main>
+  <script src="public/data/products.js?v=9634bc03"></script>
+  <script src="public/js/flux-hub.js?v=eb42b549"></script>
+  <script src="public/js/flux-suite-timer.js?v=998cda1e"></script>
+  <script src="public/js/flux-tool-kit.js?v=91bafb05"></script>
+  <script src="public/js/flux-task-plan.js?v=b16c47c7"></script>
+  <script src="public/js/flux-app-plan.js?v=c04277cb"></script>
+</body>
+</html>

@@ -11,7 +11,19 @@ async function seedDay(page: import('@playwright/test').Page, nTasks: number, nE
   return page.evaluate(([nt, ne]) => {
     const w = window as any;
     const d = new Date();
-    const iso = w.fluxLocalYMD(new Date(d.getFullYear(), d.getMonth(), 15));
+    /* A day nothing else is on. A fixed "the 15th" collided with the
+       scenario's homework, which is dated a few days from today, so the
+       test failed for a few days every month. */
+    const probe = (x: any) => String(x.name || x.title || '').startsWith('MoreProbe');
+    const busy = new Set<string>([
+      ...w.tasks.filter((t: any) => !probe(t)).map((t: any) => t.date),
+      ...(w.load('flux_events', []) as any[]).filter((e) => !probe(e)).map((e) => e.date),
+    ]);
+    let iso = '';
+    for (let day = 1; day <= 28 && !iso; day++) {
+      const ds = w.fluxLocalYMD(new Date(d.getFullYear(), d.getMonth(), day));
+      if (!busy.has(ds) && !(w.weeklyVirtualEventsForDate?.(ds) || []).length) iso = ds;
+    }
     w.tasks = w.tasks.filter((t: any) => !String(t.name || '').startsWith('MoreProbe'));
     for (let i = 0; i < nt; i++) {
       w.tasks.push({ id: 900200 + i, name: 'MoreProbe ' + i, date: iso, type: 'hw', priority: 'med', done: false, createdAt: 1 });

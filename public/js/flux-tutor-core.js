@@ -38,6 +38,7 @@
   const LIMITS = {
     title: 160,
     subject: 100,
+    unit: 80,
     sourceName: 180,
     sourceText: 200000,
     sources: 20,
@@ -2039,6 +2040,304 @@
     };
   }
 
+  /* ── IB-style questions ─────────────────────────────────────────────── */
+
+  /*
+   * Written questions in the IB's style: a command term, a mark total and a
+   * markscheme. The markscheme is only sentences from the student's notes,
+   * one mark each, with where each came from; the student marks their own
+   * answer against it (rules suggest which points it already covers). Only
+   * command terms whose answer the notes can actually hold are used, so there
+   * is no "Evaluate" or "To what extent" here.
+   * Difficulty: 1 = recall (AO1), 2 = understanding (AO2), 3 = explanation and
+   * comparison (AO3).
+   */
+  const COMMAND_TERMS = {
+    Choose: { level: 1, meaning: 'Pick the one answer that fits (multiple choice, as in Paper 1).' },
+    Define: { level: 1, meaning: 'Give the precise meaning of a word or phrase.' },
+    State: { level: 1, meaning: 'Give a specific name, value or other brief answer without explanation.' },
+    Outline: { level: 2, meaning: 'Give a brief account or summary.' },
+    Describe: { level: 2, meaning: 'Give a detailed account.' },
+    Explain: { level: 3, meaning: 'Give a detailed account including reasons or causes.' },
+    Compare: { level: 3, meaning: 'Give an account of the similarities and differences between two (or more) items, referring to both of them throughout.' },
+  };
+  function schemePoint(sent) {
+    return { text: sent.text, ref: copyRef(sent.ref), sentenceId: sent.id };
+  }
+  /** Sentences (beyond the definition) that say something about c, in the notes' order. */
+  function supportFor(corpus, c, skip) {
+    return sentencesOf(corpus, c.mentions).filter((s) => goodLength(s) && !skip.has(s.id) && norm(s.text) !== norm(c.definition.full));
+  }
+  function ibFor(corpus, c, pool, command, programme) {
+    const def = { text: c.definition.full, ref: c.definition.ref, sentenceId: c.definition.sentenceId };
+    // "Matthias Schleiden" is a name and keeps its capitals; "Osmosis" reads as "osmosis".
+    const person = /^\p{Lu}\S*(?:\s+\p{Lu}\S*)+$/u.test(c.label);
+    const name = person || /^\p{Lu}{2,}/u.test(c.label) ? c.label : c.label.charAt(0).toLowerCase() + c.label.slice(1);
+    if (person && (command === 'Define' || command === 'Compare')) return null;
+    const skip = new Set(def.sentenceId ? [def.sentenceId] : []);
+    const support = supportFor(corpus, c, skip);
+    const q = { id: '', conceptIds: [c.id], command, level: COMMAND_TERMS[command].level, programme, paper: 2, prompt: '', marks: 0, scheme: [] };
+    if (command === 'Define') {
+      q.prompt = 'Define ' + name + '.';
+      q.scheme = [def];
+    } else if (command === 'State') {
+      const s = support.find((x) => NUMBER_RE.test(x.text) || YEAR_RE.test(x.text));
+      if (!s) return null;
+      q.prompt = 'State one fact your notes give about ' + name + '.';
+      q.scheme = [schemePoint(s)];
+    } else if (command === 'Outline') {
+      if (!support.length) return null;
+      q.prompt = person ? 'Outline the work of ' + name + '.' : 'Outline ' + name + '.';
+      q.scheme = [def, schemePoint(support[0])];
+    } else if (command === 'Describe') {
+      if (support.length < 2) return null;
+      q.prompt = person ? 'Describe the work of ' + name + '.' : 'Describe ' + name + '.';
+      q.scheme = [def].concat(support.slice(0, 2).map(schemePoint));
+    } else if (command === 'Explain') {
+      const why = support.filter((s) => CAUSE_RE.test(s.text) || EXPLAIN_RE.test(s.text));
+      if (!why.length) return null;
+      q.prompt = 'Explain the importance of ' + name + '.';
+      q.scheme = [def].concat(why.slice(0, 2).map(schemePoint));
+    } else if (command === 'Compare') {
+      const other = pool.find((o) => o.id !== c.id && o.sectionId && o.sectionId === c.sectionId);
+      if (!other) return null;
+      if (/^\p{Lu}\S*(?:\s+\p{Lu}\S*)+$/u.test(other.label)) return null;
+      q.prompt = 'Compare ' + name + ' and ' + (/^\p{Lu}{2,}/u.test(other.label) ? other.label : other.label.charAt(0).toLowerCase() + other.label.slice(1)) + '.';
+      q.conceptIds.push(other.id);
+      q.scheme = [def, { text: other.definition.full, ref: other.definition.ref, sentenceId: other.definition.sentenceId }];
+    }
+    if (!q.scheme.length || q.scheme.some((p) => !p.text)) return null;
+    q.marks = q.scheme.length;
+    return q;
+  }
+  /**
+   * opts: { programme: 'MYP' | 'DP', paper: 1 | 2, level: 0 (any) | 1 | 2 | 3,
+   *         topic: a section id ('' = all), focus: 'weak' | 'all', count, seed }.
+   * Paper 1 is multiple choice (one mark, the passage as the markscheme);
+   * paper 2 is the command-term written questions. Weaker terms come first,
+   * and no term is asked twice.
+   */
+  function buildIbQuestions(corpus, concepts, mastery, opts) {
+    const o = opts || {};
+    const rnd = seeded(o.seed || uid('I'));
+    const count = clampInt(o.count, 1, 20, 6);
+    const programme = o.programme === 'MYP' ? 'MYP' : 'DP';
+    const want = clampInt(o.level, 0, 3, 0);
+    let pool = (concepts || []).slice();
+    if (o.topic) pool = pool.filter((c) => c.sectionId === o.topic);
+    if (o.focus === 'weak') {
+      const weak = pool.filter((c) => statusOf(mastery && mastery[c.id]) !== 'mastered');
+      if (weak.length) pool = weak;
+    }
+    const ordered = pool.map((c) => ({ c, k: Math.pow(rnd(), 1 / (1 + weakness(mastery && mastery[c.id]))) }))
+      .sort((a, b) => b.k - a.k).map((x) => x.c);
+    if (Number(o.paper) === 1) {
+      const out1 = [];
+      ordered.forEach((c, i) => {
+        if (out1.length >= count) return;
+        const mc = makeChoice(corpus, c, concepts, rnd);
+        if (!mc || !mc.source || !mc.source.text) return;
+        out1.push({
+          id: 'ib' + (i + 1), conceptIds: [c.id], command: 'Choose', level: 1, programme, paper: 1,
+          prompt: mc.stem, options: mc.options, answer: mc.answer, marks: 1,
+          scheme: [{ text: mc.source.text, ref: mc.source.ref, sentenceId: mc.source.sentenceId || '' }],
+        });
+      });
+      return out1;
+    }
+    const commands = Object.keys(COMMAND_TERMS).filter((k) => k !== 'Choose' && (!want || COMMAND_TERMS[k].level === want));
+    const out = [];
+    const used = new Set();
+    ordered.forEach((c, i) => {
+      if (out.length >= count || used.has(c.id)) return;
+      // Spread the command terms: each term starts from the next one round.
+      const start = out.length % commands.length;
+      const tries = commands.slice(start).concat(commands.slice(0, start));
+      for (const command of tries) {
+        const q = ibFor(corpus, c, concepts, command, programme);
+        if (!q || q.conceptIds.some((id) => used.has(id) && id !== c.id)) continue;
+        q.id = 'ib' + (i + 1);
+        q.conceptIds.forEach((id) => used.add(id));
+        out.push(q);
+        return;
+      }
+    });
+    return out.sort((a, b) => a.level - b.level);
+  }
+  /** The markscheme points an answer already seems to cover: most of each point's content words. */
+  function ibSuggest(q, given) {
+    const keyStems = (text) => words(text).filter(isContent).map(stem);
+    const have = new Set(keyStems(given || ''));
+    return (q.scheme || []).map((p) => {
+      const need = Array.from(new Set(keyStems(p.text)));
+      if (!need.length || !have.size) return false;
+      return need.filter((w) => have.has(w)).length / need.length >= 0.5;
+    });
+  }
+  /** Marks awarded to a verdict for mastery: full marks right, half or more partial. */
+  function ibVerdict(awarded, marks) {
+    if (!marks) return 'skipped';
+    if (awarded >= marks) return 'correct';
+    if (awarded * 2 >= marks) return 'partial';
+    return 'incorrect';
+  }
+  /**
+   * The terms that most need work, weakest first: only ones the student has
+   * already been asked about, so a fresh set shows nothing rather than guesses.
+   */
+  function weakTopics(concepts, mastery, max) {
+    return (concepts || []).map((c) => ({ c, m: mastery && mastery[c.id] }))
+      .filter((x) => x.m && x.m.seen && statusOf(x.m) !== 'mastered')
+      .sort((a, b) => weakness(b.m) - weakness(a.m))
+      .slice(0, max || 5)
+      .map((x) => ({ id: x.c.id, label: x.c.label, status: statusOf(x.m), right: x.m.right, wrong: x.m.wrong }));
+  }
+
+  /* ── Mock exams, predicted grades, streaks, topic pages ─────────────── */
+
+  /*
+   * A timed mock paper: a Paper 1 section (multiple choice) and a Paper 2
+   * section (command-term written answers), all from the student's notes.
+   * The time follows the IB's rough pace of about a minute and a half a mark.
+   * Returns { questions, marks, minutes } (questions have ids m1…, m2…).
+   */
+  function buildMockExam(corpus, concepts, mastery, opts) {
+    const o = opts || {};
+    const seed = o.seed || uid('M');
+    const size = o.size === 'short' ? [4, 3] : o.size === 'long' ? [10, 8] : [6, 5];
+    const base0 = { programme: o.programme, topic: o.topic || '', focus: o.focus || 'all' };
+    const p1 = buildIbQuestions(corpus, concepts, mastery, Object.assign({}, base0, { paper: 1, count: size[0], seed: seed + '1' }));
+    const p2 = buildIbQuestions(corpus, concepts, mastery, Object.assign({}, base0, { paper: 2, count: size[1], seed: seed + '2' }));
+    const questions = p1.map((q, i) => Object.assign(q, { id: 'm1-' + (i + 1) }))
+      .concat(p2.map((q, i) => Object.assign(q, { id: 'm2-' + (i + 1) })));
+    const marks = questions.reduce((n, q) => n + q.marks, 0);
+    return { questions, marks, minutes: marks ? Math.max(5, Math.ceil(marks * 1.5)) : 0 };
+  }
+  /**
+   * What a marked mock saves in set.exams. awarded: { [qid]: marks given }.
+   * opts: { programme, minutes, seconds, now }.
+   */
+  function examRecord(questions, awarded, opts) {
+    const o = opts || {};
+    const part = (paper) => {
+      const qs = (questions || []).filter((q) => q.paper === paper);
+      return { got: qs.reduce((n, q) => n + Math.min(q.marks, clampInt(awarded && awarded[q.id], 0, q.marks, 0)), 0), total: qs.reduce((n, q) => n + q.marks, 0) };
+    };
+    const p1 = part(1);
+    const p2 = part(2);
+    const got = p1.got + p2.got;
+    const total = p1.total + p2.total;
+    return {
+      id: uid('exam-'),
+      at: o.now || new Date().toISOString(),
+      programme: o.programme === 'MYP' ? 'MYP' : 'DP',
+      minutes: clampInt(o.minutes, 0, 600, 0),
+      seconds: clampInt(o.seconds, 0, 1e6, 0),
+      got, total, pct: total ? Math.round(got / total * 100) : 0, p1, p2,
+    };
+  }
+  /*
+   * Rough percentage-to-grade lines. Real IB boundaries change by subject and
+   * session, so this is only a guide, and the screen says so.
+   */
+  const GRADE_LINES = [[80, 7], [68, 6], [56, 5], [45, 4], [34, 3], [20, 2]];
+  function gradeFor(pct) {
+    for (const [line, grade] of GRADE_LINES) if (pct >= line) return grade;
+    return 1;
+  }
+  /**
+   * A predicted IB grade (1–7) for a set, from its recent mock exams (they
+   * count most), its practice tests and how many terms are mastered. Recent
+   * results count more than old ones. null until there is something to go on.
+   * Returns { grade, pct, basis: { exams, tests }, confidence: 'low'|'medium'|'high' }.
+   */
+  function predictGrade(set) {
+    const s = set || {};
+    const recent = (list) => (Array.isArray(list) ? list : []).slice(-5);
+    const exams = recent(s.exams).filter((e) => e.total > 0);
+    const tests = recent(s.tests).filter((t) => t.total > 0);
+    const terms = (s.guide && s.guide.terms) || [];
+    const seen = terms.filter((t) => s.mastery && s.mastery[t.id] && s.mastery[t.id].seen).length;
+    let sum = 0;
+    let weight = 0;
+    const add = (list, w) => list.forEach((x, i) => { const k = w * (1 + i / list.length); sum += x.pct * k; weight += k; });
+    add(exams, 3);
+    add(tests, 1);
+    if (terms.length && seen >= Math.min(5, terms.length)) {
+      const k = 0.5 + (exams.length || tests.length ? 0 : 1);
+      sum += masterySummary(terms, s.mastery).percent * k;
+      weight += k;
+    }
+    if (!weight) return null;
+    const pct = Math.round(sum / weight);
+    const confidence = exams.length >= 2 ? 'high' : exams.length || tests.length >= 3 ? 'medium' : 'low';
+    return { grade: gradeFor(pct), pct, basis: { exams: exams.length, tests: tests.length }, confidence };
+  }
+  /** Note one study action on day ('YYYY-MM-DD', default today) in set.activity. */
+  function logActivity(set, day) {
+    const d = isYmd(day) ? day : ymd();
+    if (!plainObject(set.activity)) set.activity = {};
+    set.activity[d] = Math.min(1e6, (Number(set.activity[d]) || 0) + 1);
+    const days = Object.keys(set.activity).sort();
+    days.slice(0, Math.max(0, days.length - 400)).forEach((k) => { delete set.activity[k]; });
+    return set.activity;
+  }
+  /**
+   * The study streak across any number of activity maps: days in a row
+   * ending today (or yesterday, so it is not lost before today's study).
+   * Returns { current, best, today (actions today), days (days studied) }.
+   */
+  function studyStreak(maps, today) {
+    const day = isYmd(today) ? today : ymd();
+    const all = new Map();
+    (maps || []).forEach((m) => {
+      if (!plainObject(m)) return;
+      Object.keys(m).forEach((k) => { if (isYmd(k) && Number(m[k]) > 0) all.set(k, (all.get(k) || 0) + Number(m[k])); });
+    });
+    const days = Array.from(all.keys()).sort();
+    let best = 0;
+    let run = 0;
+    days.forEach((d, i) => {
+      run = i && daysBetween(days[i - 1], d) === 1 ? run + 1 : 1;
+      best = Math.max(best, run);
+    });
+    let current = 0;
+    let d = all.has(day) ? day : addDays(day, -1);
+    while (all.has(d)) { current++; d = addDays(d, -1); }
+    return { current, best, today: all.get(day) || 0, days: days.length };
+  }
+  /**
+   * One topic's notes page: its heading, summary, the key terms and facts
+   * from that part of the notes, and how well the terms are known.
+   * Returns [{ id, title, level, ref, summary, terms, facts, mastery }].
+   */
+  function topicPages(corpus, guide, concepts, mastery) {
+    if (!guide) return [];
+    const topics = topicsFor(corpus, concepts);
+    const termById = new Map((guide.terms || []).map((t) => [t.id, t]));
+    const outlineBy = new Map((guide.outline || []).map((o) => [o.sectionId, o]));
+    const factsBy = new Map();
+    (guide.facts || []).forEach((f) => {
+      const sent = f.sentenceId ? corpus.byId[f.sentenceId] : null;
+      const key = sent ? sent.sectionId : '';
+      if (!factsBy.has(key)) factsBy.set(key, []);
+      factsBy.get(key).push(f);
+    });
+    return topics.map((t) => {
+      const o = outlineBy.get(t.id);
+      return {
+        id: t.id || 'own',
+        title: t.title,
+        level: t.level,
+        ref: t.ref,
+        summary: o ? o.summary : [],
+        terms: t.conceptIds.map((id) => termById.get(id)).filter(Boolean),
+        facts: t.id ? (factsBy.get(t.id) || []) : [],
+        mastery: masterySummary(t.conceptIds, mastery),
+      };
+    });
+  }
+
   /* ── Ask your notes (BM25) ──────────────────────────────────────────── */
 
   function buildSearchIndex(corpus) {
@@ -2122,6 +2421,45 @@
     return { empty: false, covered, words: q.map((x) => x.word), stems: q.map((x) => x.stem), missing, results, related, terms };
   }
   /** A text split into plain and matched pieces, for highlighting (the UI escapes each piece). */
+  /**
+   * A short answer made only of the notes' own sentences: from each of the
+   * best passages (up to max), the sentence that uses most of the question's
+   * words. Each part keeps its passage number (1-based) for its citation.
+   */
+  function answerFromNotes(result, max) {
+    if (!result || !result.covered) return [];
+    const seen = new Set();
+    return result.results.slice(0, max || 3).map((x, i) => {
+      const hits = new Set(x.matched);
+      let best = null;
+      let bestN = -1;
+      x.sentences.forEach((p) => {
+        const n = words(p.text).map(stem).filter((st) => hits.has(st)).length;
+        if (n > bestN || (n === bestN && best && p.text.length > best.text.length)) { best = p; bestN = n; }
+      });
+      if (!best || seen.has(norm(best.text))) return null;
+      seen.add(norm(best.text));
+      return { text: best.text, ref: best.ref, n: i + 1 };
+    }).filter(Boolean);
+  }
+  /**
+   * An answer written by Flux AI, kept only where it cites the passages it
+   * was given: "[2]" markers outside 1..count are dropped, and a sentence with
+   * no marker left is dropped too. Returns [{ text, cites: [n] }].
+   */
+  function groundedParts(text, count) {
+    const out = [];
+    String(text || '').replace(/\s+/g, ' ').split(/(?<=[.!?](?:\s*\[\d+\])*)\s+(?=\S)/).forEach((sentence) => {
+      const cites = [];
+      const clean = sentence.replace(/\s*\[(\d+)\]/g, (m, d) => {
+        const n = Number(d);
+        if (n >= 1 && n <= count && !cites.includes(n)) cites.push(n);
+        return '';
+      }).trim();
+      if (clean && cites.length) out.push({ text: clean, cites });
+    });
+    return out;
+  }
   function highlightSegments(text, stems) {
     const s = String(text || '');
     const want = new Set(stems || []);
@@ -2135,6 +2473,48 @@
     });
     if (at < s.length) out.push({ text: s.slice(at), hit: false });
     return out;
+  }
+
+  /* ── Mind map ───────────────────────────────────────────────────────── */
+
+  /**
+   * The study guide as a tree: the outline's sections nested by heading
+   * level, each carrying the key terms its notes define. A term goes under
+   * the section of the sentence it was taken from, else the first section
+   * that mentions it, else in `loose`. Nothing new is written: every label is
+   * the guide's own. mastery (optional) adds each term's status.
+   */
+  function buildMindMap(guide, corpus, mastery) {
+    const g = guide || {};
+    const nodes = [];
+    const bySection = new Map();
+    const stack = [];
+    const branches = [];
+    (g.outline || []).forEach((o) => {
+      const node = { id: o.id, sectionId: o.sectionId, title: o.title, level: o.level, children: [], terms: [] };
+      nodes.push(node);
+      if (!bySection.has(o.sectionId)) bySection.set(o.sectionId, node);
+      while (stack.length && stack[stack.length - 1].level >= node.level) stack.pop();
+      if (stack.length) stack[stack.length - 1].children.push(node);
+      else branches.push(node);
+      stack.push(node);
+    });
+    const loose = [];
+    const c = corpus || { byId: {}, stemIndex: new Map(), sentences: [] };
+    (g.terms || []).forEach((t) => {
+      if (!t || !t.term) return;
+      const leaf = { id: t.id, term: t.term, status: statusOf(mastery && mastery[t.id]) };
+      const sent = t.sentenceId ? c.byId[t.sentenceId] : null;
+      let home = sent ? bySection.get(sent.sectionId) : null;
+      if (!home) {
+        const stems = termStems(t.term);
+        const hit = stems.length ? mentionsOf(c, { stems, aliases: t.aliases || [] }).find((x) => bySection.has(x.sectionId)) : null;
+        if (hit) home = bySection.get(hit.sectionId);
+      }
+      (home ? home.terms : loose).push(leaf);
+    });
+    const count = (list) => list.reduce((n, x) => n + 1 + x.terms.length + count(x.children), 0);
+    return { branches, loose, size: count(branches) + loose.length };
   }
 
   /* ── Study plan ─────────────────────────────────────────────────────── */
@@ -2230,6 +2610,8 @@
       id: uid('set-'),
       title: str(o.title, LIMITS.title),
       subject: str(o.subject, LIMITS.subject),
+      // An IB syllabus unit id (flux-ib-syllabus.js), e.g. 'biology:A1.1'; '' when not filed.
+      unit: str(o.unit, LIMITS.unit),
       examDate: isYmd(o.examDate) ? o.examDate : '',
       link: safeUrl(o.link),
       createdAt: now,
@@ -2241,6 +2623,8 @@
       mastery: {},
       learn: null,
       tests: [],
+      exams: [],
+      activity: {},
       cards: {},
       flashDeckId: '',
       plan: null,
@@ -2450,6 +2834,25 @@
       })),
     };
   }
+  function normExam(e) {
+    if (!plainObject(e)) return null;
+    const part = (p) => {
+      const total = clampInt(p && p.total, 0, 1000, 0);
+      return { got: clampInt(p && p.got, 0, total, 0), total };
+    };
+    const p1 = part(e.p1);
+    const p2 = part(e.p2);
+    const total = p1.total + p2.total;
+    const got = p1.got + p2.got;
+    return {
+      id: safeKey(e.id) ? e.id : uid('exam-'),
+      at: isoOr(e.at, new Date().toISOString()),
+      programme: e.programme === 'MYP' ? 'MYP' : 'DP',
+      minutes: clampInt(e.minutes, 0, 600, 0),
+      seconds: clampInt(e.seconds, 0, 1e6, 0),
+      got, total, pct: total ? Math.round(got / total * 100) : 0, p1, p2,
+    };
+  }
   function normCardState(s) {
     if (!plainObject(s) || !['learning', 'relearning', 'review'].includes(s.state)) return null;
     const out = { state: s.state };
@@ -2489,6 +2892,7 @@
     out.id = safeKey(raw.id) ? raw.id : out.id;
     out.title = str(raw.title, LIMITS.title);
     out.subject = str(raw.subject, LIMITS.subject);
+    out.unit = str(raw.unit, LIMITS.unit);
     out.examDate = isYmd(raw.examDate) ? raw.examDate : '';
     out.link = safeUrl(raw.link || raw.url);
     out.createdAt = isoOr(raw.createdAt, now);
@@ -2512,6 +2916,9 @@
     out.mastery = normMap(raw.mastery, normMastery);
     out.learn = normLearn(raw.learn);
     out.tests = (Array.isArray(raw.tests) ? raw.tests : []).slice(-LIMITS.tests).map(normTest).filter(Boolean);
+    out.exams = (Array.isArray(raw.exams) ? raw.exams : []).slice(-LIMITS.tests).map(normExam).filter(Boolean);
+    out.activity = normMap(raw.activity, (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Math.min(1e6, Math.round(Number(v))) : null), 400);
+    Object.keys(out.activity).forEach((k) => { if (!isYmd(k)) delete out.activity[k]; });
     out.cards = normMap(raw.cards, normCardState);
     out.flashDeckId = typeof raw.flashDeckId === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(raw.flashDeckId) ? raw.flashDeckId : '';
     out.plan = normPlan(raw.plan);
@@ -2565,6 +2972,7 @@
       id: s.id || '',
       title: s.title || '',
       subject: s.subject || '',
+      unit: s.unit || '',
       examDate: s.examDate || '',
       daysLeft: isYmd(s.examDate) ? daysBetween(day, s.examDate) : null,
       createdAt: s.createdAt || '',
@@ -2580,6 +2988,10 @@
       fresh: m.fresh,
       percent: m.percent,
       lastTestPct: lastTest ? lastTest.pct : null,
+      predicted: predictGrade(s),
+      exams: Array.isArray(s.exams) ? s.exams.length : 0,
+      cardsDue: s.guide ? cardCounts(s).due : 0,
+      activity: plainObject(s.activity) ? Object.assign({}, s.activity) : {},
       sample: (s.sources || []).some((src) => src && src.kind === 'Sample'),
     };
   }
@@ -2882,7 +3294,7 @@
     uid, hashText, seeded, shuffle, safeUrl, cap, ymd, isYmd, addDays, daysBetween,
     tokenize, words, stem, norm, lev, normalizeText, pdfLinesToText, pdfItemsToText, splitSentences,
     buildCorpus, formatRef, measure, mentionsOf,
-    findDefinition, extractTerms, extractFacts, buildOutline, buildGuide, mergeGuide, sourcesHash,
+    findDefinition, extractTerms, extractFacts, buildOutline, buildGuide, mergeGuide, sourcesHash, buildMindMap,
     addTerm, addFact, editItem, removeItem, restoreItem,
     conceptsFromGuide, topicsFor, explanationFor, maskTerm,
     makeCloze, makeWritten, makeChoice, makeDefChoice, makeTrueFalse, makeMatch, questionFor, typesForLevel,
@@ -2891,7 +3303,9 @@
     startLearn, answerCheck, finishCheck, nextStep, currentStep, answerStep, dontKnow, skipStep, repeatStep, backStep, atLatest, learnSummary,
     simplerFor, examplesFor,
     buildPracticeTest, gradePracticeTest, practiceRecord, questionText,
-    buildSearchIndex, searchNotes, highlightSegments,
+    COMMAND_TERMS, buildIbQuestions, ibSuggest, ibVerdict, weakTopics,
+    buildMockExam, examRecord, gradeFor, predictGrade, logActivity, studyStreak, topicPages,
+    buildSearchIndex, searchNotes, highlightSegments, answerFromNotes, groundedParts,
     buildStudyPlan,
     newSet, newSource, normalizeSet, cloneSet, guideStale, hasNotes, summarizeSet, wordCount,
     cardList, cardQueue, cardCounts, flashDeckFrom,

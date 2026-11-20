@@ -23,7 +23,7 @@ test.describe('Study tools — DP expansion', () => {
       ),
     }));
     expect(hubRendered, 'native study hub (#fshRoot) did not render').toBe(true);
-    expect(groups).toEqual(['science', 'maths-tech', 'humanities', 'languages-arts', 'arts']);
+    expect(groups).toEqual(['science', 'maths-tech', 'humanities', 'languages-arts', 'general', 'arts']);
     // Opens on Science, so the rail shows Science and nothing else — including
     // Lab graphs, the Measurements grapher's own subject.
     expect(subjects).toEqual(['chemistry', 'physics', 'biology', 'labgraph']);
@@ -31,7 +31,7 @@ test.describe('Study tools — DP expansion', () => {
     // Every subject is reachable through exactly one umbrella, and the two
     // folded-away ids are gone rather than left orphaned in the rail.
     const all: string[] = [];
-    for (const g of ['science', 'maths-tech', 'humanities', 'languages-arts', 'arts']) {
+    for (const g of ['science', 'maths-tech', 'humanities', 'languages-arts', 'general', 'arts']) {
       const inGroup = await page.evaluate((gid) => {
         const btn = document.querySelector(`#fshGroups .fsh-group[data-group="${gid}"]`) as HTMLElement;
         btn.click();
@@ -42,7 +42,7 @@ test.describe('Study tools — DP expansion', () => {
     }
     expect(all.slice().sort()).toEqual([
       'art', 'biology', 'chemistry', 'cs', 'econ', 'english', 'french',
-      'german', 'glopo', 'history', 'labgraph', 'math', 'music', 'physics',
+      'german', 'glopo', 'history', 'labgraph', 'math', 'music', 'organise', 'physics',
       'psychology', 'spanish',
     ]);
     expect(all).not.toContain('astronomy');

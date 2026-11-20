@@ -1,0 +1,43 @@
+name: Security watch
+
+# Every 15 minutes, ask the security-watch edge function to scan for failed
+# sign-in bursts, new power grants, tables without access rules and unusual AI
+# use. The function sends any alert to Discord and email itself; this job only
+# triggers it. The call also keeps the free Supabase project from pausing.
+#
+# This repo is public, so these logs are too: the job prints a status code and
+# nothing from the scan.
+#
+# Needs one Actions secret: MONITOR_SECRET (same value as the function secret).
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: security-watch
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run the scan
+        env:
+          MONITOR_SECRET: ${{ secrets.MONITOR_SECRET }}
+        run: |
+          if [ -z "$MONITOR_SECRET" ]; then
+            echo "::error::MONITOR_SECRET is not set, so nothing is being watched."
+            exit 1
+          fi
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 --retry 2 --retry-all-errors \
+            -X POST -H "x-monitor-secret: $MONITOR_SECRET" -H 'content-type: application/json' \
+            -d '{"kind":"scan"}' \
+            https://lfigdijuqmbensebnevo.supabase.co/functions/v1/security-watch)
+          echo "security-watch answered $code"
+          # A failed run makes GitHub email the repo owner, which is the
+          # fallback alarm for when the watch itself is broken.
+          [ "$code" = "200" ]

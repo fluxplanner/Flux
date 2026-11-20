@@ -424,7 +424,13 @@ function initPanelScrollPathDraw(mainEl, panelId) {
     } else if (mainEl.scrollHeight > mainEl.clientHeight + 48) {
       scrollCtl = onScroll({ target: mainEl, container: mainEl, sync: true });
     }
-    const useLoop = scrollCtl === null;
+    const useLoop = false;
+    if (scrollCtl === null) {
+      // Nothing to scroll, so nothing to tie the drawing to. This used to
+      // fall back to an endless loop instead; see fluxAnimeNavAfter.
+      teardownScrollPathArt();
+      return;
+    }
     track(
       scrollArtRevertibles,
       animate(drawables, {
@@ -492,11 +498,12 @@ function teardownFluxAnimeApp() {
 }
 
 function fluxAnimeNavAfter(panelId) {
-  animateActivePanelCards();
-  try {
-    const main = document.getElementById('flux-main');
-    if (main) initPanelScrollPathDraw(main, panelId);
-  } catch (_) {}
+  // Tab switches are instant: no card cascade, and the decorative lines are
+  // only cleared here, never redrawn. Redrawing them started a tween on four
+  // full-width SVG paths that, on a panel too short to scroll, looped for
+  // ever, repainting the whole background 60 times a second at rest.
+  void panelId;
+  try { teardownScrollPathArt(); } catch (_) {}
 }
 
 /** Particle burst — uses utils.random from anime */
@@ -557,7 +564,7 @@ function taskComplete(taskEl, checkboxEl, onDone) {
     } catch (_) {}
   };
 
-  particleBurst(chk || taskEl);
+  // No particleBurst here: the tick alone marks a finished task (see app.js toggleTask).
   try { window.FluxMotionMore?.tickAndStrike(chk, nameEl); } catch (_) {}
 
   try {
@@ -639,7 +646,25 @@ function panelFlash(inEl) {
   });
 }
 
+/* A close animation finishes ~200ms after it starts. Reopening the same
+   modal inside that window used to let the stale onComplete hide it again
+   (and leave it at opacity 0), so the button looked dead. Opening now
+   cancels any close still in flight. */
+const pendingCloses = new WeakMap();
+function modalCancelClose(overlayEl, cardEl) {
+  const p = overlayEl && pendingCloses.get(overlayEl);
+  if (!p) return;
+  pendingCloses.delete(overlayEl);
+  try { p.tl.cancel?.(); } catch (_) {}
+  [overlayEl, cardEl || p.cardEl].forEach((el) => {
+    if (!el) return;
+    el.style.opacity = '';
+    el.style.transform = '';
+  });
+}
+
 function modalOpen(overlayEl, cardEl) {
+  modalCancelClose(overlayEl, cardEl);
   if (!cardEl) return;
   try {
     if (!prefersReducedMotion() && !perfSnappy() && typeof window.FluxAnim?.modalOpenEnhanced === 'function') {
@@ -662,6 +687,7 @@ function modalOpen(overlayEl, cardEl) {
 }
 
 function modalClose(overlayEl, cardEl, onComplete) {
+  modalCancelClose(overlayEl, cardEl);
   if (!cardEl && !overlayEl) {
     onComplete?.();
     return;
@@ -671,7 +697,13 @@ function modalClose(overlayEl, cardEl, onComplete) {
     return;
   }
   try {
-    const tl = createTimeline({ onComplete });
+    const done = () => {
+      if (overlayEl && pendingCloses.get(overlayEl)?.tl !== tl) return;
+      if (overlayEl) pendingCloses.delete(overlayEl);
+      onComplete?.();
+    };
+    const tl = createTimeline({ onComplete: done });
+    if (overlayEl) pendingCloses.set(overlayEl, { tl, cardEl });
     if (cardEl) {
       tl.add(cardEl, {
         opacity: [1, 0],
@@ -1364,6 +1396,7 @@ window.FluxAnim = {
   panelFlash,
   modalOpen,
   modalClose,
+  modalCancelClose,
   sheetOpen,
   sheetClose,
   cardsEnter,

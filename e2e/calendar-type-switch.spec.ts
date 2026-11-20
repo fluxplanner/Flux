@@ -1,0 +1,26 @@
+import { test, expect } from '@playwright/test';
+import { gotoScenario } from './helpers';
+test('switch types back and forth', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await gotoScenario(page, 'student-semester');
+  await page.evaluate(() => (window as any).nav('calendar'));
+  await page.waitForTimeout(800);
+  await page.locator('.cal-day[data-cal-date]').nth(14).click();
+  await page.locator('#calAddEventBtn').click();
+  await page.locator('#addEventTypeEc').click();
+  await page.locator('#addEventTypeTask').click();
+  await page.waitForTimeout(500);
+  await expect(page.locator('#taskCalTypeEvent')).toBeVisible();
+  await page.locator('#taskCalTypeEvent').click();
+  await page.waitForTimeout(500);
+  await expect(page.locator('#addEventModal')).toBeVisible();
+  await page.locator('#addEventTypeTask').click();
+  await page.waitForTimeout(100);
+  await page.locator('#taskCalTypeEvent').click();
+  await page.waitForTimeout(800);
+  await expect(page.locator('#addEventModal')).toBeVisible();
+  await page.locator('#addEventTypeTask').click();
+  await page.waitForTimeout(800);
+  await expect(page.locator('#dashAddTaskModal')).toBeVisible();
+  await expect(page.locator('#taskCalTypeEvent')).toBeVisible();
+});

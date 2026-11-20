@@ -96,6 +96,17 @@ test.describe('Boards', () => {
     expect(await page.evaluate(() => document.documentElement.getAttribute('data-flux-bg'))).toBeNull();
   });
 
+  test('a board and a texture clear each other', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await openLayout(page);
+    await page.evaluate(() => (window as any).fluxSetTexture('wood'));
+    await expect(page.locator('html')).toHaveAttribute('data-flux-texture', 'wood');
+    await page.locator('#fxBoardsCard .fx-bg-tile[data-board-id="grid"]').click();
+    expect(await page.evaluate(() => document.documentElement.getAttribute('data-flux-texture'))).toBeNull();
+    await page.evaluate(() => (window as any).fluxSetTexture('wood'));
+    expect(await page.evaluate(() => document.documentElement.getAttribute('data-flux-bg'))).toBeNull();
+  });
+
   test('a hand-edited value cannot inject into the selector', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
     await page.evaluate(() => { localStorage.setItem('flux_board', JSON.stringify({ id: '"] body{display:none', strength: 'x', blur: 999, dim: -3 })); (window as any).FluxBoards.apply(); });

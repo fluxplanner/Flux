@@ -223,3 +223,15 @@ test('a teacher\'s More sheet offers their own pages, not the student tabs', asy
   await expectSheetClosed(page);
   await expect(page.locator('#lessonHub.panel.active')).toBeVisible();
 });
+
+test('the More sheet names Flux Suite, the way to the other Flux apps on a phone', async ({ page }) => {
+  await gotoScenario(page, 'student-semester');
+  await expect(page.locator('.topbar-mob-hub .fxhub-btn')).toBeVisible();
+  await page.locator('#moreBtn').click();
+  await expectSheetOpen(page);
+  const item = page.locator('#moreSheet .more-sheet-item', { hasText: 'Flux Suite' });
+  await expect(item).toBeVisible();
+  await item.click();
+  // The dev server drops .html from the address.
+  await page.waitForURL(/\/suite(\.html)?$/, { waitUntil: 'commit' });
+});

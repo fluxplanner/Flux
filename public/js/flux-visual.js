@@ -331,9 +331,9 @@
       const star = document.createElement('div');
       star.className = 'flux-star';
       const size = Math.random() * 2 + 1;
-      const dur = Math.random() * 3 + 2;
-      const del = Math.random() * 4;
-      star.style.cssText = `position:absolute;width:${size}px;height:${size}px;border-radius:50%;background:rgba(255,255,255,${Math.random() * 0.4 + 0.1});left:${Math.random() * 100}%;top:${Math.random() * 100}%;pointer-events:none;animation:star-twinkle ${dur}s ease-in-out ${del}s infinite alternate`;
+      // Static dots: fading each one in kept the screen redrawing for up to
+      // nine seconds after a tab was first opened.
+      star.style.cssText = `position:absolute;width:${size}px;height:${size}px;border-radius:50%;background:rgba(255,255,255,${Math.random() * 0.4 + 0.1});left:${Math.random() * 100}%;top:${Math.random() * 100}%;pointer-events:none`;
       host.appendChild(star);
     }
   }
@@ -473,236 +473,10 @@
     document.querySelectorAll('.ai-title, .sidebar-logo').forEach((el) => el.classList.add('gradient-animate'));
   }
 
-  // ── Animated global mesh canvas ──────────────────────────────────
-  // Lives at z-index:0 behind the app shell. Pauses when the tab is hidden
-  // and respects prefers-reduced-motion (skip entirely in that case).
-  function initGlobalMesh() {
-    if (prefersReduced()) return;
-    try {
-      if (document.documentElement.getAttribute('data-flux-perf') === 'on') return;
-    } catch (_) {}
-    if (document.getElementById('fluxMeshCanvas')) return;
-
-    const canvas = document.createElement('canvas');
-    canvas.id = 'fluxMeshCanvas';
-    canvas.setAttribute('aria-hidden', 'true');
-    canvas.style.cssText =
-      'position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:1';
-    document.body.prepend(canvas);
-
-    const ctx = canvas.getContext('2d', { alpha: false });
-    /* Drawn at a quarter of the window's size and stretched by CSS: the
-       picture is nothing but soft gradients, so it looks the same, and each
-       frame fills a sixteenth of the pixels. At full size this canvas cost
-       about half of every frame in the planner, which made busy screens like
-       the periodic table lag on school laptops. */
-    const SCALE = 0.25;
-    let W = 0;
-    let H = 0;
-    function fit() {
-      W = window.innerWidth;
-      H = window.innerHeight;
-      canvas.width = Math.max(1, Math.ceil(W * SCALE));
-      canvas.height = Math.max(1, Math.ceil(H * SCALE));
-      ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
-    }
-    fit();
-    let t = 0;
-
-    function getAccent() {
-      const v = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-      return v || '#00bfff';
-    }
-
-    function hexToRgb(hex) {
-      let h = String(hex || '').trim();
-      if (h.startsWith('#')) h = h.slice(1);
-      if (h.length === 3) {
-        h = h.split('').map((c) => c + c).join('');
-      }
-      const r = parseInt(h.slice(0, 2), 16);
-      const g = parseInt(h.slice(2, 4), 16);
-      const b = parseInt(h.slice(4, 6), 16);
-      return [Number.isFinite(r) ? r : 0, Number.isFinite(g) ? g : 191, Number.isFinite(b) ? b : 255];
-    }
-
-    class MeshNode {
-      constructor(x, y, radius, color, speed, phase) {
-        this.baseX = x;
-        this.baseY = y;
-        this.x = x;
-        this.y = y;
-        this.radius = radius;
-        this.color = color;
-        this.speed = speed;
-        this.phase = phase;
-        this.amplitude = Math.random() * 200 + 100;
-      }
-      update(time) {
-        this.x = this.baseX + Math.sin(time * this.speed + this.phase) * this.amplitude;
-        this.y = this.baseY + Math.cos(time * this.speed * 0.7 + this.phase * 1.3) * this.amplitude * 0.6;
-      }
-      draw(c) {
-        const [r, g, b] = this.color;
-        const grad = c.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
-        grad.addColorStop(0, `rgba(${r},${g},${b},0.08)`);
-        grad.addColorStop(0.4, `rgba(${r},${g},${b},0.04)`);
-        grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
-        c.fillStyle = grad;
-        c.beginPath();
-        c.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        c.fill();
-      }
-    }
-
-    let nodes = [];
-    // Read once per theme change, not per frame: getComputedStyle on every
-    // frame forced a style pass over the whole planner each time.
-    let accentRgb = [0, 191, 255];
-
-    function createNodes() {
-      const accent = hexToRgb(getAccent());
-      accentRgb = accent;
-      const purple = [124, 92, 255];
-      nodes = [
-        new MeshNode(W * 0.2, H * 0.2, W * 0.5, accent, 0.0008, 0),
-        new MeshNode(W * 0.8, H * 0.8, W * 0.5, purple, 0.0007, 1.5),
-        new MeshNode(W * 0.5, H * 0.5, W * 0.4, accent, 0.0009, 3.0),
-        new MeshNode(W * 0.1, H * 0.7, W * 0.4, accent, 0.0006, 0.8),
-        new MeshNode(W * 0.9, H * 0.3, W * 0.45, purple, 0.0008, 2.2),
-        new MeshNode(W * 0.6, H * 0.1, W * 0.35, purple, 0.0010, 4.0),
-        new MeshNode(W * 0.3, H * 0.9, W * 0.35, accent, 0.0007, 1.0),
-      ];
-    }
-
-    // The canvas is the app's backdrop (panels are transparent) — its fill
-    // must track the active theme or light mode sits on a black void.
-    let bgFill = 'rgb(7, 8, 15)';
-    let bgTick = 0;
-    function refreshBgFill() {
-      const v = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
-      if (v) bgFill = v;
-    }
-    function draw() {
-      /* A window with no height (a collapsed pane, some embedded views) made
-         "% (H * 1.5)" a division by zero, and createLinearGradient threw on
-         every frame. Nothing to paint anyway. */
-      if (!(W > 0 && H > 0)) return;
-      if (bgTick++ % 30 === 0) refreshBgFill();
-      ctx.fillStyle = bgFill;
-      ctx.fillRect(0, 0, W, H);
-      for (let i = 0; i < nodes.length; i++) {
-        nodes[i].update(t);
-        nodes[i].draw(ctx);
-      }
-      // Subtle horizontal noise drift
-      ctx.save();
-      ctx.globalAlpha = 0.015;
-      const [r, g, b] = accentRgb;
-      for (let i = 0; i < 5; i++) {
-        const y = ((H * i * 0.25) + t * 20) % (H * 1.5) - H * 0.25;
-        const grad = ctx.createLinearGradient(0, y, W, y + 100);
-        grad.addColorStop(0, `rgba(${r},${g},${b},0)`);
-        grad.addColorStop(0.5, `rgba(${r},${g},${b},0.5)`);
-        grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, y, W, 1);
-      }
-      ctx.restore();
-      t += 0.8;
-    }
-
-    /* 12 frames a second: the shapes drift a couple of pixels a second, so
-       more frames bought nothing but work. A canvas hidden by low-end or
-       reduced-motion mode is not drawn at all. While Study tools is open the
-       backdrop is held: its last frame stays up and nothing is redrawn (see
-       syncToolsStill). */
-    let raf = 0;
-    let running = true;
-    let held = false;
-    let lastDraw = 0;
-    let shown = true;
-    let showTick = 0;
-    const frameMs = 1000 / 12;
-    function loop(now) {
-      if (!running || held) {
-        raf = 0;
-        return;
-      }
-      if (!lastDraw || now - lastDraw >= frameMs) {
-        if (showTick++ % 24 === 0) shown = canvas.isConnected && getComputedStyle(canvas).display !== 'none';
-        if (shown) draw();
-        lastDraw = now;
-      }
-      raf = requestAnimationFrame(loop);
-    }
-
-    createNodes();
-    loop();
-
-    function onResize() {
-      fit();
-      createNodes();
-      // Resizing clears the canvas to black; a held backdrop draws once more.
-      if (held) draw();
-    }
-    window.addEventListener('resize', onResize);
-
-    // Pause when the tab is hidden so we don't burn CPU
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        running = false;
-        cancelAnimationFrame(raf);
-      } else if (!running) {
-        running = true;
-        loop();
-      }
-    });
-
-    /* Theme and accent changes have to land on the canvas at once.
-       This canvas is the app's backdrop — the panels above it are transparent —
-       so whatever it last painted *is* the page background. Two faults kept the
-       old theme on screen:
-
-         · the --bg poll in draw() runs once every 30 frames, so a theme switch
-           kept the previous background for ~1.25s, and indefinitely while the
-           loop is paused (hidden tab, low-end mode). That is what made light
-           mode look broken rather than merely late.
-         · node colours were rebuilt only on 'flux-accent-change', an event
-           nothing in the app dispatched — so the mesh kept whatever accent it
-           started with for the entire session.
-
-       Repaint at once rather than waiting for the next tick, and force a draw
-       so a paused loop still updates. */
-    function syncTheme() {
-      refreshBgFill();
-      createNodes();
-      draw();
-    }
-    document.addEventListener('flux-accent-change', syncTheme);
-    document.addEventListener('flux-theme-change', syncTheme);
-
-    window._fluxMeshStop = () => {
-      running = false;
-      cancelAnimationFrame(raf);
-      canvas.remove();
-      window.removeEventListener('resize', onResize);
-    };
-    /** Hold the backdrop on its current frame (true), or let it drift again. */
-    window._fluxMeshHold = (on) => {
-      on = !!on;
-      if (on === held) return;
-      held = on;
-      cancelAnimationFrame(raf);
-      raf = 0;
-      if (!held && running && !document.hidden) raf = requestAnimationFrame(loop);
-    };
-  }
-
-  /* Study tools holds the planner's background still: the drifting backdrop
-     canvas, the aurora, the ambient wash, the sidebar logo's shimmer and the
-     quick-add glow (flux-visual.css, html.flux-tools-still). Each of them made
-     the browser redraw and recomposite the whole screen on every frame, behind
+  /* Study tools holds the planner's background still: the aurora, the
+     ambient wash, the sidebar logo's shimmer and the quick-add glow
+     (flux-visual.css, html.flux-tools-still). Each of them made the browser
+     redraw and recomposite the whole screen on every frame, behind
      a periodic table of 118 cells, a graph or a calculator that need those
      frames — the periodic table lagged badly on school laptops. Everything
      carries on where it stopped when you leave. */
@@ -710,11 +484,9 @@
   function syncToolsStill(panelId) {
     const still = FLUX_STILL_PANELS.has(panelId);
     document.documentElement.classList.toggle('flux-tools-still', still);
-    if (typeof window._fluxMeshHold === 'function') window._fluxMeshHold(still);
   }
 
   function initFluxVisual() {
-    initGlobalMesh();
     decorateHeadings();
     initCursorSpotlight();
     initRippleEffect();
@@ -743,14 +515,6 @@
         const panelId = e.detail?.panel;
         if (panelId) syncToolsStill(panelId);
         if (panelId) setTimeout(() => initPanelStarField(panelId), 120);
-        if (panelId === 'dashboard' && typeof window.renderStats === 'function') {
-          setTimeout(() => {
-            document.querySelectorAll('#dashboard .stat .num, #dashMobStats .dash-mob-stat-num').forEach((el) => {
-              const t = el.textContent;
-              countUp(el, parseInt(t, 10) || 0, 700);
-            });
-          }, 80);
-        }
       },
       false
     );
@@ -787,7 +551,6 @@
     animateNavIndicator,
     updateNavSquiggle,
     initFluxVisual,
-    initGlobalMesh,
   };
 
   if (document.readyState === 'complete') {

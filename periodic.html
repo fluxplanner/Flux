@@ -11,6 +11,10 @@
   inline boot scripts on every standalone page.
 -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com; frame-src 'self'; form-action 'self'">
+<script src="public/js/flux-look.js?v=81a3e0d1"></script>
+<script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
+<script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="periodic"></script>
+<script defer src="public/js/flux-site-notices.js?v=5e36c924"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flux Periodic Table</title>
 <meta name="description" content="A free interactive periodic table from Flux: every periodic trend, the table melting and boiling with temperature, electron configurations, line spectra and hydrogen's energy levels, mass spectra, and every atom in 3D. No account needed.">
@@ -31,21 +35,11 @@
   computer without an account. The same tool is Study tools ▸ Chemistry ▸
   Table inside the planner.
 -->
-<link rel="stylesheet" href="public/css/flux-ptable.css?v=68e3b6b4">
-<link rel="stylesheet" href="public/css/flux-hub.css?v=4e2aebfb">
-<link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=673aab02">
+<link rel="stylesheet" href="public/css/flux-ptable.css?v=aaad2451">
+<link rel="stylesheet" href="public/css/flux-hub.css?v=a473f365">
+<link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
 <link rel="stylesheet" href="public/css/flux-print-watermark.css?v=b7067319">
 <style>
-  :root {
-    --bg: #070b14;
-    --text: #eaf1ff;
-    --muted2: #9fb0cc;
-    --accent: #00c2ff;
-    --border: rgba(255,255,255,.07);
-    --border2: rgba(255,255,255,.14);
-    --card: rgba(18,25,42,.78);
-    --card2: rgba(28,36,58,.8);
-  }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   /* A solid colour behind everything, so no edge of the screen can show white. */
@@ -150,11 +144,12 @@
     }
   }
 </style>
-<script src="public/js/flux-theme-carry.js?v=41b239bd"></script>
-<script src="public/js/flux-purple-day.js?v=1966eb3d"></script>
+<script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
+<script src="public/js/flux-purple-day.js?v=b8cd878a"></script>
+<link rel="stylesheet" href="public/css/flux-look-flat.css?v=8156dbe3">
 <style>/* Off-screen until focused, so keyboard users can jump past the header. */.flux-skip{position:absolute;left:12px;top:-60px;z-index:10000;padding:10px 16px;border-radius:10px;background:#0b0f1a;color:#fff;font:600 14px/1.2 system-ui,sans-serif;text-decoration:none;box-shadow:0 0 0 2px #38bdf8}.flux-skip:focus{top:12px}</style>
 </head>
-<body class="flux-print-wm">
+<body>
 <a class="flux-skip" href="#ptHost">Skip to content</a>
   <header class="top">
     <img class="brand-mark" src="public/flux-planner-logo.png" alt="Flux" width="30" height="30">
@@ -177,6 +172,7 @@
       <button type="button" class="pmenu-go" id="ptPrintGo">Print</button>
     </div>
     </span>
+    <button type="button" class="ftx-btn" data-flux-tool="balance.html" data-flux-tool-title="Balance" title="Balance equations, molar mass and yield"><span aria-hidden="true">⚖</span><span class="ftx-lbl">Balance</span></button>
     <div data-flux-hub="periodic"></div>
   </header>
 
@@ -184,13 +180,17 @@
   <main id="ptHost" aria-label="Periodic table"></main>
 
   <!-- Plain script tags, not the app bundles: this page has to stand alone. -->
-  <script src="public/js/flux-hub.js?v=68b4d34f"></script>
+  <script src="public/data/products.js?v=9634bc03"></script>
+<script src="public/js/flux-hub.js?v=eb42b549"></script>
+<script src="public/js/flux-tool-embed.js?v=aa0e3f08"></script>
+<script src="public/js/flux-suite-timer.js?v=998cda1e"></script>
   <script src="public/js/flux-periodic.js?v=a33c798e"></script>
   <script src="public/js/flux-ptable-data.js?v=8af848a3"></script>
   <script src="public/js/flux-chem.js?v=07de6a14"></script>
-  <script src="public/js/flux-ptable.js?v=4d77c558"></script>
+  <script src="public/js/flux-ptable.js?v=a6326620"></script>
   <script src="public/js/flux-ptable-atom3d.js?v=6ebfd2ec"></script>
-  <script src="public/js/flux-ptable-explore.js?v=e77e1b21"></script>
+  <script src="public/js/flux-ptable-explore.js?v=09bf58ca"></script>
+  <script src="public/js/flux-ptable-history.js?v=34d06314"></script>
   <script>
     (function () {
       var host = document.getElementById('ptHost');

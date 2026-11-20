@@ -28,6 +28,29 @@
     const start = seqStart(w), min = Number.isFinite(w.nMin) ? w.nMin : start, step = seqStep(w);
     return start + Math.max(0, Math.ceil((min - start) / step)) * step;
   };
+  // Generate a bounded tick array instead of incrementing a floating-point
+  // coordinate in a loop. At large magnitudes, x += 0.1 may leave x unchanged
+  // and hang the browser even when the intended tick count is small.
+  function steppedValues(start, end, step, limit) {
+    if (!(Number.isFinite(start) && Number.isFinite(end) && Number.isFinite(step) && step > 0) || end < start) return [];
+    const rawCount = Math.floor((end - start) / step) + 1;
+    if (!Number.isSafeInteger(rawCount) || rawCount < 1 || rawCount > limit) return [];
+    const out = [];
+    for (let i = 0; i < rawCount; i++) {
+      const value = start + i * step;
+      if (!Number.isFinite(value)) break;
+      // Use an integer loop counter. Adding step to a large coordinate may
+      // round to the same value forever, even when the intended range is short.
+      if (!out.length || value !== out[out.length - 1]) out.push(value);
+    }
+    return out;
+  }
+  function tickValues(min, max, step, limit) {
+    if (!(Number.isFinite(min) && Number.isFinite(max) && Number.isFinite(step) && step > 0)) return [];
+    const first = Math.ceil(min / step) * step;
+    if (!Number.isFinite(first) || first > max) return [];
+    return steppedValues(first, max, step, limit);
+  }
 
   /* ── Functions to draw ──────────────────────────────────────────────── */
 
@@ -72,7 +95,7 @@
       if (last < first || last - first > 1000) return { kind: 'web', reference: null, series: [] };
       const series = fns.map((fn) => {
         const points = [];
-        for (let n = first; n <= last; n += stride) {
+        for (const n of steppedValues(first, last, stride, 1001)) {
           const current = num(fn.f(n - stride)), next = num(fn.f(n));
           if (!Number.isFinite(current) || !Number.isFinite(next)) { points.push(null); continue; }
           // The WEB graph is u(n) against u(n−1); TRACE draws the stair-step.
@@ -168,15 +191,17 @@
     if (!(w.Xmin < w.Xmax) || !(w.Ymin < w.Ymax)) return null;
     const F = frame(st, W, H);
 
+    const xTicks = tickValues(w.Xmin, w.Xmax, w.Xscl, 301);
+    const yTicks = tickValues(w.Ymin, w.Ymax, w.Yscl, 301);
     if (fmt.grid !== 'off' && w.Xscl > 0 && w.Yscl > 0 && (w.Xmax - w.Xmin) / w.Xscl < 200 && (w.Ymax - w.Ymin) / w.Yscl < 200) {
       g.fillStyle = '#b9c0cc';
       g.strokeStyle = '#dde2ea';
       g.lineWidth = 1;
-      for (let x = Math.ceil(w.Xmin / w.Xscl) * w.Xscl; x <= w.Xmax; x += w.Xscl) {
+      for (const x of xTicks) {
         if (fmt.grid === 'line') { g.beginPath(); g.moveTo(F.sx(x), 0); g.lineTo(F.sx(x), H); g.stroke(); continue; }
-        for (let y = Math.ceil(w.Ymin / w.Yscl) * w.Yscl; y <= w.Ymax; y += w.Yscl) g.fillRect(F.sx(x) - 0.8, F.sy(y) - 0.8, 1.6, 1.6);
+        for (const y of yTicks) g.fillRect(F.sx(x) - 0.8, F.sy(y) - 0.8, 1.6, 1.6);
       }
-      if (fmt.grid === 'line') for (let y = Math.ceil(w.Ymin / w.Yscl) * w.Yscl; y <= w.Ymax; y += w.Yscl) { g.beginPath(); g.moveTo(0, F.sy(y)); g.lineTo(W, F.sy(y)); g.stroke(); }
+      if (fmt.grid === 'line') for (const y of yTicks) { g.beginPath(); g.moveTo(0, F.sy(y)); g.lineTo(W, F.sy(y)); g.stroke(); }
     }
     if (fmt.axes) {
       g.strokeStyle = '#1b1d22';
@@ -185,10 +210,10 @@
       if (Y0 >= 0 && Y0 <= H) { g.beginPath(); g.moveTo(0, Y0 + 0.5); g.lineTo(W, Y0 + 0.5); g.stroke(); }
       if (X0 >= 0 && X0 <= W) { g.beginPath(); g.moveTo(X0 + 0.5, 0); g.lineTo(X0 + 0.5, H); g.stroke(); }
       if (w.Xscl > 0 && (w.Xmax - w.Xmin) / w.Xscl < 300 && Y0 >= 0 && Y0 <= H) {
-        for (let x = Math.ceil(w.Xmin / w.Xscl) * w.Xscl; x <= w.Xmax; x += w.Xscl) { g.beginPath(); g.moveTo(F.sx(x) + 0.5, Y0 - 3); g.lineTo(F.sx(x) + 0.5, Y0 + 3); g.stroke(); }
+        for (const x of xTicks) { g.beginPath(); g.moveTo(F.sx(x) + 0.5, Y0 - 3); g.lineTo(F.sx(x) + 0.5, Y0 + 3); g.stroke(); }
       }
       if (w.Yscl > 0 && (w.Ymax - w.Ymin) / w.Yscl < 300 && X0 >= 0 && X0 <= W) {
-        for (let y = Math.ceil(w.Ymin / w.Yscl) * w.Yscl; y <= w.Ymax; y += w.Yscl) { g.beginPath(); g.moveTo(X0 - 3, F.sy(y) + 0.5); g.lineTo(X0 + 3, F.sy(y) + 0.5); g.stroke(); }
+        for (const y of yTicks) { g.beginPath(); g.moveTo(X0 - 3, F.sy(y) + 0.5); g.lineTo(X0 + 3, F.sy(y) + 0.5); g.stroke(); }
       }
       if (fmt.label) {
         g.fillStyle = '#1b1d22';
@@ -281,14 +306,14 @@
     if (fn.seq) {
       const lo = seqFirst(w), hi = w.nMax, step = seqStep(w);
       if (!(step > 0) || (hi - lo) / step > 1000) return;
-      for (let n = lo; n <= hi + step * 1e-9; n += step) {
+      for (const n of steppedValues(lo, hi + step * 1e-9, step, 1001)) {
         const y = num(fn.f(Math.round(n)));
         pts.push(Number.isFinite(y) ? [F.sx(n), F.sy(Math.max(w.Ymin - span * 4, Math.min(w.Ymax + span * 4, y)))] : null);
       }
     } else if (fn.par || fn.pol) {
       const lo = fn.par ? w.Tmin : w['θmin'], hi = fn.par ? w.Tmax : w['θmax'], step = fn.par ? w.Tstep : w['θstep'];
       if (!(step > 0) || (hi - lo) / step > 20000) return;
-      for (let t = lo; t <= hi + step * 1e-9; t += step) {
+      for (const t of steppedValues(lo, hi + step * 1e-9, step, 20001)) {
         let x, y;
         if (fn.par) { x = num(fn.fx(t)); y = num(fn.fy(t)); } else {
           const r = num(fn.f(t));
@@ -1036,6 +1061,7 @@
     this.col = 1;
     this.start = c.st.tbl.TblStart;
     this.asked = [];
+    this.askedY = Object.create(null);
     this.ed = null;
     this.left0 = 1;
   }
@@ -1046,7 +1072,11 @@
     return Array.from({ length: this.c.rows(TROWS0) }, (_, i) => +(this.start + i * st.tbl['ΔTbl']).toPrecision(12));
   };
   TableApp.prototype.editor = function () {
-    if (this.col !== 0 || this.c.st.tbl.indpnt !== 'ask') return null;
+    const tbl = this.c.st.tbl, fns = this.fns();
+    const editX = this.col === 0 && tbl.indpnt === 'ask';
+    const editY = this.col > 0 && tbl.depend === 'ask' &&
+      (this.col <= fns.length || (fns.length === 0 && this.col === 1));
+    if (!editX && !editY) return null;
     return this.ed || (this.ed = new window.FluxTIEditor({ mathprint: false }));
   };
   TableApp.prototype.commit = function () {
@@ -1055,8 +1085,16 @@
     this.ed = null;
     if (!code.trim()) return;
     const v = T().evaluate(code, this.c.st);
-    if (typeof v !== 'number') T().fail('DATA TYPE');
-    this.asked[this.row] = v;
+    if (typeof v !== 'number' || !Number.isFinite(v)) T().fail('DATA TYPE');
+    if (this.col === 0) {
+      this.asked[this.row] = v;
+      return;
+    }
+    const fn = this.fns()[this.col - 1];
+    const name = fn ? fn.name : (this.col === 1 ? 'Y₁' : null);
+    if (!name) return;
+    if (!this.askedY[name]) this.askedY[name] = [];
+    this.askedY[name][this.row] = v;
   };
   TableApp.prototype.key = function (k) {
     const st = this.c.st, fns = this.fns();
@@ -1100,12 +1138,26 @@
       const selX = this.row === r && this.col === 0;
       html += '<div class="t84tb-c' + (selX ? ' is-sel' : '') + '">' + (selX && this.ed ? this.ed.html(this.c.cursorMark()) : esc(x == null ? '' : f(x))) + '</div>';
       if (selX) selText = 'X=' + (x == null ? '' : T().fmtReal(x));
-      if (!shown.length) html += '<div class="t84tb-c"></div>';
+      if (!shown.length) {
+        const selY = this.row === r && this.col === 1;
+        const y = this.askedY['Y₁'] && this.askedY['Y₁'][r] != null ? this.askedY['Y₁'][r] : null;
+        const yText = y == null ? '' : f(y);
+        html += '<div class="t84tb-c' + (selY ? ' is-sel' : '') + '">' +
+          (selY && this.ed ? this.ed.html(this.c.cursorMark()) : esc(yText)) + '</div>';
+        if (selY) selText = 'Y₁=' + (y == null ? '' : T().fmtReal(+y.toPrecision(10), st.mode));
+      }
       shown.forEach((fn, j) => {
-        const y = x == null ? null : num(fn.f(x));
-        const sel = this.row === r && this.col === this.left0 + j;
-        html += '<div class="t84tb-c' + (sel ? ' is-sel' : '') + '">' + esc(x == null ? '' : f(y)) + '</div>';
-        if (sel) selText = fn.name + '=' + (x == null ? '' : Number.isFinite(y) ? T().fmtReal(+y.toPrecision(10), st.mode) : 'ERROR');
+        const col = this.left0 + j;
+        const sel = this.row === r && this.col === col;
+        let y;
+        if (st.tbl.depend === 'ask') {
+          y = this.askedY[fn.name] && this.askedY[fn.name][r] != null ? this.askedY[fn.name][r] : null;
+        } else {
+          y = x == null ? null : num(fn.f(x));
+        }
+        const yText = y == null ? '' : f(y);
+        html += '<div class="t84tb-c' + (sel ? ' is-sel' : '') + '">' + (sel && this.ed ? this.ed.html(this.c.cursorMark()) : esc(yText)) + '</div>';
+        if (sel) selText = fn.name + '=' + (y == null ? '' : Number.isFinite(y) ? T().fmtReal(+y.toPrecision(10), st.mode) : 'ERROR');
       });
     }
     return html + '</div><div class="t84tb-b">' + esc(selText || (fns.length ? '' : 'No functions are on — press y=')) + '</div></div>';
@@ -1299,6 +1351,8 @@
     command: command,
     applyZoom: applyZoom,
     activeFns: activeFns,
+    tickValues: tickValues,
+    steppedValues: steppedValues,
     sequenceGraphData: sequenceGraphData,
     sequenceTraceData: sequenceTraceData,
     sequenceWebTrail: sequenceWebTrail,

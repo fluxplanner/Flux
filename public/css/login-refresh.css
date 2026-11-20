@@ -135,3 +135,126 @@
 
 /* ── Audience-gated sections (student vs staff tab) ── */
 .lx-aud-hidden { display: none !important; }
+
+/* ══ Hero redesign, November 2026 ═════════════════════════════════════════
+   Quieter chrome, a bigger headline with a serif "in flow.", underline
+   audience tabs, the demo as a command bar, chips as a plain list, and a
+   sign-in card with a slowly turning gradient edge. Markup and ids are the
+   same: login-refresh.js and app.js still drive them. */
+#loginScreen .lx-hero{position:relative;grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr);
+  padding-bottom:clamp(80px,12vh,120px)}
+
+/* Eyebrow, not a pill */
+#loginScreen .lx-badge{padding:0;gap:12px;background:none;border:0;
+  backdrop-filter:none;-webkit-backdrop-filter:none;
+  font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.66rem;font-weight:600;
+  letter-spacing:.2em;text-transform:uppercase;color:#8fb8ff}
+#loginScreen .lx-badge-dot{width:30px;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,#00C2FF,#7C5CFF);box-shadow:none;animation:none}
+
+/* Audience switch: underline tabs */
+#loginScreen .lx-aud-toggle{gap:24px;margin:26px 0 0;padding:0;border-radius:0;background:none;
+  border:0;border-bottom:1px solid rgba(255,255,255,.09);
+  backdrop-filter:none;-webkit-backdrop-filter:none}
+#loginScreen .lx-aud-tab{position:relative;padding:10px 0 12px;border-radius:0;color:#7f8aa6}
+#loginScreen .lx-aud-tab.is-on{color:#fff;background:none;box-shadow:none}
+#loginScreen .lx-aud-tab::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;
+  border-radius:2px;background:linear-gradient(90deg,#00C2FF,#7C5CFF);
+  transform:scaleX(0);transform-origin:0 50%;transition:transform .35s cubic-bezier(.2,.7,.2,1)}
+#loginScreen .lx-aud-tab.is-on::after{transform:none}
+
+/* Headline */
+#loginScreen .lx-headline{margin-top:28px;font-size:clamp(2.8rem,6.4vw,5.3rem);font-weight:850;
+  letter-spacing:-.05em;line-height:.98}
+#loginScreen .lx-headline .grad{font-family:ui-serif,'New York','Iowan Old Style','Palatino Linotype',Georgia,serif;
+  font-style:italic;font-weight:500;letter-spacing:-.025em;padding-right:.1em}
+#loginScreen .lx-sub{max-width:40ch;margin-top:22px}
+
+/* Demo line as a command bar */
+#loginScreen .lx-demo{display:flex;align-items:center;gap:12px;max-width:520px;margin-top:26px;
+  padding:10px 14px 10px 10px;border-radius:14px;background:rgba(8,12,24,.7);
+  border:1px solid rgba(255,255,255,.1)}
+#loginScreen .lx-demo-label{flex:none;margin:0;padding:6px 9px;border-radius:9px;gap:7px;
+  font-size:.56rem;color:#a9b8d8;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}
+#loginScreen .lx-demo-line{font-size:.92rem}
+
+/* Highlights: a plain list, no boxes */
+#loginScreen .lx-highlights{gap:8px 20px;margin-top:22px}
+#loginScreen .lx-chip{padding:4px 0;border:0;border-radius:0;background:none;color:#b9c6e4;font-weight:600}
+#loginScreen .lx-chip:hover{transform:none;background:none;color:#fff}
+#loginScreen .lx-chip--link{color:#6ee7b7;border-bottom:1px solid rgba(110,231,183,.35)}
+
+/* Integrations on one line */
+#loginScreen .lx-integrations{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;margin-top:24px}
+#loginScreen .lx-integrations-label{margin:0}
+#loginScreen .lx-logo{width:30px;height:30px;border-radius:8px;background:none;border:0}
+#loginScreen .lx-logo svg{width:20px;height:20px}
+
+/* Sign-in card: a gradient edge that turns slowly */
+@property --lx-edge{syntax:'<angle>';inherits:false;initial-value:0deg}
+#loginScreen .lx-auth-card{border:1px solid transparent;
+  background:
+    linear-gradient(180deg,rgba(15,20,36,.9),rgba(9,13,25,.86)) padding-box,
+    conic-gradient(from var(--lx-edge),rgba(0,194,255,0),rgba(0,194,255,.8) 12%,rgba(124,92,255,.8) 26%,
+      rgba(124,92,255,0) 40%,rgba(255,255,255,.1) 55%,rgba(255,255,255,.1) 85%,rgba(0,194,255,0)) border-box;
+  animation:lxCardIn .7s cubic-bezier(.22,1,.36,1) .1s both,lxEdge 10s linear infinite}
+@keyframes lxEdge{to{--lx-edge:360deg}}
+#loginScreen .lx-auth-card:focus-within{border-color:transparent}
+
+/* The hero's parts rise in, one after another */
+#loginScreen .lx-hero-copy > *{animation:lxRise .9s cubic-bezier(.2,.7,.2,1) both}
+#loginScreen .lx-hero-copy > :nth-child(2){animation-delay:.06s}
+#loginScreen .lx-hero-copy > :nth-child(3){animation-delay:.12s}
+#loginScreen .lx-hero-copy > :nth-child(4){animation-delay:.2s}
+#loginScreen .lx-hero-copy > :nth-child(5){animation-delay:.28s}
+#loginScreen .lx-hero-copy > :nth-child(n+6){animation-delay:.34s}
+@keyframes lxRise{from{opacity:0;transform:translateY(22px)}}
+
+/* Scroll cue */
+#loginScreen .lx-cue{position:absolute;left:50%;bottom:clamp(14px,3vh,28px);transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:10px;white-space:nowrap;text-decoration:none;
+  font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.6rem;letter-spacing:.22em;
+  text-transform:uppercase;color:#7f8aa6;transition:color .2s}
+#loginScreen .lx-cue:hover{color:#dfeaff}
+#loginScreen .lx-cue-line{order:2;position:relative;width:1px;height:34px;overflow:hidden;
+  background:rgba(255,255,255,.12)}
+#loginScreen .lx-cue-line::after{content:'';position:absolute;left:0;top:-14px;width:1px;height:14px;
+  background:linear-gradient(transparent,#00C2FF);animation:lxCue 1.8s cubic-bezier(.6,0,.4,1) infinite}
+@keyframes lxCue{to{top:34px}}
+
+@media (max-width:980px){
+  #loginScreen .lx-hero{grid-template-columns:minmax(0,1fr);padding-bottom:20px}
+  #loginScreen .lx-aud-toggle{justify-content:center}
+  #loginScreen .lx-demo{margin-inline:auto}
+  #loginScreen .lx-integrations{justify-content:center}
+  #loginScreen .lx-cue{position:static;transform:none;margin:4px auto 0}
+}
+@media (max-width:600px){
+  #loginScreen .lx-headline{font-size:clamp(2.4rem,11vw,3.2rem)}
+  #loginScreen .lx-demo{text-align:left}
+}
+@media (prefers-reduced-motion:reduce){
+  #loginScreen .lx-hero-copy > *,#loginScreen .lx-cue-line::after{animation:none!important}
+  #loginScreen .lx-auth-card{animation:none!important}
+}
+html[data-flux-perf="on"] #loginScreen .lx-auth-card,
+html[data-flux-perf="on"] #loginScreen .lx-cue-line::after{animation:none!important}
+
+/* ══ Name and sign-in only, November 2026 ═════════════════════════════════
+   The hero is the Flux name with the sign-in card under it; everything
+   else is told by the scroll story. */
+#loginScreen .lx-hero{grid-template-columns:minmax(0,1fr);justify-items:center;align-content:center;
+  gap:clamp(18px,3vh,30px);text-align:center;padding:clamp(20px,4vh,48px) 0 clamp(80px,12vh,120px)}
+#loginScreen .lx-hero-name{max-width:none;width:auto}
+#loginScreen .lx-name{margin:0;font-size:clamp(3.6rem,10vw,6.6rem);font-weight:850;letter-spacing:-.06em;line-height:.9;
+  background:linear-gradient(120deg,#e6f6ff 10%,#00C2FF 45%,#7C5CFF 85%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:lxRise .9s cubic-bezier(.2,.7,.2,1) both}
+#loginScreen .lx-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#loginScreen .lx-hero-name .feat-pills-wrap{display:none}
+#loginScreen .lx-auth{order:0;width:100%;justify-content:center}
+#loginScreen .lx-auth-card{text-align:left}
+@media (max-width:980px){
+  #loginScreen .lx-auth{order:0}
+  #loginScreen .lx-hero{padding-bottom:24px}
+}
+@media (prefers-reduced-motion:reduce){#loginScreen .lx-name{animation:none}}

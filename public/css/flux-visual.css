@@ -80,8 +80,10 @@
   background-clip: text;
 }
 @media (prefers-reduced-motion: no-preference) {
+  /* One pass as it appears, then still: looping it for ever kept the page
+     busy at rest (see e2e/idle-work.spec.ts). */
   .gradient-animate {
-    animation: gradient-shift 4s ease infinite;
+    animation: gradient-shift 4s ease 1;
   }
   @keyframes gradient-shift {
     0%,
@@ -164,8 +166,8 @@ body[data-flux-mesh='off']::before {
       radial-gradient(ellipse 60% 80% at 80% 80%, rgba(108, 99, 255, 0.05) 0%, transparent 60%),
       radial-gradient(ellipse 50% 50% at 60% 40%, rgba(0, 217, 163, 0.03) 0%, transparent 50%);
     background-color: var(--bg);
-    animation: mesh-drift 20s ease-in-out infinite alternate;
-    will-change: background-position;
+    /* Still. Sliding the gradients for ever repainted the whole screen on
+       every frame, on every page, whether or not anything was happening. */
   }
   @keyframes mesh-drift {
     0% {
@@ -381,19 +383,6 @@ body[data-flux-mesh='off']::before {
   z-index: 1;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  @keyframes star-twinkle {
-    from {
-      opacity: 0;
-      transform: scale(0.5);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-}
-
 #timer {
   background-image: radial-gradient(circle at 50% 35%, rgba(var(--accent-rgb), 0.08) 0%, transparent 40%),
     radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
@@ -404,21 +393,11 @@ body[data-flux-mesh='off']::before {
   border-color: rgba(255, 77, 109, 0.3);
   box-shadow: 0 0 0 1px rgba(255, 77, 109, 0.15), 0 4px 20px rgba(255, 77, 109, 0.08);
 }
-@media (prefers-reduced-motion: no-preference) {
-  .task-item[data-priority='high'] {
-    animation: priority-glow 2.5s ease-in-out infinite;
-    will-change: box-shadow;
-  }
-  @keyframes priority-glow {
-    0%,
-    100% {
-      box-shadow: 0 0 0 1px rgba(255, 77, 109, 0.15), 0 4px 20px rgba(255, 77, 109, 0.05);
-    }
-    50% {
-      box-shadow: 0 0 0 2px rgba(255, 77, 109, 0.3), 0 6px 28px rgba(255, 77, 109, 0.15);
-    }
-  }
-}
+/* No pulsing glow here. It used to animate box-shadow forever on every
+   high-priority row, which made the browser redo layout and repaint each
+   row on every frame — one cost per row, never stopping. With a long list
+   that kept the page ~97% busy while doing nothing (e2e/idle-work.spec.ts
+   guards this). The steady red outline above marks the row instead. */
 
 .canvas-card::after,
 .ref-card::after {
@@ -556,9 +535,11 @@ body[data-flux-mesh='off']::before {
   box-shadow: 0 4px 20px rgba(var(--accent-rgb), 0.4);
 }
 @media (prefers-reduced-motion: no-preference) {
+  /* Pulses twice when it appears, then rests on the static glow above. An
+     endless box-shadow animation repaints on every frame for as long as the
+     dashboard is open. */
   .flux-fab-glow {
-    animation: fab-glow 2s ease-in-out infinite;
-    will-change: box-shadow;
+    animation: fab-glow 2s ease-in-out 2;
   }
   @keyframes fab-glow {
     0%,

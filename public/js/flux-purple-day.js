@@ -10,7 +10,9 @@
      theme engine sets; the class (not just the attribute) is what makes the
      planner's fluxOnAccent watcher recompute --on-accent for the new colour.
    - A banner: inline where a page has a [data-purple-day-slot], otherwise a
-     small card in the corner. Dismissing it hides it everywhere for the year.
+     small card in the corner. Dismissing it hides it everywhere for that day
+     (keyed on the local date, so closing a December preview cannot hide the
+     real 26 March).
    - Nothing moves, fades or flashes. Some people with epilepsy are
      photosensitive; on this of all days the page stays still.
    - Preview it any day with ?purpleday in the address (kept for the tab);
@@ -62,7 +64,7 @@
     + '.fxpd-s{margin:0;font-size:.88rem;color:#d9ccff}'
     + '.fxpd-a{display:inline-block;margin-top:8px;font-weight:800;font-size:.88rem;color:#c4b5fd;text-decoration:none}'
     + '.fxpd-a:hover{text-decoration:underline}'
-    + '.fxpd-x{flex:none;width:32px;height:32px;margin:-6px -8px 0 0;border:0;border-radius:10px;background:none;'
+    + '.fxpd-x{flex:none;width:40px;height:40px;margin:-6px -8px 0 0;border:0;border-radius:10px;background:none;'
     + 'color:#c9b8f5;font-size:1.1rem;line-height:1;cursor:pointer}'
     + '.fxpd-x:hover{background:rgba(255,255,255,.08);color:#fff}'
     + '.fxpd-x:focus-visible,.fxpd-a:focus-visible{outline:2px solid #c4b5fd;outline-offset:2px}'
@@ -76,8 +78,8 @@
   (document.head || root).appendChild(style);
 
   var KEY = 'flux_purple_day_dismissed';
-  var year = String(now.getFullYear());
-  function dismissed() { try { return localStorage.getItem(KEY) === year; } catch (e) { return false; } }
+  var today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+  function dismissed() { try { return localStorage.getItem(KEY) === today; } catch (e) { return false; } }
 
   var RIBBON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
     + '<path d="M12 13.5c-2.6-3-4-5.4-4-7.2a4 4 0 0 1 8 0c0 1.8-1.4 4.2-4 7.2Z"/>'
@@ -96,7 +98,7 @@
       + '</div>'
       + '<button type="button" class="fxpd-x" aria-label="Hide the Purple Day message">✕</button>';
     el.querySelector('.fxpd-x').addEventListener('click', function () {
-      try { localStorage.setItem(KEY, year); } catch (e) { /* storage blocked: hide for now */ }
+      try { localStorage.setItem(KEY, today); } catch (e) { /* storage blocked: hide for now */ }
       el.remove();
     });
     return el;

@@ -4,15 +4,17 @@
    Only inside Flux (synara.html), only for a student signed in to
    Flux, and only once they turn it on in You → Flux.
 
-   END-TO-END ENCRYPTED. The whole record is encrypted on the
-   device (AES-GCM, 128-bit key) before it goes anywhere. The key is
-   made on the first device and is never uploaded: the student
-   carries it to their other devices as a sync key, 26 characters
-   shown as XXXX-XXXX-…. Flux stores only ciphertext (its
-   synara_vaults table), so nobody with access to Flux's database
-   can read a student's medication, seizures or contacts. Lose every
-   device and the key, and the synced copy can't be opened — on
-   purpose. The device's own copy is unaffected either way.
+   ENCRYPTED, WITH THE KEY IN THE ACCOUNT. The whole record is
+   encrypted on the device (AES-GCM, 128-bit key) before it goes
+   anywhere. Since 2026-10-25 the key is kept in the student's own
+   synara_vaults row too (column sync_key), so a device signed in to
+   the same Flux account syncs by itself, with no key to carry. That
+   was a deliberate choice: row-level security still keeps each row to
+   its owner, but anyone with database access can now read the record.
+   A row made before then has no key stored; a device that holds the
+   key puts it there on its next sync. The key is still shown as
+   XXXX-XXXX-… and the sync link still works, for a copy whose key
+   isn't stored.
 
    THE RULE. A record is tens of kilobytes, so it moves whole:
      only this device changed      → upload
@@ -32,6 +34,7 @@ import * as store from './store.js';
 const META_KEY = 'synara.sync';
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // Crockford base32
 const PUSH_DELAY = 3000;
+const PULL_EVERY = 30000;   // while the page is open and visible
 
 /* ============================================================
    Pure helpers (tested in test/sync.test.js)
@@ -82,9 +85,11 @@ export function formatKey(code) {
 /* Settings that belong to a device, not to the student. Reminders need
    that device's own notification permission: synced "on" to a phone that
    never granted it, the switch would say on while no reminder ever came.
-   The planner link writes to that device's own storage. So these are left
-   out of what syncs, and each device keeps its own when a copy arrives. */
-export const DEVICE_ONLY = ['remindersOn', 'fluxLink'];
+   So it is left out of what syncs, and each device keeps its own when a
+   copy arrives. The planner link (fluxLink) does sync since 2026-10-26: the
+   planner on any device reads the synced copy, so the choice is the
+   student's, not the device's. */
+export const DEVICE_ONLY = ['remindersOn'];
 
 /** The record as it syncs: without this device's own settings. */
 export function shareable(plain) {
@@ -272,8 +277,8 @@ async function sameContent(remote, raw) {
 async function push(meta, raw) {
   const plain = localRecord();
   const sealed = await encrypt(plain, raw);
-  const row = await need(vault()).put(sealed);
-  writeMeta({ ...meta, hash: await hash(plain), remoteAt: row.updated_at, at: new Date().toISOString() });
+  const row = await need(vault()).put({ ...sealed, key: meta.key });
+  writeMeta({ ...meta, hash: await hash(plain), remoteAt: row.updated_at, at: new Date().toISOString(), keyed: true });
 }
 
 async function pull(meta, raw, remote) {
@@ -312,6 +317,9 @@ export function syncNow() {
         writeMeta({ ...meta, hash: await hash(localRecord()), remoteAt: remote.updated_at, at: new Date().toISOString() });
         what = 'none';
       }
+      // A copy from before the key was kept in the account: store it now.
+      // Once only: a server that doesn't keep it must not get an upload every round.
+      if (what === 'none' && remote && !remote.key && !meta.keyed) what = 'push';
       if (what === 'push') await push(meta, raw);
       else if (what === 'pull') await pull(meta, raw, remote);
       else if (what === 'gone') {
@@ -395,9 +403,11 @@ export async function join(key) {
 
 /** Stop syncing on this device. The device keeps its record. With
     deleteCopy, the synced copy is removed for every device. */
-export async function stop({ deleteCopy = false } = {}) {
+export async function stop({ deleteCopy = false, optOut = true } = {}) {
   if (deleteCopy) await need(vault()).remove();
-  writeMeta({});
+  // A choice to stop is remembered, so connect() never turns it back on
+  // by itself. Wiping the device forgets it, like a fresh install.
+  writeMeta(optOut ? { off: true } : {});
   clearTimeout(pushTimer);
   setStatus({ phase: 'off', error: '' });
 }
@@ -405,6 +415,42 @@ export async function stop({ deleteCopy = false } = {}) {
 /* ============================================================
    Start
    ============================================================ */
+
+/* Signed in to Flux, sync not on here, never turned off here: connect
+   without a trip to You → Flux. No synced copy yet and a real record on
+   this device (not the example data) → this device starts it. A synced
+   copy already exists → its key is needed, which only the student has;
+   status 'needs-key' lets Home ask for it. A device with nothing in it
+   never starts a copy, so it can't race a device that has the data. */
+export async function connect() {
+  if (!available() || enabled() || readMeta().off) return 'off';
+  const who = status.account || await refreshAccount();
+  if (!who) return 'off';
+  try {
+    const v = need(await vaultReady());
+    const remote = await v.get();
+    const s = store.get();
+    const real = !s.settings.seeded && (s.meds.length || s.seizures.length || s.contacts.length);
+    if (remote && remote.key && decodeKey(remote.key)) {
+      // The account holds the key: nothing to type. An empty device takes
+      // the synced copy; one with its own record syncs as normal, so a
+      // real difference is asked about (conflict), never overwritten.
+      if (!real) { await join(remote.key); return 'joined'; }
+      writeMeta({ key: remote.key, user: who.id });
+      return syncNow();
+    }
+    if (remote) { setStatus({ phase: 'needs-key', error: '' }); return 'needs-key'; }
+    if (!real) return 'off';
+    await startNew();
+    return 'started';
+  } catch (e) {
+    if (e.code === 'has-copy') { setStatus({ phase: 'needs-key', error: '' }); return 'needs-key'; }
+    setStatus({ phase: 'error', error: errorCode(e) });
+    return 'error';
+  }
+}
+
+const tick = () => (enabled() ? syncNow() : connect());
 
 export async function start() {
   // Before anything can compare against the saved hash — and even where
@@ -415,18 +461,22 @@ export async function start() {
 
   // Changes go up a few seconds after the last edit.
   store.subscribe(() => {
-    if (!enabled()) return;
     clearTimeout(pushTimer);
-    pushTimer = setTimeout(syncNow, PUSH_DELAY);
+    pushTimer = setTimeout(tick, PUSH_DELAY);
   });
   // Coming back to the tab is when another device's changes matter.
-  document.addEventListener('visibilitychange', () => {
+  document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState !== 'visible') return;
-    refreshAccount();
-    if (enabled()) syncNow();
+    await refreshAccount();
+    tick();
   });
-  window.addEventListener('online', () => { if (enabled()) syncNow(); });
+  window.addEventListener('online', tick);
+  // Both devices open side by side: the other one's edits arrive anyway.
+  const poll = setInterval(() => {
+    if (document.visibilityState === 'visible' && enabled() && status.phase !== 'conflict') syncNow();
+  }, PULL_EVERY);
+  poll.unref?.();   // Node (unit tests): never what keeps the process alive
 
   await refreshAccount();
-  if (enabled()) syncNow();
+  tick();
 }

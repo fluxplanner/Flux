@@ -59,13 +59,13 @@ test.describe('planner tour', () => {
   test('each step opens the tab it describes, and Back goes back', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
     await startTour(page);
-    await page.locator('.ftour-next').click(); // New task
+    // The New task step left with the top-bar button (#266).
     await page.locator('.ftour-next').click(); // Calendar
     await expect(page.locator('.ftour-title')).toHaveText('Calendar');
     await expect(page.locator('#calendar.panel.active')).toBeVisible();
-    await expect(page.locator('.ftour-count')).toContainText('3 of');
+    await expect(page.locator('.ftour-count')).toContainText('2 of');
     await page.locator('.ftour-back').click();
-    await expect(page.locator('.ftour-title')).toHaveText('New task');
+    await expect(page.locator('.ftour-title')).toHaveText('Dashboard');
     await page.keyboard.press('Escape');
     await expect(page.locator('.ftour')).toHaveCount(0);
     expect(await page.evaluate(() => localStorage.getItem('flux_tour_completed'))).toBe('true');
@@ -148,15 +148,9 @@ test.describe('login page', () => {
     await expect(login).toContainText('study subjects');
   });
 
-  test('the teachers tab rotates staff lines, not student ones', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('#loginScreen')).toBeVisible({ timeout: 15000 });
-    await page.locator('#lxAudTeacher').click();
-    const line = page.locator('#loginDemoLineLeft');
-    await expect(line).toContainText('bell by bell');
-    await expect(line).not.toContainText('bell by bell', { timeout: 7000 });
-    await expect(line).not.toContainText(/SAT|Pomodoro|superscores/);
-  });
+  // The students / teachers tab and its rotating demo line left the sign-in
+  // screen in November 2026: it shows just the name and the sign-in card,
+  // and the scroll story below tells the rest.
 });
 
 test.describe('staff workspace', () => {

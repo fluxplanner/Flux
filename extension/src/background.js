@@ -125,6 +125,20 @@ runtime.onMessage.addListener((msg, sender, sendResponse) => {
         .then((r) => sendResponse({ ok: true, ...r }))
         .catch((e) => sendResponse({ ok: false, error: e.message }));
       return true; // async
+    case 'FLUX_OPEN_QUIZLET': {
+      // From quizlet.js on a Quizlet set: open Flux Flashcards with the set as
+      // a share link. The code is checked so a page cannot steer the URL.
+      const code = String(msg.code || '');
+      if (!sender.tab || !/^j[A-Za-z0-9_-]+$/.test(code)) { sendResponse({ ok: false, error: 'Not a Quizlet set' }); return; }
+      getConfig()
+        .then((cfg) => {
+          const base = String(cfg.app_url || 'https://fluxplanner.github.io/Flux/').replace(/\/+$/, '');
+          return ext.tabs.create({ url: base + '/flashcards.html#share=' + code, index: sender.tab.index + 1 });
+        })
+        .then(() => sendResponse({ ok: true }))
+        .catch((e) => sendResponse({ ok: false, error: e.message }));
+      return true;
+    }
     case 'FLUX_GET_CONFIG':
       getConfig({ refresh: !!msg.refresh })
         .then((c) => sendResponse({ ok: true, config: c }))
@@ -169,8 +183,14 @@ runtime.onMessage.addListener((msg, sender, sendResponse) => {
       })();
       return true;
     case 'FLUX_LOGOUT_FROM_WEB':
-      Promise.all([lsx.remove('flux_auth_session'), lsx.remove('flux_ai_routing')])
-        .then(() => sendResponse({ ok: true }))
+      // Same origin rule as the sign-in handoff: content.js relays this from
+      // every page, so without it any website could sign the extension out.
+      isPlannerOrigin((sender && (sender.url || sender.tab?.url)) || '')
+        .then((allowed) => {
+          if (!allowed) { sendResponse({ ok: false, error: 'origin mismatch' }); return null; }
+          return Promise.all([lsx.remove('flux_auth_session'), lsx.remove('flux_ai_routing')])
+            .then(() => sendResponse({ ok: true }));
+        })
         .catch(() => sendResponse({ ok: false }));
       return true;
     case 'FLUX_GET_AUTH':

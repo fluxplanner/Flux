@@ -9,9 +9,8 @@
 (function () {
   "use strict";
 
-  const SB_URL = "https://lfigdijuqmbensebnevo.supabase.co";
-  const SB_ANON =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaWdkaWp1cW1iZW5zZWJuZXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjEzMDgsImV4cCI6MjA4ODkzNzMwOH0.qG1d9DLKrs0qqLgAp-6UGdaU7xWvlg2sWq-oD-y2kVo";
+  const SB_URL = window.FluxSB.url;
+  const SB_ANON = window.FluxSB.anon;
   const GRANT_URL = SB_URL + "/functions/v1/mcp/authorize/grant";
 
   const SCOPE_INFO = {
@@ -74,12 +73,21 @@
       params.code_challenge_method === "S256";
   }
 
+  /* A javascript: address here would run on the Flux site, where sessions live. */
+  function goTo(target) {
+    const u = new URL(target);
+    if (u.protocol !== "https:" && u.protocol !== "http:") {
+      throw new Error("Blocked redirect");
+    }
+    location.assign(u.toString());
+  }
+
   function denyRedirect() {
     try {
       const u = new URL(params.redirect_uri);
       u.searchParams.set("error", "access_denied");
       if (params.state) u.searchParams.set("state", params.state);
-      location.assign(u.toString());
+      goTo(u.toString());
     } catch {
       fatal("The connection request was cancelled.");
     }
@@ -98,6 +106,17 @@
     return `<ul class="scopes">${items}</ul>`;
   }
 
+  /* Where "Allow access" hands the connection. Shown so that a link sending it
+     anywhere but Claude is visible before the button is pressed. */
+  function returnsTo() {
+    try {
+      const u = new URL(params.redirect_uri);
+      return u.protocol === "https:" ? u.hostname : "an app on this computer";
+    } catch {
+      return "an unknown address";
+    }
+  }
+
   function renderConsent(user) {
     const email = user.email || user.user_metadata?.email || "your account";
     const initial = (email[0] || "F").toUpperCase();
@@ -105,7 +124,7 @@
       <h1>Connect to Claude</h1>
       <p class="lede"><b>Claude</b> wants to access your Flux Planner so it can help manage your work.</p>
       <div class="who"><span class="av">${esc(initial)}</span>
-        <span>Signed in as <b>${esc(email)}</b><br><small>Approving links Claude to this account.</small></span></div>
+        <span>Signed in as <b>${esc(email)}</b><br><small>Approving links Claude to this account, then sends you back to <b>${esc(returnsTo())}</b>.</small></span></div>
       ${scopesHtml()}
       <p class="deny-note">Claude <b>cannot</b> see your Canvas/Google tokens, account settings, or anyone else's data. You can disconnect anytime in Flux → Settings.</p>
       <div class="row">
@@ -152,7 +171,7 @@
       });
       const json = await res.json().catch(() => ({}));
       if (res.ok && json.redirect) {
-        location.assign(json.redirect);
+        goTo(json.redirect);
         return;
       }
       showMsg(json.error_description || json.error || "Could not complete the connection.", "err");

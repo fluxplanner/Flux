@@ -28,7 +28,7 @@ const FLUX_IMPERSONATION_GLOBAL_KEYS=new Set([
   'flux_last_user_id','flux_last_user_email',
   // UI / theme prefs — kept shared so the dev experience doesn't reset
   // every time you switch into a different teacher to test something.
-  'flux_user_name','flux_accent','flux_accent_rgb','flux_theme',
+  'flux_user_name','flux_accent','flux_accent_rgb','flux_theme','flux_font','flux_texture',
   'flux_profile_pic',
   'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled','flux_board',
   'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
@@ -281,6 +281,8 @@ const DATA_VERSION=6;
     'flux_data_version','flux_splash_shown',
     'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled','flux_board',
     'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
+    'flux_schoology_v1',
+    'flux_moodle_v1',
     'flux_canvas_token','flux_canvas_url','flux_canvas_host',
     'flux_canvas_last_view','flux_canvas_last_params',
     'flux_canvas_autosync','flux_canvas_last_sync',
@@ -832,14 +834,20 @@ function checkTesterMode(){
   FLUX_FLAGS.TESTER_MODE=false;
   if(!currentUser||!currentUser.email)return;
   const list=load('flux_tester_emails',[]);
-  if(!Array.isArray(list)||!list.length)return;
   const email=String(currentUser.email).toLowerCase().trim();
-  if(list.some(e=>String(e||'').toLowerCase().trim()===email)){
+  // A role with "Tester mode" (Owner Controls › Roles) counts the same as the list.
+  const byRole=!!(window.FluxAppVisibility&&window.FluxAppVisibility.can&&window.FluxAppVisibility.can('perk:tester'));
+  if(byRole||(Array.isArray(list)&&list.some(e=>String(e||'').toLowerCase().trim()===email))){
     FLUX_FLAGS.TESTER_MODE=true;
     _entitlement.plan='pro';
     try{console.log('[Flux] Tester mode active for',currentUser.email);}catch(_){}
   }
 }
+
+// Role permissions arrive after sign-in, so tester mode is checked again then.
+window.addEventListener('flux-app-visibility',()=>{
+  try{if(currentUser){checkTesterMode();renderTesterBadge();}}catch(_){/* the next sign-in check picks it up */}
+});
 
 function renderTesterBadge(){
   document.querySelectorAll('.flux-tester-badge').forEach(el => el.remove());
@@ -980,7 +988,6 @@ function renderDynamicFocus(){
       </div>
       ${gapSug?`<div style="background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.15);border-radius:10px;padding:10px 14px;font-size:.8rem">
         <span style="color:var(--muted2)">Gap task:</span> <strong>${esc(gapSug.name)}</strong>
-        <span style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.72rem;margin-left:6px">~${gapSug.estTime}min</span>
       </div>`:''}
     </div>`;
     if(mode==='collapsed'){
@@ -1003,7 +1010,7 @@ function renderDynamicFocus(){
     html=`<div class="focus-card">
       <div class="focus-label">Focus on now</div>
       <div style="font-size:1rem;font-weight:700;margin-top:6px">${esc(urgent.name)}</div>
-      <div style="font-size:.75rem;color:var(--muted2);margin-top:4px">Due today${urgent.estTime?' · ~'+urgent.estTime+'min':''}</div>
+      <div style="font-size:.75rem;color:var(--muted2);margin-top:4px">Due today</div>
     </div>`;
   }
   el.innerHTML=useIntel?FluxIntel.appendFocusHtml(html):html;
@@ -1860,7 +1867,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notebook',notebook:'Notebook',timer:'Time',canvas:'Connect',google:'Google',profile:'Profile',goals:'College Prep',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',teacherResources:'Resources',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffMessages:'Messages',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notebook',notebook:'Notebook',timer:'Time',canvas:'Connect',google:'Google',profile:'Profile',goals:'College Prep',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',teacherResources:'Resources',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffMessages:'Messages',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
 
 // ══ Time / format helpers (used by educator dashboards + onboarding) ══
 function getTimeGreeting(){
@@ -2570,81 +2577,6 @@ function renderImpersonatePill(){
 }
 window.renderImpersonatePill=renderImpersonatePill;
 
-/** Modal picker: choose Off / Student / any staff directory entry. */
-function openImpersonatePicker(){
-  if(typeof isOwner==='function'&&!isOwner())return;
-  document.getElementById('fluxImpersonatePicker')?.remove();
-  const dir=window.FluxStaffDirectory;
-  const ov=document.createElement('div');
-  ov.id='fluxImpersonatePicker';
-  ov.style.cssText='position:fixed;inset:0;background:rgba(5,8,16,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:9990;display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto';
-  ov.innerHTML=`
-    <div style="max-width:560px;width:100%;background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,.55)">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-        <span style="font-size:1.4rem"></span>
-        <h2 style="margin:0;font-size:1.2rem;font-weight:900" class="flux-color-title">Owner test mode</h2>
-      </div>
-      <p style="font-size:.82rem;color:var(--muted2);margin:0 0 16px">Impersonate any role or staff member to test their planner. Your real Supabase data is untouched. Exit at any time.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-        <button type="button" data-imp="off" style="padding:11px;border-radius:12px;background:var(--card2);border:1px solid var(--border2);color:var(--text);font-weight:700;cursor:pointer">Off (real owner)</button>
-        <button type="button" data-imp="student" style="padding:11px;border-radius:12px;background:rgba(var(--accent-rgb),.1);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent);font-weight:700;cursor:pointer">Student (generic)</button>
-      </div>
-      <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px">Pick a real staff member</label>
-      <select id="impDirSelect" style="width:100%;padding:10px;font-size:.9rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);margin-bottom:10px">
-        <option value="">— choose —</option>
-      </select>
-      <div style="display:flex;gap:8px;margin-bottom:14px">
-        <label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:10px;background:var(--card2);border:1px solid var(--border2);font-size:.78rem;cursor:pointer"><input type="radio" name="impMode" value="work" checked> Work mode</label>
-        <label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:10px;background:var(--card2);border:1px solid var(--border2);font-size:.78rem;cursor:pointer"><input type="radio" name="impMode" value="personal"> Personal mode</label>
-      </div>
-      <div style="display:flex;gap:10px">
-        <button type="button" id="impCancel" style="flex:0 0 auto;padding:11px 16px;border-radius:12px;background:var(--card2);border:1px solid var(--border2);color:var(--muted2);font-weight:700;cursor:pointer">Cancel</button>
-        <button type="button" id="impGo" style="flex:1;padding:11px;border-radius:12px;background:linear-gradient(90deg,#7c5cff,#ff5c7c);color:#fff;font-weight:800;border:none;cursor:pointer">Switch into selected staff</button>
-      </div>
-    </div>`;
-  document.body.appendChild(ov);
-
-  const sel=document.getElementById('impDirSelect');
-  if(sel&&dir){
-    const list=dir.all.slice().sort((a,b)=>a.name.localeCompare(b.name));
-    const ROLE_LABEL={teacher:'Teacher',counselor:'Counselor',staff:'Staff',admin:'Admin'};
-    sel.innerHTML='<option value="">— choose —</option>'+list.map(d=>{
-      const roleTxt=ROLE_LABEL[d.role]||d.role;
-      const subj=d.subject?' · '+d.subject:'';
-      return `<option value="${esc(d.email)}">${esc(d.name)} — ${esc(roleTxt)}${esc(subj)}</option>`;
-    }).join('');
-    const cur=FluxImpersonate.active();
-    if(cur&&cur.email)sel.value=cur.email;
-  }
-
-  const close=()=>ov.remove();
-  ov.querySelectorAll('[data-imp]').forEach(b=>b.addEventListener('click',()=>{
-    const v=b.dataset.imp;
-    if(v==='off'){FluxImpersonate.clear();close();return;}
-    if(v==='student'){
-      FluxImpersonate.set({role:'student',name:'Test Student',subject:'',email:'',mode:'personal'});
-      close();
-    }
-  }));
-  document.getElementById('impCancel')?.addEventListener('click',close);
-  document.getElementById('impGo')?.addEventListener('click',()=>{
-    const email=sel?.value||'';
-    if(!email||!dir){return;}
-    const rec=dir.findByEmail(email);
-    if(!rec)return;
-    const mode=document.querySelector('input[name="impMode"]:checked')?.value||'work';
-    FluxImpersonate.set({
-      role:rec.role,
-      name:rec.name,
-      subject:rec.subject||'',
-      email:rec.email,
-      mode,
-    });
-    close();
-  });
-}
-window.openImpersonatePicker=openImpersonatePicker;
-
 /** Sidebar / drawer: educator Work mode shows School tab strip; students keep classic rows. */
 function syncSchoolNavChrome(){
   try{
@@ -3263,6 +3195,8 @@ window.onAddEventExtraPick=onAddEventExtraPick;
 
 // ══ STATE ══
 let tasks=load('tasks',[]);
+// Ghost drafts were removed (2026-10-26): drop any still saved on a task.
+if(tasks.some(t=>t&&'ghostDraft' in t)){tasks.forEach(t=>{if(t)delete t.ghostDraft;});save('tasks',tasks);}
 // Expose `tasks` on window as a LIVE view of this block-scoped binding.
 // app.js is a classic script, so top-level `let` is NOT a window property —
 // yet ~35 feature modules (Co-work, SRS, bulk-filter, progress-streak,
@@ -3333,33 +3267,9 @@ function migrateCompletedAtBackfill(){
   if(changed){save('tasks',tasks);syncKey('tasks',tasks);}
 }
 
-/* Finished tasks are deleted two weeks after they were completed (Azfer,
-   2026-09-30); the Completed filter on the dashboard says so. The clock runs
-   from the later of completion and the day this arrived, so the tasks people
-   finished months ago are not wiped the moment they update — everyone gets the
-   full two weeks' notice. Deleting syncs, so every device agrees. */
-const FLUX_DONE_KEEP_MS=14*864e5;
-const FLUX_DONE_PURGE_FROM=new Date(2026,8,30).getTime();
-function fluxDoneAtMs(t){
-  const v=t&&t.completedAt;
-  const n=typeof v==='number'?v:Date.parse(v);
-  return Number.isFinite(n)?n:NaN;
-}
-/** When a finished task is deleted, in ms; NaN for a task that is not done. */
-function fluxDoneExpiresMs(t){
-  if(!t||!t.done)return NaN;
-  const at=fluxDoneAtMs(t);
-  return Math.max(Number.isFinite(at)?at:Date.now(),FLUX_DONE_PURGE_FROM)+FLUX_DONE_KEEP_MS;
-}
-function fluxPurgeOldCompleted(){
-  const now=Date.now();
-  const keep=tasks.filter(t=>!(t&&t.done&&fluxDoneExpiresMs(t)<=now));
-  const n=tasks.length-keep.length;
-  if(!n)return 0;
-  tasks=keep;save('tasks',tasks);syncKey('tasks',tasks);
-  return n;
-}
-window.fluxPurgeOldCompleted=fluxPurgeOldCompleted;
+/* Finished tasks stay: the calendar keeps showing them as done (Azfer,
+   2026-10-23). The dashboard leaves them out instead (renderTasks), so they no
+   longer need deleting after two weeks to keep that list short. */
 
 // Tab config — each tab has id, icon, label, visible flag
 /* School-joining is switched off for now (owner request): the "Join your
@@ -3478,6 +3388,8 @@ const DEFAULT_TABS=[
   {id:'settings',icon:'⚙',label:'Settings',visible:true},
 ];
 let tabConfig=load('flux_tabs',DEFAULT_TABS);
+// Schoology had its own tab before it moved into Connect (with Canvas and Moodle).
+tabConfig=tabConfig.filter(t=>t&&t.id!=='schoology');
 // 'notebook' merged into 'notes' (one Notebook tab with Knowledge as a sub-view)
 /* 'ai' joins the retired list. Dropping it from DEFAULT_TABS alone would not
    have removed it: tabConfig is restored from localStorage, so everyone who
@@ -3502,7 +3414,7 @@ tabConfig.forEach(t=>{if(t.id==='ai'&&/flux\s*agent/i.test(String(t.label||'')))
 tabConfig.forEach(t=>{if(t.id==='notes'&&(/^notes$/i.test(String(t.label||''))||!t.label))t.label='Notebook';});
 tabConfig.forEach(t=>{
   if(t.id!=='canvas')return;
-  // Canvas, Schoology and Moodle now share this tab as "Connect".
+  // Canvas, Schoology and Moodle share this tab as "Connect".
   if(/gmail/i.test(String(t.label||''))||t.label==='Google'||t.label==='Canvas'||!t.label)t.label='Connect';
 });
 (function migrateCanvasTabOrder(){
@@ -3568,12 +3480,13 @@ let sidebarCollapsed=load('flux_sidebar_collapsed',false);
 })();
 
 // ══ SUPABASE + API ══
-const SB_URL='https://lfigdijuqmbensebnevo.supabase.co';
-const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaWdkaWp1cW1iZW5zZWJuZXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjEzMDgsImV4cCI6MjA4ODkzNzMwOH0.qG1d9DLKrs0qqLgAp-6UGdaU7xWvlg2sWq-oD-y2kVo';
+const SB_URL= window.FluxSB.url;
+const SB_ANON= window.FluxSB.anon;
 const API={
   ai:`${SB_URL}/functions/v1/ai-proxy`,
   gemini:`${SB_URL}/functions/v1/gemini-proxy`,
   canvas:`${SB_URL}/functions/v1/canvas-proxy`,
+  schoology:`${SB_URL}/functions/v1/schoology-feed`,
   ecCollegeChat:`${SB_URL}/functions/v1/ec-college-chat`,
   userFeedback:`${SB_URL}/functions/v1/user-feedback`,
   mcp:`${SB_URL}/functions/v1/mcp`,
@@ -3901,9 +3814,11 @@ function nav(id,btn,navOpt){
   // would not catch them — send them somewhere real rather than to a blank
   // panel with no way back.
   if(!FLUX_NOTEBOOK_ENABLED&&(id==='notebook'||id==='notes')){ id='dashboard'; }
+  // Owner Controls moved to its own app. Old saved links still lead somewhere.
   if(id==='flux_control'){
-    const r=getMyRole();
-    if(r!=='owner'&&r!=='dev'){nav('dashboard');return;}
+    if(isOwner())location.href='owner.html';
+    else nav('dashboard');
+    return;
   }
   // Check if tab is visible
   const tc=tabConfig.find(t=>t.id===id);
@@ -4020,11 +3935,10 @@ function nav(id,btn,navOpt){
   syncPanelScrollLayout();
   const tTitle=document.getElementById('topbarTitle');
   if(tTitle){
-    if(id==='flux_control')tTitle.textContent=isOwner()?'Owner control':(getMyRole()==='dev'?'Dev panel':'Control');
-    else if(id==='canvas')tTitle.textContent=PANEL_TITLES.canvas||'Canvas';
+    if(id==='canvas')tTitle.textContent=PANEL_TITLES.canvas||'Canvas';
     else tTitle.textContent=PANEL_TITLES[id]||id;
   }
-  const fns={dashboard:()=>{try{const pendStaff=typeof currentUser!=='undefined'&&currentUser&&String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'&&FluxRole.current==='student'&&FluxRole.isPersonalMode();const eduDash=(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode())||pendStaff;if(eduDash){fluxApplyStudentDashboardChrome(false);if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function'){FluxStaffPlatform.renderStaffPersonalDashboard();return;}}fluxApplyStudentDashboardChrome(true);}catch(e){}renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderScheduleConflictNotices();if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();if(FluxPersonal.applyDashboardVisibility)FluxPersonal.applyDashboardVisibility();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>{ensureNbkSubtabs();renderNotesList();},notebook:()=>{ensureNbkSubtabs();try{const m=document.getElementById('notebookMount');if(m&&!m.dataset.fnbReady&&window.FluxNotebook&&FluxNotebook.open){FluxNotebook.open(m);m.dataset.fnbReady='1';}}catch(e){}},goals:()=>{renderExtrasList();renderSchoolsList();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();try{window.FluxAcademicScores?.render();}catch(e){}},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();restoreTodayMood();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();try{window.FluxChangelog?.render();}catch(e){}try{window.FluxPlatformUI?.renderSettings();}catch(e){}loadSettingsUI();try{fluxUpgradeSwatchA11y();}catch(e){}try{if(window.FluxParentPortal?.renderStudentSettings)FluxParentPortal.renderStudentSettings();}catch(e){}try{if(window.FluxLearnerProfile?.renderCard)FluxLearnerProfile.renderCard();}catch(e){}},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},counselorWorkspace:()=>{try{renderCounselorWorkspace();}catch(e){}},adminDashboard:()=>{try{renderAdminDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},teacherResources:()=>{try{if(typeof renderTeacherResources==='function')renderTeacherResources();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}},staffTasks:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffTasksPanel==='function')FluxStaffPlatform.renderStaffTasksPanel();}catch(e){}},staffMeetingNotes:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderMeetingNotesPanel==='function')FluxStaffPlatform.renderMeetingNotesPanel();}catch(e){}},staffPD:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderPDPanel==='function')FluxStaffPlatform.renderPDPanel();}catch(e){}},staffWellbeing:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderWellbeingPanel==='function')FluxStaffPlatform.renderWellbeingPanel();}catch(e){}},staffResources:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderResourcesPanel==='function')FluxStaffPlatform.renderResourcesPanel();}catch(e){}},staffPersonalHub:()=>{try{if(typeof renderStaffPersonalHub==='function')renderStaffPersonalHub();}catch(e){}},schoolFeedPanel:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderSchoolFeed==='function')FluxStaffPlatform.renderSchoolFeed();}catch(e){}},staffHub:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffWorkHub==='function')FluxStaffPlatform.renderStaffWorkHub();}catch(e){}},staffMessages:()=>{try{if(typeof renderStaffMessages==='function')renderStaffMessages();}catch(e){}},parentPortal:()=>{try{if(window.renderParentPortal)renderParentPortal();}catch(e){}}};
+  const fns={dashboard:()=>{try{const pendStaff=typeof currentUser!=='undefined'&&currentUser&&String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'&&FluxRole.current==='student'&&FluxRole.isPersonalMode();const eduDash=(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode())||pendStaff;if(eduDash){fluxApplyStudentDashboardChrome(false);if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function'){FluxStaffPlatform.renderStaffPersonalDashboard();return;}}fluxApplyStudentDashboardChrome(true);}catch(e){}renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderScheduleConflictNotices();if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();if(FluxPersonal.applyDashboardVisibility)FluxPersonal.applyDashboardVisibility();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>{ensureNbkSubtabs();renderNotesList();},notebook:()=>{ensureNbkSubtabs();try{const m=document.getElementById('notebookMount');if(m&&!m.dataset.fnbReady&&window.FluxNotebook&&FluxNotebook.open){FluxNotebook.open(m);m.dataset.fnbReady='1';}}catch(e){}},goals:()=>{renderExtrasList();renderSchoolsList();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();try{window.FluxAcademicScores?.render();}catch(e){}},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();restoreTodayMood();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();try{window.FluxChangelog?.render();}catch(e){}try{window.FluxPlatformUI?.renderSettings();}catch(e){}loadSettingsUI();try{fluxUpgradeSwatchA11y();}catch(e){}try{if(window.FluxParentPortal?.renderStudentSettings)FluxParentPortal.renderStudentSettings();}catch(e){}try{if(window.FluxLearnerProfile?.renderCard)FluxLearnerProfile.renderCard();}catch(e){}},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},counselorWorkspace:()=>{try{renderCounselorWorkspace();}catch(e){}},adminDashboard:()=>{try{renderAdminDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},teacherResources:()=>{try{if(typeof renderTeacherResources==='function')renderTeacherResources();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}},staffTasks:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffTasksPanel==='function')FluxStaffPlatform.renderStaffTasksPanel();}catch(e){}},staffMeetingNotes:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderMeetingNotesPanel==='function')FluxStaffPlatform.renderMeetingNotesPanel();}catch(e){}},staffPD:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderPDPanel==='function')FluxStaffPlatform.renderPDPanel();}catch(e){}},staffWellbeing:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderWellbeingPanel==='function')FluxStaffPlatform.renderWellbeingPanel();}catch(e){}},staffResources:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderResourcesPanel==='function')FluxStaffPlatform.renderResourcesPanel();}catch(e){}},staffPersonalHub:()=>{try{if(typeof renderStaffPersonalHub==='function')renderStaffPersonalHub();}catch(e){}},schoolFeedPanel:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderSchoolFeed==='function')FluxStaffPlatform.renderSchoolFeed();}catch(e){}},staffHub:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffWorkHub==='function')FluxStaffPlatform.renderStaffWorkHub();}catch(e){}},staffMessages:()=>{try{if(typeof renderStaffMessages==='function')renderStaffMessages();}catch(e){}},parentPortal:()=>{try{if(window.renderParentPortal)renderParentPortal();}catch(e){}}};
   // A panel renderer must never abort the rest of nav(): the panel class has
   // already been swapped above, so throwing here strands the user on a
   // half-initialised tab with the post-render steps (split layout, bumpNav,
@@ -4062,10 +3976,6 @@ function nav(id,btn,navOpt){
   if(window.FluxPersonal&&FluxPersonal.bumpNav)FluxPersonal.bumpNav(id);
   if(window.Flux100&&typeof Flux100.onNavAfter==='function')try{Flux100.onNavAfter(id);}catch(e){}
   if(typeof window.fluxAnimeNavAfter==='function'){try{window.fluxAnimeNavAfter(id);}catch(e){}}
-  try{
-    const np=document.getElementById(id);
-    if(np&&window.FluxAnim?.panelFlash)FluxAnim.panelFlash(np);
-  }catch(e){}
   try{
     if(window.FluxDebug&&FluxDebug.navEnd&&(FluxDebug.on('NAV')||FluxDebug.on())){
       const direct=[...document.querySelectorAll('.main-content > .panel.active')];
@@ -4226,7 +4136,7 @@ document.addEventListener('keydown',e=>{
 function populateSubjectSelects(){
   if(fluxIsStaffPersonalMode())return;
   const subjs=getSubjects();
-  const opts='<option value="">No subject</option>'+Object.entries(subjs).map(([k,s])=>`<option value="${k}">${s.name}</option>`).join('');
+  const opts='<option value="">No subject</option>'+Object.entries(subjs).map(([k,s])=>`<option value="${esc(k)}">${esc(s.name)}</option>`).join('');
   ['taskSubject','editSubject','noteSubjectTag','timerSubject','addEventSubject'].forEach(id=>{
     const el=document.getElementById(id);
     if(!el)return;
@@ -4276,7 +4186,6 @@ const NAV_TAB_SVGS={
   mood:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 10h.01M16 10h.01"/><path d="M8.2 15a4 4 0 0 0 7.6 0"/></svg>`,
   /* Sliders — distinct from Flux AI sparkles */
   settings:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 3v5"/><path d="M20 21v-5"/><path d="M20 8V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 14h4"/></svg>`,
-  flux_control:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="11" width="7" height="10" rx="1.5"/><rect x="3" y="15" width="7" height="6" rx="1.5"/></svg>`,
   references:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/><path d="M8 7h8M8 11h6"/></svg>`,
   periodic:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
   gmail:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2Z"/><path d="m22 6-10 7L2 6"/></svg>`,
@@ -4315,15 +4224,10 @@ function getNavIconHtml(tabId,variant){
    icon, the label and whether it appears at all from tabConfig — the same
    source renderSidebars() builds the sidebar and the drawer from. The phone
    then cannot disagree with the laptop, which is the point of the redesign,
-   and a tab someone renames in Settings gets renamed here too.
-
-   The admin slot is exempt: flux_control is injected by role a few lines
-   above and deliberately is not a tabConfig entry, so matching on tabConfig
-   would hide it from the owner. */
+   and a tab someone renames in Settings gets renamed here too. */
 function syncMoreSheetNav(){
   const visible=new Set(tabConfig.filter(t=>t.visible).map(t=>t.id));
   document.querySelectorAll('.more-sheet-item[data-nav-tab]').forEach(btn=>{
-    if(btn.closest('#moreSheetAdminSlot'))return;
     const id=btn.getAttribute('data-nav-tab');
     btn.style.display=visible.has(id)?'':'none';
     const tc=tabConfig.find(t=>t.id===id);
@@ -4366,7 +4270,7 @@ function buildEducatorNavAugmentation(isMob,schoolClassicLabelEscaped){
 </div>`;
   const googleNavIcon=`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>`;
   const googleNavOnclick=isMob?`navMob('canvas');try{FluxGoogle.renderHub()}catch(e){}`:`nav('canvas',this);try{FluxGoogle.renderHub()}catch(e){}`;
-  const googleNavWork=`<button type="button" class="nav-item" data-educator-google data-educator-google-work onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Canvas"><span class="ni">${googleNavIcon}</span><span class="nl">Canvas</span></button>`;
+  const googleNavWork=`<button type="button" class="nav-item" data-educator-google data-educator-google-work onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Connect school apps"><span class="ni">${googleNavIcon}</span><span class="nl">Connect</span></button>`;
   const googleNavPersonal=`<button type="button" class="nav-item" data-educator-google data-educator-google-personal onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Connect school apps"><span class="ni">${googleNavIcon}</span><span class="nl">Connect</span></button>`;
   const staffPersonal=`<button type="button" class="nav-item" onclick="${isMob?`navMob('staffTasks');try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`:`nav('staffTasks',this);try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni">${getNavIconHtml('staffTasks')}</span><span class="nl">Tasks</span></button>
 <button type="button" class="nav-item" onclick="${isMob?`navMob('staffResources');try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`:`nav('staffResources',this);try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni">${getNavIconHtml('staffResources')}</span><span class="nl">Resources</span></button>
@@ -4463,25 +4367,6 @@ function renderSidebars(){
     ].join('');
   }
 
-  const role=getMyRole();
-  if(role==='owner'||role==='dev'){
-    const lab=role==='owner'?'Owner control':'Dev panel';
-    const adminGroup=`<div class="nav-group"><div class="nav-group-label">Admin</div><button type="button" class="nav-item" onclick="nav('flux_control',this)" data-tab="flux_control" aria-label="${lab}"><span class="ni">${getNavIconHtml('flux_control')}</span><span class="nl">${lab}</span></button></div>`;
-    const adminGroupMob=`<div class="nav-group"><div class="nav-group-label">Admin</div><button type="button" class="nav-item" onclick="navMob('flux_control')" data-tab="flux_control" aria-label="${lab}"><span class="ni">${getNavIconHtml('flux_control')}</span><span class="nl">${lab}</span></button></div>`;
-    if(sidebarNav)sidebarNav.insertAdjacentHTML('beforeend',adminGroup);
-    if(drawerNav)drawerNav.insertAdjacentHTML('beforeend',adminGroupMob);
-  }
-
-  const adminSlot=document.getElementById('moreSheetAdminSlot');
-  if(adminSlot){
-    if(role==='owner'||role==='dev'){
-      const lab=role==='owner'?'Owner control':'Dev panel';
-      adminSlot.innerHTML=`<button type="button" class="more-sheet-item" data-nav-tab="flux_control" onclick="navMob('flux_control')"><span class="more-sheet-icon" aria-hidden="true">${getNavIconHtml('flux_control','moreSheet')}</span><span class="more-sheet-label">${lab}</span></button>`;
-    }else{
-      adminSlot.innerHTML='';
-    }
-  }
-
   // Mobile bottom nav is always the same 5 spec tabs:
   // Home · Calendar · AI · Study · More (opens bottom sheet, not drawer).
   // Keep the More button wired to openMobileSheet so it matches the spec.
@@ -4550,14 +4435,18 @@ function openDrawer(){
     drawer.classList.toggle('drawer-right',isRight);
   }
   document.getElementById('drawerOverlay').classList.add('open');
-  if(drawer)drawer.classList.add('open');
+  if(drawer){drawer.classList.add('open');drawer.setAttribute('aria-hidden','false');}
 }
-function closeDrawer(){document.getElementById('drawerOverlay').classList.remove('open');const d=document.getElementById('mobDrawer');if(d)d.classList.remove('open');}
+function closeDrawer(){document.getElementById('drawerOverlay').classList.remove('open');const d=document.getElementById('mobDrawer');if(d){d.classList.remove('open');d.setAttribute('aria-hidden','true');}}
 
 // ══ TASKS ══
 function calcUrgency(task){const now=new Date();now.setHours(0,0,0,0);const days=task.date?Math.max(0,Math.floor((new Date(task.date+'T00:00:00')-now)/86400000)):99;const pMap={high:3,med:2,low:1};return(pMap[task.priority]||2)*(task.difficulty||3)/Math.max(days,0.5);}
 function addTask(){
-  const name=document.getElementById('taskName').value.trim();if(!name)return;
+  const rawName=document.getElementById('taskName').value.trim();if(!rawName)return;
+  // Fill the fields from the title once more (a pasted title fires no input
+  // event), then save the name without the date / time / priority words.
+  const parsedTitle=ntReadTitle();
+  const name=(parsedTitle&&parsedTitle.name)||rawName;
   const wo=(document.getElementById('taskWaitingOn')?.value||'').trim();
   const _recTypeAdd=(document.getElementById('taskRecurringType')?.value)||'none';
   const staffPersonal=fluxIsStaffPersonalMode();
@@ -4571,10 +4460,15 @@ function addTask(){
     }
   }
   task.urgencyScore=calcUrgency(task);tasks.unshift(task);
+  if(fluxConvertEventId!=null){
+    save('flux_events',load('flux_events',[]).filter(x=>String(x.id)!==String(fluxConvertEventId)));
+    syncKey('events',1);
+    fluxConvertEventId=null;
+  }
   try{if(window.FluxRecurring?.bindTask)FluxRecurring.bindTask(task);}catch(_){}
-  save('tasks',tasks);if(task.subject){if(window.FluxGhostDraftV2?.enabled?.()&&typeof FluxGhostDraftV2.scheduleInject==='function')FluxGhostDraftV2.scheduleInject(task);else setTimeout(()=>injectGhostDraft(task),1500);}
+  save('tasks',tasks);
   if(window.Flux100&&typeof Flux100.captureLastTaskFromModal==='function')try{Flux100.captureLastTaskFromModal(task);}catch(e){}
-  document.getElementById('taskName').value='';document.getElementById('taskNotes').value='';{const tt=document.getElementById('taskTime');if(tt)tt.value='';}
+  document.getElementById('taskName').value='';document.getElementById('taskNotes').value='';{const h=document.getElementById('taskNameParsed');if(h){h.textContent='';h.hidden=true;}}{const tt=document.getElementById('taskTime');if(tt)tt.value='';}
   closeDashAddTaskModal();
   renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();panicCheck(task);
   syncKey('tasks',tasks);
@@ -4657,12 +4551,11 @@ function toggleTask(id){
     const card=document.querySelector(`.task-item[data-task-id="${id}"]`)||document.querySelector(`[data-task-id="${id}"]`);
     fluxPaintTaskDone(id,true);
     if(card&&motionOn){
-      // One burst and the tick drawing itself. No confetti over the page and no
-      // second particle system: they were most of the lag on a phone.
+      // Just the tick drawing itself. The dot burst that used to fly out of the
+      // box read as a scatter of little icons next to the one check mark.
       const chk=card.querySelector('.check');
       const nameEl=card.querySelector('.task-text.task-primary-line')||card.querySelector('.task-text');
       try{window.FluxMotionMore?.tickAndStrike(chk,nameEl);}catch(_){}
-      if(chk)spawnTaskBurstFromEl(chk);
     }
     addMomentum();
     if(window.FluxIntel&&FluxIntel.recordCompletionStreak)FluxIntel.recordCompletionStreak();
@@ -4717,21 +4610,13 @@ function toggleTask(id){
 // restores the task as un-synced — push it again to put it back on Calendar.
 function deleteTask(id){snapshotTasks();tasks=tasks.filter(x=>x.id!==id&&!(x.planOf!=null&&String(x.planOf)===String(id)&&!x.done));save('tasks',tasks);try{if(typeof window.fluxGCalRemoveTaskFromGCal==='function')Promise.resolve(window.fluxGCalRemoveTaskFromGCal(id)).catch(()=>{});}catch(_){}showUndoSnackbar('Task deleted','undoLastChange');renderStats();renderTasks();renderCalendar();renderCountdown();checkAllPanic();syncKey('tasks',tasks);}
 function setFilter(f,el){
-  if(f==='reading'||f==='snoozed')f='active';
+  // 'done' was the Completed chip, retired with the dashboard's finished list.
+  if(f==='reading'||f==='snoozed'||f==='done')f='active';
   try{if(window.FluxSmartLists?.clearActive)FluxSmartLists.clearActive();}catch(_){}
   taskFilter=f;
   document.querySelectorAll('#filterChips .tmode-btn').forEach(b=>b.classList.remove('active'));
   if(el)el.classList.add('active');
   renderTasks();
-}
-function toggleCompletedTasks(){
-  const show=!load('flux_show_completed',false);
-  save('flux_show_completed',show);
-  const wrap=document.getElementById('completedTasksWrap');
-  const toggle=document.querySelector('.completed-toggle');
-  if(wrap)wrap.style.display=show?'':'none';
-  if(toggle)toggle.classList.toggle('collapsed',!show);
-  if(show&&wrap){try{window.FluxMotionMore?.revealChildren(wrap);}catch(_){}}
 }
 // ── TOPBAR TASK COUNT PILL ──────────────────────────────────
 function updateTopbarStats(){
@@ -4835,7 +4720,47 @@ function renderAboutStats(){
   if(typeof renderStorageMeter==='function')renderStorageMeter();
 }
 
+/** Flat-look dashboard header (public/css/flux-look-flat.css): the date,
+ *  when the next task is due, and three numbers — open, overdue, and days
+ *  left on the user's countdown. Hidden by CSS in the classic look. */
+function renderFlatDashHead(){
+  const hero=document.getElementById('dashHero');
+  if(!hero)return;
+  let head=hero.querySelector('.fx-head');
+  if(!head){
+    head=document.createElement('div');
+    head.className='fx-head';
+    hero.prepend(head);
+  }
+  const d0=new Date();d0.setHours(0,0,0,0);
+  const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const today=iso(d0);
+  const list=Array.isArray(tasks)?tasks:[];
+  const open=list.filter(t=>t&&!t.done);
+  const overdue=open.filter(t=>t.date&&t.date<today).length;
+  const upcoming=open.filter(t=>t.date&&t.date>=today).map(t=>t.date).sort();
+  let sub='Nothing due soon';
+  if(upcoming.length){
+    const days=Math.round((new Date(upcoming[0]+'T00:00:00')-d0)/86400000);
+    sub=days===0?'Next due today':days===1?'Next due tomorrow':'Next due in '+days+' days';
+  }
+  let countdown='';
+  try{
+    const t=fluxCountdownTarget();
+    if(t){
+      const p=fluxCountdownParts(t);
+      if(p.dayDiff>=0)countdown=`<div class="fx-stat" title="${esc(t.label||'Countdown').replace(/"/g,'&quot;')}"><b>${p.dayDiff}</b><small>days left</small></div>`;
+    }
+  }catch(_){}
+  const date=d0.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'});
+  const html=`<div><h2 class="fx-head-date">${esc(date)}</h2><p class="fx-head-sub">${esc(sub)}</p></div>`
+    +`<div class="fx-head-stats"><div class="fx-stat"><b>${open.length}</b><small>open</small></div>`
+    +`<div class="fx-stat${overdue?' is-bad':''}"><b>${overdue}</b><small>overdue</small></div>${countdown}</div>`;
+  if(head.dataset.fx!==html){head.innerHTML=html;head.dataset.fx=html;}
+}
+
 function updateDashHero(opts){
+  try{renderFlatDashHead();}catch(_){}
   const greet=document.getElementById('dashGreeting');
   if(!greet)return;
   const raw=(fluxLoadStoredString('flux_user_name','there').trim()||'there');
@@ -4874,28 +4799,6 @@ function updateDashHero(opts){
       setTimeout(()=>{grad.classList.remove('dash-v2-greet-typewriter');grad.style.backgroundSize='';},3200);
     }
   }catch(e){}
-}
-function spawnTaskBurstFromEl(el){
-  if(!el||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  const r=el.getBoundingClientRect();
-  const cx=r.left+r.width/2,cy=r.top+r.height/2;
-  const colors=['#00C2FF','#7C5CFF','#22FF88'];
-  const n=12;
-  for(let i=0;i<n;i++){
-    const p=document.createElement('div');
-    p.className='task-burst-particle';
-    p.style.left=cx+'px';p.style.top=cy+'px';
-    p.style.background=colors[i%colors.length];
-    document.body.appendChild(p);
-    const ang=(Math.PI*2*i)/n+Math.random()*.35;
-    const dist=40+Math.random()*48;
-    const tx=Math.cos(ang)*dist,ty=Math.sin(ang)*dist;
-    p.animate(
-      [{transform:'translate(-50%,-50%) scale(1)',opacity:1},{transform:`translate(calc(-50% + ${tx}px),calc(-50% + ${ty}px)) scale(.35)`,opacity:0}],
-      {duration:480,easing:'cubic-bezier(.22,1,.36,1)'}
-    );
-    setTimeout(()=>p.remove(),500);
-  }
 }
 /** Next 7 days: estimated workload from open tasks (by due date; overdue rolled into today). */
 function renderDashWeekStrip(){
@@ -5340,8 +5243,10 @@ function renderTasks(){
   // 'all' and 'high' lost their chips (the row was too cluttered). A synced or
   // legacy value can still name them, which would filter the list while the
   // chip row still reads "Active" — fold them back to the default instead.
-  if(taskFilter==='all'||taskFilter==='high')taskFilter='active';
-  let list=tasks.filter(fluxTaskVisibleInMode);
+  if(taskFilter==='all'||taskFilter==='high'||taskFilter==='done')taskFilter='active';
+  // Finished tasks live on in the calendar, shown as done; the dashboard is
+  // for what is still to do (Azfer, 2026-10-23).
+  let list=tasks.filter(t=>!t.done&&fluxTaskVisibleInMode(t));
   if(window.FluxSmartLists?.isSmartFilter?.(taskFilter)){
     list=FluxSmartLists.applyFilter(list,taskFilter);
     list.sort((a,b)=>{
@@ -5351,7 +5256,6 @@ function renderTasks(){
     });
   }else{
   if(taskFilter==='active')list=list.filter(t=>!t.done);
-  if(taskFilter==='done')list=list.filter(t=>t.done);
   if(taskFilter==='overdue')list=list.filter(t=>isTaskOverdueDay(t));
   if(taskFilter==='today')list=list.filter(t=>t.date&&t.date===todayStr());
   if(taskFilter==='high')list=list.filter(t=>!t.done&&t.priority==='high');
@@ -5361,9 +5265,6 @@ function renderTasks(){
       if(d!==0)return d;
       return (a.id||0)-(b.id||0);
     });
-  }else if(taskFilter==='done'){
-    // Most recently finished first.
-    list.sort((a,b)=>(fluxDoneAtMs(b)||0)-(fluxDoneAtMs(a)||0));
   }else{
   const energy=readFluxEnergyLevel();
   let moodStress=5;
@@ -5390,24 +5291,21 @@ function renderTasks(){
   }
   const keep=fluxTaskListKeep(el);
   if(!list.length){
-    const msgs={active:"You're free — want to plan your day or add one task?",done:'No completed tasks yet',overdue:'No overdue tasks',today:'Nothing due today',high:'No high-priority tasks',all:'No tasks yet — press T to quick add'};
-    const icons={active:'✓',done:'🎉',overdue:'⏰',today:'📋',high:'🔥',all:'✦'};
+    const msgs={active:"You're free — want to plan your day or add one task?",overdue:'No overdue tasks',today:'Nothing due today',high:'No high-priority tasks',all:'No tasks yet — press T to quick add'};
+    const icons={active:'✓',overdue:'⏰',today:'📋',high:'🔥',all:'✦'};
     const smartMeta=window.FluxSmartLists?.getEmptyMeta?.(taskFilter);
     const emptyTitle=smartMeta?.title||(msgs[taskFilter]||msgs.all);
     const emptyIcon=smartMeta?.icon||(icons[taskFilter]||icons.all);
-    const emptySub=taskFilter==='done'
-      ?'Tasks you finish show here for 2 weeks, then they are deleted.'
-      :'Use the <span class="kbd-hint">+</span> menu or <span class="kbd-hint">T</span> quick add · <span class="kbd-hint">⌘⇧K</span> search · <span class="kbd-hint">⌘K</span> palette';
-    el.innerHTML=`<div class="empty flux-empty-smart flux-empty-animated"><div class="empty-icon flux-empty-bounce">${emptyIcon}</div><div class="empty-title">${emptyTitle}</div><div class="empty-sub">${emptySub}</div></div>`;
+    const emptySub='Use the <span class="kbd-hint">+</span> menu or <span class="kbd-hint">T</span> quick add · <span class="kbd-hint">⌘⇧K</span> search · <span class="kbd-hint">⌘K</span> palette';
+    // A button, not only keyboard hints: a phone has no T key.
+    const emptyAdd=taskFilter==='overdue'?'':'<button type="button" class="flux-empty-add" style="margin-top:12px" onclick="openDashAddTaskModal()">+ Add a task</button>';
+    el.innerHTML=`<div class="empty flux-empty-smart flux-empty-animated"><div class="empty-icon flux-empty-bounce">${emptyIcon}</div><div class="empty-title">${emptyTitle}</div><div class="empty-sub">${emptySub}</div>${emptyAdd}</div>`;
     requestAnimationFrame(()=>{try{const em=el.querySelector('.empty');if(em)window.FluxAnim?.emptyStateIn?.(em);}catch(e){}});
     return;
   }
   const tm={hw:{l:'HW',c:'var(--muted)'},test:{l:'Test',c:'var(--red)'},quiz:{l:'Quiz',c:'var(--gold)'},project:{l:'Project',c:'var(--purple)'},essay:{l:'Essay',c:'var(--blue)'},lab:{l:'Lab',c:'var(--green)'},reading:{l:'Reading',c:'var(--blue)'},other:{l:'Other',c:'var(--muted)'}};
   const todayS=todayStr();
   const active=list.filter(t=>!t.done);
-  // Finished tasks newest first, whatever order the open ones are in: the one
-  // you just ticked (by accident or not) is at the top of Completed.
-  const done=list.filter(t=>t.done).sort((a,b)=>(fluxDoneAtMs(b)||0)-(fluxDoneAtMs(a)||0));
   const renderCard=t=>{
     const sub=getSubjects()[t.subject];
     const isOver=isTaskOverdueDay(t);
@@ -5452,21 +5350,6 @@ function renderTasks(){
     const waitChip=t.waitingOn?`<span class="task-chip" title="Waiting on">${esc(t.waitingOn)}</span>`:'';
     const recChip=(window.FluxRecurring?.chipHtml?FluxRecurring.chipHtml(t):'')||(t.recurringWeekly?`<span class="task-chip task-chip-recurring" title="Repeats weekly when completed">Weekly</span>`:'');
     const snz='';
-    let ghostHtml='';
-    if(window.FluxGhostDraftV2?.enabled?.()&&typeof FluxGhostDraftV2.cardHtml==='function'){
-      ghostHtml=FluxGhostDraftV2.cardHtml(t)||'';
-    }else if(t.ghostDraft&&!t.done){
-      const ghostBody=`<div class="ghost-draft-body" style="white-space:pre-wrap">${esc(t.ghostDraft)}</div>`;
-      if(window.FluxGhostDraftV2&&typeof FluxGhostDraftV2.collapsibleHtml==='function'){
-        ghostHtml=FluxGhostDraftV2.collapsibleHtml({
-          attrs:{'data-ghost-task-id':t.id},
-          summaryHtml:'<span class="ghost-draft-title">✦ Ghost draft</span>',
-          bodyHtml:ghostBody,
-        });
-      }else{
-        ghostHtml=`<details class="ghost-draft ghost-draft--collapsible" data-ghost-task-id="${t.id}"><summary class="ghost-draft-summary"><span class="ghost-draft-title">✦ Ghost draft</span><span class="ghost-draft-chevron" aria-hidden="true"></span></summary>${ghostBody}</details>`;
-      }
-    }
     return`<div class="task-item ${priClass}${extraCls}${frictionCls}${srsCls} ${t.done?'task-done':''}${_fluxRowsShown.has(String(t.id))?' task-seen':''}" data-task-id="${t.id}" data-priority="${t.priority||'med'}"${frictionData}${srsData} draggable="${!_taskBulkMode}" style="${blockedStyle}">
 ${bulk}
 <div class="check ${t.done?'done':''}" role="checkbox" tabindex="0" aria-checked="${t.done?'true':'false'}" aria-label="${esc(t.name)}" onkeydown="fluxCheckKey(event,this)" onclick="${blocked?'showToast(\'Complete blockers first\',\'warning\');return':'toggleTask('+t.id+')'}">${t.done?'✓':blocked?'🔒':''}</div>
@@ -5478,11 +5361,10 @@ ${priChip}
 ${ds?`<span class="task-chip task-chip-due ${isOver?'overdue':''}${isToday?' due-today':''}" onclick="event.stopPropagation();openInlineDatePicker(${t.id},this)" title="Click to change date" style="cursor:pointer">${ds}${isNP?' '+restEmoji:''}</span>`:`<span class="task-chip task-chip-nodate" onclick="event.stopPropagation();openInlineDatePicker(${t.id},this)" title="Add due date" style="cursor:pointer;opacity:.42">+ date</span>`}
 ${waitChip}${recChip}${snz}
 ${t.planOf!=null&&t.planParts&&!t.weekBlock?`<span class="task-chip task-chip-plan" title="Part of a plan: open it to change the days" onclick="event.stopPropagation();openPlanItOut(${fluxIdArg(t.planOf)})" style="cursor:pointer">Step ${t.planPart} of ${t.planParts}</span>`:''}${fluxWeekPlanChip(t)}${t.plan&&!t.done?(()=>{const ps=tasks.filter(x=>x.planOf!=null&&String(x.planOf)===String(t.id));return ps.length?`<span class="task-chip task-chip-plan" title="Open the plan" onclick="event.stopPropagation();openPlanItOut(${fluxIdArg(t.id)})" style="cursor:pointer">Planned · ${ps.filter(x=>x.done).length}/${ps.length}</span>`:'';})():''}
-${t.done&&taskFilter==='done'&&Number.isFinite(fluxDoneExpiresMs(t))?`<span class="task-chip task-chip-expiry" title="Finished tasks are deleted 2 weeks after you complete them">Deletes ${fmtFluxDate(new Date(fluxDoneExpiresMs(t)),'short')}</span>`:''}
 ${(t.fluxTags||[]).length?(t.fluxTags||[]).map(tg=>`<span class="task-chip" style="background:rgba(var(--purple-rgb),.1);border-color:rgba(var(--purple-rgb),.22);font-size:.6rem">${esc(tg)}</span>`).join(''):''}
 <span class="task-chip" style="background:rgba(255,255,255,.02);color:var(--muted);border:1px solid rgba(255,255,255,.04)">${ti.l}</span>
 </div>
-${stBar}${frictionBadge}${srsBadge}${ghostHtml}
+${stBar}${frictionBadge}${srsBadge}
 </div>
 <!-- Three buttons, hard limit. This row had grown to nine — a school/outside
      pill, repeat options, copy link, Google Calendar, co-work and these four —
@@ -5506,19 +5388,7 @@ ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick
 </div>`;
   };
   const win=fluxWindowedListHtml(active,renderCard,'tasks',keep&&keep.count);
-  let html=win.html;
-  if(taskFilter==='done'){
-    html=`<div class="flux-done-notice" role="note"><span aria-hidden="true">🗑</span> Finished tasks are deleted 2 weeks after you complete them. Untick one to keep it.</div>`
-      +done.map(renderCard).join('');
-  }else if(done.length){
-    const showDone=load('flux_show_completed',false);
-    html+=`<div class="completed-toggle ${showDone?'':'collapsed'}" onclick="toggleCompletedTasks()">
-      <span class="completed-toggle-label">Completed</span>
-      <span class="completed-toggle-count">${done.length}</span>
-      <span class="completed-toggle-chevron">▾</span>
-    </div>`;
-    html+=`<div id="completedTasksWrap" style="${showDone?'':'display:none'}">${done.map(renderCard).join('')}</div>`;
-  }
+  const html=win.html;
   const listSig=list.map(t=>`${t.id}:${t.done?1:0}`).join('|');
   const prevSig=el.dataset.fluxTaskListSig||'';
   el.dataset.fluxTaskListSig=listSig;
@@ -5545,26 +5415,102 @@ ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick
   fluxTaskListRestore(el,keep);
 }
 function renderSmartSug(){}
-function openDashAddTaskModal(){
+function openDashAddTaskModal(instant){
   const m=document.getElementById('dashAddTaskModal');
   if(!m)return;
   fluxSyncSubjectUiForRole();
   populateSubjectSelects();
   const more=document.getElementById('taskMoreOptions');if(more)more.open=false;
-  m.style.display='flex';
+  ntResetForm();
   const card=m.querySelector('.modal-card');
-  try{if(window.FluxAnim?.modalOpen)FluxAnim.modalOpen(m,card||m);}catch(e){}
+  try{window.FluxAnim?.modalCancelClose?.(m,card);}catch(e){}
+  m.style.display='flex';
+  m.classList.toggle('flux-modal-swap',!!instant);
+  try{if(!instant&&window.FluxAnim?.modalOpen)FluxAnim.modalOpen(m,card||m);}catch(e){}
   try{window.FluxA11y?.trapFocus?.(m);}catch(e){}
   setTimeout(()=>document.getElementById('taskName')?.focus(),80);
 }
-function closeDashAddTaskModal(){
+/* ── New task: the title is read as you type ────────────────────────────────
+   Students type the date into the title ("Algebra quiz friday") and the form
+   ignored it: the task was saved as due today, named "Algebra quiz friday".
+   Enter did nothing, and the form kept the last task's date, type and subject.
+
+   Now each opening starts due today (the last subject and type are still
+   remembered, by flux-enhancements-v100.js applyAddTaskDefaults), the title
+   is read with parseNLTask as it is typed, and what it finds fills Due date,
+   Type, Subject, Priority, Due time and Est. time — never a field you have
+   changed yourself since opening the form. A line under the title says what
+   it read. The date / time / priority / estimate words come out of the saved
+   name. Enter in the title adds the task. */
+const NT_FIELDS={date:'taskDate',type:'taskType',subject:'taskSubject',priority:'taskPriority',time:'taskTime',estTime:'taskEstTime'};
+function ntSaid(p,k){
+  if(!p)return false;
+  if(k==='type')return p.type&&p.type!=='hw';
+  if(k==='priority')return p.priority&&p.priority!=='med';
+  return !!p[k];
+}
+function ntResetForm(){
+  const defaults={taskDate:todayStr(),taskPriority:'med',taskTime:'',taskEstTime:'',taskDifficulty:''};
+  for(const[id,v] of Object.entries(defaults)){
+    const el=document.getElementById(id);if(!el)continue;
+    el.value=v;
+  }
+  Object.values(NT_FIELDS).forEach(id=>{const el=document.getElementById(id);if(el){delete el.dataset.ntTouched;delete el.dataset.ntAuto;}});
+  const h=document.getElementById('taskNameParsed');if(h){h.textContent='';h.hidden=true;}
+  ntBindForm();
+}
+function ntBindForm(){
+  const ni=document.getElementById('taskName');
+  if(!ni||ni.dataset.ntBound)return;
+  ni.dataset.ntBound='1';
+  ni.addEventListener('input',ntReadTitle);
+  ni.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'||e.isComposing||e.shiftKey)return;
+    e.preventDefault();addTask();
+  });
+  Object.values(NT_FIELDS).forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.addEventListener('change',()=>{el.dataset.ntTouched='1';delete el.dataset.ntAuto;});
+  });
+}
+function ntReadTitle(){
+  const ni=document.getElementById('taskName');if(!ni)return null;
+  const p=ni.value.trim()?parseNLTask(ni.value):null;
+  const bits=[];
+  for(const[k,id] of Object.entries(NT_FIELDS)){
+    const el=document.getElementById(id);
+    if(!el||el.dataset.ntTouched)continue;
+    if(ntSaid(p,k)){
+      // What was there before the title spoke (a remembered subject, the
+      // calendar's day) comes back if the words are deleted again.
+      if(!el.dataset.ntAuto)el.dataset.ntDefault=el.value;
+      el.value=String(p[k]);
+      if(el.value!==String(p[k]))continue; // e.g. a subject this form has no option for
+      el.dataset.ntAuto='1';
+      if(k==='date')bits.push('Due '+fmtFluxDate(p.date,'short'));
+      else if(k==='time')bits.push('at '+p.time);
+      else if(k==='type')bits.push(el.options[el.selectedIndex]?.text||p.type);
+      else if(k==='subject')bits.push(el.options[el.selectedIndex]?.text||'');
+      else if(k==='priority')bits.push((p.priority==='high'?'High':'Low')+' priority');
+      else if(k==='estTime')bits.push('~'+p.estTime+' min');
+    }else if(el.dataset.ntAuto){
+      el.value=el.dataset.ntDefault||'';delete el.dataset.ntAuto;
+    }
+  }
+  const h=document.getElementById('taskNameParsed');
+  if(h){h.textContent=bits.length?'Read from the title: '+bits.filter(Boolean).join(' · '):'';h.hidden=!bits.length;}
+  return p;
+}
+function closeDashAddTaskModal(instant){
   const m=document.getElementById('dashAddTaskModal');
   if(!m)return;
   try{window.FluxA11y?.releaseFocus?.(m);}catch(e){}
+  fluxConvertEventId=null;
   const card=m.querySelector('.modal-card');
   const hide=()=>{m.style.display='none';};
+  const calRow=document.getElementById('taskCalTypeRow');if(calRow)calRow.style.display='none';
   try{
-    if(window.FluxAnim?.modalClose)FluxAnim.modalClose(m,card||m,hide);
+    if(!instant&&window.FluxAnim?.modalClose)FluxAnim.modalClose(m,card||m,hide);
     else hide();
   }catch(e){hide();}
   const w=document.getElementById('taskWaitingOn');if(w)w.value='';
@@ -5968,8 +5914,6 @@ function changeMonth(d){
     if(calMonth>11){calMonth=0;calYear++;}
     if(calMonth<0){calMonth=11;calYear--;}
     renderCalendar();
-    const gdd=document.getElementById('calGlassDropdown');
-    if(gdd&&!gdd.hidden&&typeof renderCalGlassDropdown==='function')renderCalGlassDropdown();
     if(!animate&&!reduced){try{window.FluxMotionMore?.calRipple(document.getElementById('calGrid'),d);}catch(_){}}
     if(animate){
       const g=document.getElementById('calGrid');
@@ -5995,141 +5939,10 @@ function selectDay(d){
   const b=document.getElementById('calAddEventBtn');if(b)b.style.display='inline-flex';
 }
 
-// ── Calendar glass date picker (month title dropdown; task-focused) ──
-let calGlassMode='month';
-function calGlassOpenTasksOn(y,m,d){
-  const ds=fluxLocalYMD(new Date(y,m,d));
-  return tasks.filter(t=>t.date===ds&&!t.done).length;
-}
-function toggleCalGlassDropdown(ev){
-  if(ev&&typeof ev.stopPropagation==='function')ev.stopPropagation();
-  const dd=document.getElementById('calGlassDropdown');
-  const btn=document.getElementById('calMonthOpenBtn');
-  if(!dd||!btn)return;
-  if(!dd.hidden){closeCalGlassDropdown();return;}
-  dd.hidden=false;
-  btn.setAttribute('aria-expanded','true');
-  renderCalGlassDropdown();
-  setTimeout(()=>{document.addEventListener('click',calGlassOutsideClose,true);},0);
-}
-function closeCalGlassDropdown(){
-  const dd=document.getElementById('calGlassDropdown');
-  const btn=document.getElementById('calMonthOpenBtn');
-  if(dd)dd.hidden=true;
-  if(btn)btn.setAttribute('aria-expanded','false');
-  document.removeEventListener('click',calGlassOutsideClose,true);
-}
-function calGlassOutsideClose(e){
-  const dd=document.getElementById('calGlassDropdown');
-  const btn=document.getElementById('calMonthOpenBtn');
-  if(!dd||dd.hidden)return;
-  if(dd.contains(e.target)||btn&&btn.contains(e.target))return;
-  closeCalGlassDropdown();
-}
-function calGlassSetMode(mode){
-  calGlassMode=mode==='week'?'week':'month';
-  renderCalGlassDropdown();
-}
-function calGlassScrollToSchedule(){
-  closeCalGlassDropdown();
-  const el=document.querySelector('[data-flux-cal-section="schedule"]');
-  if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
-}
-function calGlassSelectDay(d){
-  selectDay(d);
-  closeCalGlassDropdown();
-}
 function calGlassSelectDayFromDate(y,ma,d){
   calYear=y;calMonth=ma;calSelected=d;
   renderCalendar();
-  closeCalGlassDropdown();
 }
-function calGlassNoteQuick(){
-  const ds=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
-  closeCalGlassDropdown();
-  nav('notes');
-  if(typeof showToast==='function')showToast('Notes — capture something for '+ds,'info');
-}
-function renderCalGlassDropdown(){
-  const dd=document.getElementById('calGlassDropdown');
-  if(!dd||dd.hidden)return;
-  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const now=new Date();now.setHours(0,0,0,0);
-  const y=calYear,m=calMonth;
-  const daysInMonth=new Date(y,m+1,0).getDate();
-  const selStr=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
-  let daysHtml='';
-  if(calGlassMode==='month'){
-    for(let d=1;d<=daysInMonth;d++){
-      const dt=new Date(y,m,d);
-      const isToday=dt.getTime()===now.getTime();
-      const isSel=fluxLocalYMD(dt)===selStr;
-      const wk=dt.toLocaleDateString('en-US',{weekday:'short'}).charAt(0);
-      const cnt=calGlassOpenTasksOn(y,m,d);
-      daysHtml+=`<button type="button" class="flux-cal-glass-day${isSel?' is-selected':''}${isToday?' is-today':''}" onclick="calGlassSelectDay(${d})" aria-pressed="${isSel?'true':'false'}" aria-label="${months[m]} ${d}, ${cnt} open tasks">
-        <span class="flux-cal-glass-dow">${wk}</span>
-        <span class="flux-cal-glass-dn">${cnt>0?`<span class="flux-cal-glass-task-dot" aria-hidden="true"></span>`:''}${d}</span>
-      </button>`;
-    }
-  }else{
-    const ref=new Date(y,m,calSelected);
-    const dow=ref.getDay();
-    const start=new Date(ref);
-    start.setDate(ref.getDate()-dow);
-    for(let i=0;i<7;i++){
-      const dt=new Date(start);
-      dt.setDate(start.getDate()+i);
-      const dy=dt.getDate(),dm=dt.getMonth(),dyy=dt.getFullYear();
-      const isToday=dt.getTime()===now.getTime();
-      const isSel=fluxLocalYMD(dt)===selStr;
-      const wk=dt.toLocaleDateString('en-US',{weekday:'short'}).charAt(0);
-      const cnt=calGlassOpenTasksOn(dyy,dm,dy);
-      daysHtml+=`<button type="button" class="flux-cal-glass-day${isSel?' is-selected':''}${isToday?' is-today':''}" onclick="calGlassSelectDayFromDate(${dyy},${dm},${dy})" aria-pressed="${isSel?'true':'false'}">
-        <span class="flux-cal-glass-dow">${wk}</span>
-        <span class="flux-cal-glass-dn">${cnt>0?`<span class="flux-cal-glass-task-dot" aria-hidden="true"></span>`:''}${dy}</span>
-      </button>`;
-    }
-  }
-  const selDs=selStr;
-  const openTasks=tasks.filter(t=>t.date===selDs&&!t.done).length;
-  const evList=load('flux_events',[]);
-  const dayEv=(Array.isArray(evList)?evList:[]).filter(e=>e.date===selDs).length;
-  let summary=`${openTasks} open task${openTasks===1?'':'s'}`;
-  if(dayEv)summary+=` · ${dayEv} event${dayEv===1?'':'s'}`;
-  summary+=` · <strong>${selDs}</strong>`;
-  dd.innerHTML=`
-    <div class="flux-cal-glass-inner">
-      <div class="flux-cal-glass-top">
-        <div class="flux-cal-glass-tabs" role="tablist">
-          <button type="button" role="tab" class="${calGlassMode==='week'?'on':''}" onclick="calGlassSetMode('week')">Weekly</button>
-          <button type="button" role="tab" class="${calGlassMode==='month'?'on':''}" onclick="calGlassSetMode('month')">Monthly</button>
-        </div>
-        <button type="button" class="flux-cal-glass-iconbtn" onclick="calGlassScrollToSchedule()" title="Cycle &amp; weekly schedule">⚙</button>
-      </div>
-      <div class="flux-cal-glass-monthrow">
-        <span class="flux-cal-glass-monthtitle">${months[m]} ${y}</span>
-        <div class="flux-cal-glass-chevrow">
-          <button type="button" aria-label="Previous month" onclick="changeMonth(-1)">‹</button>
-          <button type="button" aria-label="Next month" onclick="changeMonth(1)">›</button>
-        </div>
-      </div>
-      <div class="flux-cal-glass-scroll"><div class="flux-cal-glass-scroll-inner">${daysHtml}</div></div>
-      <div class="flux-cal-glass-divider" aria-hidden="true"></div>
-      <div class="flux-cal-glass-footer">
-        <div class="flux-cal-glass-taskline" role="status">${summary}</div>
-        <div class="flux-cal-glass-actions">
-          <button type="button" class="flux-cal-glass-notehit" onclick="calGlassNoteQuick()">✎ Add a note…</button>
-          <!-- Was ＋ Task and ＋ Event. Same dialog either way now, and it
-               opens on Task, so the split bought nothing but a second button. -->
-          <button type="button" class="flux-cal-glass-btn-ev" onclick="closeCalGlassDropdown();openAddEventModal();">＋ Add</button>
-        </div>
-      </div>
-    </div>`;
-}
-document.addEventListener('keydown',e=>{
-  const dd=document.getElementById('calGlassDropdown');
-  if(dd&&!dd.hidden&&e.key==='Escape'){e.preventDefault();closeCalGlassDropdown();}
-});
 
 /* openAddForDate / showCalAddModal / submitCalTask lived here and are gone.
    They were the "+ Task" dialog: a name, a subject and a priority, built from
@@ -6160,8 +5973,9 @@ function renderCalendar(){
     const ds=fluxLocalYMD(new Date(calYear,calMonth,d));
     const wk=weeklyVirtualEventsForDate(ds);
     if(wk.length){if(!evMap[d])evMap[d]=[];evMap[d].push(...wk);}
-    // Synara dose times, only while the student has linked Synara (flux-synara-link.js).
-    const sy=window.FluxSynara?window.FluxSynara.dosesForDate(ds):[];
+    // Synara dose times, only while the student has linked Synara (flux-synara-link.js),
+    // and Aorta tracker reminder times (flux-aorta-link.js).
+    const sy=(window.FluxSynara?window.FluxSynara.dosesForDate(ds):[]).concat(window.FluxAorta?window.FluxAorta.dosesForDate(ds):[]);
     if(sy.length){if(!evMap[d])evMap[d]=[];evMap[d].push(...sy);}
   }
   let html=['S','M','T','W','T','F','S'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
@@ -6217,7 +6031,7 @@ function renderCalDay(){
   const day=tasks.filter(t=>{if(!t.date)return false;const d=new Date(t.date+'T00:00:00');return d.getFullYear()===calYear&&d.getMonth()===calMonth&&d.getDate()===calSelected;});
   const events=(load('flux_events',[])).filter(e=>{if(!e.date)return false;const d=new Date(e.date+'T12:00:00');return d.getFullYear()===calYear&&d.getMonth()===calMonth&&d.getDate()===calSelected;});
   const weekly=weeklyVirtualEventsForDate(ds);
-  const synara=window.FluxSynara?window.FluxSynara.dosesForDate(ds):[];
+  const synara=(window.FluxSynara?window.FluxSynara.dosesForDate(ds):[]).concat(window.FluxAorta?window.FluxAorta.dosesForDate(ds):[]);
   const el=document.getElementById('calDayTasks');
   let conflictHint='';
   try{if(window.FluxSyllabusConflict?.renderDayHint)conflictHint=FluxSyllabusConflict.renderDayHint(ds)||'';}catch(_){}
@@ -6238,8 +6052,9 @@ function renderCalDay(){
   blocks.sort((a,b)=>{const s=fluxScopeSortKey(a.o)-fluxScopeSortKey(b.o);if(s!==0)return s;const ta=fluxTimeSortMinutes(a.o.time),tb=fluxTimeSortMinutes(b.o.time);if(ta!==tb)return ta-tb;return ord[a.k]-ord[b.k];});
   el.innerHTML=dayHints+blocks.map(({k,o})=>{
     if(k==='s'){
-      // A Synara dose: read-only here; it is logged in Synara.
-      return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(156,122,255,.1);border:1px solid rgba(156,122,255,.35);border-radius:10px;margin-bottom:6px"><span style="font-size:.85rem">💊</span><div style="flex:1;min-width:0"><div style="font-size:.72rem;font-weight:700;color:#a78bfa">Synara · medication</div><div style="font-size:.85rem;font-weight:600">${esc(o.title)}</div>${o.time?`<div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${esc(formatCalTimeShort(o.time))}</div>`:''}</div><a href="synara.html#/meds" style="font-size:.78rem;font-weight:700;color:#a78bfa;text-decoration:none;padding:4px 6px" title="Log this dose in Synara">Log →</a></div>`;
+      // A Synara or Aorta dose: read-only here; it is logged in that app.
+      const ao=o._src==='aorta';
+      return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(156,122,255,.1);border:1px solid rgba(156,122,255,.35);border-radius:10px;margin-bottom:6px"><span style="font-size:.85rem">💊</span><div style="flex:1;min-width:0"><div style="font-size:.72rem;font-weight:700;color:#a78bfa">${ao?(o._taken?'Aorta · medicine · taken':'Aorta · medicine'):'Synara · medication'}</div><div style="font-size:.85rem;font-weight:600">${esc(o.title)}</div>${o.time?`<div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${esc(formatCalTimeShort(o.time))}</div>`:''}</div><a href="${ao?'aorta-tracker.html':'synara.html#/meds'}" style="font-size:.78rem;font-weight:700;color:#a78bfa;text-decoration:none;padding:4px 6px" title="${ao?'Mark it taken in the Aorta tracker':'Log this dose in Synara'}">Log →</a></div>`;
     }
     if(k==='w'){
       const sch=fluxEventScope(o)==='school';
@@ -6276,16 +6091,34 @@ function setAddEventScope(scope){
   if(ob)ob.classList.toggle('event-scope-btn-on',!onSchool);
 }
 /* A task added from the calendar uses the same New task form as everywhere
-   else (estimates, plan it out, repeats…), dated to the selected day. */
+   else (plan it out, repeats…), dated to the selected day. Switching between
+   it and the Event / Activity dialog swaps them in place, with no open/close
+   animation (instant / .flux-modal-swap), so it feels like changing tabs. */
+/* Set while the New task dialog is turning an existing calendar event into a
+   task: the event is removed only once the task is actually saved. */
+var fluxConvertEventId=null;
 function openCalendarNewTask(){
   const ymd=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
+  const ev=editCalendarEventId?load('flux_events',[]).find(x=>String(x.id)===String(editCalendarEventId)):null;
   closeAddEventModal();
-  openDashAddTaskModal();
-  const d=document.getElementById('taskDate');if(d)d.value=ymd;
+  openDashAddTaskModal(true);
+  fluxConvertEventId=ev?ev.id:null;
+  const d=document.getElementById('taskDate');if(d)d.value=ev?.date||ymd;
+  if(ev){
+    const n=document.getElementById('taskName');if(n)n.value=ev.title||'';
+    const no=document.getElementById('taskNotes');if(no)no.value=ev.notes||'';
+    const tt=document.getElementById('taskTime');if(tt)tt.value=ev.time||'';
+  }
+  const row=document.getElementById('taskCalTypeRow');if(row)row.style.display='flex';
 }
-function openAddEventModal(preferredType){
+function openAddEventModal(preferredType,instant){
   if(preferredType==='task'){openCalendarNewTask();return;}
   const modal=document.getElementById('addEventModal');if(!modal)return;
+  /* It sits inside #flux-main, which centres it over the content area while
+     the New task dialog centres on the whole screen; switching between them
+     made the box jump sideways. Centre both the same way. */
+  if(modal.parentElement!==document.body)document.body.appendChild(modal);
+  modal.classList.toggle('flux-modal-swap',!!instant);
   fluxSyncSubjectUiForRole();
   editCalendarEventId=null;
   document.getElementById('addEventDate').value=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
@@ -6310,13 +6143,14 @@ function openEditCalendarEventModal(id){
   const modal=document.getElementById('addEventModal');if(!modal)return;
   const mt=document.getElementById('addEventModalTitle');if(mt)mt.textContent='Edit calendar event';
   const pb=document.getElementById('addEventPrimaryBtn');if(pb)pb.textContent='Save';
-  const trow=document.getElementById('addEventTypeRow');if(trow)trow.style.display='none';
+  const trow=document.getElementById('addEventTypeRow');if(trow)trow.style.display='flex';
   document.getElementById('addEventDate').value=ev.date||'';
   document.getElementById('addEventTitle').value=ev.title||'';
   document.getElementById('addEventTime').value=ev.time||'';
   document.getElementById('addEventNotes').value=ev.notes||'';
   setAddEventScope(ev.scope==='outside'?'outside':'school');
-  setAddEventType('event');
+  setAddEventType(ev.kind==='ec'?'ec':'event');
+  if(ev.kind==='ec'&&ev.extraId!=null){const sel=document.getElementById('addEventExtraSelect');if(sel)sel.value=String(ev.extraId);}
   modal.hidden=false;
   modal.style.display='flex';
   modal.setAttribute('aria-hidden','false');
@@ -6378,7 +6212,12 @@ function saveAddEvent(){
     const events=load('flux_events',[]);
     const ix=events.findIndex(x=>String(x.id)===String(editCalendarEventId));
     if(ix>=0){
-      events[ix]={...events[ix],title,date,time:time||'',notes,scope};
+      const next={...events[ix],title,date,time:time||'',notes,scope};
+      if(addEventType==='ec'){
+        const ex=getExtraById(parseInt(document.getElementById('addEventExtraSelect')?.value,10));
+        next.kind='ec';next.scope='outside';next.extraId=ex?ex.id:next.extraId;
+      }else{delete next.kind;delete next.extraId;}
+      events[ix]=next;
       save('flux_events',events);
       syncKey('events',1);
     }
@@ -6525,7 +6364,7 @@ async function syncGoogleCalendar(opts){
         return`<div style="display:flex;gap:6px;align-items:flex-start;padding:5px 0;border-bottom:1px solid var(--border)">
           <div style="width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:4px"></div>
           <div style="flex:1;min-width:0"><div style="font-size:.72rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ev.summary||'(no title)')}</div><div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${d}</div></div>
-          <button onclick="addGCalEventAsTask('${encodeURIComponent(ev.summary||'')}','${start.slice(0,10)}')" style="padding:2px 6px;font-size:.62rem;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.25);color:var(--accent);border-radius:6px;flex-shrink:0">+ Task</button>
+          <button onclick="addGCalEventAsTask('${encodeURIComponent(ev.summary||'').replace(/'/g,'%27')}','${esc(start.slice(0,10))}')" style="padding:2px 6px;font-size:.62rem;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.25);color:var(--accent);border-radius:6px;flex-shrink:0">+ Task</button>
         </div>`;
       }).join('');
     }
@@ -7618,15 +7457,34 @@ try{document.addEventListener('flux-nav',(e)=>{const id=e&&e.detail&&e.detail.pa
 const TM={pomodoro:{label:'Focus Time',mins:25},short:{label:'Short Break',mins:5},long:{label:'Long Break',mins:15}};
 let tMode='pomodoro',tRunning=false,tInterval=null,tSecs=25*60,tTotal=25*60;
 let _fluxPomoPillVisible=false;
+/* The running timer is kept as an end time in raw localStorage
+   (flux_suite_timer, shared by every page on this origin), never as a ticking
+   counter, so the other suite apps can show and control it
+   (public/js/flux-suite-timer.js) and nothing drifts while the tab sleeps.
+   Shape: {mode,label,total,running,remaining,endAt(epoch ms)}. */
+let tEndAt=0;
+const FLUX_SUITE_TIMER_KEY='flux_suite_timer';
+function fluxTimerLeft(){return Math.max(0,Math.ceil((tEndAt-Date.now())/1000));}
+function fluxTimerClear(){try{localStorage.removeItem(FLUX_SUITE_TIMER_KEY);}catch(e){}}
+function fluxTimerPersist(){try{localStorage.setItem(FLUX_SUITE_TIMER_KEY,JSON.stringify({mode:tMode,label:TM[tMode].label,total:tTotal,running:tRunning,remaining:tSecs,endAt:tRunning?tEndAt:0}));}catch(e){}}
+function fluxTimerSetBtn(label){const b=document.getElementById('timerBtn');if(b)b.innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> '+label;}
+/** Take on whatever another page (or an earlier visit) left in flux_suite_timer. */
+function fluxTimerAdopt(){let s=null;try{s=JSON.parse(localStorage.getItem(FLUX_SUITE_TIMER_KEY)||'null');}catch(e){}
+  if(!s||!TM[s.mode]||!isFinite(s.total)){if(tRunning||tSecs!==tTotal)resetTimer();return;}
+  if(tMode!==s.mode){tMode=s.mode;document.querySelectorAll('#timer .tmode-btn').forEach(b=>b.classList.toggle('active',(b.getAttribute('onclick')||'').indexOf("'"+s.mode+"'")>=0));const l=document.getElementById('tLbl');if(l)l.textContent=TM[s.mode].label;}
+  tTotal=s.total;
+  if(s.running){if(tRunning&&tEndAt===s.endAt)return;tSecs=Math.max(0,Math.ceil((s.endAt-Date.now())/1000));if(tSecs<=0){tEndAt=s.endAt;updateTDisplay();timerDone();return;}startTimer(s.endAt);return;}
+  tSecs=Math.max(0,Math.round(s.remaining||0));if(tRunning){tRunning=false;clearInterval(tInterval);}fluxTimerSetBtn('Resume');updateTDisplay();syncFluxPomoPill();}
+try{window.addEventListener('storage',e=>{if(e.key===FLUX_SUITE_TIMER_KEY&&window._fluxTimerAdopted)fluxTimerAdopt();});}catch(_){}
 let tDone=load('t_sessions',0),tMins=load('t_minutes',0),tStreak=load('t_streak',0),tLastDate=load('t_date','');
 const CIRC=2*Math.PI*88;
 function updateTLengths(){if(tRunning)return;TM.pomodoro.mins=parseInt(document.getElementById('customWork').value)||25;TM.short.mins=parseInt(document.getElementById('customShort').value)||5;if(tMode==='pomodoro'||tMode==='short'){tSecs=TM[tMode].mins*60;tTotal=tSecs;updateTDisplay();}}
-function setTMode(mode,el){if(tRunning)return;tMode=mode;tSecs=TM[mode].mins*60;tTotal=tSecs;document.querySelectorAll('#timer .tmode-btn').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');updateTDisplay();document.getElementById('tLbl').textContent=TM[mode].label;syncFluxPomoPill();}
+function setTMode(mode,el){if(tRunning)return;fluxTimerClear();tMode=mode;tSecs=TM[mode].mins*60;tTotal=tSecs;document.querySelectorAll('#timer .tmode-btn').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');updateTDisplay();document.getElementById('tLbl').textContent=TM[mode].label;syncFluxPomoPill();}
 function toggleTimer(){tRunning?pauseTimer():startTimer();}
-function startTimer(){if(tInterval){clearInterval(tInterval);tInterval=null;}tRunning=true;document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg> Pause';try{window.FluxFocusMotion?.start();}catch(e){}updateTDisplay();syncFluxPomoPill();tInterval=setInterval(()=>{tSecs--;updateTDisplay();if(tSecs<=0)timerDone();},1000);}
-function pauseTimer(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Resume';syncFluxPomoPill();}
-function resetTimer(){tRunning=false;clearInterval(tInterval);tSecs=TM[tMode].mins*60;tTotal=tSecs;document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';updateTDisplay();syncFluxPomoPill();}
-function timerDone(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';syncFluxPomoPill();if(tMode==='pomodoro'){tDone++;tMins+=TM.pomodoro.mins;const ts=todayStr();if(tLastDate!==ts){const y=new Date();y.setDate(y.getDate()-1);tStreak=tLastDate===fluxLocalYMD(y)?tStreak+1:1;tLastDate=ts;save('t_date',tLastDate);}const sub=document.getElementById('timerSubject')?.value||'';sessionLog.push({date:ts,mins:TM.pomodoro.mins,subject:sub,hour:new Date().getHours()});save('flux_session_log',sessionLog);if(typeof FluxBus!=='undefined')FluxBus.emit('session_ended',{mins:TM.pomodoro.mins,subject:sub,date:ts,hour:new Date().getHours()});if(sub){subjectBudgets[sub]=(subjectBudgets[sub]||0)+(TM.pomodoro.mins/60);save('flux_budgets',subjectBudgets);}save('t_sessions',tDone);save('t_minutes',tMins);save('t_streak',tStreak);updateTStats();renderTDots();renderSubjectBudget();renderFocusHeatmap();
+function startTimer(endAt){if(tInterval){clearInterval(tInterval);tInterval=null;}tRunning=true;tEndAt=typeof endAt==='number'&&endAt>0?endAt:Date.now()+tSecs*1000;fluxTimerPersist();document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg> Pause';try{window.FluxFocusMotion?.start();}catch(e){}updateTDisplay();syncFluxPomoPill();tInterval=setInterval(()=>{tSecs=fluxTimerLeft();updateTDisplay();if(tSecs<=0)timerDone();},1000);}
+function pauseTimer(){if(tRunning)tSecs=fluxTimerLeft();tRunning=false;clearInterval(tInterval);updateTDisplay();fluxTimerPersist();document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Resume';syncFluxPomoPill();}
+function resetTimer(){tRunning=false;clearInterval(tInterval);fluxTimerClear();tSecs=TM[tMode].mins*60;tTotal=tSecs;document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';updateTDisplay();syncFluxPomoPill();}
+function timerDone(){tRunning=false;clearInterval(tInterval);fluxTimerClear();document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';syncFluxPomoPill();if(tMode==='pomodoro'){tDone++;tMins+=TM.pomodoro.mins;const ts=todayStr();if(tLastDate!==ts){const y=new Date();y.setDate(y.getDate()-1);tStreak=tLastDate===fluxLocalYMD(y)?tStreak+1:1;tLastDate=ts;save('t_date',tLastDate);}const sub=document.getElementById('timerSubject')?.value||'';sessionLog.push({date:ts,mins:TM.pomodoro.mins,subject:sub,hour:new Date().getHours()});save('flux_session_log',sessionLog);if(typeof FluxBus!=='undefined')FluxBus.emit('session_ended',{mins:TM.pomodoro.mins,subject:sub,date:ts,hour:new Date().getHours()});if(sub){subjectBudgets[sub]=(subjectBudgets[sub]||0)+(TM.pomodoro.mins/60);save('flux_budgets',subjectBudgets);}save('t_sessions',tDone);save('t_minutes',tMins);save('t_streak',tStreak);updateTStats();renderTDots();renderSubjectBudget();renderFocusHeatmap();
 showSessionRecap(sub,TM.pomodoro.mins);
 setTimeout(()=>{const mode=tDone%4===0?'long':'short';const btns=document.querySelectorAll('#timer .tmode-btn');setTMode(mode,btns[mode==='long'?2:1]);},400);}else{setTimeout(()=>{setTMode('pomodoro',document.querySelectorAll('#timer .tmode-btn')[0]);},400);}}
 function updateTDisplay(){const m=Math.floor(tSecs/60),s=tSecs%60;const txt=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');const td=document.getElementById('tDisplay');if(td)td.textContent=txt;const pillT=document.getElementById('fluxPomoPillTime');if(pillT)pillT.textContent=txt;const offset=CIRC*(1-tSecs/tTotal);const ring=document.getElementById('timerRing');if(ring){ring.style.strokeDasharray=CIRC;ring.style.strokeDashoffset=offset;}try{if(window.FluxVisual&&typeof FluxVisual.updateTimerRingGlow==='function'&&tTotal>0)FluxVisual.updateTimerRingGlow((tSecs/tTotal)*100);}catch(e){}try{window.FluxFocusMotion?.update(tSecs,tTotal,tMode);}catch(e){}const mini=document.getElementById('fluxPomoMiniRing');if(mini&&window.FluxAnim?.updateMiniRing){try{const p=tTotal>0?tSecs/tTotal:0;FluxAnim.updateMiniRing(mini,p);}catch(e){}}syncFluxPomoPill();}
@@ -8044,11 +7902,21 @@ function applyTheme(key){
   Object.entries(custom)
     .filter(([k])=>k!=='--accent'&&k!=='--accent-rgb')
     .forEach(([k,v])=>document.documentElement.style.setProperty(k,v));
-  if(theme.vars['--accent']){
-    fluxSaveStoredString('flux_accent',theme.vars['--accent']);
-    fluxSaveStoredString('flux_accent_rgb',theme.vars['--accent-rgb']||hexToRgb(theme.vars['--accent']));
+  // A user-picked accent (swatch or "Set custom accent") survives theme
+  // switches; only themes without a chosen accent bring their own.
+  const keepAccent=fluxLoadStoredString('flux_accent_custom','')==='1'&&fluxLoadStoredString('flux_accent','');
+  if(keepAccent){
+    const hex=fluxLoadStoredString('flux_accent','');
+    document.documentElement.style.setProperty('--accent',hex);
+    document.documentElement.style.setProperty('--accent-rgb',fluxLoadStoredString('flux_accent_rgb','')||hexToRgb(hex));
+    updateLogoColor(hex);
+  }else{
+    if(theme.vars['--accent']){
+      fluxSaveStoredString('flux_accent',theme.vars['--accent']);
+      fluxSaveStoredString('flux_accent_rgb',theme.vars['--accent-rgb']||hexToRgb(theme.vars['--accent']));
+    }
+    updateLogoColor(theme.vars['--accent']||fluxLoadStoredString('flux_accent','#00bfff'));
   }
-  updateLogoColor(theme.vars['--accent']||fluxLoadStoredString('flux_accent','#00bfff'));
   // The full-screen mesh canvas is the app's backdrop and cannot see CSS
   // variable changes. Without this it kept painting the previous theme.
   try{document.dispatchEvent(new CustomEvent('flux-theme-change',{detail:{theme:key}}));}catch(_){}
@@ -8124,7 +7992,78 @@ function loadTheme(){
   document.documentElement.style.setProperty('--accent',acc);
   document.documentElement.style.setProperty('--accent-rgb',rgb);
   setTimeout(()=>{updateLogoColor(acc);clearSvgLogoGradientStyles();},0);
+  fluxApplyFont(fluxLoadStoredString('flux_font',''));
+  fluxApplyTexture(fluxLoadStoredString('flux_texture',''));
+  fluxRenderLookExtras();
 }
+
+// ══ FONTS & TEXTURES (Settings → Look) ══
+// Fonts come from Google Fonts and are only fetched once someone picks one.
+// '' is the built-in Plus Jakarta Sans. The look itself lives in
+// flux-design-2026.css under html[data-flux-font] / html[data-flux-texture].
+const FLUX_FONTS={
+  '':{label:'Default (Jakarta)',stack:"'Plus Jakarta Sans',system-ui,sans-serif"},
+  inter:{label:'Inter',family:'Inter',stack:"'Inter',system-ui,sans-serif"},
+  nunito:{label:'Nunito',family:'Nunito',stack:"'Nunito',system-ui,sans-serif"},
+  poppins:{label:'Poppins',family:'Poppins',stack:"'Poppins',system-ui,sans-serif"},
+  lexend:{label:'Lexend (easy reading)',family:'Lexend',stack:"'Lexend',system-ui,sans-serif"},
+  atkinson:{label:'Atkinson Hyperlegible',family:'Atkinson Hyperlegible',weights:'400;700',stack:"'Atkinson Hyperlegible',system-ui,sans-serif"},
+  spacegrotesk:{label:'Space Grotesk',family:'Space Grotesk',stack:"'Space Grotesk',system-ui,sans-serif"},
+  quicksand:{label:'Quicksand',family:'Quicksand',stack:"'Quicksand',system-ui,sans-serif"},
+  lora:{label:'Lora (serif)',family:'Lora',stack:"'Lora',Georgia,serif"},
+  merriweather:{label:'Merriweather (serif)',family:'Merriweather',weights:'400;700;900',stack:"'Merriweather',Georgia,serif"},
+  jetbrains:{label:'JetBrains Mono',family:'JetBrains Mono',stack:"'JetBrains Mono',ui-monospace,monospace"},
+};
+const FLUX_TEXTURES={
+  '':'None',wood:'Wood',metal:'Brushed metal',bakery:'Bakery',marble:'Marble',
+  felt:'Felt',parchment:'Parchment',slate:'Slate',checker:'Checkerboard',
+};
+function fluxApplyFont(key){
+  const f=FLUX_FONTS[key]?key:'';
+  const root=document.documentElement;
+  if(!f){root.removeAttribute('data-flux-font');root.style.removeProperty('--flux-font');return;}
+  const def=FLUX_FONTS[f];
+  const id='fluxFontLink-'+f;
+  if(!document.getElementById(id)){
+    const l=document.createElement('link');
+    l.id=id;l.rel='stylesheet';
+    l.href='https://fonts.googleapis.com/css2?family='+encodeURIComponent(def.family).replace(/%20/g,'+')+':wght@'+(def.weights||'400;500;600;700;800')+'&display=swap';
+    document.head.appendChild(l);
+  }
+  root.style.setProperty('--flux-font',def.stack);
+  root.setAttribute('data-flux-font',f);
+}
+function fluxApplyTexture(key){
+  const t=FLUX_TEXTURES[key]!==undefined?key:'';
+  if(t)document.documentElement.setAttribute('data-flux-texture',t);
+  else document.documentElement.removeAttribute('data-flux-texture');
+}
+function fluxSetFont(key){
+  fluxSaveStoredString('flux_font',FLUX_FONTS[key]?key:'');
+  fluxApplyFont(key);fluxRenderLookExtras();
+  if(typeof syncKey==='function')try{syncKey('flux_font');}catch(_){}
+}
+function fluxSetTexture(key){
+  /* A texture and a board both paint behind the planner; one at a time. */
+  if(FLUX_TEXTURES[key]&&key&&window.FluxBoards)try{window.FluxBoards.clear();}catch(_){}
+  fluxSaveStoredString('flux_texture',FLUX_TEXTURES[key]!==undefined?key:'');
+  fluxApplyTexture(key);fluxRenderLookExtras();
+  if(typeof syncKey==='function')try{syncKey('flux_texture');}catch(_){}
+}
+function fluxRenderLookExtras(){
+  const sel=document.getElementById('fluxFontSelect');
+  if(sel){
+    if(!sel.options.length)sel.innerHTML=Object.entries(FLUX_FONTS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('');
+    sel.value=FLUX_FONTS[fluxLoadStoredString('flux_font','')]?fluxLoadStoredString('flux_font',''):'';
+  }
+  const grid=document.getElementById('fluxTextureGrid');
+  if(grid){
+    const cur=fluxLoadStoredString('flux_texture','');
+    grid.innerHTML=Object.entries(FLUX_TEXTURES).map(([k,v])=>
+      `<button type="button" class="fx-tex-tile${k===cur?' active':''}" data-tex="${k}" aria-pressed="${k===cur}" onclick="fluxSetTexture('${k}')"><span class="fx-tex-swatch"></span><span class="fx-tex-name">${v}</span></button>`).join('');
+  }
+}
+window.fluxSetFont=fluxSetFont;window.fluxSetTexture=fluxSetTexture;window.fluxRenderLookExtras=fluxRenderLookExtras;
 
 function applyCustomVar(varName,value){
   document.documentElement.style.setProperty(varName,value);
@@ -8136,6 +8075,7 @@ function applyCustomVar(varName,value){
 }
 function resetCustomColors(){
   save('flux_custom_colors',{});
+  fluxSaveStoredString('flux_accent_custom','');
   const key=fluxLoadStoredString('flux_theme','dark');
   applyTheme(key);
   const b=event?.target;if(b){b.textContent='✓ Reset!';setTimeout(()=>b.textContent='↺ Reset colors',1500);}
@@ -8230,6 +8170,7 @@ function clearSvgLogoGradientStyles(){
   });
 }
 function setAccent(hex,rgb,el){
+  fluxSaveStoredString('flux_accent_custom','1');
   // Use updateLogoColor which injects persistent <style> tag
   applyCustomVar('--accent',hex);
   applyCustomVar('--accent-rgb',rgb);
@@ -8372,7 +8313,6 @@ function loadSettingsUI(){
   }
   if(window.FluxPersonal&&FluxPersonal.initSettingsUI)FluxPersonal.initSettingsUI();
   if(typeof window.fluxGoogleDocsLoadSettingsUI==='function')window.fluxGoogleDocsLoadSettingsUI();
-  updateMasterBacklogCardVisibility();
 }
 function requestFluxNotifications(){
   if(!('Notification' in window)){showToast('Notifications not supported here','warning');return;}
@@ -8505,7 +8445,7 @@ function clearCache(){
   const inp=prompt('Type DELETE to confirm wiping all planner data. This cannot be undone.');
   if(inp!=='DELETE'){if(inp!==null)alert('Cancelled — you must type DELETE exactly.');return;}
   const keep=[
-    'flux_settings','flux_accent','flux_accent_rgb','flux_theme','profile','flux_user_name',
+    'flux_settings','flux_accent','flux_accent_rgb','flux_theme','flux_font','flux_texture','profile','flux_user_name',
     'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled','flux_board',
     'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
     'flux_data_version','flux_splash_shown',
@@ -8552,334 +8492,24 @@ const OWNER_EMAIL='azfermohammed21@gmail.com';
    conversion (release-admin's isOwnerCaller, and account-setup); this is the
    client catching up. The email stays as a fallback so a fresh database or a
    restored backup still recognises the owner before any conversion. */
-const OWNER_UID='eabe2b1f-e428-4181-8530-8e5366eb3975';
+const OWNER_UID= window.FluxSB.ownerUid;
 
-// Permission levels: owner > dev > user
-// Dev accounts + their permissions stored in Supabase under owner's row
+// Permission levels: owner > user.
+// The dev tier was switched off in the 2026-11-05 incident. It was read from
+// flux_dev_accounts, which any user can edit in their own browser or user_data
+// row, so it could never be evidence of anything. Owner rights come from the
+// account id alone: sign-ups are auto-confirmed, so an address proves nothing.
 function isOwner(){
   if(!currentUser)return false;
-  if(OWNER_UID&&currentUser.id===OWNER_UID)return true;
-  return currentUser.email===OWNER_EMAIL;
+  return !!OWNER_UID&&currentUser.id===OWNER_UID;
 }
 function getMyRole(){
-  if(isOwner())return'owner';
-  const devAccounts=load('flux_dev_accounts',[]);
-  const me=devAccounts.find(d=>d.email===currentUser?.email);
-  return me?'dev':'user';
+  return isOwner()?'owner':'user';
 }
-/** Owner or dev (admin-tier) — used for internal roadmap UI. */
-function canAccessMasterBacklog(){
-  const r=getMyRole();
-  return r==='owner'||r==='dev';
-}
-function updateMasterBacklogCardVisibility(){
-  const mb=document.getElementById('settingsMasterBacklogCard');
-  if(mb)mb.style.display=canAccessMasterBacklog()?'block':'none';
-}
-function getMyDevPerms(){
-  const devAccounts=load('flux_dev_accounts',[]);
-  const me=devAccounts.find(d=>d.email===currentUser?.email);
-  return me?.perms||[];
-}
-function hasDevPerm(perm){
-  if(isOwner())return true;
-  return getMyDevPerms().includes(perm);
-}
-
-/** Sections the owner can show/hide on Dev Panel for dev accounts (owner always sees all + this editor). */
-const DEV_PANEL_SECTION_META=[
-  {id:'devMode',label:'Dev Mode toggle',desc:'Flip local dev mode for testing'},
-  {id:'featureFlags',label:'Feature flags',desc:'Planner tab visibility toggles'},
-  {id:'actions',label:'Clear & sync',desc:'Clear my data and force cloud sync'},
-  {id:'stagedRollout',label:'Staged rollout',desc:'Build preview and push to all users'},
-];
-function getDevPanelSectionsMap(){
-  const pc=load('flux_platform_config',{})||{};
-  const raw=pc.devPanelSections&&typeof pc.devPanelSections==='object'?pc.devPanelSections:{};
-  const out={};
-  DEV_PANEL_SECTION_META.forEach(s=>{out[s.id]=raw[s.id]!==false;});
-  return out;
-}
-function devPanelShowsSection(sectionId){
-  if(isOwner())return true;
-  if(getMyRole()!=='dev')return false;
-  return getDevPanelSectionsMap()[sectionId]===true;
-}
-function saveDevPanelSectionsMap(map){
-  const next={...getDevPanelSectionsMap(),...map};
-  if(typeof savePlatformConfig==='function'){
-    savePlatformConfig({devPanelSections:next});
-  }else{
-    const pc=load('flux_platform_config',{})||{};
-    pc.devPanelSections=next;
-    save('flux_platform_config',pc);
-  }
-  try{if(typeof syncKey==='function')syncKey('platform',1);}catch(_){}
-  try{if(isOwner()&&typeof syncToCloud==='function')void syncToCloud();}catch(_){}
-  try{if(typeof ownerAuditAppend==='function')ownerAuditAppend('dev_panel_layout',JSON.stringify(next));}catch(_){}
-}
-function renderDevPanelLayoutEditorHtml(){
-  if(!isOwner())return'';
-  const map=getDevPanelSectionsMap();
-  return`<div class="dev-panel-layout-editor-wrap" style="margin-bottom:16px;padding:12px 14px;background:var(--card2);border:1px solid var(--border2);border-radius:12px">
-    <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:6px">Dev panel layout</div>
-    <div style="font-size:.72rem;color:var(--muted2);margin-bottom:10px;line-height:1.45">Toggle what <b>dev accounts</b> see in Dev Panel. You always see every section.</div>
-    ${DEV_PANEL_SECTION_META.map(s=>{
-      const on=map[s.id];
-      return`<label style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:.8rem">
-        <input type="checkbox" data-dev-panel-section="${s.id}" ${on?'checked':''} style="margin-top:3px;width:15px;height:15px;flex-shrink:0">
-        <span><b>${esc(s.label)}</b><br><span style="font-size:.68rem;color:var(--muted2)">${esc(s.desc)}</span></span>
-      </label>`;
-    }).join('')}
-    <button type="button" onclick="saveDevPanelSectionsFromCheckboxes(this)" style="margin-top:12px;width:100%;padding:9px;font-size:.78rem;font-weight:700;border-radius:10px;background:rgba(var(--accent-rgb),.14);border:1px solid rgba(var(--accent-rgb),.32);color:var(--accent);cursor:pointer">Save layout for devs</button>
-  </div>`;
-}
-window.saveDevPanelSectionsFromCheckboxes=function(anchor){
-  if(!isOwner())return;
-  const wrap=anchor&&anchor.closest?anchor.closest('.dev-panel-layout-editor-wrap'):null;
-  const scope=wrap||document;
-  const next={};
-  scope.querySelectorAll('[data-dev-panel-section]').forEach(cb=>{
-    next[cb.getAttribute('data-dev-panel-section')]=cb.checked;
-  });
-  saveDevPanelSectionsMap(next);
-  if(typeof showToast==='function')showToast('Dev panel layout saved','success');
-  if(document.getElementById('flux_control')?.classList.contains('active')&&typeof renderFluxControlTab==='function')renderFluxControlTab();
-  else if(document.getElementById('modPanel'))openModPanel();
-  else if(typeof reopenOwnerSuite==='function')reopenOwnerSuite('team');
-};
-window.renderDevPanelLayoutEditorHtml=renderDevPanelLayoutEditorHtml;
-
-function isDevMode(){return load('flux_dev_mode',false);}
-
-// Load dev accounts from cloud (stored under owner's Supabase row)
-async function loadDevAccounts(){
-  const sb=getSB();if(!sb)return;
-  try{
-    const{data}=await sb.from('user_data').select('data').eq('id',currentUser.id).single();
-    if(data?.data?.devAccounts){
-      save('flux_dev_accounts',data.data.devAccounts);
-    }
-  }catch(e){}
-}
-
-// Save dev accounts to cloud under owner's row
-async function saveDevAccounts(devAccounts){
-  save('flux_dev_accounts',devAccounts);
-  // Also push to cloud immediately
-  if(isOwner())await syncToCloud();
-}
-
-function initModFeatures(){
-  /* Owner / dev tools: sidebar → Admin → Owner control or Dev panel (full planner tab). */
-}
-
-function buildModPanelCardHtml(embed){
-  const role=getMyRole();
-  const devMode=isDevMode();
-  const devAccounts=load('flux_dev_accounts',[]);
-  const allPerms=['clear_data','feature_flags','dev_mode','manage_devs','view_users'];
-  const permLabels={clear_data:'Clear Data',feature_flags:'Feature Flags',dev_mode:'Dev Mode Toggle',manage_devs:'Manage Dev Accounts',view_users:'View Users'};
-  const myPerms=getMyDevPerms();
-  const showDevModeBlock=devPanelShowsSection('devMode')&&(isOwner()||myPerms.includes('dev_mode'));
-  const showFlagsBlock=devPanelShowsSection('featureFlags')&&(isOwner()||myPerms.includes('feature_flags'));
-  const showActionsBlock=devPanelShowsSection('actions');
-  const showClearBtn=showActionsBlock&&(isOwner()||myPerms.includes('clear_data'));
-  const showForceSync=showActionsBlock;
-  const showStagedBlock=devPanelShowsSection('stagedRollout');
-  const devPanelEmpty=!isOwner()&&!showDevModeBlock&&!showFlagsBlock&&!showActionsBlock&&!showStagedBlock;
-  const dismissClick=embed?`onclick="nav('dashboard')"`:`onclick="document.getElementById('modPanel')?.remove()"`;
-  const cardScroll=embed?'max-height:none;overflow:visible':'max-height:90vh;overflow-y:auto';
-
-  const devAccountsHTML=isOwner()?`
-    <div style="margin-top:18px">
-      <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:10px">Dev Accounts</div>
-      <div id="devAccountsList">
-        ${devAccounts.length?devAccounts.map((d,i)=>`
-          <div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-              <span style="font-size:.82rem;font-weight:700;flex:1">${esc(d.email)}</span>
-              <button onclick="removeDevAccount(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.8rem;padding:2px 6px">✕ Remove</button>
-            </div>
-            <div style="display:flex;flex-wrap:wrap;gap:6px">
-              ${allPerms.map(p=>`<button onclick="toggleDevPerm(${i},'${p}',this)" style="padding:3px 10px;font-size:.68rem;border-radius:20px;background:${d.perms?.includes(p)?'rgba(var(--accent-rgb),.15)':'rgba(255,255,255,.04)'};border:1px solid ${d.perms?.includes(p)?'rgba(var(--accent-rgb),.35)':'var(--border2)'};color:${d.perms?.includes(p)?'var(--accent)':'var(--muted2)'}">${permLabels[p]}</button>`).join('')}
-            </div>
-          </div>`).join(''):'<div style="color:var(--muted);font-size:.78rem;margin-bottom:10px">No dev accounts yet.</div>'}
-      </div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <input type="email" id="newDevEmail" placeholder="email@gmail.com" style="flex:1;margin:0;padding:8px 12px;font-size:.8rem">
-        <button onclick="addDevAccount()" style="padding:8px 14px;font-size:.78rem;flex-shrink:0">+ Add Dev</button>
-      </div>
-    </div>`:'';
-
-  return`
-    <div style="background:var(--card);border:1px solid ${role==='owner'?'rgba(251,191,36,.4)':'rgba(var(--accent-rgb),.3)'};border-radius:22px;padding:24px;width:100%;max-width:500px;box-shadow:${embed?'0 8px 40px rgba(0,0,0,.2)':'0 32px 80px rgba(0,0,0,.6)'};${cardScroll}">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-        <div style="font-size:1.4rem">${role==='owner'?'👑':'⚡'}</div>
-        <div>
-          <div style="font-size:1rem;font-weight:800">${role==='owner'?'Owner Panel':'Dev Panel'}</div>
-          <div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${esc(currentUser?.email||'')}</div>
-        </div>
-        <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
-          <span style="font-size:.65rem;padding:3px 8px;border-radius:20px;background:${role==='owner'?'rgba(251,191,36,.15)':'rgba(var(--accent-rgb),.12)'};border:1px solid ${role==='owner'?'rgba(251,191,36,.3)':'rgba(var(--accent-rgb),.25)'};color:${role==='owner'?'var(--gold)':'var(--accent)'};font-family:JetBrains Mono,monospace">${role.toUpperCase()} · ${isDevMode()?'DEV':'LIVE'}</span>
-          <button type="button" ${dismissClick} style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:0" aria-label="${embed?'Back to planner':'Close'}">✕</button>
-        </div>
-      </div>
-
-      ${isOwner()?renderDevPanelLayoutEditorHtml():''}
-
-      ${devPanelEmpty?`<div style="padding:14px 12px;margin-bottom:8px;background:var(--card2);border:1px solid var(--border2);border-radius:12px;font-size:.78rem;color:var(--muted2);line-height:1.5">No sections are enabled for dev accounts on this panel. Ask the owner to turn sections on in <b>Dev Panel</b> or <b>Owner Suite → Team &amp; roles</b>.</div>`:''}
-
-      ${showDevModeBlock?`
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">
-        <div><div style="font-size:.87rem;font-weight:700">Dev Mode</div><div style="font-size:.72rem;color:var(--muted)">Test features before pushing to users</div></div>
-        <button onclick="toggleDevMode()" style="padding:6px 16px;font-size:.78rem;background:${devMode?'var(--green)':'rgba(255,255,255,.06)'};border:1px solid ${devMode?'var(--green)':'var(--border2)'};color:${devMode?'#080a0f':'var(--muted2)'}">${devMode?'ON':'OFF'}</button>
-      </div>`:''}
-
-      ${showFlagsBlock?`
-      <div style="margin-top:14px;margin-bottom:6px;font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-family:'JetBrains Mono',monospace">Feature Flags</div>
-      ${['ai','canvas','calendar','goals','mood','timer','notes'].map(f=>{
-        const enabled=load('flux_feat_'+f,true);
-        return`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
-          <span style="font-size:.85rem;font-weight:500">${f.charAt(0).toUpperCase()+f.slice(1)}</span>
-          <button onclick="toggleFeatureFlag('${f}',this)" style="padding:4px 12px;font-size:.72rem;background:${enabled?'rgba(var(--accent-rgb),.15)':'rgba(255,255,255,.04)'};border:1px solid ${enabled?'rgba(var(--accent-rgb),.3)':'var(--border2)'};color:${enabled?'var(--accent)':'var(--muted2)'}">${enabled?'Enabled':'Disabled'}</button>
-        </div>`;
-      }).join('')}`:''}
-
-      ${showActionsBlock?`<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-        ${showClearBtn?`<button onclick="clearMyPlannerData()" style="flex:1;background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);color:var(--red);font-size:.78rem;min-width:120px">Clear My Data</button>`:''}
-        ${showForceSync?`<button onclick="forceSyncNow()" style="flex:1;font-size:.78rem;min-width:100px">⟳ Force Sync</button>`:''}
-      </div>`:''}
-
-      ${showStagedBlock?(()=>{
-        const buildId=(typeof FLUX_BUILD_ID!=='undefined'&&FLUX_BUILD_ID)||(window.FLUX_BUILD_ID||'unknown');
-        const gate=(typeof FluxRelease!=='undefined'&&FluxRelease.getGate())||null;
-        const released=gate&&gate.released?String(gate.released).replace(/^build-/,''):'— none yet';
-        const preview=String(buildId).replace(/^build-/,'');
-        const isLive=gate&&gate.released===buildId;
-        return`
-        <div style="margin-top:16px;padding:12px 14px;background:linear-gradient(135deg,rgba(251,191,36,.1),rgba(124,92,255,.08));border:1px solid rgba(251,191,36,.28);border-radius:12px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-            <span style="font-size:.6rem;font-weight:800;letter-spacing:.08em;color:#fbbf24;font-family:JetBrains Mono,monospace">STAGED ROLLOUT</span>
-            <span style="margin-left:auto;font-size:.62rem;color:var(--muted);font-family:JetBrains Mono,monospace">${isLive?'live':'preview'}</span>
-          </div>
-          <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:10px">Preview build <b style="color:var(--text)">${preview}</b> · users on <b style="color:var(--text)">${released}</b>${isLive?' ✓':''}</div>
-          <button type="button" onclick="window.FluxRelease&&window.FluxRelease.openPushDialog()" ${isLive?'disabled':''} style="width:100%;padding:8px;font-size:.78rem;font-weight:700;border-radius:10px;background:${isLive?'var(--card2)':'linear-gradient(135deg,#fbbf24,#f59e0b)'};border:1px solid ${isLive?'var(--border)':'rgba(251,191,36,.4)'};color:${isLive?'var(--muted)':'#080a0f'};cursor:${isLive?'default':'pointer'};opacity:${isLive?0.6:1}">${isLive?'✓ Build already released':'Push this build to all users'}</button>
-        </div>`;
-      })():''}
-
-      ${devAccountsHTML}
-    </div>`;
-}
-
-function refreshFluxControlIfActive(){
-  const p=document.getElementById('flux_control');
-  if(p&&p.classList.contains('active')&&typeof renderFluxControlTab==='function'){
-    renderFluxControlTab();
-    return true;
-  }
-  return false;
-}
-
-function renderFluxControlTab(){
-  const mount=document.getElementById('fluxControlMount');
-  if(!mount)return;
-  document.getElementById('modPanel')?.remove();
-  document.getElementById('ownerSuite')?.remove();
-  const role=getMyRole();
-  if(role==='owner'&&typeof openOwnerSuite==='function'){
-    const pref=window.__fluxOwnerPrefTab;
-    window.__fluxOwnerPrefTab=null;
-    openOwnerSuite(pref,{mount,skipNav:true});
-  }else if(role==='dev'){
-    openModPanel({mount});
-  }
-}
-window.renderFluxControlTab=renderFluxControlTab;
-
-function openModPanel(opts){
-  opts=opts||{};
-  const role=getMyRole();
-  if(role==='user')return;
-  if(opts.mount){
-    opts.mount.innerHTML=`<div class="flux-mod-panel-embed" style="max-width:520px;margin:0 auto">${buildModPanelCardHtml(true)}</div>`;
-    return;
-  }
-  const existing=document.getElementById('modPanel');if(existing)existing.remove();
-  const panel=document.createElement('div');
-  panel.id='modPanel';
-  panel.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9800;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px);overflow-y:auto';
-  panel.innerHTML=buildModPanelCardHtml(false);
-  document.body.appendChild(panel);
-}
-
-function refreshDevAccountUI(){
-  if(document.getElementById('flux_control')?.classList.contains('active')&&typeof renderFluxControlTab==='function'){
-    renderFluxControlTab();
-    return;
-  }
-  if(typeof reopenOwnerSuite==='function'&&document.getElementById('ownerSuite'))reopenOwnerSuite();
-  else if(document.getElementById('ownerSuite')&&typeof openOwnerSuite==='function')openOwnerSuite(undefined,{overlay:true});
-  else openModPanel();
-}
-
-function addDevAccount(){
-  if(!isOwner())return;
-  const email=(document.getElementById('osNewDevEmail')||document.getElementById('newDevEmail'))?.value?.trim();
-  if(!email||!email.includes('@')){alert('Enter a valid email.');return;}
-  const devAccounts=load('flux_dev_accounts',[]);
-  if(devAccounts.find(d=>d.email===email)){alert('Already a dev account.');return;}
-  devAccounts.push({email,role:'viewer',perms:['view_users'],addedAt:Date.now()});
-  saveDevAccounts(devAccounts);
-  refreshDevAccountUI();
-}
-
-function removeDevAccount(idx){
-  if(!isOwner())return;
-  const devAccounts=load('flux_dev_accounts',[]);
-  devAccounts.splice(idx,1);
-  saveDevAccounts(devAccounts);
-  refreshDevAccountUI();
-}
-
-function toggleDevPerm(idx,perm,btn){
-  if(!isOwner())return;
-  const devAccounts=load('flux_dev_accounts',[]);
-  const acc=devAccounts[idx];if(!acc)return;
-  if(!acc.perms)acc.perms=[];
-  const has=acc.perms.includes(perm);
-  if(has)acc.perms=acc.perms.filter(p=>p!==perm);
-  else acc.perms.push(perm);
-  saveDevAccounts(devAccounts);
-  btn.style.background=!has?'rgba(var(--accent-rgb),.15)':'rgba(255,255,255,.04)';
-  btn.style.borderColor=!has?'rgba(var(--accent-rgb),.35)':'var(--border2)';
-  btn.style.color=!has?'var(--accent)':'var(--muted2)';
-  if(typeof ownerAuditAppend==='function')ownerAuditAppend('dev_perm_toggle',JSON.stringify({idx,perm,on:!has}));
-}
-
-function toggleDevMode(){
-  const cur=isDevMode();
-  save('flux_dev_mode',!cur);
-  if(!refreshFluxControlIfActive())openModPanel();
-}
-
-function toggleFeatureFlag(feature,btn){
-  const cur=load('flux_feat_'+feature,true);
-  save('flux_feat_'+feature,!cur);
-  btn.textContent=cur?'Disabled':'Enabled';
-  btn.style.background=cur?'rgba(255,255,255,.04)':'rgba(var(--accent-rgb),.15)';
-  btn.style.borderColor=cur?'var(--border2)':'rgba(var(--accent-rgb),.3)';
-  btn.style.color=cur?'var(--muted2)':'var(--accent)';
-  const tc=tabConfig.find(t=>t.id===feature);
-  if(tc){tc.visible=!cur;save('flux_tabs',tabConfig);renderSidebars();}
-  if(isOwner()&&typeof ownerAuditAppend==='function')ownerAuditAppend('feature_flag',feature+':'+(!cur));
-}
-
 /* ── Delete my data (Settings › Data & info) ─────────────────────────────────
    The Privacy Policy promises every user can delete their own data. Until this
-   existed the only route was clearMyPlannerData(), which is owner-gated and
-   lives in the dev panel — so for students and teachers the published promise
-   was simply untrue.
+   existed the only route was an owner-gated button, so for students and
+   teachers the published promise was simply untrue.
 
    Order matters. Cloud rows go first, while the session is still valid; local
    storage only after the server confirms. Doing it the other way round would,
@@ -8930,25 +8560,6 @@ async function fluxDeleteMyData(){
 }
 window.fluxDeleteMyData=fluxDeleteMyData;
 
-function clearMyPlannerData(){
-  if(!confirm('Clear ALL your planner data? This cannot be undone.'))return;
-  tasks=[];notes=[];habits=[];goals=[];colleges=[];moodHistory=[];extras=[];ecSchools=[];ecGoals=[];
-  save('tasks',tasks);save('flux_notes',notes);
-  save('flux_habits',habits);save('flux_goals',goals);save('flux_colleges',colleges);
-  save('flux_mood',moodHistory);
-  save('flux_extras',extras);save('flux_ec_schools',ecSchools);save('flux_ec_goals',ecGoals);
-  renderStats();renderTasks();renderNotesList();
-  renderExtrasList();renderSchoolsList();renderMoodHistory();
-  if(currentUser)syncToCloud();
-  document.getElementById('modPanel')?.remove();
-  refreshFluxControlIfActive();
-  const n=document.createElement('div');
-  n.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--green);color:#080a0f;padding:10px 20px;border-radius:10px;font-size:.82rem;font-weight:700;z-index:9999';
-  n.textContent='✓ Planner data cleared';
-  document.body.appendChild(n);setTimeout(()=>n.remove(),2500);
-}
-
-
 // ══════════════════════════════════════════
 // FEATURE ENHANCEMENTS v3
 // ══════════════════════════════════════════
@@ -8997,7 +8608,7 @@ function updateDynamicFocus(){
   const sugHtml=fitTask?`<div style="margin-top:12px;padding:10px;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid var(--border)">
     <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:4px">Suggested task for this gap</div>
     <div style="font-size:.85rem;font-weight:600">${esc(fitTask.name)}</div>
-    <div style="font-size:.7rem;color:var(--muted2)">⏱ ${fitTask.estTime}m — fits before ${nextClass.name}</div>
+    <div style="font-size:.7rem;color:var(--muted2)">Fits before ${esc(nextClass.name)}</div>
   </div>`:'';
 
   el.innerHTML=`<div class="focus-card">
@@ -9176,7 +8787,7 @@ function renderAIChatTabs(){
   if(!aiChats.length){el.innerHTML='';return;}
   el.innerHTML=aiChats.map(c=>`
     <div class="flux-ai-tab${c.id===aiCurrentChatId?' flux-ai-tab--active':''}" role="button" onclick="loadAIChat('${c.id}')">
-      <span class="flux-ai-tab__title">${c.title||'Chat'}</span>
+      <span class="flux-ai-tab__title">${esc(c.title||'Chat')}</span>
       <span class="flux-ai-tab__close" onclick="deleteAIChat('${c.id}',event)" title="Delete">×</span>
     </div>`).join('');
 }
@@ -9248,9 +8859,9 @@ function fmtAI(raw){
   }).join('');
 
   // 3. Markdown links [text](url)
-  t=t.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer" class="ai-link">$1</a>');
+  t=t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s"'<>\)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer" class="ai-link">$1</a>');
   // 4. Bare URLs not already in href
-  t=t.replace(/(?<!href=")(https?:\/\/[^\s<>")\]]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer" class="ai-link">$1</a>');
+  t=t.replace(/(?<!href=")(https?:\/\/[^\s<>"')\]]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer" class="ai-link">$1</a>');
 
   // 5. Horizontal rule
   t=t.replace(/^---+$/gm,'<hr style="border:none;border-top:1px solid var(--border);margin:10px 0">');
@@ -10441,9 +10052,15 @@ function setSyncStatus(status){
   const showActivity=syncUiWantsActivity();
   if(status==='syncing'&&!showActivity)return;
   if(status==='synced'&&el.classList.contains('synced')&&!showActivity){
-    el.style.display=currentUser?'flex':'none';
-    const ts=load('flux_last_sync',0);
-    if(currentUser)el.title=ts?('Last sync: '+new Date(ts).toLocaleString(undefined,{dateStyle:'short',timeStyle:'short'})):'Cloud sync ready';
+    // Only what differs: this runs every 2.5s, and rewriting the same values
+    // counted as a page change that set the tab underlines and pills re-measuring.
+    const _disp=currentUser?'flex':'none';
+    if(el.style.display!==_disp)el.style.display=_disp;
+    if(currentUser){
+      const ts=load('flux_last_sync',0);
+      const _title=ts?('Last sync: '+new Date(ts).toLocaleString(undefined,{dateStyle:'short',timeStyle:'short'})):'Cloud sync ready';
+      if(el.title!==_title)el.title=_title;
+    }
     return;
   }
   if(status==='synced'){el.className='sync-badge synced sync-badge--quiet topbar-sync-pill';el.textContent='Synced';if(sl)sl.textContent='All data synced to cloud';if(bh)bh.innerHTML='<span class="sync-badge synced sync-badge--quiet">Synced</span>';}
@@ -10458,12 +10075,6 @@ function setSyncStatus(status){
       el.title=ts?('Last sync: '+new Date(ts).toLocaleString(undefined,{dateStyle:'short',timeStyle:'short'})):'Cloud sync ready';
     }
   }else el.removeAttribute('title');
-  // Show guest banner in account settings if guest
-  const guestBanner=document.getElementById('guestAccountBanner');
-  const signedOutMsg=document.getElementById('accountSignedOutMsg');
-  const wasGuest=load('flux_was_guest',false);
-  if(guestBanner){guestBanner.style.display=wasGuest&&!currentUser?'block':'none';}
-  if(signedOutMsg){signedOutMsg.style.display=wasGuest&&!currentUser?'none':'block';}
 }
 function getIbProgramProgress(){
   return{
@@ -10508,7 +10119,7 @@ function buildFullPlannerContextForAI(opts){
     const sub=subjs[t.subject]?.short||t.subject||'—';
     const due=t.date||'—';
     const subN=(t.subtasks&&t.subtasks.length)?` +${t.subtasks.length}sub`:'';
-    return `- [${st}|${t.priority||'med'}|${sub}|${t.type||'hw'}|${due}] ${t.name}${t.estTime?` ~${t.estTime}m`:''}${subN}${t.notes?` note:${plain(t.notes,100)}`:''}${t.ghostDraft?` draft:${plain(t.ghostDraft,160)}`:''}`;
+    return `- [${st}|${t.priority||'med'}|${sub}|${t.type||'hw'}|${due}] ${t.name}${t.estTime?` ~${t.estTime}m`:''}${subN}${t.notes?` note:${plain(t.notes,100)}`:''}`;
   };
   add('Tasks — all open',clip(tasks.filter(t=>!t.done).map(fmtT).join('\n')||'(none)',6500));
   add('Tasks — last 40 completed',clip(tasks.filter(t=>t.done).slice(-40).map(fmtT).join('\n')||'(none)',3200));
@@ -10575,6 +10186,8 @@ function getCloudPayload(){
     accent:fluxLoadStoredString('flux_accent','#00bfff'),
     accentRgb:fluxLoadStoredString('flux_accent_rgb','0,191,255'),
     theme:fluxLoadStoredString('flux_theme','dark'),
+    font:fluxLoadStoredString('flux_font',''),
+    texture:fluxLoadStoredString('flux_texture',''),
     tasks,
     notes:notes.map(n=>({...n,body:n.body||''})),
     // Tasks and notes deleted here, so other devices delete them too rather
@@ -10629,6 +10242,8 @@ function getCloudPayload(){
     examPrepPlan:(window.FluxExamPrepPlan?.getCloudSlice?FluxExamPrepPlan.getCloudSlice():load('flux_exam_prep_plan_v1',{defaultReviewMin:90,overrides:{}})),
     syllabusWeekScaffold:(window.FluxSyllabusWeekScaffold?.getCloudSlice?FluxSyllabusWeekScaffold.getCloudSlice():load('flux_syllabus_week_scaffold_v1',{termStart:'',defaultSubject:'',scaffoldedWeeks:[]})),
     taskTemplateMarketplace:(window.FluxTaskTemplateMarketplace?.getCloudSlice?FluxTaskTemplateMarketplace.getCloudSlice():load('flux_task_template_marketplace_v1',{importedPacks:[],recentPackIds:[]})),
+    schoology:(window.FluxSchoology?.getCloudSlice?FluxSchoology.getCloudSlice():load('flux_schoology_v1',null)),
+    moodle:(window.FluxMoodle?.getCloudSlice?FluxMoodle.getCloudSlice():load('flux_moodle_v1',null)),
     emailTaskInbox:(window.FluxEmailTaskInbox?.getCloudSlice?FluxEmailTaskInbox.getCloudSlice():load('flux_email_task_inbox_v1',{queue:[]})),
     icalSubscribe:(window.FluxIcalSubscribe?.getCloudSlice?FluxIcalSubscribe.getCloudSlice():load('flux_ical_subscribe_v1',{includeFocus:true,token:'',lastPublishedAt:0})),
     icsTimetableImport:(window.FluxIcsTimetableImport?.getCloudSlice?FluxIcsTimetableImport.getCloudSlice():load('flux_ics_timetable_import_v1',{lastImportAt:0,lastFileName:'',importBlackouts:true,importWeekly:true})),
@@ -10992,7 +10607,9 @@ async function syncToCloud(opts){
 window.FluxSync={
   now:function(){try{return forceSyncNow();}catch(e){return Promise.reject(e);}},
   push:function(){return syncToCloud();},
-  pull:function(){return syncFromCloud();},
+  // A bare syncFromCloud() returns at once while a timed pull is out, and that
+  // pull may have left before the row changed: wait for it, then pull again.
+  pull:function(){return fluxPullBeforePush();},
   status:function(){
     return{
       signedIn:!!currentUser,
@@ -11221,7 +10838,7 @@ async function syncFromCloud(opts){
       const _tasksBefore=tasks;
       tasks=fluxApplyCloudList('tasks',tasks,d.tasks,d.listTombstones,_listOpts);
       try{fluxNoteRemoteTaskChanges(_tasksBefore,tasks);}catch(_){}
-      migrateCompletedAtBackfill();fluxPurgeOldCompleted();
+      migrateCompletedAtBackfill();
     }
     if(d.recurringSeries&&typeof d.recurringSeries==='object'){
       try{if(window.FluxRecurring?.applyFromCloud)FluxRecurring.applyFromCloud(d.recurringSeries);else save('flux_recurring_series_v1',d.recurringSeries);}catch(_){}
@@ -11280,6 +10897,12 @@ async function syncFromCloud(opts){
     }
     if(d.taskTemplateMarketplace&&typeof d.taskTemplateMarketplace==='object'){
       try{if(window.FluxTaskTemplateMarketplace?.applyFromCloud)FluxTaskTemplateMarketplace.applyFromCloud(d.taskTemplateMarketplace);else save('flux_task_template_marketplace_v1',d.taskTemplateMarketplace);}catch(_){}
+    }
+    if(d.schoology&&typeof d.schoology==='object'){
+      try{if(window.FluxSchoology?.applyFromCloud)FluxSchoology.applyFromCloud(d.schoology);else save('flux_schoology_v1',d.schoology);}catch(_){}
+    }
+    if(d.moodle&&typeof d.moodle==='object'){
+      try{if(window.FluxMoodle?.applyFromCloud)FluxMoodle.applyFromCloud(d.moodle);else save('flux_moodle_v1',d.moodle);}catch(_){}
     }
     if(d.emailTaskInbox&&typeof d.emailTaskInbox==='object'){
       try{if(window.FluxEmailTaskInbox?.applyFromCloud)FluxEmailTaskInbox.applyFromCloud(d.emailTaskInbox);else save('flux_email_task_inbox_v1',d.emailTaskInbox);}catch(_){}
@@ -11425,6 +11048,10 @@ async function syncFromCloud(opts){
     fluxSaveStoredString('flux_accent',syncAccent);
     fluxSaveStoredString('flux_accent_rgb',syncRgb);
     if(d.theme)fluxSaveStoredString('flux_theme',d.theme);
+    // Font and texture only travel once a device has chosen one; an older
+    // row without the keys leaves this device's choice alone.
+    if(typeof d.font==='string')fluxSaveStoredString('flux_font',d.font);
+    if(typeof d.texture==='string')fluxSaveStoredString('flux_texture',d.texture);
     loadTheme();
     // Mark active swatch
     document.querySelectorAll('.swatch').forEach(s=>{
@@ -11436,9 +11063,8 @@ async function syncFromCloud(opts){
       const legacyDone=tasks.length>0||notes.length>0||classes.length>0;
       if(legacyDone)save('flux_onboarded',true);
     }
-    // Load devAccounts — owner's list syncs to all dev accounts too
-    if(d.devAccounts)save('flux_dev_accounts',d.devAccounts);
     if(isOwner()){
+      if(d.devAccounts)save('flux_dev_accounts',d.devAccounts);
       if(d.platformConfig&&typeof d.platformConfig==='object')save('flux_platform_config',d.platformConfig);
       if(Array.isArray(d.ownerAuditLog))save('flux_owner_audit',d.ownerAuditLog.slice(-300));
       // Union, never replace. This device may have dismissed things the cloud
@@ -11504,7 +11130,6 @@ function fluxRenderAfterPull(){
   // Re-apply accent after renders in case sidebar was rebuilt
   updateLogoColor(fluxLoadStoredString('flux_accent','#00bfff'));
   if(typeof FluxPersonal!=='undefined')FluxPersonal.applyAll();
-  updateMasterBacklogCardVisibility();
 }
 
 /* A pull has been and gone: pushes may now go out. Until the first one of a
@@ -11872,45 +11497,6 @@ function initFluxFeedbackModal(){
     if(e.key==='Escape'&&m.classList.contains('flux-feedback-modal--open'))closeFluxFeedbackModal();
   });
 }
-
-window.ownerRefreshFeedbackInbox=async function(){
-  if(typeof isOwner!=='function'||!isOwner())return;
-  try{
-    await syncFromCloud();
-    if(typeof showToast==='function')showToast('Inbox refreshed','success');
-  }catch(e){}
-  const os=document.getElementById('ownerSuite');
-  if(os&&typeof window.__osSetTab==='function')window.__osSetTab('feedback');
-  else if(typeof reopenOwnerSuite==='function')reopenOwnerSuite('feedback');
-};
-
-window.ownerDismissFeedback=function(fid){
-  if(typeof isOwner!=='function'||!isOwner())return;
-  const ts=load('flux_feedback_tombstones',[]);
-  if(fid&&!ts.includes(fid)){
-    ts.push(fid);
-    save('flux_feedback_tombstones',ts.slice(-500));
-  }
-  const arr=(load('flux_feedback_inbox',[])||[]).filter(x=>x&&x.id!==fid);
-  save('flux_feedback_inbox',arr);
-  void syncToCloud();
-  try{if(typeof ownerAuditAppend==='function')ownerAuditAppend('feedback_dismiss',{id:fid});}catch(_){}
-  const os=document.getElementById('ownerSuite');
-  if(os&&typeof window.__osSetTab==='function')window.__osSetTab('feedback');
-  else if(typeof reopenOwnerSuite==='function')reopenOwnerSuite('feedback');
-};
-
-window.ownerExportFeedbackJson=function(){
-  if(typeof isOwner!=='function'||!isOwner())return;
-  const arr=load('flux_feedback_inbox',[]);
-  const blob=new Blob([JSON.stringify(arr,null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='flux-feedback-inbox.json';
-  a.click();
-  URL.revokeObjectURL(a.href);
-  try{if(typeof ownerAuditAppend==='function')ownerAuditAppend('feedback_export',{n:arr.length});}catch(_){}
-};
 
 // ══ OFFLINE BANNER · NOTIFICATIONS · DEEPLINKS ══
 let _fluxConnInit=false;
@@ -12549,6 +12135,8 @@ function _updateSidebarName(name){
 }
 
 const FLUX_PDFJS_SRC='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js';
+/* Integrity hash: the browser refuses the file if the CDN ever serves different bytes. Update it whenever the version in the URL changes. */
+const FLUX_PDFJS_SRI='sha384-lrb5efVIYR2lZw+OsuztHZzP9wpGNrhui+0VlpiHb/iPcZSCDT3CeETsL9EMQ8ih';
 const FLUX_PDFJS_WORKER='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 const FLUX_PDF_PREVIEW_MAX_PAGES=28;
 let _fluxPdfJsPromise=null;
@@ -12585,6 +12173,8 @@ function ensurePdfJsLoaded(){
     _fluxPdfJsPromise=new Promise((resolve,reject)=>{
       const s=document.createElement('script');
       s.src=FLUX_PDFJS_SRC;
+      s.integrity=FLUX_PDFJS_SRI;
+      s.crossOrigin='anonymous';
       s.async=true;
       s.dataset.fluxPdfjs='1';
       s.onload=()=>{
@@ -12841,7 +12431,7 @@ async function analyzeScheduleImg(){
     if(resultEl){
       resultEl.style.display='block';
       resultEl.innerHTML='<div style="color:var(--green);font-weight:700;margin-bottom:8px;font-size:.82rem">✓ Found '+obExtractedClasses.length+' classes</div>'+
-        obExtractedClasses.map(c=>`<div class="ob-class-row"><div class="ob-class-period">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.85rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${c.teacher}${c.room?' · Rm '+c.room:''}</div></div></div>`).join('');
+        obExtractedClasses.map(c=>`<div class="ob-class-row"><div class="ob-class-period">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.85rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${esc(c.teacher||'')}${c.room?' · Rm '+esc(c.room):''}</div></div></div>`).join('');
     }
   }catch(e){
     if(resultEl){resultEl.style.display='block';resultEl.innerHTML='<div style="color:var(--red);font-size:.82rem">Could not read schedule. Add classes manually in the School tab.</div>';}
@@ -12981,6 +12571,10 @@ function toggleAuthMode(){
   const sub=document.getElementById('loginAuthSub');
   if(_authMode==='signup'){
     if(nameRow)nameRow.style.display='block';
+    fluxSignupPolicy().then(mode=>{
+      const row=document.getElementById('loginInviteRow');
+      if(row)row.style.display=mode==='invite'&&_authMode==='signup'?'':'none';
+    });
     _setLoginEmailBtnText(btn,'Create account');
     if(toggleText)toggleText.textContent='Already have an account?';
     if(toggleAction)toggleAction.textContent='Sign in';
@@ -13117,6 +12711,11 @@ window.fluxWeakPasswordReason=fluxWeakPasswordReason;
 /** Turn an auth error into something a student can act on. */
 function fluxAuthErrorText(e,mode,name){
   const m=String(e&&e.message||'').toLowerCase();
+  /* What a sign-up refused by the owner's sign-up setting comes back as. */
+  if(mode==='signup'&&m.includes('database error saving new user')){
+    if(_fluxSignupPolicy==='invite')return'That invite code did not work. Check it, or ask for a new one.';
+    if(_fluxSignupPolicy==='closed')return'New accounts are not being made right now. Ask your teacher or school.';
+  }
   if(m.includes('already registered')||m.includes('already been registered')){
     return'"'+(name||'That name')+'" is taken. Try adding your last initial, or sign in if it\'s yours.';
   }
@@ -13205,7 +12804,7 @@ async function fluxChangePassword(){
     cur.value='';nw.value='';nw2.value='';
     /* Named in the confirmation on purpose: with no reset link, the moment
        they are holding the new password is the only moment to say this. */
-    say('Password changed. Write this one down — there is no reset email.',true);
+    say('Password changed. Write this one down, or add a recovery email below so you can reset it yourself.',true);
   }catch(e){
     say(typeof fluxAuthErrorText==='function'?fluxAuthErrorText(e):(e.message||'Could not change your password. Try again.'));
   }finally{
@@ -13214,8 +12813,30 @@ async function fluxChangePassword(){
 }
 window.fluxChangePassword=fluxChangePassword;
 
+/* Who may make an account, set by the owner in Owner Controls › Sign-ups:
+   'open', 'invite' or 'closed'. The database enforces it
+   (flux_enforce_signup_policy); this only lets the form ask for a code and
+   say why, since a refused sign-up comes back as "Database error saving new
+   user". Unknown counts as open: the database still has the last word. */
+let _fluxSignupPolicy=null;
+async function fluxSignupPolicy(){
+  if(_fluxSignupPolicy)return _fluxSignupPolicy;
+  try{
+    const sb=getSB();
+    const {data}=await sb.from('platform_settings').select('value').eq('key','signup_policy').maybeSingle();
+    _fluxSignupPolicy=(data&&data.value&&data.value.mode)||'open';
+  }catch(_){return'open';}
+  return _fluxSignupPolicy;
+}
+
+/** True when the hidden bot-trap field has been filled: a form-filling script. */
+function fluxLoginTrapped(){
+  return !!(document.getElementById('loginWebsite')?.value||'').trim();
+}
+
 /** Send the owner a note that someone is locked out. Works signed out. */
 async function fluxRequestPasswordHelp(){
+  if(fluxLoginTrapped()){showAuthError('Request sent. We\'ll get you back in as soon as we can.','ok');return;}
   const raw=document.getElementById('loginUsername')?.value.trim()||'';
   const username=fluxNormalizeUsername(raw);
   if(!username){showAuthError('Type your name above first, then ask for help.');return;}
@@ -13225,15 +12846,27 @@ async function fluxRequestPasswordHelp(){
   const prev=btn?btn.textContent:'';
   if(btn){btn.disabled=true;btn.textContent='Sending…';}
   try{
-    /* Insert only. This table is readable by the owner alone — the rows are a
-       list of who is currently locked out, which is exactly the list you would
-       want if you were trying to get into someone's account. */
-    const {error}=await sb.from('flux_password_help').insert({
-      username,
-      note:'Asked for help from the sign-in screen.'
-    });
-    if(error)throw error;
-    showAuthError('Request sent. We\'ll get you back in as soon as we can.','ok');
+    /* First the reset-by-email route (flux-recovery.js). The server emails a
+       link if this account has a confirmed recovery email and otherwise tells
+       the owner itself; it answers the same either way, so this screen cannot
+       be used to find out which names exist or have an email. */
+    let asked=false;
+    if(window.FluxRecovery){
+      const r=await window.FluxRecovery.requestReset(username);
+      asked=!!(r&&r.ok);
+    }
+    if(!asked){
+      /* The function could not be reached: fall back to the direct note.
+         Insert only. This table is readable by the owner alone — the rows are a
+         list of who is currently locked out, which is exactly the list you would
+         want if you were trying to get into someone's account. */
+      const {error}=await sb.from('flux_password_help').insert({
+        username,
+        note:'Asked for help from the sign-in screen.'
+      });
+      if(error)throw error;
+    }
+    showAuthError('If that account has a recovery email, a reset link is on its way to it. If it does not, we\'ve been told and will get you back in as soon as we can.','ok');
     if(btn){btn.textContent='Request sent';}
   }catch(e){
     showAuthError('Could not send that just now. Please try again in a moment.');
@@ -13263,6 +12896,34 @@ async function handleEmailAuth(){
     const weak=typeof window.fluxWeakPasswordReason==='function'
       ?window.fluxWeakPasswordReason(password,rawName):'';
     if(weak){showAuthError(weak);return;}
+    /* Required: it is the only way to reset a forgotten password. Checked
+       before the account is made, so a typo is caught while the person is
+       still looking at the form. */
+    const recEmailTyped=(document.getElementById('loginRecoveryEmail')?.value||'').trim();
+    if(!recEmailTyped){
+      showAuthError('Add an email address. It is only used to send you a link if you forget your password.');
+      document.getElementById('loginRecoveryEmail')?.focus();
+      return;
+    }
+    if(!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(recEmailTyped)){
+      showAuthError('That email address does not look right. Check it and try again.');
+      document.getElementById('loginRecoveryEmail')?.focus();
+      return;
+    }
+    /* A bot gets the same silence a refused sign-up would, and no account. */
+    if(fluxLoginTrapped()){showAuthError('Could not create that account. Please try again later.');return;}
+    _fluxSignupPolicy=null;
+    const policy=await fluxSignupPolicy();
+    if(policy==='closed'){showAuthError('New accounts are not being made right now. Ask your teacher or school.');return;}
+    if(policy==='invite'){
+      const row=document.getElementById('loginInviteRow');
+      if(row)row.style.display='';
+      if(!(document.getElementById('loginInvite')?.value||'').trim()){
+        showAuthError('Type the invite code your teacher or school gave you.');
+        document.getElementById('loginInvite')?.focus();
+        return;
+      }
+    }
   }
   /* Sign-in is deliberately not gated on strength: an existing weak password
      must still get you in, or the person it belongs to can never change it. */
@@ -13279,7 +12940,10 @@ async function handleEmailAuth(){
            nothing can arrive at users.fluxplanner.app — the domain takes no
            mail. Email confirmation is off for this project, so signUp returns
            a session directly. */
-        options:{data:{full_name:rawName||username}}
+        options:{data:{
+          full_name:rawName||username,
+          invite_code:(document.getElementById('loginInvite')?.value||'').trim().toUpperCase()||undefined
+        }}
       });
       if(result.error)throw result.error;
       if(result.data?.user&&!result.data.session){
@@ -13291,9 +12955,29 @@ async function handleEmailAuth(){
         return;
       }
       fluxShowPasswordKeepsafe(username);
+      /* The recovery email. Sent after the account exists because the
+         address is stored against the signed-in account; never allowed to
+         hold up or fail the sign-up itself. If it does not save, the prompt
+         from FluxRecovery.promptIfMissing asks again on the next open. */
+      const recEmail=(document.getElementById('loginRecoveryEmail')?.value||'').trim();
+      if(recEmail&&window.FluxRecovery){
+        window.FluxRecovery.setAfterSignup(recEmail,password).then(r=>{
+          if(typeof showToast!=='function')return;
+          if(r&&r.ok&&r.sent)showToast('Check '+recEmail+' (and your spam folder) and click the link to confirm your recovery email.','info');
+          else if(r&&r.ok)return;
+          else showToast('Your account is ready, but the recovery email was not saved. Add it in Settings, under Account.','warning');
+        }).catch(()=>{});
+      }
     } else {
       result=await sb.auth.signInWithPassword({email,password});
-      if(result.error)throw result.error;
+      if(result.error){
+        /* Feeds the security watch's "burst of failed sign-ins" alert. Only a
+           wrong name/password counts; fire and forget so sign-in never waits. */
+        if(/invalid login credentials/i.test(result.error.message||'')){
+          try{sb.rpc('flux_note_failed_login',{p_username:username}).then(()=>{},()=>{});}catch(_){}
+        }
+        throw result.error;
+      }
     }
   }catch(e){
     /* Pass the mode and the name: "Dominic is taken" and "that name and
@@ -13547,12 +13231,8 @@ function renderCmdResults(){
       cmds.push({icon:'🔄',label:personalLbl,cat:'Workspace',id:'mode:personal',action:()=>{if(FluxRole.isWorkMode())toggleMode();else closeCommandPalette();}});
   }
 
-  const rNav=typeof getMyRole==='function'?getMyRole():'user';
-  if(rNav==='owner'||rNav==='dev'){
-    const pl=rNav==='owner'?'Owner control':'Dev panel';
-    if(cpMatch(pl,'',['admin','owner','dev']))
-      cmds.push({icon:rNav==='owner'?'👑':'⚡',label:pl,cat:'Navigate',id:'nav:flux_control',action:()=>{nav('flux_control');closeCommandPalette();}});
-  }
+  if(isOwner()&&cpMatch('Owner Controls','',['admin','owner','moderation']))
+    cmds.push({icon:'👑',label:'Owner Controls',cat:'Navigate',id:'nav:owner',action:()=>{location.href='owner.html';}});
 
   const refTools=[
     {icon:'📚',label:'Study Tools',action:()=>{nav('toolbox');closeCommandPalette();}},
@@ -13595,6 +13275,7 @@ function renderCmdResults(){
   // Actions
   const actions=[
     {icon:'📥',label:'Import into Flux (everything)',cat:'Actions',action:()=>{closeCommandPalette();if(typeof window.openImportHub==='function')window.openImportHub();}},
+    {icon:'📋',label:'Paste a list of tasks',cat:'Actions',action:()=>{closeCommandPalette();if(window.FluxPasteImport)window.FluxPasteImport.open();}},
     {icon:'🔄',label:'Force Sync',cat:'Actions',action:()=>{closeCommandPalette();forceSyncNow();}},
     {icon:'🎯',label:'Start Deep Work Mode',cat:'Actions',action:()=>{closeCommandPalette();startDeepWork();}},
     {icon:'📆',label:'Explain my week (Flux AI)',cat:'Actions',action:()=>{closeCommandPalette();explainMyWeek();}},
@@ -14047,53 +13728,10 @@ async function signOut(){
 }
 
 // ── GUEST LOGIN ──
+/* Guest mode was removed after the 2026-11-05 incident: every account must be
+   signed in. Old links to this now just show the sign-in form. */
 function skipLogin(){
-  showGuestDisclaimer();
-}
-
-function showGuestDisclaimer(){
-  const existing=document.getElementById('guestModal');if(existing)existing.remove();
-  const modal=document.createElement('div');
-  modal.id='guestModal';
-  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9500;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
-  modal.innerHTML=`
-    <div style="background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:30px 24px;width:100%;max-width:380px;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.5)">
-      <div style="font-size:2.2rem;margin-bottom:14px"></div>
-      <div style="font-size:1.1rem;font-weight:800;margin-bottom:8px">Continuing as Guest</div>
-      <div style="font-size:.84rem;color:var(--muted2);line-height:1.75;margin-bottom:22px">
-        Your data will be saved <strong style="color:var(--gold)">on this device only</strong>.<br>
-        It won't sync across devices and could be lost if you clear your browser storage.<br><br>
-        <span style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace">You can sign in with Google anytime from Settings to back everything up.</span>
-      </div>
-      <button onclick="confirmGuestLogin()" style="width:100%;padding:13px;margin-bottom:10px;font-size:.92rem">Got it — Continue as Guest</button>
-      <button onclick="document.getElementById('guestModal').remove()" class="btn-sec" style="width:100%;padding:11px;font-size:.85rem">← Back to Sign In</button>
-    </div>`;
-  document.body.appendChild(modal);
-}
-
-function confirmGuestLogin(){
-  const modal=document.getElementById('guestModal');if(modal)modal.remove();
-  save('flux_was_guest',true);
-  document.getElementById('loginScreen').classList.remove('visible');
-  document.getElementById('loginScreen').style.display='none';
-  const splash=document.getElementById('splash');
-  if(splash)splash.style.display='block';
-  const finishGuestEntry=()=>{
-    const onboarded=load('flux_onboarded',false);
-    const hasData=tasks.length>0||notes.length>0||classes.length>0;
-    if(!onboarded&&!hasData){
-      showOnboarding();
-    }else{
-      showApp();
-      if(!isTourCompleted())setTimeout(()=>startOnboardingTour(),1600);
-    }
-    setSyncStatus('offline');
-  };
-  if(typeof window.runSplash==='function'){
-    window.runSplash(finishGuestEntry,true);
-  }else{
-    finishGuestEntry();
-  }
+  if(typeof showLoginScreen==='function')showLoginScreen();
 }
 
 const FLUX_SENSITIVE_STAFF_KEYS=[
@@ -14384,6 +14022,11 @@ async function initAuth(){
         // Hide login immediately
         const ls=document.getElementById('loginScreen');
         if(ls){ls.style.display='none';ls.classList.remove('visible');}
+        // Came from Synara's welcome page or the Aorta tracker to sign in or sign up: go back there.
+        // Only a fixed list of pages, never a URL from the address bar.
+        let back='';try{back=sessionStorage.getItem('flux_return_to')||'';sessionStorage.removeItem('flux_return_to');}catch(_){}
+        if(back==='synara.html'){location.href='synara.html';return;}
+        if(back==='aorta-tracker.html'){location.href='aorta-tracker.html';return;}
         // Only do full sign-in flow if this is a new user or account switch
         if(!currentUser||currentUser.id!==s.user.id){
           await handleSignedIn(s.user,s);
@@ -14454,7 +14097,9 @@ function fluxExtAuthBroadcast(session){
 function showLoginOrApp(){
   const onboarded=load('flux_onboarded',false);
   const hasData=tasks.length>0||notes.length>0||classes.length>0;
-  const wasGuest=load('flux_was_guest',false);
+  // Only the e2e harness may enter without an account, and it refuses to run
+  // anywhere but this machine.
+  const wasGuest=load('flux_was_guest',false)&&!!window.FluxE2e?.active?.();
   if(wasGuest){
     const enterGuest=()=>{
       if(!onboarded&&!hasData){
@@ -14661,7 +14306,6 @@ function showApp(){
   try{if(typeof applyRoleUI==='function')applyRoleUI();}catch(_){}
   renderSidebars();
   populateSubjectSelects();
-  initModFeatures();
   initDashboardFeatures();
   renderStats();renderTasks();renderCalendar();renderCountdown();
   renderSmartSug();renderProfile();
@@ -14686,7 +14330,6 @@ function showApp(){
   if(currentUser){
     _updateUserUI(currentUser, currentUser.user_metadata?.full_name||currentUser.email?.split('@')[0]||'');
   }
-  updateMasterBacklogCardVisibility();
   syncFluxAIModeButtons();
   clearSvgLogoGradientStyles();
   if(typeof FluxRelease!=='undefined'&&FluxRelease&&typeof FluxRelease.applyGate==='function'){
@@ -14760,6 +14403,9 @@ function syncTokenToExtension(){
 }
 
 async function handleSignedIn(user,session){
+  /* Every account needs a recovery email. Accounts made before it was
+     required are asked for one on their next open (flux-recovery.js). */
+  try{window.FluxRecovery&&window.FluxRecovery.promptIfMissing(user&&user.id);}catch(_){}
   if(currentUser&&currentUser.id===user.id){
     const ls=document.getElementById('loginScreen');
     if(ls){ls.style.display='none';ls.classList.remove('visible');}
@@ -14873,9 +14519,7 @@ async function handleSignedIn(user,session){
   try{if(window.FluxCalcHistory?.install)FluxCalcHistory.install();}catch(_){}
   try{if(window.FluxClassroomSync?.install)FluxClassroomSync.install();}catch(_){}
   try{if(window.FluxDriveImport?.install)FluxDriveImport.install();}catch(_){}
-  try{if(window.FluxDocsGhostSync?.install)FluxDocsGhostSync.install();}catch(_){}
   try{if(window.FluxGmailEducator?.install)FluxGmailEducator.install();}catch(_){}
-    try{if(window.FluxGhostDraftV2?.install)FluxGhostDraftV2.install();}catch(_){}
     try{if(window.FluxNeuroDashboard?.install)FluxNeuroDashboard.install();}catch(_){}
     try{if(window.FluxSrsV2?.install)FluxSrsV2.install();}catch(_){}
     try{if(window.FluxPredictV2?.install)FluxPredictV2.install();}catch(_){}
@@ -14972,7 +14616,18 @@ async function handleSignedIn(user,session){
     try{if(fluxListSync)fluxListSync.startSession({tasks,flux_notes:notes});}catch(_){}
     window._fluxLastCloudFingerprint=undefined;
   }
+  const _fluxNewSession=!currentUser||currentUser.id!==user.id;
   currentUser=user;
+  /* What this device held as the app opened, field by field. The first pull
+     of a session had nothing to compare against, so it took the cloud's copy
+     of everything but tasks and notes — and a habit ticked, an event added or
+     a setting changed in the second or two before it landed was put back.
+     With this, that pull keeps a field changed here since opening whenever
+     the cloud's copy is still the one this device opened with. A field the
+     cloud holds differently is still taken from the cloud, as before. */
+  if(_fluxNewSession){
+    try{if(!(window.FluxImpersonate&&FluxImpersonate.active()))_fluxAgreed=fluxFieldCanon(getCloudPayload());}catch(_){_fluxAgreed=null;}
+  }
   let _signInFailed=false;
   try{
   // If a non-owner account is signing in, wipe any leftover impersonation
@@ -15174,9 +14829,7 @@ async function handleSignedIn(user,session){
   try{if(window.FluxCalcHistory?.install)FluxCalcHistory.install();}catch(_){}
   try{if(window.FluxClassroomSync?.install)FluxClassroomSync.install();}catch(_){}
   try{if(window.FluxDriveImport?.install)FluxDriveImport.install();}catch(_){}
-  try{if(window.FluxDocsGhostSync?.install)FluxDocsGhostSync.install();}catch(_){}
   try{if(window.FluxGmailEducator?.install)FluxGmailEducator.install();}catch(_){}
-  try{if(window.FluxGhostDraftV2?.install)FluxGhostDraftV2.install();}catch(_){}
   try{if(window.FluxNeuroDashboard?.install)FluxNeuroDashboard.install();}catch(_){}
   try{if(window.FluxSrsV2?.install)FluxSrsV2.install();}catch(_){}
   try{if(window.FluxPredictV2?.install)FluxPredictV2.install();}catch(_){}
@@ -15329,7 +14982,7 @@ function _updateUserUI(user,name){
   const fullName=name||firstName;
   fluxSaveStoredString('flux_user_name',firstName);
   const avatarHTML=avatarUrl
-    ?`<img src="${avatarUrl}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`
+    ?`<img src="${esc(avatarUrl)}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`
     :`<span style="font-size:.9rem;font-weight:700;line-height:1">${firstName.charAt(0).toUpperCase()}</span>`;
   // Update every user display element
   ['sidebarAv','mobAv'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=avatarHTML;});
@@ -15344,7 +14997,7 @@ function _updateUserUI(user,name){
   if(topMobAv){
     const initial=firstName.charAt(0).toUpperCase();
     topMobAv.innerHTML=avatarUrl
-      ?`<img src="${avatarUrl}" referrerpolicy="no-referrer" alt="${esc(firstName)}">`
+      ?`<img src="${esc(avatarUrl)}" referrerpolicy="no-referrer" alt="${esc(firstName)}">`
       :`<span id="topbarMobAvInitial">${initial}</span>`;
   }
   // Re-call after DOM fully ready in case elements weren't present
@@ -15367,7 +15020,6 @@ window._refreshUserUI=_refreshUserUI;
 
 function handleSignedOut(){
   try{if(typeof clearSensitiveStaffCache==='function')clearSensitiveStaffCache();}catch(_){}
-  try{if(window.FluxOwnerSuite?.teardownVerificationQueue)window.FluxOwnerSuite.teardownVerificationQueue();}catch(_){}
   try{if(window.FluxStaffPlatform?.teardownVerificationRealtime)window.FluxStaffPlatform.teardownVerificationRealtime();}catch(_){}
   try{if(window.FluxCounselorCaseload?.teardown)window.FluxCounselorCaseload.teardown();}catch(_){}
   try{if(window.FluxFeatureFlags?.clear)FluxFeatureFlags.clear();}catch(_){}
@@ -15387,7 +15039,7 @@ function handleSignedOut(){
   _fluxRow=null;_fluxRowMisses=0;_fluxAgreed=null;
   sessionStorage.clear();
   const keysToKeep=[
-    'flux_splash_shown','flux_theme','flux_accent','flux_accent_rgb',
+    'flux_splash_shown','flux_theme','flux_accent','flux_accent_rgb','flux_font','flux_texture',
     'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled','flux_board',
     'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
     'flux_data_version',
@@ -15421,8 +15073,8 @@ function buildFeatPillsHtml(){
   // (paused), no iCal feeds or what-if grades (switched off by default).
   const pills=[
     {label:'Study tools',c:'#6366f1'},
-    {label:'Flux Grapher',c:'#34d399'},
-    {label:'Flux Tutor',c:'#7c5cff'},
+    {label:'Flux Grapher',c:'#34d399',app:'grapher'},
+    {label:'Flux Tutor',c:'#7c5cff',app:'teacher'},
     {label:'Plan my week',c:'#22d3ee'},
     {label:'Reading log',c:'#f472b6'},
     {label:'Verb drill',c:'#ef6c4d'},
@@ -15442,7 +15094,7 @@ function buildFeatPillsHtml(){
     {label:'Themes & accent',c:'#38bdf8'},
   ];
   const all=[...pills,...pills];
-  return all.map(p=>`<div class="feat-pill" style="color:${p.c};border-color:${p.c}33;background:${p.c}11">${p.label}</div>`).join('');
+  return all.map(p=>`<div class="feat-pill"${p.app?` data-flux-app="${p.app}"`:''} style="color:${p.c};border-color:${p.c}33;background:${p.c}11">${p.label}</div>`).join('');
 }
 function initFeaturePills(){
   const html=buildFeatPillsHtml();
@@ -15735,7 +15387,7 @@ function renderPredictiveGapFill(){
             </div>
             <div class="flux-gap-row-task" title="${esc(task.name)}">
               <div class="flux-gap-row-name">${esc(task.name)}</div>
-              <div class="flux-gap-row-meta">${esc(task.subject||'no subject')} · est ${task.estTime||'?'}m</div>
+              <div class="flux-gap-row-meta">${esc(task.subject||'no subject')}</div>
             </div>
             <button type="button" class="flux-gap-row-cta" onclick="fluxStartGapTask(${task.id})">Start →</button>
           </div>`;
@@ -15830,9 +15482,6 @@ function handleCheckoutReturn(){
   try{if(window.FluxI18n?.install)FluxI18n.install();}catch(_){}
   try{if(window.FluxStorageRepair?.install)FluxStorageRepair.install();}catch(_){}
   migrateCompletedAtBackfill();
-  fluxPurgeOldCompleted();
-  // A tab left open for days still clears on time.
-  setInterval(()=>{try{if(fluxPurgeOldCompleted()){renderTasks();renderStats();}}catch(_){}},36e5);
   loadSettingsUI();
   const sb=document.getElementById('sidebar');if(sb&&sidebarCollapsed)sb.classList.add('collapsed');
   try{
@@ -15849,13 +15498,14 @@ function handleCheckoutReturn(){
   if(ab){const p=document.getElementById('abPill');p.textContent=ab+' Day';p.style.display='block';p.style.background=ab==='A'?'rgba(99,102,241,.15)':'rgba(16,217,160,.15)';p.style.color=ab==='A'?'var(--accent)':'var(--green)';p.style.border='1px solid '+(ab==='A'?'rgba(99,102,241,.3)':'rgba(16,217,160,.3)');}
   updateTopbarStats();
   updateNextClassPill();
-  const td=document.getElementById('taskDate');if(td)td.valueAsDate=TODAY;
+  const td=document.getElementById('taskDate');if(td)td.value=todayStr();
   setEnergy(document.getElementById('energySlider')?.value||3);
   renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();
   renderProfile();
   renderNotesList();renderExtrasList();renderSchoolsList();
   renderMoodHistory();renderAffirmation();renderAISugs();syncFluxAIModeButtons();renderSchool();
   renderSubjectBudget();renderFocusHeatmap();
+  try{fluxTimerAdopt();window._fluxTimerAdopted=true;}catch(e){}
   updateTDisplay();renderTDots();updateTStats();
   checkAllPanic();setInterval(checkAllPanic,60000);
   initFeaturePills();
@@ -15943,33 +15593,6 @@ function generateSRSReviews(originalTask){
   save('tasks',tasks);
   showToast('3 spaced reviews scheduled (1d, 7d, 30d)','success');
   syncKey('tasks',tasks);
-}
-
-
-// ══ GHOST DRAFT INJECTOR ══════════════════════════════════════
-async function injectGhostDraft(task){
-  try{
-    if(window.FluxGhostDraftV2?.enabled?.()&&typeof FluxGhostDraftV2.inject==='function'){
-      return FluxGhostDraftV2.inject(task);
-    }
-  }catch(_){}
-  if(!currentUser||!task.subject)return;
-  const subj=getSubjects()[task.subject];
-  if(!subj)return;
-  const isPhysics=/physics|kinematics|mechanics|motion|force|energy/i.test(subj.name);
-  const prompt=isPhysics
-    ?`For a student task "${task.name}" in ${subj.name}: give 3-5 starting points. Use g = ${G.toFixed(4)} m/s² for all physics. Show all calculations to 4 decimal places. Be concise bullet points.`
-    :`For a student task "${task.name}" in ${subj.name}: give 3-5 helpful starting points, key concepts, or formulas to begin. Concise bullet points only.`;
-  try{
-    const res=await fetch(API.ai,{method:'POST',headers:await fluxAuthHeaders(),
-      body:JSON.stringify({system:'You are a helpful study assistant. Be brief and practical.',
-        messages:[{role:'user',content:prompt}]})});
-    const data=await res.json();
-    const txt=(data.content?.[0]?.text||'').replace(/```actions[\s\S]*?```/g,'').trim();
-    if(!txt)return;
-    const t=tasks.find(x=>x.id===task.id);
-    if(t){t.ghostDraft=txt;save('tasks',tasks);renderTasks();}
-  }catch(e){console.warn('Ghost draft failed:',e);}
 }
 
 
@@ -16102,16 +15725,16 @@ function showTemplateMenu(){
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       ${TASK_TEMPLATES.map(t=>`
-        <button type="button" onclick="applyTemplate(${JSON.stringify(t).replace(/"/g,'&quot;')})" style="padding:12px;background:var(--card2);border:1px solid var(--border);border-radius:12px;text-align:left;cursor:pointer;transition:all .15s">
+        <button type="button" onclick="applyTemplate(${JSON.stringify(t).replace(/"/g,'&quot;')})" style="padding:12px;background:var(--card2);border:1px solid var(--border);border-radius:12px;text-align:left;cursor:pointer;transition:all .15s;color:var(--text)">
           <div style="font-size:1.2rem;margin-bottom:4px">${t.icon}</div>
           <div style="font-size:.82rem;font-weight:700">${t.name}</div>
-          <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${t.estTime}min · Diff ${t.difficulty}</div>
+          <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace">Difficulty ${t.difficulty}</div>
         </button>`).join('')}
     </div>
     <div style="margin-top:14px;font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px">Multi-task packs</div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-      <button type="button" onclick="applyExamWeekPack()" style="padding:12px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;text-align:left;cursor:pointer;font-weight:700;font-size:.82rem">Exam week (3 tasks)</button>
-      <button type="button" onclick="applyProjectMilestonePack()" style="padding:12px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;text-align:left;cursor:pointer;font-weight:700;font-size:.82rem">Project milestones (3 tasks)</button>
+      <button type="button" onclick="applyExamWeekPack()" style="padding:12px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;text-align:left;cursor:pointer;font-weight:700;font-size:.82rem;color:var(--text)">Exam week (3 tasks)</button>
+      <button type="button" onclick="applyProjectMilestonePack()" style="padding:12px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;text-align:left;cursor:pointer;font-weight:700;font-size:.82rem;color:var(--text)">Project milestones (3 tasks)</button>
     </div>
   </div>`;
   document.body.appendChild(menu);
@@ -16194,8 +15817,14 @@ let _pomDistractions=0;
 function getPomDistractionCount(){return _pomDistractions;}
 try{window.getPomDistractionCount=getPomDistractionCount;}catch(_){}
 function initPomodoroVisibilityPause(){
+  /* Leaving the page (e.g. opening another Flux Suite app) also hides it, but
+     the timer is meant to keep running there (flux-suite-timer.js), so only a
+     real tab/app switch counts as a distraction. beforeunload fires first. */
+  let leaving=false;
+  window.addEventListener('beforeunload',()=>{leaving=true;});
+  window.addEventListener('pageshow',()=>{leaving=false;});
   document.addEventListener('visibilitychange',()=>{
-    if(document.hidden&&tRunning){
+    if(document.hidden&&tRunning&&!leaving){
       pauseTimer();
       _pomDistractions++;
       const el=document.getElementById('distractionCount');
@@ -16565,7 +16194,7 @@ function renderSubjectEfficiencyHeatmap(){
     ${days.map(d=>`<th style="padding:3px 5px;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:center;font-size:.6rem">${d}</th>`).join('')}</tr></thead>
     <tbody>${keys.map(k=>{
       const s=subjs[k];
-      return`<tr><td style="padding:3px 8px;white-space:nowrap;color:${s.color};font-weight:600;font-size:.7rem">${s.name.slice(0,12)}</td>
+      return`<tr><td style="padding:3px 8px;white-space:nowrap;color:${esc(s.color)};font-weight:600;font-size:.7rem">${esc(String(s.name||'').slice(0,12))}</td>
       ${grid[k].map(mins=>{
         const i=mins/maxVal;
         const bg=i>0.7?'var(--green)':i>0.3?'var(--accent)':i>0?'rgba(var(--accent-rgb),.25)':'var(--card2)';
@@ -16618,13 +16247,12 @@ function fluxTourSteps(){
   if(!edu){
     return[
       tab('dashboard','Dashboard','Your tasks for today and the days ahead. Tick one off, or swipe it right on a phone; Undo brings it back. Plan my week, above your tasks, fits study blocks around your classes.'),
-      {sel:'.topbar-new-task-btn',title:'New task',body:'Add a task from any tab. Give it a class, a due date and how long it should take.'},
       tab('calendar','Calendar','Tasks, classes and no-school days on one month. Pick a day to add something, or count down to it: the countdown then sits in the top bar.'),
       tab('timer','Time','Pomodoro focus sessions with a budget for each subject, plus a clock, stopwatch, countdown and alarms.'),
       tab('school','School Info','Your classes, bell schedule and locker. Upload a photo or PDF of your timetable and Flux fills in your periods.'),
-      tab('toolbox','Study tools','Tools for 16 subjects, sorted into units: a periodic table, an equation balancer, formula sheets, a verb drill and a full graphing calculator. The row at the top opens the other Flux apps: Flux Tutor, the 3D Grapher, Pixel, Flashcards and more.'),
+      tab('toolbox','Study tools','Tools for 16 subjects, sorted into units: a periodic table, an equation balancer, formula sheets, a verb drill and a full graphing calculator. Search finds a tool from a few words, even with a typo. The row at the top opens the other Flux apps.'),
       tab('readingLog','Reading log','Log what you read each day for English class, keep quotes, set a weekly goal and print a log to hand in.'),
-      tab('canvas','Canvas','Connect Canvas to bring your assignments in, then add the ones you want to your planner.'),
+      tab('canvas','Connect','Canvas, Schoology and Moodle in one place. Connect Canvas to pick assignments, or paste your Schoology or Moodle calendar link once and your work keeps arriving as tasks.'),
       tab('profile','Profile','Your details, study style, how confident you feel in each course, and your stats.'),
       tab('goals','College Prep','Activities, your college list with deadlines, and every test score: GPA, SAT, ACT and AP/IB results, with superscores worked out for you.'),
       tab('mood','Mood','A quick daily check-in and a one-line journal with a history to look back on, plus affirmations and a breathing exercise.'),
@@ -16978,7 +16606,31 @@ function saveCanvasConfig(){
   }catch(e){}
   const b=event?.target;if(b){b.textContent='✓ Saved';setTimeout(()=>b.textContent='Save',1500);}
   renderCanvasHubPanel();
+  if(canvasToken&&canvasUrl)fluxImportCanvasClasses();
 }
+/* Connecting Canvas fills in the class list from the student's active
+   courses, so nobody has to type their classes in one by one. */
+async function fluxImportCanvasClasses(){
+  try{
+    const courses=await canvasProxyGet('/courses?enrollment_state=active&per_page=100&include[]=teachers');
+    if(!Array.isArray(courses)||!courses.length)return;
+    const before=classes.length;
+    courses.forEach(c=>{
+      if(!c||c.access_restricted_by_date||!(c.name||c.course_code))return;
+      const t=(c.teachers||[])[0];
+      upsertClassFromCanvasCourse(c,t?.display_name||t?.name||'');
+    });
+    save('flux_classes',classes);
+    syncKey('classes',classes);
+    try{populateSubjectSelects();}catch(_){}
+    try{renderSchool();}catch(_){}
+    const added=classes.length-before;
+    if(added>0)showToast(`✓ Added ${added} class${added===1?'':'es'} from Canvas`);
+  }catch(e){
+    console.warn('[Canvas] class import failed',e);
+  }
+}
+window.fluxImportCanvasClasses=fluxImportCanvasClasses;
 
 function fluxCanvasProxyHost(){
   const h=load('flux_canvas_host',null);
@@ -17294,8 +16946,11 @@ function addCanvasQuizToPlanner(courseId,quizId,opts){
 function upsertClassFromCanvasCourse(c,primaryTeacher){
   const name=cleanClassName(c.name||c.course_code||'Course');
   const level=parseClassLevel(name).level;
-  const ex=classes.find(x=>x.canvasCourseId===c.id);
+  const key=String(name).trim().toLowerCase();
+  const ex=classes.find(x=>x.canvasCourseId===c.id)
+    ||classes.find(x=>!x.canvasCourseId&&String(x.name||'').trim().toLowerCase()===key);
   if(ex){
+    ex.canvasCourseId=c.id;
     ex.name=name;
     ex.level=level;
     if(primaryTeacher)ex.teacher=primaryTeacher;
@@ -17599,7 +17254,6 @@ async function addCanvasAssignmentToPlanner(courseId,assignmentId,opts){
   };
   t.urgencyScore=calcUrgency(t);
   tasks.unshift(t);save('tasks',tasks);
-  if(subKey)setTimeout(()=>injectGhostDraft(t),1500);
   if(!skipRender){syncKey('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();}
   if(!silent)showToast(`Added '${name.slice(0,48)}' to your planner ✓`,'success');
   if(!silent){
@@ -18037,7 +17691,6 @@ function showKanban(){
             ${s?`<span style="font-size:.62rem;padding:2px 7px;border-radius:20px;background:${c}22;color:${c}">${s.short}</span>`:''}
             ${due?`<span style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${due}</span>`:''}
             ${t.priority==='high'?'<span style="font-size:.6rem;color:var(--red)">●</span>':''}
-            ${t.estTime?`<span style="font-size:.62rem;color:var(--muted)">~${t.estTime}m</span>`:''}
           </div>
         </div>`;
       }).join('')||`<div style="padding:16px;text-align:center;color:var(--muted);font-size:.78rem;border:1px dashed var(--border);border-radius:10px">Drop tasks here</div>`;
@@ -18178,7 +17831,6 @@ function showDayTasksPopup(dateStr){
     ${dayTasks.map(t=>{const s=subjs[t.subject];return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
       <div style="width:8px;height:8px;border-radius:50%;background:${s?s.color:'var(--accent)'}"></div>
       <div style="flex:1;font-size:.83rem">${esc(t.name)}</div>
-      ${t.estTime?`<div style="font-size:.7rem;color:var(--muted)">~${t.estTime}m</div>`:''}
     </div>`}).join('')}
     <button type="button" class="flux-day-popup-close" style="width:100%;margin-top:12px;padding:8px">Close</button>
   </div>`;
@@ -18552,65 +18204,169 @@ function switchIntelTab(tab, btn){
 // ════════════════════════════════════════════════════
 
 // ══ 1. NATURAL LANGUAGE TASK INPUT ══
-// Parses: "Physics lab due Tuesday high priority 30min"
-const NLP_DAYS={monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6,sunday:0,
-  mon:1,tue:2,wed:3,thu:4,fri:5,sat:6,sun:0,today:0,tomorrow:1};
-const NLP_TYPES={test:/\btest\b/i,quiz:/\bquiz\b/i,project:/\bproject\b/i,essay:/\bessay\b/i,lab:/\blab\b/i,exam:/\bexam\b/i,hw:/\bhomework\b|\bhw\b/i};
-const NLP_PRI={high:/\bhigh\b|\burgent\b|\basap\b|\bcritical\b/i,low:/\blow\b|\beasy\b/i};
+/* Reads what a student types — "bio lab report due thurs 45 min",
+   "Ch 5 hw tmrw", "essay due 10/24", "spanish test oct 24th at 9am" — into a
+   due date, time, type, subject, priority and estimate, and gives back the
+   name with only the date / time / priority / estimate words taken out.
 
-function parseNLTask(text){
-  if(!text||!text.trim())return null;
-  const result={name:'',priority:'med',date:'',type:'hw',estTime:0,subject:''};
-  let t=text.trim();
+   The old reader stripped "due", "by" and "on" from inside words
+   ("Conclusion" became "Cclusi"), read the "3 h" in "chapter 3 homework" as
+   three hours, took "on photosynthesis" for a date, and knew no short forms
+   or numbered dates. Every pattern here matches whole words only, and
+   anything it doesn't recognise stays in the name. */
+const NLP_WEEKDAYS={sunday:0,sun:0,monday:1,mon:1,tuesday:2,tue:2,tues:2,wednesday:3,wed:3,weds:3,thursday:4,thu:4,thur:4,thurs:4,friday:5,fri:5,saturday:6,sat:6};
+const NLP_MONTHS={jan:0,january:0,feb:1,february:1,mar:2,march:2,apr:3,april:3,may:4,jun:5,june:5,jul:6,july:6,aug:7,august:7,sep:8,sept:8,september:8,oct:9,october:9,nov:10,november:10,dec:11,december:11};
+const NLP_SMALL_NUMS={a:1,an:1,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
+/* "sat" is also the SAT and "sun" is the sun: those two only count as days
+   after due / by / on / this / next. Months always need a day number. */
+const NLP_AMBIGUOUS_DAYS={sat:1,sun:1};
+const NLP_TYPE_RULES=[
+  ['quiz',/\bquiz(?:zes)?\b/i],
+  ['test',/\b(?:tests?|exams?|midterms?|finals|final exam)\b/i],
+  ['lab',/\blabs?\b/i],
+  ['essay',/\b(?:essays?|paper)\b/i],
+  ['project',/\bprojects?\b/i],
+  ['hw',/\b(?:homework|hw|worksheet|problem set|pset)\b/i],
+  ['reading',/\b(?:read|reading|chapters?)\b/i]
+];
+/* Short names students type for a class, matched against the words of the
+   class names they actually have. */
+const NLP_SUBJECT_ALIASES={bio:['biology'],chem:['chemistry'],phys:['physics'],math:['math','algebra','geometry','calculus','precalculus','statistics','trigonometry'],maths:['math','algebra','geometry','calculus','statistics'],calc:['calculus'],stats:['statistics'],eng:['english'],lit:['literature','english'],hist:['history'],gov:['government'],econ:['economics'],psych:['psychology'],cs:['computer'],compsci:['computer'],span:['spanish'],pe:['physical']};
+const NLP_SUBJECT_SKIP=new Set(['ap','ib','hl','sl','honors','honours','and','of','the','i','ii','iii','iv','intro','to','advanced','studies','class']);
 
-  // Extract priority
-  if(NLP_PRI.high.test(t)){result.priority='high';t=t.replace(NLP_PRI.high,'').trim();}
-  else if(NLP_PRI.low.test(t)){result.priority='low';t=t.replace(NLP_PRI.low,'').trim();}
+function nlpAddDays(base,n){const d=new Date(base);d.setDate(d.getDate()+n);return d;}
+/** A month/day with no year: this year, or next year once it has passed. */
+function nlpMonthDay(base,mo,day,year){
+  if(mo==null||mo<0||mo>11||day<1||day>31)return null;
+  const y=year!=null?(year<100?2000+year:year):base.getFullYear();
+  let d=new Date(y,mo,day);
+  if(d.getMonth()!==mo)return null;
+  if(year==null&&d<base)d=new Date(y+1,mo,day);
+  return d;
+}
 
-  // Extract type
-  for(const[type,re] of Object.entries(NLP_TYPES)){if(re.test(t)){result.type=type;break;}}
-
-  // Extract time estimate: "30min", "1h", "2 hours"
-  const timeMatch=t.match(/(\d+)\s*(min(?:utes?)?|h(?:ours?)?)/i);
-  if(timeMatch){
-    result.estTime=timeMatch[2].toLowerCase().startsWith('h')?parseInt(timeMatch[1])*60:parseInt(timeMatch[1]);
-    t=t.replace(timeMatch[0],'').trim();
+/** The earliest date phrase in `t`: {date:'YYYY-MM-DD', match} or null. */
+function nlpFindDate(t,now){
+  const base=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const lead='(\\b(?:due|by|on|for|before|until)\\s+)?';
+  const wd='sunday|monday|tuesday|wednesday|thursday|friday|saturday|thurs|tues|weds|thur|sun|mon|tue|wed|thu|fri|sat';
+  const mon='january|february|march|april|may|june|july|august|september|october|november|december|sept|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec';
+  const rules=[
+    [new RegExp(lead+'\\b(today|tonight|tomorrow|tmrw|tmr|tmw|tomoz|2morrow|2moro)\\b','i'),m=>
+      /^(today|tonight)$/i.test(m[2])?base:nlpAddDays(base,1)],
+    [new RegExp(lead+'\\bday after tomorrow\\b','i'),()=>nlpAddDays(base,2)],
+    [new RegExp(lead+'\\bin\\s+(\\d{1,2}|a|an|one|two|three|four|five|six|seven|eight|nine|ten)\\s+(days?|weeks?)\\b','i'),m=>{
+      const n=/^\d+$/.test(m[2])?parseInt(m[2],10):NLP_SMALL_NUMS[m[2].toLowerCase()];
+      return nlpAddDays(base,/^week/i.test(m[3])?n*7:n);
+    }],
+    [new RegExp(lead+'\\bnext week\\b','i'),()=>nlpAddDays(base,(8-base.getDay())%7||7)],
+    [new RegExp(lead+'\\b(?:this\\s+)?weekend\\b','i'),()=>nlpAddDays(base,(6-base.getDay()+7)%7)],
+    [new RegExp(lead+'\\b(?:(this|next)\\s+)?('+wd+')\\.?(?=[\\s,.!?]|$)','i'),m=>{
+      const w=m[3].toLowerCase();
+      if(NLP_AMBIGUOUS_DAYS[w]&&!m[1]&&!m[2])return null;
+      return nlpAddDays(base,(NLP_WEEKDAYS[w]-base.getDay()+7)%7||7);
+    }],
+    // 10/24 or 10/24/26 — month first, or day first when the first number can't be a month.
+    // Only "/": "pages 10-12" is not a date.
+    [new RegExp(lead+'\\b(\\d{1,2})/(\\d{1,2})(?:/(\\d{2}|\\d{4}))?\\b','i'),m=>{
+      let a=parseInt(m[2],10),b=parseInt(m[3],10);
+      if(a>12&&b<=12){const x=a;a=b;b=x;}
+      return nlpMonthDay(base,a-1,b,m[4]!=null?parseInt(m[4],10):null);
+    }],
+    // oct 24, October 24th, oct 24 2026
+    [new RegExp(lead+'\\b('+mon+')\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b(?:,?\\s+(\\d{4})\\b)?','i'),m=>
+      nlpMonthDay(base,NLP_MONTHS[m[2].toLowerCase()],parseInt(m[3],10),m[4]!=null?parseInt(m[4],10):null)],
+    // 24 oct, 24th of October
+    [new RegExp(lead+'\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?('+mon+')\\b','i'),m=>
+      nlpMonthDay(base,NLP_MONTHS[m[3].toLowerCase()],parseInt(m[2],10),null)],
+    // the 24th — this month, or next month once it has passed
+    [new RegExp(lead+'\\bthe\\s+(\\d{1,2})(?:st|nd|rd|th)\\b','i'),m=>{
+      const day=parseInt(m[2],10);
+      let d=new Date(base.getFullYear(),base.getMonth(),day);
+      if(d<base)d=new Date(base.getFullYear(),base.getMonth()+1,day);
+      return d.getDate()===day?d:null;
+    }]
+  ];
+  let best=null;
+  for(const[re,fn] of rules){
+    const m=t.match(re);
+    if(!m)continue;
+    const d=fn(m);
+    if(d&&(!best||m.index<best.index))best={date:fluxLocalYMD(d),match:m[0],index:m.index};
   }
+  return best;
+}
 
-  // Extract due date: "due Tuesday", "by Friday", "tomorrow", "today"
-  const dateMatch=t.match(/(?:due|by|on)\s+(\w+)|^(today|tomorrow)$/i)||t.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today)\b/i);
-  if(dateMatch){
-    const dayWord=(dateMatch[1]||dateMatch[2]||dateMatch[0]).toLowerCase();
-    const offset=NLP_DAYS[dayWord];
-    if(offset!==undefined){
-      const d=new Date(TODAY);
-      if(dayWord==='today'){}
-      else if(dayWord==='tomorrow')d.setDate(d.getDate()+1);
-      else{
-        const current=d.getDay();
-        let diff=offset-current;
-        if(diff<=0)diff+=7;
-        d.setDate(d.getDate()+diff);
-      }
-      result.date=fluxLocalYMD(d);
-    }
-    t=t.replace(dateMatch[0],'').replace(/due|by|on/gi,'').trim();
-  }
-
-  // Match subject from classes
-  const subjs=getSubjects();
+/** The key of the class named in `t`, or ''. Whole words only. */
+function nlpFindSubject(t){
+  let subjs={};
+  try{subjs=getSubjects()||{};}catch(_){}
+  const words=String(t).toLowerCase().match(/[a-z0-9]+/g)||[];
+  const wordSet=new Set(words);
+  const joined=' '+words.join(' ')+' ';
+  let best=null;
   for(const[key,s] of Object.entries(subjs)){
-    if(t.toLowerCase().includes(s.name.toLowerCase())||t.toLowerCase().includes(key.toLowerCase())){
-      result.subject=key;
-      t=t.replace(new RegExp(s.name,'gi'),'').replace(new RegExp(key,'gi'),'').trim();
-      break;
-    }
+    const allNameWords=String(s&&s.name||'').toLowerCase().match(/[a-z0-9]+/g)||[];
+    const nameWords=allNameWords.filter(w=>!NLP_SUBJECT_SKIP.has(w));
+    const short=String(s&&s.short||'').toLowerCase().trim();
+    let score=0;
+    if(allNameWords.length&&joined.includes(' '+allNameWords.join(' ')+' '))score=3;
+    else if(short.length>=2&&wordSet.has(short))score=2;
+    else if(nameWords.some(w=>w.length>=4&&wordSet.has(w)))score=2;
+    else if(words.some(w=>(NLP_SUBJECT_ALIASES[w]||[]).some(tg=>nameWords.some(nw=>nw.startsWith(tg)))))score=1;
+    if(score&&(!best||score>best.score))best={key,score};
+  }
+  return best?best.key:'';
+}
+
+/** `now` is for tests; everyone else gets today. */
+function parseNLTask(text,now){
+  if(!text||!String(text).trim())return null;
+  const original=String(text).trim();
+  const result={name:'',priority:'med',date:'',time:'',type:'hw',estTime:0,subject:''};
+  let t=' '+original+' ';
+  const cut=s=>{t=t.replace(s,' ');};
+
+  // Priority: only words that clearly mean it, so "high school" stays in the name.
+  const hi=t.match(/\s(?:!!+|!high)(?=\s)|\b(?:high priority|urgent|asap|important)\b/i);
+  const lo=t.match(/\s!low(?=\s)|\blow priority\b/i);
+  if(hi){result.priority='high';cut(hi[0]);}
+  else if(lo){result.priority='low';cut(lo[0]);}
+
+  // Estimate: "45 min", "1h", "1.5 hrs", "for 2 hours". The unit has to end the
+  // word, so the "3 h" at the start of "3 homework" is not three hours.
+  const est=t.match(/\b(?:for\s+|takes\s+)?(\d+(?:\.\d+)?)\s*(minutes?|mins?|hours?|hrs?|h)\b/i);
+  if(est){
+    const n=parseFloat(est[1]);
+    result.estTime=Math.round(/^h/i.test(est[2])?n*60:n);
+    cut(est[0]);
   }
 
-  // Remaining text = task name
-  result.name=t.replace(/\s+/g,' ').trim()||text.trim();
+  // Time of day: "at 3pm", "9:30am", "at 15:00".
+  const tm=t.match(/\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i)||t.match(/\bat\s+(\d{1,2}):(\d{2})\b/i);
+  if(tm){
+    let h=parseInt(tm[1],10);const mi=tm[2]?parseInt(tm[2],10):0;const ap=(tm[3]||'').toLowerCase();
+    if(ap==='pm'&&h<12)h+=12;
+    if(ap==='am'&&h===12)h=0;
+    if(h<24&&mi<60){result.time=String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0');cut(tm[0]);}
+  }
+
+  const dm=nlpFindDate(t,now instanceof Date?now:new Date());
+  if(dm){result.date=dm.date;cut(dm.match);}
+
+  for(const[type,re] of NLP_TYPE_RULES){if(re.test(t)){result.type=type;break;}}
+  result.subject=nlpFindSubject(t);
+
+  // Tidy what's left: a "due" / "by" left hanging at either end, stray punctuation, spaces.
+  let name=t.replace(/\s+/g,' ').trim()
+    .replace(/^(?:due|by|on|for|at)\s+/i,'')
+    .replace(/\s+(?:due|by|on|for|at)$/i,'')
+    .replace(/[\s,;:–—-]+$/,'').replace(/^[\s,;:–—-]+/,'').trim();
+  if(!name)name=original;
+  result.name=name.charAt(0).toUpperCase()+name.slice(1);
   return result;
 }
+window.parseNLTask=parseNLTask;
 
 function addTaskFromNL(text){
   const parsed=parseNLTask(text);
@@ -19447,6 +19203,7 @@ function resolveQuickAddParse(raw){
       type:nl.type||'hw',
       subject:nl.subject||'',
       estTime:nl.estTime||0,
+      time:nl.time||'',
       difficulty:3
     };
   }
@@ -19476,10 +19233,6 @@ function updateQuickAddPreview(raw){
   if(parsed.priority!=='med')chips+=`<span class="task-chip task-chip-priority ${parsed.priority}">${parsed.priority}</span>`;
   if(parsed.date)chips+=`<span class="task-chip task-chip-due">${fmtFluxDue(parsed.date)}</span>`;
   if(parsed.type&&parsed.type!=='hw')chips+=`<span class="task-chip" style="background:rgba(255,255,255,.03);color:var(--muted2);border:1px solid rgba(255,255,255,.06)">${parsed.type}</span>`;
-  if(parsed.estTime){
-    const tl=parsed.estTime>=60?`${Math.round(parsed.estTime/60)}h`:`${parsed.estTime}m`;
-    chips+=`<span class="task-chip task-chip-time">~${tl}</span>`;
-  }
   el.innerHTML=chips;
   if(titleEl)titleEl.textContent=parsed.name?`“${parsed.name}”`:'';
 }
@@ -19495,7 +19248,7 @@ function submitQuickAdd(){
     id:Date.now()+Math.random(),name:parsed.name,
     subject:parsed.subject||'',priority:parsed.priority||'med',
     date:parsed.date||'',type:parsed.type||'hw',
-    estTime:parsed.estTime||0,difficulty:parsed.difficulty||3,
+    estTime:parsed.estTime||0,difficulty:parsed.difficulty||3,time:parsed.time||'',
     done:false,rescheduled:0,createdAt:Date.now()
   };
   t.urgencyScore=calcUrgency(t);
@@ -19504,7 +19257,7 @@ function submitQuickAdd(){
   updateQuickAddPreview('');
   renderStats();renderTasks();renderCalendar();renderCountdown();
   checkAllPanic();
-  showToast('Added: '+t.name,'success');
+  showToast('Added: '+t.name+(t.date?' — due '+fmtFluxDate(t.date,'short'):''),'success');
   syncKey('tasks',tasks);panicCheck(t);
 }
 function parseNaturalTask(raw){
@@ -22823,11 +22576,8 @@ async function selectAppointmentDate(btn,counselorId){
   }
   let booked=new Set();
   try{
-    const {data:b}=await sb.from('counselor_appointments')
-      .select('time_slot,status')
-      .eq('counselor_id',counselorId)
-      .eq('date',_selectedApptDate);
-    booked=new Set((b||[]).filter(x=>x.status!=='cancelled').map(x=>x.time_slot));
+    const {data:b}=await sb.rpc('flux_counselor_taken_slots',{p_counselor_id:counselorId,p_from:_selectedApptDate,p_to:_selectedApptDate});
+    booked=new Set((b||[]).map(x=>x.time_slot));
   }catch(_){}
 
   const container=document.getElementById('timeSlotContainer');

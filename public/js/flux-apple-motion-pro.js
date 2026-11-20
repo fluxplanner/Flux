@@ -101,9 +101,10 @@ function initCountUp() {
     if (!motionAllowed()) return;
     document.querySelectorAll(COUNT_SELECTORS.join(',')).forEach(countUpOne);
   };
-  // Initial + after nav + after dash render
+  // Initial + after dash render. Not after navigation: counting every number
+  // up from zero each time a tab opens rewrote the text 60 times a second
+  // during the switch.
   scan();
-  document.addEventListener('flux-nav', () => requestAnimationFrame(scan));
   document.addEventListener('flux-dash-board-rendered', () => requestAnimationFrame(scan));
   // Re-scan periodically as data loads
   let bursts = 0;
@@ -280,6 +281,12 @@ const REVEAL_SELECTOR = [
 let _revealIO = null;
 
 function initScrollReveal() {
+  // Off. This hid every card and faded it back in when it came into view,
+  // which in practice meant on every tab switch: the cards at the top of the
+  // panel you just opened were all "coming into view" at once, half a second
+  // of tweening on top of building the panel. Cards are simply there now.
+  return;
+  // eslint-disable-next-line no-unreachable
   if (typeof IntersectionObserver === 'undefined') return;
   if (_revealIO) _revealIO.disconnect();
   // Always clear inline styles when an animation finishes so an interrupted

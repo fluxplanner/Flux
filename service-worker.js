@@ -7,17 +7,24 @@
  *   - hashed bundles            → cache-first (content-hashed = immutable)
  *   - other same-origin assets  → stale-while-revalidate
  */
-const BUILD = '918fe781';
+const BUILD = 'a131e753';
 const STATIC = 'flux-static-' + BUILD;
 /** Directory of this script (e.g. /Fluxplanner/ or /) — works on GitHub Pages and local dev */
 const APP_BASE = self.location.pathname.replace(/\/[^/]+$/, '/');
 const APP_ORIGIN = self.location.origin;
 const INDEX_HTML = APP_ORIGIN + APP_BASE + 'index.html';
 
+/* The free tool pages (Flux Suite › Science, Writing, Tools) work offline:
+   their HTML is precached here, and each page's ?v= scripts and styles are
+   kept by the stale-while-revalidate rule below on the first visit. */
+const TOOL_PAGES = ['paper.html', 'units.html', 'cite.html', 'balance.html', 'formulae.html', 'score.html', 'timer.html', 'plan.html', 'data.html', 'lab.html', 'spell.html', 'timetable.html'];
+
 const PRECACHE = [
   APP_ORIGIN + APP_BASE,
   INDEX_HTML,
   APP_ORIGIN + APP_BASE + 'manifest.json',
+  APP_ORIGIN + APP_BASE + 'suite.html',
+  ...TOOL_PAGES.map((p) => APP_ORIGIN + APP_BASE + p),
 ];
 
 // Content-hashed bundle outputs, e.g. /public/bundles/flux-core.ab12cd34.js

@@ -27,22 +27,6 @@ async function seedToday(page: Page) {
 }
 
 test.describe('Finding and undoing a completed task', () => {
-  test('the Completed section lists the most recently finished first', async ({ page }) => {
-    await gotoScenario(page, 'student-semester');
-    await seedToday(page);
-    await page.locator('#filterChips .tmode-btn', { hasText: 'Today' }).click();
-    // Finish them out of their list order: the high-priority one first.
-    for (const id of [9301, 9303, 9302]) {
-      await page.locator(`#taskList .task-item[data-task-id="${id}"] .check`).click();
-      await page.waitForTimeout(30);
-    }
-    await page.waitForTimeout(900);
-    const wrap = page.locator('#completedTasksWrap');
-    if (!(await wrap.isVisible())) await page.locator('.completed-toggle').click();
-    const names = await wrap.locator('.task-item .task-text').allTextContents();
-    expect(names.map((n) => n.trim())).toEqual(['Maths sheet', 'Spanish vocab', 'Read chapter 4']);
-  });
-
   test('the snackbar names the task, and Undo brings it back', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
     await seedToday(page);

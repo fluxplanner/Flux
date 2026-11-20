@@ -690,12 +690,11 @@ function wrapNavForTransitions(){
 // ────────────────────────────────────────────────────────────────
 function celebrateCompletion(){
   if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  // Light sparkle overlay
-  const messages = ['✓','✦','★','◈','✧','◆'];
-  const msg = messages[Math.floor(Math.random()*messages.length)];
+  // One check mark. A random star or diamond here, on top of the tick in the
+  // box, made finishing a task look like a handful of different icons.
   const overlay = document.createElement('div');
   overlay.className = 'flux-celebrate-overlay';
-  overlay.textContent = msg;
+  overlay.textContent = '✓';
   document.body.appendChild(overlay);
   requestAnimationFrame(()=>overlay.classList.add('show'));
   setTimeout(()=>overlay.remove(), 1000);

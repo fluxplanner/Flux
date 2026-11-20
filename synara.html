@@ -11,15 +11,31 @@
   inline boot scripts on every standalone page.
 -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com; frame-src 'self'; form-action 'self'">
+<script src="public/js/flux-frame-guard.js?v=9afa87b3"></script>
+<script src="public/js/flux-look.js?v=81a3e0d1"></script>
+<script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
+<script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="synara"></script>
+<script defer src="public/js/flux-site-notices.js?v=5e36c924"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Synara — epilepsy care for students</title>
-<meta name="description" content="Medication reminders, a seizure log that finds patterns, and an emergency safety card a teacher can follow — for students with epilepsy. It stays on this device unless you turn on encrypted sync. No account needed.">
+<meta name="description" content="Medication reminders, a seizure log that finds patterns, and an emergency safety card a teacher can follow — for students with epilepsy. It stays on this device unless you turn on sync through your Flux account. No account needed.">
 <meta name="theme-color" content="#f6f5fa" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#121019" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Synara">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Project Synara">
+<meta property="og:title" content="Synara — epilepsy care for students">
+<meta property="og:url" content="https://fluxplanner.github.io/Flux/synara.html">
+<!-- Link previews (iMessage, Discord…) use the Project Synara logo, not the app icon. -->
+<meta property="og:image" content="https://fluxplanner.github.io/Flux/public/partners/synara-logo.jpg">
+<meta property="og:image:width" content="3840">
+<meta property="og:image:height" content="3840">
+<meta property="og:image:alt" content="Project Synara logo">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://fluxplanner.github.io/Flux/public/partners/synara-logo.jpg">
 <link rel="icon" href="public/synara/icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="public/synara/icons/icon-180.png">
 <!-- Synara's own manifest, so "Add to Home Screen" makes it an app: on
@@ -41,8 +57,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="public/css/flux-hub.css?v=4e2aebfb">
-<link rel="stylesheet" href="public/bundles/flux-synara.63ea33df.css">
+<link rel="stylesheet" href="public/css/flux-hub.css?v=a473f365">
+<link rel="stylesheet" href="public/bundles/flux-synara.b5a42aca.css">
+<link rel="stylesheet" href="public/bundles/flux-synara.b5a42aca.css">
 
 <script>
   /* The saved light/dark choice, before first paint: a student who picked
@@ -55,6 +72,7 @@
     } catch (e) { /* storage blocked or corrupt: follow the system */ }
   })();
 </script>
+<link rel="stylesheet" href="public/css/flux-look-flat.css?v=8156dbe3">
 </head>
 <body>
 
@@ -94,10 +112,11 @@
 </noscript>
 
 <!-- Plain script tags, not the planner's bundles: this page stands alone. -->
-<script src="public/js/flux-hub.js?v=68b4d34f"></script>
+<script src="public/data/products.js?v=9634bc03"></script>
+<script src="public/js/flux-hub.js?v=eb42b549"></script>
 <!-- Sync's link to the Flux sign-in (public/js/flux-synara-vault.mjs). Deferred
      so it never holds up Synara's first screen; Synara's sync waits for it. -->
-<script defer src="public/bundles/flux-synara_vault.46c87797.js"></script>
-<script src="public/bundles/flux-synara.577627e4.js"></script>
+<script defer src="public/bundles/flux-synara_vault.19b027f3.js"></script>
+<script src="public/bundles/flux-synara.94eae264.js"></script>
 </body>
 </html>

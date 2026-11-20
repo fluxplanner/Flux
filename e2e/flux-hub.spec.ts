@@ -16,7 +16,7 @@ test.describe('Flux Suite link', () => {
 
     await link.click();
     await expect(page).toHaveURL(HUB_URL);
-    await expect(page.locator('#apps .app')).toHaveCount(9);
+    await expect(page.locator('#apps .app')).toHaveCount(11);
   });
 
   test('the planner link opens Flux Suite on desktop', async ({ page }) => {
@@ -50,7 +50,7 @@ test.describe('Flux Suite link', () => {
       apps.map((app) => app.getAttribute('href')));
     expect(paths).toEqual(expect.arrayContaining([
       'index.html', 'synara.html', 'teacher.html', 'grapher.html',
-      'periodic.html', 'composer.html', 'flashcards.html', 'pixel.html',
+      'periodic.html', 'composer.html', 'flashcards.html', 'translate.html', 'pixel.html',
       'calculator.html',
     ]));
   });
@@ -79,4 +79,22 @@ test.describe('Flux Suite link', () => {
     expect(await accent()).toBe('#f97316');
     await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(13, 8, 4)');
   });
+});
+
+test('the planner\'s light theme carries to the other apps, with light controls', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('sb-lfigdijuqmbensebnevo-auth-token', '{"access_token":"x"}');
+    localStorage.setItem('flux_theme', 'light');
+  });
+  for (const f of ['grapher', 'composer', 'calculator', 'pixel']) {
+    await page.goto('/' + f + '.html');
+    const s = await page.evaluate(() => ({
+      theme: document.documentElement.getAttribute('data-theme'),
+      scheme: getComputedStyle(document.documentElement).colorScheme,
+      bg: getComputedStyle(document.body).backgroundColor,
+    }));
+    expect(s.theme, f).toBe('light');
+    expect(s.scheme, f).toBe('light');
+    expect(s.bg, f).toBe('rgb(246, 248, 250)');
+  }
 });
