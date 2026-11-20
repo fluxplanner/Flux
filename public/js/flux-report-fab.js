@@ -34,7 +34,7 @@
       '<span class="flux-report-fab__label">Report</span>';
     b.addEventListener('click', function () {
       if (typeof window.openFluxFeedbackModal === 'function') window.openFluxFeedbackModal();
-      else if (typeof window.showToast === 'function') window.showToast('Open Settings → Data & info → Send feedback', 'info');
+      else if (typeof window.showToast === 'function') window.showToast('Open Settings → Your data & info → Send feedback', 'info');
     });
     document.body.appendChild(b);
   }

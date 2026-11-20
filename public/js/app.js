@@ -4812,7 +4812,7 @@ function showTOS(){
       <div style="font-weight:700;color:var(--text);margin:12px 0 4px">1. Use</div>
       <p>Flux is for personal, non-commercial educational use. You may not resell, redistribute, or misuse the platform.</p>
       <div style="font-weight:700;color:var(--text);margin:12px 0 4px">2. Your Data</div>
-      <p>You own your data. We sync it to Supabase for your convenience. You can delete it anytime from Settings → Data.</p>
+      <p>You own your data. We sync it to Supabase for your convenience. You can delete it anytime from Settings → Your data & info.</p>
       <div style="font-weight:700;color:var(--text);margin:12px 0 4px">3. Google Integrations</div>
       <p>Gmail and Calendar access is read-only. We never send emails, create events, or modify your Google account.</p>
       <div style="font-weight:700;color:var(--text);margin:12px 0 4px">4. AI</div>

@@ -50,7 +50,7 @@ test.describe('Settings sections', () => {
       // the spec, and a section reappearing is as much a regression as one
       // going missing.
       'Account',
-      'Your data',
+      'Your data & info',
       'Help',
       'About',
     ]);
