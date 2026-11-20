@@ -29,7 +29,8 @@
 <link rel="stylesheet" href="public/css/flux-hub.css?v=6a462093">
 <link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=673aab02">
 <style>
-  :root { --bg: #070b14; --text: #eaf1ff; --muted2: #9fb0cc; --accent: #00c2ff; --border: rgba(255,255,255,.08); --border2: rgba(255,255,255,.15); --card: rgba(18,25,42,.78); }
+  /* --text-2: body copy one step below --text. Replaces six hand-typed #cbd6ea. */
+  :root { --bg: #070b14; --text: #eaf1ff; --text-2: #cbd6ea; --muted2: #9fb0cc; --accent: #00c2ff; --border: rgba(255,255,255,.08); --border2: rgba(255,255,255,.15); --card: rgba(18,25,42,.78); }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background-color: #070b14; }
   html { scroll-behavior: smooth; }
@@ -86,7 +87,7 @@
 
   .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px; }
   .card { padding: 20px; border-radius: 18px; background: var(--card); border: 1px solid var(--border); }
-  .card p { margin: 0; color: #cbd6ea; font-size: .94rem; }
+  .card p { margin: 0; color: var(--text-2); font-size: .94rem; }
   .step-n { display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: 12px; border-radius: 10px; font-weight: 800; color: #061020; background: linear-gradient(135deg, #7fe3ff, #00c2ff); }
 
   /* The partner, in its own violet — the same frame it wears in Flux Suite. */
@@ -134,11 +135,11 @@
   .shot img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--border); }
   .shot figcaption { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: .85rem; color: var(--muted2); }
 
-  ul.rules { margin: 0; padding-left: 1.2em; color: #cbd6ea; }
+  ul.rules { margin: 0; padding-left: 1.2em; color: var(--text-2); }
   ul.rules li { margin: 4px 0; }
 
   .join { text-align: center; padding: clamp(24px, 5vw, 40px); }
-  .join p { margin: 0 auto 16px; max-width: 560px; color: #cbd6ea; }
+  .join p { margin: 0 auto 16px; max-width: 560px; color: var(--text-2); }
   .foot { margin-top: 28px; text-align: center; font-size: .85rem; color: var(--muted2); }
 </style>
 <script src="public/js/flux-theme-carry.js?v=41b239bd"></script>
