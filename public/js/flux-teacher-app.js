@@ -679,12 +679,31 @@
       + '</div></div>'
       + (app.notice ? '<p class="ft-notice" role="status">' + icon('info', 17) + '<span>' + esc(app.notice) + '</span></p>' : '')
       + '<p id="ftLibAlert" class="ft-alert" role="alert"' + (app.libError ? '' : ' hidden') + '>' + esc(app.libError) + '</p>'
-      + (sets.length ? '<ul class="ft-sets" aria-label="Study sets">' + sets.map(setCard).join('') + '</ul>' : emptyLibrary())
+      + (sets.length ? startHere(sets) + '<ul class="ft-sets" aria-label="Study sets">' + sets.map(setCard).join('') + '</ul>' : emptyLibrary())
       + (app.bin.length ? binHtml() : '')
       + '<p class="ft-storage-note">' + esc(app.store.backend === 'memory'
         ? 'Nothing here is saved after you close this tab. Use Export to keep a copy.'
         : 'Your study sets are saved in this browser on this device. In a private or incognito window they are deleted when the window closes. Use Export to keep a copy, or to move a set to another device.') + '</p>'
       + '</section>';
+  }
+
+  /* With several sets the library is a grid of equals, and a student opening
+     it the night before a test has to work out which one matters. Name it:
+     the nearest upcoming exam first, else the set left longest. A set with no
+     guide yet points at building one, since nothing else works until then. */
+  function startHere(sets) {
+    const upcoming = sets.filter((m) => m.daysLeft != null && m.daysLeft >= 0)
+      .sort((a, b) => a.daysLeft - b.daysLeft);
+    const pick = upcoming[0] || sets.slice().sort((a, b) => (a.studiedAt || 0) - (b.studiedAt || 0))[0];
+    if (!pick) return '';
+    const title = pick.title || 'Untitled study set';
+    const why = upcoming[0] ? examLine(pick.daysLeft) : (pick.studiedAt ? 'Last studied ' + ago(pick.studiedAt) : 'Not studied yet');
+    const go = pick.hasGuide ? 'Study it' : 'Build its study guide';
+    return '<p class="ft-start-here"><span class="ft-start-label">Start here</span>'
+      + '<strong>' + esc(title) + '</strong><span class="ft-help">' + esc(why) + '</span>'
+      /* The action is the link, not the title: the card below already links the
+         title, and two links with one name read as a duplicate to a screen reader. */
+      + '<a href="' + esc(setHash(pick.id, '')) + '" data-open="' + esc(pick.id) + '">' + esc(go) + ' →</a></p>';
   }
 
   function emptyLibrary() {

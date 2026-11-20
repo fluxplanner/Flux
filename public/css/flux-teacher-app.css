@@ -752,3 +752,8 @@ a { color: var(--ft-accent); }
   .ft-top, .ft-tabs, .ft-toasts, .ft-row, .ft-item-actions, .ft-add, .ft-back { display: none !important; }
   .ft-panel, .ft-set-card { box-shadow: none; border-color: #ccc; }
 }
+
+/* "Start here": one row above the set grid naming the set to open next. */
+.ft-start-here { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin: 18px 0 0; padding: 12px 16px; border: 1px solid var(--ft-line-strong); border-radius: 14px; }
+.ft-start-here .ft-help { margin: 0; }
+.ft-start-label { font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ft-accent, currentColor); }
