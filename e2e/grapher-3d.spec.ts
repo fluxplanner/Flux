@@ -262,7 +262,7 @@ test.describe('Grapher 3D', () => {
     expect(await page.evaluate(() => localStorage.getItem('flux_grapher_print_mono'))).toBe('true');
   });
 
-  test('a share link rebuilds the rows and the view, through the short /graph/ link too', async ({ page, context }) => {
+  test('a share link rebuilds the rows and the view, and old /graph/ links still forward', async ({ page, context }) => {
     await page.addInitScript(() => {
       Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: (t: string) => { (window as any).__copied = t; return Promise.resolve(); } } });
     });
@@ -271,12 +271,13 @@ test.describe('Grapher 3D', () => {
     await page.evaluate(() => (window as any).fluxGrapherPage.instance.setView({ yaw: -47, pitch: 61.5, zoom: 1.4 }));
     await page.locator('#ghShare').click();
     const url = await page.evaluate(() => (window as any).__copied as string);
-    expect(url).toMatch(/\/graph\/#3d=[A-Za-z0-9_-]+$/);
+    expect(url).toMatch(/\/grapher\.html#3d=[A-Za-z0-9_-]+$/);
 
     const other = await context.newPage();
     await other.setViewportSize({ width: 1280, height: 900 });
     await other.addInitScript(() => { localStorage.setItem('flux_grapher_tour', 'done'); localStorage.setItem('flux_grapher_mode', 'functions'); });
-    await other.goto(url.replace(/^https?:\/\/[^/]+/, ''));
+    // Old links on slides still use /graph/; it must forward with the hash.
+    await other.goto(url.replace(/^https?:\/\/[^/]+/, '').replace('grapher.html', 'graph/'));
     await other.waitForURL(/grapher/);
     await other.waitForTimeout(800);
     await expect(other.locator('#mode3d')).toHaveAttribute('aria-selected', 'true');

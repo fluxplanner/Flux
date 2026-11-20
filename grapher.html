@@ -380,10 +380,11 @@
       });
       document.getElementById('ghHelp').addEventListener('click', function () { if (T) T.start(); });
 
-      /* The short link, not this page's own address: /graph/ is the one
-         worth putting on a slide or in a class chat. */
+      /* Share the canonical page, not /graph/: the redirect costs a hop on a
+         school network, and a 3D hash only survives it because graph/ copies
+         location.hash by hand. grapher.html is what <link rel=canonical> names. */
       document.getElementById('ghShare').addEventListener('click', function () {
-        var url = new URL('graph/', location.href.replace(/[^/]*([?#].*)?$/, '')).href;
+        var url = new URL('grapher.html', location.href.replace(/[^/]*([?#].*)?$/, '')).href;
         // A 3D graph travels in the link itself: its rows, its box and the view.
         if (inst && inst.kind === '3d' && inst.shareHash) url += inst.shareHash();
         var is3d = /#3d=/.test(url);
