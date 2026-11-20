@@ -6102,3 +6102,11 @@ body{
 #topbarTaskPill[data-state="today"]{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25);color:var(--gold)}
 #topbarTaskPill[data-state="open"]{background:rgba(var(--accent-rgb),.1);border:1px solid rgba(var(--accent-rgb),.2);color:var(--accent)}
 #topbarTaskPill[data-state="done"]{background:rgba(16,217,160,.1);border:1px solid rgba(16,217,160,.25);color:var(--green)}
+
+/* Text roles that index.html used to repeat as inline style="" strings
+   (46 copies). Inline styles can't be themed or overridden by the mobile
+   sheets; classes can. Values are exactly what the inline styles said. */
+.fx-hint{font-size:.7rem;color:var(--muted)}
+.fx-caption{font-size:.72rem;color:var(--muted)}
+.fx-soft{color:var(--muted);font-weight:400}
+.fx-note{font-size:.78rem;color:var(--muted2);line-height:1.65;margin:8px 0 0}
