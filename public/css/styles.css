@@ -1548,7 +1548,7 @@ body[data-theme="light"]{
   --border3:rgba(0,0,0,.14);
   --text:#12141f;
   --text2:#282c3a;
-  --muted:#5a5f76;
+  --muted:#57606a; /* 6.2:1 on white; one grey shared with the wordmark sub */
   --muted2:#6c7188;
   --glass-tint:linear-gradient(155deg,rgba(var(--accent-rgb),.14) 0%,rgba(255,255,255,.94) 32%,rgba(248,250,255,.85) 72%,rgba(var(--accent-rgb),.08) 100%);
   --shadow-sm:0 2px 10px rgba(0,0,0,.06);
