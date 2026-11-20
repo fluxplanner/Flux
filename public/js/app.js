@@ -4742,31 +4742,13 @@ function updateTopbarStats(){
   const active=tasks.filter(t=>!t.done);
   const overdue=active.filter(t=>t.date&&new Date(t.date+'T00:00:00')<now);
   const today=active.filter(t=>t.date===todayStr());
-  if(overdue.length){
-    pill.style.display='block';
-    pill.textContent=overdue.length+' overdue';
-    pill.style.background='rgba(244,63,94,.15)';
-    pill.style.border='1px solid rgba(244,63,94,.3)';
-    pill.style.color='var(--red)';
-  } else if(today.length){
-    pill.style.display='block';
-    pill.textContent=today.length+' due today';
-    pill.style.background='rgba(251,191,36,.1)';
-    pill.style.border='1px solid rgba(251,191,36,.25)';
-    pill.style.color='var(--gold)';
-  } else if(active.length){
-    pill.style.display='block';
-    pill.textContent=active.length+' tasks';
-    pill.style.background='rgba(var(--accent-rgb),.1)';
-    pill.style.border='1px solid rgba(var(--accent-rgb),.2)';
-    pill.style.color='var(--accent)';
-  } else {
-    pill.style.display='block';
-    pill.textContent='✓ All done';
-    pill.style.background='rgba(16,217,160,.1)';
-    pill.style.border='1px solid rgba(16,217,160,.25)';
-    pill.style.color='var(--green)';
-  }
+  // Colours live in styles.css under [data-state]. Inline display:block used
+  // to beat every responsive rule, so the pill could not be hidden on phones.
+  const [state,text]=overdue.length?['overdue',overdue.length+' overdue']
+    :today.length?['today',today.length+' due today']
+    :active.length?['open',active.length+' tasks']:['done','✓ All done'];
+  pill.hidden=false;pill.style.display='';
+  pill.dataset.state=state;pill.textContent=text;
   if(before&&pill.textContent!==before){try{window.FluxMotionMore?.bump(pill);}catch(_){}}
 }
 

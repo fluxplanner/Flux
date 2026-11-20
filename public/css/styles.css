@@ -6093,3 +6093,12 @@ body{
 @media (max-width:419px){
   #keyHint{white-space:normal!important;flex-wrap:wrap;justify-content:center;text-align:center;width:max-content;max-width:calc(100vw - 32px)}
 }
+
+/* Task pill states, set by app.js as data-state. Moved out of inline styles so
+   media queries and the countdown rule can still hide or resize the pill. */
+#topbarTaskPill{display:block}
+#topbarTaskPill[hidden]{display:none}
+#topbarTaskPill[data-state="overdue"]{background:rgba(244,63,94,.15);border:1px solid rgba(244,63,94,.3);color:var(--red)}
+#topbarTaskPill[data-state="today"]{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25);color:var(--gold)}
+#topbarTaskPill[data-state="open"]{background:rgba(var(--accent-rgb),.1);border:1px solid rgba(var(--accent-rgb),.2);color:var(--accent)}
+#topbarTaskPill[data-state="done"]{background:rgba(16,217,160,.1);border:1px solid rgba(16,217,160,.25);color:var(--green)}

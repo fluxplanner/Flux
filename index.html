@@ -118,7 +118,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.23b7058f.css">
+<link rel="stylesheet" href="public/bundles/flux.40d8b40d.css">
 <!-- The bundle already hides #app, but if it fails to load without JS the
      half-built shell would show under the notice. Say it here too. -->
 <noscript><style>#app,#splash,.skip-link{display:none!important}</style></noscript>
@@ -1212,7 +1212,7 @@
       <div id="topbarCenterNotices" style="display:none"></div>
       <div id="panicPill" style="display:none"></div>
       <div id="momentumPill" style="display:none"></div>
-      <div id="topbarTaskPill" style="display:none"></div>
+      <div id="topbarTaskPill" hidden></div>
       <div id="topbarNextClass" style="display:none"></div>
       <div id="topbarEnergy" style="display:none"></div>
       <div id="abPill" style="display:none"></div>
@@ -3020,7 +3020,7 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.984821d2.js"></script>
-<script defer src="public/bundles/flux-core.df15234a.js"></script>
+<script defer src="public/bundles/flux-core.49a6cad6.js"></script>
 <script defer src="public/bundles/flux-features.8769f749.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
