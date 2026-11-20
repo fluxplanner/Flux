@@ -30,9 +30,12 @@
     { id: 'study', name: 'Study apps' },
     { id: 'partner', name: 'Partners' },
   ];
+  /* slug is the public, URL- and class-safe name. id stays the storage key
+     (hidden-apps rows, saved favourites), so Flux Tutor keeps id 'teacher'. */
   var PRODUCTS = [
     {
       id: 'planner',
+      slug: 'planner',
       group: 'planner',
       name: 'Flux Planner',
       tagline: 'Tasks, timetable, revision',
@@ -41,6 +44,7 @@
     },
     {
       id: 'teacher',
+      slug: 'tutor',
       group: 'study',
       name: 'Flux Tutor',
       tagline: 'Learn from your class materials',
@@ -50,6 +54,7 @@
     },
     {
       id: 'grapher',
+      slug: 'grapher',
       group: 'study',
       name: 'Flux Grapher',
       tagline: 'Equations, lab data and 3D',
@@ -59,6 +64,7 @@
     },
     {
       id: 'calculator',
+      slug: 'calculator',
       group: 'study',
       name: 'Flux Calculator',
       tagline: 'Works like a TI-84, Plus CE or Evo',
@@ -68,6 +74,7 @@
     },
     {
       id: 'flashcards',
+      slug: 'flashcards',
       group: 'study',
       name: 'Flux Flashcards',
       tagline: 'Spaced repetition, tests and games',
@@ -77,6 +84,7 @@
     },
     {
       id: 'pixel',
+      slug: 'pixel',
       group: 'study',
       name: 'Flux Pixel',
       tagline: 'Diagrams and maths figures',
@@ -86,6 +94,7 @@
     },
     {
       id: 'periodic',
+      slug: 'periodic',
       group: 'study',
       name: 'Flux Periodic Table',
       tagline: 'Every trend, spectrum and atom in 3D',
@@ -95,6 +104,7 @@
     },
     {
       id: 'composer',
+      slug: 'composer',
       group: 'study',
       name: 'Flux Composer',
       tagline: 'Keys, chords, beats and DP Music',
@@ -107,6 +117,7 @@
       // it follows Flux's own study apps rather than sitting among them. Its
       // own brand rather than "Flux …": Synara keeps its name and violet look.
       id: 'synara',
+      slug: 'synara',
       group: 'partner',
       name: 'Synara',
       tagline: 'Epilepsy meds, seizures, safety card',

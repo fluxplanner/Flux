@@ -119,7 +119,7 @@
   .app--calculator { --c1: #fbbf24; --c2: #f97316; }
   .app--flashcards { --c1: #f9a8d4; --c2: #f472b6; }
   .app--pixel { --c1: #6ee7b7; --c2: #34d399; }
-  .app--teacher { --c1: #7dd3fc; --c2: #6366f1; }
+  .app--tutor { --c1: #7dd3fc; --c2: #6366f1; }
   /* Synara's own violet: purple is the epilepsy awareness colour. It is its
      own brand, so its card is set apart: its real logo for the icon, a violet
      gradient frame (a masked ::before, so the rounded corners survive), a
@@ -174,7 +174,7 @@
     <p class="note">Bookmark this page, or add it to your home screen, to get to every Flux app.</p>
   </main>
 
-  <script src="public/js/flux-hub.js?v=ca7939dc"></script>
+  <script src="public/js/flux-hub.js?v=68b4d34f"></script>
   <script>
     (function () {
       /* A sentence each, longer than the switcher's one-line tagline. A
@@ -209,7 +209,7 @@
         return '<div class="app-name">' + esc(p.name) + (p.partner ? '<span class="app-partner">Partner</span>' : '') + '</div><div class="app-tag">' + esc(p.tagline) + '</div>';
       };
       var card = function (p) {
-        return '<a class="app app--' + esc(p.id) + '" href="' + esc(p.href) + '">'
+        return '<a class="app app--' + esc(p.slug || p.id) + '" href="' + esc(p.href) + '">'
           + '<div class="app-top">' + icon(p) + '<div>' + title(p) + '</div></div>'
           + '<p class="app-desc">' + esc(MORE[p.id] || p.tagline) + '</p>'
           + '<div class="app-foot"><span class="go">Open →</span></div>'
@@ -217,7 +217,7 @@
       };
       /* The planner: one wide bar across the top, above the tabs. */
       var bar = function (p) {
-        return '<a class="app app--feature app--' + esc(p.id) + '" href="' + esc(p.href) + '">'
+        return '<a class="app app--feature app--' + esc(p.slug || p.id) + '" href="' + esc(p.href) + '">'
           + '<div class="app-head">' + icon(p) + '<div class="app-head-t">' + title(p) + '</div></div>'
           + '<div class="app-main"><p class="app-desc">' + esc(MORE[p.id] || p.tagline) + '</p></div>'
           + '<span class="go">Open the planner →</span>'
