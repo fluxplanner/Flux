@@ -1,3788 +1,4556 @@
 {
-  "generated": "2026-09-25",
+  "generated": "2026-11-20",
   "firstCommit": "2026-03-12",
-  "total": 630,
-  "omitted": 298,
+  "total": 758,
+  "omitted": 300,
   "entries": [
+    {
+      "date": "2026-11-20",
+      "type": "Added",
+      "title": "Give the suite a heading outline (E2)",
+      "hash": "d0bc305f"
+    },
+    {
+      "date": "2026-11-20",
+      "type": "Added",
+      "title": "Og card, wide screenshots, maskable icons and manifest ids (E1)",
+      "hash": "42a2c59f"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Added",
+      "title": "Patterned boards behind the planner, with a settings picker",
+      "hash": "84837b3b"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Housekeeping",
+      "title": "Move the four most repeated inline text styles to classes",
+      "hash": "e9aca34c"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Added",
+      "title": "Fold the tips into a details panel on wide screens",
+      "hash": "62184841"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Housekeeping",
+      "title": "Style the task pill by data-state, not inline display",
+      "hash": "374efd12"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Fixed",
+      "title": "Re-measure the bottom-bar indicator on font load and resize",
+      "hash": "9c4baead"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Housekeeping",
+      "title": "Document the four card accent families in flux-hub.css",
+      "hash": "c15708f4"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Housekeeping",
+      "title": "Replace hand-typed #cbd6ea with --text-2",
+      "hash": "1e641e57"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Housekeeping",
+      "title": "Raise --muted to 4.5:1 in both themes",
+      "hash": "3adb239d"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Housekeeping",
+      "title": "Load the hero font and let its gradient line wrap",
+      "hash": "666d5fe9"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Added",
+      "title": "Add a Start here row above the study sets",
+      "hash": "77cdf738"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Added",
+      "title": "Add skip links to the six standalone apps",
+      "hash": "200f85f8"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Added",
+      "title": "Show a real not-found page with a header and links back",
+      "hash": "f828c20e"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Fixed",
+      "title": "Drop the phantom AI slot and wrap the key hint",
+      "hash": "dd551b07"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Fixed",
+      "title": "Name the data tab once and state one minimum age",
+      "hash": "d9ce56c8"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Added",
+      "title": "Give each product a public slug for card classes",
+      "hash": "81f4ec17"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Fixed",
+      "title": "Share and link the canonical grapher.html",
+      "hash": "f5a54fd3"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Added",
+      "title": "Count study tools and subjects from the registry",
+      "hash": "3cc3080b"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Fixed",
+      "title": "Hide the app shell when JavaScript is off",
+      "hash": "82597c40"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Housekeeping",
+      "title": "Record the live RLS policy list and flag anon over-reads",
+      "hash": "22e98428"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Fixed",
+      "title": "Pin the vendored jQuery and MathQuill with SRI",
+      "hash": "81e04a80"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Added",
+      "title": "Expire, scope and forget the Canvas access key",
+      "hash": "a3636329"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Fixed",
+      "title": "Sniff upload bytes and cap size before parsing",
+      "hash": "526c4008"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Fixed",
+      "title": "Route user text through one quote-safe escaper",
+      "hash": "50220dcc"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Added",
+      "title": "Send strict-origin-when-cross-origin referrer from every page",
+      "hash": "3448c302"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Added",
+      "title": "Add a Content-Security-Policy to every standalone page",
+      "hash": "32e15ea7"
+    },
+    {
+      "date": "2026-11-19",
+      "type": "Housekeeping",
+      "title": "Snapshot work in progress before epic A-E pass",
+      "hash": "57583ae6"
+    },
+    {
+      "date": "2026-10-18",
+      "type": "Changed",
+      "title": "Put the Flux logo on the printed reading log (#156)",
+      "hash": "da8d784f"
+    },
+    {
+      "date": "2026-10-18",
+      "type": "Changed",
+      "title": "Grapher reads maths the way students write it",
+      "hash": "fdb37a57"
+    },
+    {
+      "date": "2026-10-18",
+      "type": "Changed",
+      "title": "Keep other devices' reading log entries when the module loads late (#155)",
+      "hash": "c3d53cf9"
+    },
+    {
+      "date": "2026-10-18",
+      "type": "Changed",
+      "title": "Planner as a wide bar on top, Study apps and Partners pill tabs",
+      "hash": "22f3bb74"
+    },
+    {
+      "date": "2026-10-18",
+      "type": "Added",
+      "title": "Organize the new features: apps shelf, Reading log tab, grouped Hub",
+      "hash": "f151ddad"
+    },
+    {
+      "date": "2026-10-17",
+      "type": "Changed",
+      "title": "Teacher tools: 3D Grapher, Pixel maths figures + vectors, Study tools verb drill, Reading log (#152)",
+      "hash": "f40191ef"
+    },
+    {
+      "date": "2026-10-17",
+      "type": "Changed",
+      "title": "Flux Tutor overhaul: study sets that save, built from the student's own notes (#151)",
+      "hash": "b0fd83a9"
+    },
+    {
+      "date": "2026-10-17",
+      "type": "Changed",
+      "title": "Task reliability: no lost edits from sync, scrolling, refreshes or undo (#150)",
+      "hash": "6e74654a"
+    },
+    {
+      "date": "2026-10-16",
+      "type": "Changed",
+      "title": "Open PDFs with pdf.js eval off; signing out keeps Flux Tutor's saved sets (#149)",
+      "hash": "275e1224"
+    },
+    {
+      "date": "2026-10-16",
+      "type": "Changed",
+      "title": "Three erasers (Whole item, Circle, Box) (#148)",
+      "hash": "22941c31"
+    },
+    {
+      "date": "2026-10-16",
+      "type": "Changed",
+      "title": "Values below .001 show in scientific notation again (#147)",
+      "hash": "bb35920f"
+    },
+    {
+      "date": "2026-10-11",
+      "type": "Performance",
+      "title": "Periodic table lag, part 2: stop redrawing the screen behind it (#145)",
+      "hash": "5dc3ae77"
+    },
+    {
+      "date": "2026-10-10",
+      "type": "Changed",
+      "title": "Plan my week: study blocks for the next seven days, around classes and plans (#144)",
+      "hash": "4f9e43ba"
+    },
+    {
+      "date": "2026-10-10",
+      "type": "Changed",
+      "title": "Beat Maker: pick notes and count 1 & 2 &; readable dropdowns on Windows (#143)",
+      "hash": "9d02b80d"
+    },
+    {
+      "date": "2026-10-10",
+      "type": "Performance",
+      "title": "Periodic table lag: stop repainting the screen behind it (#142)",
+      "hash": "f54e3d54"
+    },
+    {
+      "date": "2026-10-10",
+      "type": "Changed",
+      "title": "Safer emergency timer and first aid, reliable saving and sync, honest insights, accessibility (#141)",
+      "hash": "c2d21a64"
+    },
+    {
+      "date": "2026-10-10",
+      "type": "Added",
+      "title": "Small fixes (calendar, timer glow, New task from calendar, print watermark) + Composer DP Music portfolio sheets (#140)",
+      "hash": "51c17658"
+    },
+    {
+      "date": "2026-10-09",
+      "type": "Added",
+      "title": "Add drag and drop uploads to Flux Tutor",
+      "hash": "c0e148ee"
+    },
+    {
+      "date": "2026-10-09",
+      "type": "Added",
+      "title": "Add TI-84 sequence graph modes",
+      "hash": "1a18ec81"
+    },
+    {
+      "date": "2026-10-09",
+      "type": "Changed",
+      "title": "Complete Evo zoom presets and quick zoom",
+      "hash": "fabb1b83"
+    },
+    {
+      "date": "2026-10-09",
+      "type": "Added",
+      "title": "Add TI-84 Evo mode and calculator parity fixes",
+      "hash": "4d438ae3"
+    },
+    {
+      "date": "2026-10-09",
+      "type": "Changed",
+      "title": "Open the Flux Hub from app switcher",
+      "hash": "400a0537"
+    },
+    {
+      "date": "2026-10-09",
+      "type": "Added",
+      "title": "Add local photo and file imports to Teacher",
+      "hash": "ba87a888"
+    },
+    {
+      "date": "2026-10-09",
+      "type": "Added",
+      "title": "Add calculator formatting and Flux Teacher beta",
+      "hash": "1e8c7c09"
+    },
+    {
+      "date": "2026-10-09",
+      "type": "Added",
+      "title": "Fix easing and scroll lines; add 13 small animations across the planner (#139)",
+      "hash": "3b5a3f5a"
+    },
+    {
+      "date": "2026-10-09",
+      "type": "Changed",
+      "title": "Keep Synara's data when the planner clears its own (#138)",
+      "hash": "93217f7e"
+    },
+    {
+      "date": "2026-10-09",
+      "type": "Changed",
+      "title": "Focus timer: anime.js car, circuit, morph, ticks; draggable Pomodoro pill (#137)",
+      "hash": "1ae10de3"
+    },
+    {
+      "date": "2026-10-06",
+      "type": "Changed",
+      "title": "Flux × Synara: logo and frame, Powered by Flux, Purple Day, Partners and kit, planner link, encrypted sync, intro (#134)",
+      "hash": "2918df5a"
+    },
+    {
+      "date": "2026-10-06",
+      "type": "Fixed",
+      "title": "Lock down SECURITY DEFINER functions; fix feature flag resolution (already applied) (#136)",
+      "hash": "2921d6af"
+    },
+    {
+      "date": "2026-10-06",
+      "type": "Changed",
+      "title": "+N counts only items that did not fit (#135)",
+      "hash": "9b4f62a3"
+    },
+    {
+      "date": "2026-10-05",
+      "type": "Added",
+      "title": "Add Synara: epilepsy meds, seizures and a safety card, beside the planner (#133)",
+      "hash": "8ba3dde3"
+    },
+    {
+      "date": "2026-10-04",
+      "type": "Changed",
+      "title": "TI-84: nCr/nPr as textbook boxes; lists fill the taller screen (#132)",
+      "hash": "ed8cf1d9"
+    },
+    {
+      "date": "2026-10-04",
+      "type": "Changed",
+      "title": "TI-84: boxes for every multi-argument function; taller screen beside the keys (#131)",
+      "hash": "87a3c460"
+    },
+    {
+      "date": "2026-10-04",
+      "type": "Changed",
+      "title": "TI-84: nCr/nPr give fill-in boxes on an empty line (#130)",
+      "hash": "1e697ce9"
+    },
+    {
+      "date": "2026-10-04",
+      "type": "Changed",
+      "title": "Lesson Hub: \"No classes today\" when classes exist but none meet (#129)",
+      "hash": "c6616670"
+    },
+    {
+      "date": "2026-10-04",
+      "type": "Changed",
+      "title": "School Info: no phone extension; sidebar highlights School info, not Dashboard (#128)",
+      "hash": "749fd890"
+    },
+    {
+      "date": "2026-10-04",
+      "type": "Changed",
+      "title": "Demo polish: AI paused, sky blue default, readable accent text, first-visit intro, greeting, projector sidebar (#127)",
+      "hash": "7261d8f5"
+    },
+    {
+      "date": "2026-10-04",
+      "type": "Fixed",
+      "title": "Staff demo fixes: dashboard tools always load, picker/group sync, phone More sheet icons (#126)",
+      "hash": "949a1966"
+    },
+    {
+      "date": "2026-10-04",
+      "type": "Changed",
+      "title": "Extreme notes use 8va/8vb and stay on the staff (#125)",
+      "hash": "a0241311"
+    },
+    {
+      "date": "2026-10-04",
+      "type": "Changed",
+      "title": "88 stamps with search; Work hub shows your real classes (#124)",
+      "hash": "9e5f9321"
+    },
+    {
+      "date": "2026-10-04",
+      "type": "Changed",
+      "title": "Ease Supabase load; keep Pixel's stamp list open (#123)",
+      "hash": "4c9051e5"
+    },
+    {
+      "date": "2026-10-04",
+      "type": "Changed",
+      "title": "Flux Pixel; Composer Beat Maker; flashcards with no daily walls (#122)",
+      "hash": "2e41d654"
+    },
+    {
+      "date": "2026-10-04",
+      "type": "Performance",
+      "title": "Faster, never-blank planner start; flashcards creator names and merge-back (#121)",
+      "hash": "3455cf7b"
+    },
+    {
+      "date": "2026-10-04",
+      "type": "Added",
+      "title": "Add Flux Flashcards: spaced repetition, five study modes, import and sharing (#120)",
+      "hash": "f0a86f9f"
+    },
+    {
+      "date": "2026-10-04",
+      "type": "Changed",
+      "title": "Mood check-in: ask at most once a day, across devices (#119)",
+      "hash": "5f5cce8d"
+    },
+    {
+      "date": "2026-10-03",
+      "type": "Removed",
+      "title": "Carry the planner theme into the other apps; drop \"free\" pills; home-screen icon (#118)",
+      "hash": "fcb6994c"
+    },
+    {
+      "date": "2026-10-03",
+      "type": "Changed",
+      "title": "Keys beside the screen on a sideways iPad or laptop (#117)",
+      "hash": "9e0721d8"
+    },
+    {
+      "date": "2026-10-03",
+      "type": "Added",
+      "title": "Add Flux hub page and make Composer sound play on iPhone (#116)",
+      "hash": "c7cb050d"
+    },
+    {
+      "date": "2026-10-03",
+      "type": "Changed",
+      "title": "Flux Composer: a music theory studio on its own page, like the Periodic Table (#115)",
+      "hash": "4d008268"
+    },
+    {
+      "date": "2026-10-02",
+      "type": "Added",
+      "title": "Calmer New task and Edit task windows; Customize workspace padded; calendar says Activity (#114)",
+      "hash": "63e072bb"
+    },
+    {
+      "date": "2026-10-02",
+      "type": "Changed",
+      "title": "Phone calendar opens on the month; Work hub hides an all-zero stat strip (#113)",
+      "hash": "ff0d37d5"
+    },
+    {
+      "date": "2026-10-02",
+      "type": "Changed",
+      "title": "Sign-in page: always appears, says what is switched on, tidier on phones (#112)",
+      "hash": "3bb932e1"
+    },
+    {
+      "date": "2026-10-02",
+      "type": "Changed",
+      "title": "Counselor home: quick actions instead of empty cards; tidier forms (#111)",
+      "hash": "7b3aa1d1"
+    },
+    {
+      "date": "2026-10-02",
+      "type": "Added",
+      "title": "Admin announcement/CSV fixes; Add Task keeps the picked type (#110)",
+      "hash": "a6e5d892"
+    },
+    {
+      "date": "2026-10-02",
+      "type": "Changed",
+      "title": "Staff side: hide what can't reach students; phone More menu for educators (#109)",
+      "hash": "c3eba677"
+    },
+    {
+      "date": "2026-10-02",
+      "type": "Fixed",
+      "title": "Demo polish: accurate copy, Suggest steps, phone fixes (#108)",
+      "hash": "f113a47c"
+    },
+    {
+      "date": "2026-10-01",
+      "type": "Changed",
+      "title": "Sign-up: find your school and classes with Canvas; students need both (#107)",
+      "hash": "6634dabf"
+    },
+    {
+      "date": "2026-10-01",
+      "type": "Changed",
+      "title": "Plan it out: a big task spread over the days before it is due (#106)",
+      "hash": "653ea500"
+    },
+    {
+      "date": "2026-10-01",
+      "type": "Changed",
+      "title": "Periodic table: Diatomic · HOFBrINCl (#105)",
+      "hash": "8f627c12"
+    },
+    {
+      "date": "2026-10-01",
+      "type": "Changed",
+      "title": "Printing from the iPhone/iPad home-screen app goes through the Share sheet (#104)",
+      "hash": "0482e867"
+    },
+    {
+      "date": "2026-09-30",
+      "type": "Changed",
+      "title": "Grapher results: equation, then each value on its own line, \"=\" aligned (#103)",
+      "hash": "51784210"
+    },
+    {
+      "date": "2026-09-30",
+      "type": "Changed",
+      "title": "Grapher results: m and R² beside the equation; best fit names its type (#102)",
+      "hash": "208a4351"
+    },
+    {
+      "date": "2026-09-30",
+      "type": "Changed",
+      "title": "Grapher prints: both 0 lines equally heavy when one is on the plot's edge (#101)",
+      "hash": "49257893"
+    },
+    {
+      "date": "2026-09-30",
+      "type": "Changed",
+      "title": "Grapher prints: x = 0 and y = 0 lines darker and thicker (#100)",
+      "hash": "eef122f5"
+    },
+    {
+      "date": "2026-09-30",
+      "type": "Changed",
+      "title": "Printing that shows up on paper; Completed tasks; periodic table stays put (#99)",
+      "hash": "4e068465"
+    },
+    {
+      "date": "2026-09-29",
+      "type": "Changed",
+      "title": "Planner due dates match everywhere; task AI button gone; grapher polish (#98)",
+      "hash": "be58393d"
+    },
+    {
+      "date": "2026-09-29",
+      "type": "Changed",
+      "title": "Photo scans and file import switched off for now (#97)",
+      "hash": "48f9e861"
+    },
+    {
+      "date": "2026-09-29",
+      "type": "Changed",
+      "title": "Unit tests: load ai-models.ts through esbuild so CI's Node 20 can run it (#96)",
+      "hash": "99852330"
+    },
+    {
+      "date": "2026-09-29",
+      "type": "Changed",
+      "title": "Lighter effects on phones and tablets, with a Settings switch (#95)",
+      "hash": "867846d4"
+    },
+    {
+      "date": "2026-09-29",
+      "type": "Changed",
+      "title": "Flux AI: photo scans survive Gemini retirements; long chats stop failing (#93)",
+      "hash": "a697398b"
+    },
+    {
+      "date": "2026-09-29",
+      "type": "Changed",
+      "title": "Classmates' suggestions: music theory, Literature, working pad, lab reports, weighted fits (#94)",
+      "hash": "a240ba63"
+    },
+    {
+      "date": "2026-09-28",
+      "type": "Changed",
+      "title": "AI allowance counters are server-only; parent codes truly random (#92)",
+      "hash": "2dfd77c2"
+    },
+    {
+      "date": "2026-09-28",
+      "type": "Removed",
+      "title": "Call them Activities everywhere, and drop \"Google sync\" from a label (#91)",
+      "hash": "39282df6"
+    },
+    {
+      "date": "2026-09-28",
+      "type": "Changed",
+      "title": "Record what is already live: release-admin by account id, two DB changes (#90)",
+      "hash": "deadd83c"
+    },
+    {
+      "date": "2026-09-27",
+      "type": "Changed",
+      "title": "Periodic table: category colours that do not read alike (#89)",
+      "hash": "1ae85ce1"
+    },
+    {
+      "date": "2026-09-27",
+      "type": "Changed",
+      "title": "IPhone headers, a simple planner periodic table, and print options (#88)",
+      "hash": "fbfe2178"
+    },
+    {
+      "date": "2026-09-27",
+      "type": "Changed",
+      "title": "Grapher fits every screen; calculator switches off, no white bar on phones (#87)",
+      "hash": "2629087a"
+    },
+    {
+      "date": "2026-09-27",
+      "type": "Changed",
+      "title": "The countdown syncs across devices (#86)",
+      "hash": "a17b498b"
+    },
+    {
+      "date": "2026-09-27",
+      "type": "Added",
+      "title": "Milestones removed; everything new checked and fixed on phones (#85)",
+      "hash": "eb934737"
+    },
+    {
+      "date": "2026-09-27",
+      "type": "Changed",
+      "title": "Periodic Table: the tabs slide (#84)",
+      "hash": "e3df1ce8"
+    },
+    {
+      "date": "2026-09-27",
+      "type": "Changed",
+      "title": "Periodic Table in tabs, with every atom in 3D; Science toolkit; g is back (#83)",
+      "hash": "7f4e5592"
+    },
+    {
+      "date": "2026-09-27",
+      "type": "Changed",
+      "title": "Scan a photo of a table, or open a CSV or Excel file (#82)",
+      "hash": "42de2bf8"
+    },
+    {
+      "date": "2026-09-27",
+      "type": "Removed",
+      "title": "Periodic Table: every trend, each with its own graph; tools and quiz removed (#81)",
+      "hash": "37098ab9"
+    },
+    {
+      "date": "2026-09-26",
+      "type": "Changed",
+      "title": "Flux Periodic Table: its own app, like the grapher (#80)",
+      "hash": "9ba0408d"
+    },
+    {
+      "date": "2026-09-26",
+      "type": "Changed",
+      "title": "Flux Calculator: a TI-84 Plus CE in the planner and on its own page (#79)",
+      "hash": "1ac002a3"
+    },
+    {
+      "date": "2026-09-26",
+      "type": "Changed",
+      "title": "Grapher types like Desmos, draws circles and inequalities; owner messages work again (#78)",
+      "hash": "c71d94d3"
+    },
+    {
+      "date": "2026-09-26",
+      "type": "Changed",
+      "title": "Desmos-style typing, a top bar that never overlaps, and the grapher split (#77)",
+      "hash": "67d53c29"
+    },
+    {
+      "date": "2026-09-26",
+      "type": "Changed",
+      "title": "Staff pages round two; grapher tab animation, image check, deletes that stick (#76)",
+      "hash": "584d6937"
+    },
+    {
+      "date": "2026-09-26",
+      "type": "Changed",
+      "title": "Tutorials and login page match the planner; staff section rebuilt (#75)",
+      "hash": "5ecdf646"
+    },
+    {
+      "date": "2026-09-26",
+      "type": "Fixed",
+      "title": "A deleted class stays deleted (#74)",
+      "hash": "f52e37f0"
+    },
+    {
+      "date": "2026-09-25",
+      "type": "Changed",
+      "title": "The countdown moves to the top bar, and the 7-day bars go (#73)",
+      "hash": "62876f6f"
+    },
+    {
+      "date": "2026-09-25",
+      "type": "Changed",
+      "title": "Desmos-style regressions, and then some (#72)",
+      "hash": "4a5b02ed"
+    },
     {
       "date": "2026-09-25",
       "type": "Added",
-      "title": "Desmos-level Functions — keypad, definitions, regressions — and every fit, switchable",
-      "hash": "9fe07a4"
+      "title": "Count down to any day from the calendar, and see it on the dashboard (#71)",
+      "hash": "a8e0a0d7"
+    },
+    {
+      "date": "2026-09-25",
+      "type": "Changed",
+      "title": "A colour for every line, max/min edge to edge, a saved image's key, and clear tabs in the planner (#70)",
+      "hash": "980fa0a5"
+    },
+    {
+      "date": "2026-09-25",
+      "type": "Added",
+      "title": "Formula sheets drawn as textbook maths (#69)",
+      "hash": "e14b7d28"
+    },
+    {
+      "date": "2026-09-25",
+      "type": "Added",
+      "title": "Clear all on the measurements grapher, and the activity calendar button gets its icon back (#68)",
+      "hash": "86dbab47"
+    },
+    {
+      "date": "2026-09-25",
+      "type": "Fixed",
+      "title": "The animated background stops throwing in a window with no height (#67)",
+      "hash": "e7742524"
+    },
+    {
+      "date": "2026-09-25",
+      "type": "Fixed",
+      "title": "Planner redesign pass and fixes from clicking every button (#66)",
+      "hash": "d0b348c3"
+    },
+    {
+      "date": "2026-09-25",
+      "type": "Added",
+      "title": "As many manual lines as you need, with m ± Δm from the pair (#65)",
+      "hash": "44c4a8d0"
+    },
+    {
+      "date": "2026-09-25",
+      "type": "Fixed",
+      "title": "One tab that fails to draw no longer half-breaks switching tabs (#64)",
+      "hash": "b4fba33e"
+    },
+    {
+      "date": "2026-09-25",
+      "type": "Changed",
+      "title": "Keypad, Desmos definitions & regressions, every fit switchable, hub on phones (#63)",
+      "hash": "6851cb1b"
     },
     {
       "date": "2026-09-25",
       "type": "Changed",
       "title": "Zeros & turning points, ± columns, window control, saving to your account (#62)",
-      "hash": "4484768"
+      "hash": "44847688"
     },
     {
       "date": "2026-09-25",
       "type": "Added",
       "title": "A grapher that understands uncertainties, and a free one anyone can use (#61)",
-      "hash": "4d1f10a"
+      "hash": "4d1f10ae"
     },
     {
       "date": "2026-09-24",
       "type": "Fixed",
       "title": "\"veis\", not \"véis\" — and a sweep so the next one cannot hide (#60)",
-      "hash": "f4150e2"
+      "hash": "f4150e20"
     },
     {
       "date": "2026-09-24",
       "type": "Added",
       "title": "You can dismiss the heavy-day warning, and it returns if it changes (#59)",
-      "hash": "9160ec7"
+      "hash": "9160ec74"
     },
     {
       "date": "2026-09-24",
       "type": "Fixed",
       "title": "The date picker opens where it belongs, instead of lurching on first click (#58)",
-      "hash": "792a47f"
+      "hash": "792a47fe"
     },
     {
       "date": "2026-09-24",
       "type": "Fixed",
       "title": "The calendar stops telling you to sign in with a Google that is off (#57)",
-      "hash": "50cdeda"
+      "hash": "50cdedaa"
     },
     {
       "date": "2026-09-23",
       "type": "Added",
       "title": "Count down to anything, not just the next test (#56)",
-      "hash": "1de0396"
+      "hash": "1de0396d"
     },
     {
       "date": "2026-09-23",
       "type": "Added",
       "title": "Your locker and ID live in Profile, and the PDF importer is gone (#55)",
-      "hash": "b85baad"
+      "hash": "b85baad7"
     },
     {
       "date": "2026-09-23",
       "type": "Added",
       "title": "Pick a colour for each activity, the way classes already work (#54)",
-      "hash": "4c8d35f"
+      "hash": "4c8d35fc"
     },
     {
       "date": "2026-09-23",
       "type": "Added",
       "title": "Edit a task from the calendar, not just tick or delete it (#53)",
-      "hash": "10bea25"
+      "hash": "10bea258"
     },
     {
       "date": "2026-09-23",
       "type": "Added",
       "title": "Everyone converted off Google picks their own name and password (#51)",
-      "hash": "56c3a26"
+      "hash": "56c3a264"
     },
     {
       "date": "2026-09-23",
       "type": "Fixed",
       "title": "The owner is recognised by account id, not by email address (#52)",
-      "hash": "0fc75f7"
+      "hash": "0fc75f7c"
     },
     {
       "date": "2026-09-22",
       "type": "Added",
       "title": "One Add button on the calendar, not a Task one that did less (#50)",
-      "hash": "0c91724"
+      "hash": "0c91724a"
     },
     {
       "date": "2026-09-22",
       "type": "Fixed",
       "title": "The phone would not scroll at all (#49)",
-      "hash": "aeaa67e"
+      "hash": "aeaa67e1"
     },
     {
       "date": "2026-09-19",
       "type": "Added",
       "title": "Colour the periodic table by a trend, with the arrows spelled out (#48)",
-      "hash": "1b69866"
+      "hash": "1b698668"
     },
     {
       "date": "2026-09-19",
       "type": "Added",
       "title": "One formula sheet per subject, split by unit (#47)",
-      "hash": "fac8c27"
+      "hash": "fac8c277"
     },
     {
       "date": "2026-09-19",
       "type": "Fixed",
       "title": "Say what is wrong with a password instead of reciting the alphabet (#46)",
-      "hash": "847ca0c"
+      "hash": "847ca0c3"
     },
     {
       "date": "2026-09-15",
       "type": "Fixed",
       "title": "One Reference in Chemistry, and gravity follows your programme (#45)",
-      "hash": "f14b759"
+      "hash": "f14b759f"
     },
     {
       "date": "2026-09-15",
       "type": "Fixed",
       "title": "The conjugator was wrong about a whole family of common verbs (#44)",
-      "hash": "04bf5b9"
+      "hash": "04bf5b93"
     },
     {
       "date": "2026-09-15",
       "type": "Fixed",
       "title": "Six buttons could still undo the switch to names and passwords (#43)",
-      "hash": "bb1b110"
+      "hash": "bb1b110f"
     },
     {
       "date": "2026-09-15",
       "type": "Fixed",
       "title": "The phone's More menu stops disagreeing with the laptop (#42)",
-      "hash": "9f4883a"
+      "hash": "9f4883ac"
     },
     {
       "date": "2026-09-15",
       "type": "Added",
       "title": "Chemistry splits into units, and \"Tools\" stops hiding six calculators (#41)",
-      "hash": "faad87a"
+      "hash": "faad87ab"
     },
     {
       "date": "2026-09-14",
       "type": "Added",
       "title": "Name your important dates, and stop the stuck tooltip",
-      "hash": "2af8c3d"
+      "hash": "2af8c3dd"
     },
     {
       "date": "2026-09-13",
       "type": "Added",
       "title": "Sign in with a name, and a way back in when you forget the password",
-      "hash": "9410151"
+      "hash": "94101515"
     },
     {
       "date": "2026-09-13",
       "type": "Added",
       "title": "The phone shows the desktop dashboard, not a parallel one",
-      "hash": "e4743cd"
+      "hash": "e4743cde"
     },
     {
       "date": "2026-09-13",
       "type": "Added",
       "title": "Settings is a list down the side, and \"Look\" stops being a dumping ground",
-      "hash": "304493d"
+      "hash": "304493de"
     },
     {
       "date": "2026-09-13",
       "type": "Fixed",
       "title": "The unit row slides like every other row",
-      "hash": "7fc5df7"
+      "hash": "7fc5df75"
     },
     {
       "date": "2026-09-13",
       "type": "Fixed",
       "title": "The timeline's delete button centres its ✕",
-      "hash": "4576f99"
+      "hash": "4576f99c"
     },
     {
       "date": "2026-09-13",
       "type": "Fixed",
       "title": "Canvas suggests the school's own host, and School Info stops duplicating it",
-      "hash": "2e15e99"
+      "hash": "2e15e99f"
     },
     {
       "date": "2026-09-13",
       "type": "Fixed",
       "title": "No cursor glow, and emoji no longer flash before their icons",
-      "hash": "327e774"
+      "hash": "327e7749"
     },
     {
       "date": "2026-09-13",
       "type": "Fixed",
       "title": "Remove the Google sign-in buttons",
-      "hash": "4ac8e55"
+      "hash": "4ac8e550"
     },
     {
       "date": "2026-09-13",
       "type": "Added",
       "title": "Study tools nest subject → unit → tool",
-      "hash": "2d92de7"
+      "hash": "2d92de77"
     },
     {
       "date": "2026-08-28",
       "type": "Fixed",
       "title": "Stop the feedback function reading every user's data",
-      "hash": "c29415d"
+      "hash": "c29415d7"
     },
     {
       "date": "2026-09-13",
       "type": "Housekeeping",
       "title": "Delete the dead \"Your AI profile\" login CSS",
-      "hash": "1037290"
+      "hash": "1037290f"
     },
     {
       "date": "2026-09-13",
       "type": "Fixed",
       "title": "Dismissing a dashboard banner now actually dismisses it",
-      "hash": "ea3a948"
+      "hash": "ea3a948c"
     },
     {
       "date": "2026-09-11",
       "type": "Fixed",
       "title": "Drop Recovery Mode, keep your tab on refresh, and speed up umbrellas",
-      "hash": "a24147d"
+      "hash": "a24147df"
     },
     {
       "date": "2026-09-06",
       "type": "Fixed",
       "title": "Your own typing no longer comes back and wipes the page",
-      "hash": "da354be"
+      "hash": "da354bed"
     },
     {
       "date": "2026-09-05",
       "type": "Added",
       "title": "College Prep tab — test scores, deadlines and application status",
-      "hash": "8fd888c"
+      "hash": "8fd888cf"
     },
     {
       "date": "2026-09-05",
       "type": "Added",
       "title": "GPA, SAT and ACT tracking on your profile",
-      "hash": "99419e5"
+      "hash": "99419e5c"
     },
     {
       "date": "2026-09-05",
       "type": "Fixed",
       "title": "Switching study tools works, and the date picker stops running away",
-      "hash": "e19f83d"
+      "hash": "e19f83d2"
     },
     {
       "date": "2026-09-05",
       "type": "Fixed",
       "title": "An empty cloud list can no longer delete your colleges or activities",
-      "hash": "1623de0"
+      "hash": "1623de0e"
     },
     {
       "date": "2026-09-05",
       "type": "Fixed",
       "title": "The app stops redrawing itself every eight seconds",
-      "hash": "8412a8f"
+      "hash": "8412a8f9"
     },
     {
       "date": "2026-09-05",
       "type": "Added",
       "title": "The Focus Timer tab is now just \"Time\"",
-      "hash": "28aedb3"
+      "hash": "28aedb30"
     },
     {
       "date": "2026-09-05",
       "type": "Added",
       "title": "The clock is yours to style, and stacked study cards stop touching",
-      "hash": "72ba5d3"
+      "hash": "72ba5d36"
     },
     {
       "date": "2026-09-05",
       "type": "Fixed",
       "title": "The tab you clicked no longer briefly becomes the size of the panel",
-      "hash": "7118b4e"
+      "hash": "7118b4e6"
     },
     {
       "date": "2026-09-05",
       "type": "Added",
       "title": "The cursor glow is half as bright, and now on every panel",
-      "hash": "3b32de1"
+      "hash": "3b32de1e"
     },
     {
       "date": "2026-09-04",
       "type": "Added",
       "title": "Astronomy grows from three tabs to seven, biology gains seven",
-      "hash": "d71c475"
+      "hash": "d71c475c"
     },
     {
       "date": "2026-09-04",
       "type": "Added",
       "title": "The sliding highlight is now every highlight, the sidebar included",
-      "hash": "8526092"
+      "hash": "85260929"
     },
     {
       "date": "2026-09-04",
       "type": "Added",
       "title": "One conjugator per language, and the tab highlight slides everywhere",
-      "hash": "4080418"
+      "hash": "40804180"
     },
     {
       "date": "2026-09-04",
       "type": "Added",
       "title": "French, German and Spanish become subjects with four tools each",
-      "hash": "6c74fe6"
+      "hash": "6c74fe6a"
     },
     {
       "date": "2026-09-04",
       "type": "Added",
       "title": "History & Geo keeps its name; messaging moves to Users & roster",
-      "hash": "40b38d7"
+      "hash": "40b38d74"
     },
     {
       "date": "2026-09-04",
       "type": "Added",
       "title": "Split History and Global Politics, civics goes to Global Politics",
-      "hash": "99a560d"
+      "hash": "99a560d6"
     },
     {
       "date": "2026-09-04",
       "type": "Performance",
       "title": "Light the pill you clicked before building the panel under it",
-      "hash": "ce2f0f1"
+      "hash": "ce2f0f12"
     },
     {
       "date": "2026-09-04",
       "type": "Fixed",
       "title": "Reserve the icon slot so tabs stop resizing under the highlight",
-      "hash": "cd321c5"
+      "hash": "cd321c5f"
     },
     {
       "date": "2026-09-04",
       "type": "Added",
       "title": "DP Visual Arts under Arts, and the highlight stops snapping",
-      "hash": "ef78c39"
+      "hash": "ef78c391"
     },
     {
       "date": "2026-09-04",
       "type": "Added",
       "title": "Study Tools grouped into five umbrellas, two subjects folded in",
-      "hash": "cc4d176"
+      "hash": "cc4d1762"
     },
     {
       "date": "2026-09-04",
       "type": "Fixed",
       "title": "The highlight behind a Study Tools tab was drifting off it",
-      "hash": "6a12460"
+      "hash": "6a124606"
     },
     {
       "date": "2026-09-04",
       "type": "Housekeeping",
       "title": "Roadmap — I ran the Supabase step you couldn't copy",
-      "hash": "ee2568b"
+      "hash": "ee2568b9"
     },
     {
       "date": "2026-09-04",
       "type": "Added",
       "title": "Send a pop-up to one person, not just to everybody",
-      "hash": "9e79af2"
+      "hash": "9e79af2f"
     },
     {
       "date": "2026-09-04",
       "type": "Added",
       "title": "AP Calc AB, AP Lang and orchestra tools for the classes you named",
-      "hash": "767bc7d"
+      "hash": "767bc7d2"
     },
     {
       "date": "2026-09-04",
       "type": "Added",
       "title": "Gov & Civics is a subject now, and Psychology has more than a leaflet",
-      "hash": "942d8ae"
+      "hash": "942d8aee"
     },
     {
       "date": "2026-09-03",
       "type": "Housekeeping",
       "title": "Roadmap — the check-in that was five empty rings",
-      "hash": "b7437b1"
+      "hash": "b7437b1d"
     },
     {
       "date": "2026-09-03",
       "type": "Fixed",
       "title": "The mood check-in was five blank circles, and twelve buttons had no name",
-      "hash": "7c1506d"
+      "hash": "7c1506da"
     },
     {
       "date": "2026-09-02",
       "type": "Housekeeping",
       "title": "Roadmap — the Timer buttons the rulebook thought were already fixed",
-      "hash": "6faaf29"
+      "hash": "6faaf29d"
     },
     {
       "date": "2026-09-02",
       "type": "Fixed",
       "title": "A stylesheet that contradicted itself on the Timer tab",
-      "hash": "6c18044"
+      "hash": "6c18044d"
     },
     {
       "date": "2026-09-02",
       "type": "Housekeeping",
       "title": "Roadmap — I checked my own 'Settings measures clean' claim",
-      "hash": "0568958"
+      "hash": "05689583"
     },
     {
       "date": "2026-09-02",
       "type": "Fixed",
       "title": "One Settings button was smaller than the thumb it expects",
-      "hash": "557fe11"
+      "hash": "557fe11c"
     },
     {
       "date": "2026-09-02",
       "type": "Housekeeping",
       "title": "Roadmap — School Info on a phone, and the red tick's second act",
-      "hash": "ffb5c6d"
+      "hash": "ffb5c6d2"
     },
     {
       "date": "2026-09-02",
       "type": "Housekeeping",
       "title": "Main went red three times on the same midnight wrap",
-      "hash": "ed76644"
+      "hash": "ed766448"
     },
     {
       "date": "2026-09-02",
       "type": "Fixed",
       "title": "On a phone you couldn't really add a class, or safely delete one",
-      "hash": "111b7d4"
+      "hash": "111b7d48"
     },
     {
       "date": "2026-09-02",
       "type": "Housekeeping",
       "title": "Roadmap — the two things the phone was hiding from you",
-      "hash": "9a047ea"
+      "hash": "9a047eaa"
     },
     {
       "date": "2026-09-02",
       "type": "Fixed",
       "title": "On a phone you could see A/B days but never set them up",
-      "hash": "7f45272"
+      "hash": "7f45272b"
     },
     {
       "date": "2026-09-02",
       "type": "Fixed",
       "title": "The phone was hiding a card the laptop showed",
-      "hash": "6cd6084"
+      "hash": "6cd60843"
     },
     {
       "date": "2026-09-02",
       "type": "Housekeeping",
       "title": "Roadmap — the overnight red tick, and why it wasn't Flux",
-      "hash": "22118ec"
+      "hash": "22118ecd"
     },
     {
       "date": "2026-09-02",
       "type": "Housekeeping",
       "title": "The alarm test failed because of the hour CI ran it, not the alarm",
-      "hash": "df53721"
+      "hash": "df537210"
     },
     {
       "date": "2026-09-01",
       "type": "Housekeeping",
       "title": "Roadmap — the two staff-area faults found in the Google check",
-      "hash": "abd5ada"
+      "hash": "abd5adad"
     },
     {
       "date": "2026-09-01",
       "type": "Fixed",
       "title": "The counselor dashboard opened on four zeros too",
-      "hash": "f4e9e89"
+      "hash": "f4e9e897"
     },
     {
       "date": "2026-09-01",
       "type": "Fixed",
       "title": "Staff were asked to connect Google while Google is paused",
-      "hash": "ae70e3e"
+      "hash": "ae70e3eb"
     },
     {
       "date": "2026-09-01",
       "type": "Housekeeping",
       "title": "Roadmap — the switch fix, and what I still need from you on mobile Settings",
-      "hash": "b18aead"
+      "hash": "b18aead6"
     },
     {
       "date": "2026-09-01",
       "type": "Fixed",
       "title": "The switch you tap in Settings was 20 pixels tall, not 44",
-      "hash": "d7e3b41"
+      "hash": "d7e3b414"
     },
     {
       "date": "2026-09-01",
       "type": "Housekeeping",
       "title": "Roadmap — three more off the queued list",
-      "hash": "1f7bdcb"
+      "hash": "1f7bdcb7"
     },
     {
       "date": "2026-09-01",
       "type": "Fixed",
       "title": "The Classroom timer was a worse copy of the one that works",
-      "hash": "e70fef2"
+      "hash": "e70fef20"
     },
     {
       "date": "2026-09-01",
       "type": "Housekeeping",
       "title": "Extracurriculars is two questions, not one long column",
-      "hash": "0a9212e"
+      "hash": "0a9212e7"
     },
     {
       "date": "2026-09-01",
       "type": "Housekeeping",
       "title": "Settings' junk drawer becomes Your data, Help and About",
-      "hash": "f82eef2"
+      "hash": "f82eef2a"
     },
     {
       "date": "2026-08-31",
       "type": "Housekeeping",
       "title": "Main went red with every test passing",
-      "hash": "e451f26"
+      "hash": "e451f268"
     },
     {
       "date": "2026-08-31",
       "type": "Housekeeping",
       "title": "The mood prompt header still argued for being a card",
-      "hash": "d4e6a4c"
+      "hash": "d4e6a4ce"
     },
     {
       "date": "2026-08-31",
       "type": "Fixed",
       "title": "Settings was telling people two things that weren't true",
-      "hash": "376fb84"
+      "hash": "376fb847"
     },
     {
       "date": "2026-08-31",
       "type": "Fixed",
       "title": "A smooth stopwatch, and full screen for every timer not just Focus",
-      "hash": "dcb8162"
+      "hash": "dcb8162b"
     },
     {
       "date": "2026-08-31",
       "type": "Added",
       "title": "Ask about your day in a popup, not a card you scroll past",
-      "hash": "230ecce"
+      "hash": "230ecce6"
     },
     {
       "date": "2026-08-31",
       "type": "Housekeeping",
       "title": "The batch is live, so stop telling him to merge it",
-      "hash": "988c298"
+      "hash": "988c2987"
     },
     {
       "date": "2026-08-31",
       "type": "Fixed",
       "title": "Separate the tools you work in from the ones that just open a modal",
-      "hash": "8a794e6"
+      "hash": "8a794e69"
     },
     {
       "date": "2026-08-30",
       "type": "Housekeeping",
       "title": "Track two files that were sitting untracked in the working tree",
-      "hash": "c9d2615"
+      "hash": "c9d26150"
     },
     {
       "date": "2026-08-30",
       "type": "Added",
       "title": "Practise French and Spanish, don't just look them up",
-      "hash": "6b02581"
+      "hash": "6b02581a"
     },
     {
       "date": "2026-08-30",
       "type": "Fixed",
       "title": "The conjugator was teaching wrong answers",
-      "hash": "ce67f97"
+      "hash": "ce67f972"
     },
     {
       "date": "2026-08-30",
       "type": "Fixed",
       "title": "Don't ask how the evening went the instant you answer the morning",
-      "hash": "4cb98fc"
+      "hash": "4cb98fc1"
     },
     {
       "date": "2026-08-30",
       "type": "Housekeeping",
       "title": "Record the student picker, the BETA badges, and what is left",
-      "hash": "97b7c33"
+      "hash": "97b7c332"
     },
     {
       "date": "2026-08-30",
       "type": "Added",
       "title": "Random student picker that works, and stop badging everything BETA",
-      "hash": "52a7d55"
+      "hash": "52a7d55e"
     },
     {
       "date": "2026-08-30",
       "type": "Housekeeping",
       "title": "Record the staff timetable, the wrong-list fault, and what is left",
-      "hash": "de6eab3"
+      "hash": "de6eab3d"
     },
     {
       "date": "2026-08-30",
       "type": "Fixed",
       "title": "Stop opening the staff dashboard on six zeros",
-      "hash": "f07c28a"
+      "hash": "f07c28ab"
     },
     {
       "date": "2026-08-30",
       "type": "Housekeeping",
       "title": "The join-code card is a roster, not a third thing called \"Classes\"",
-      "hash": "fa21dde"
+      "hash": "fa21dde5"
     },
     {
       "date": "2026-08-30",
       "type": "Added",
       "title": "Staff dashboard opens on the lesson you are teaching, and asks for the register",
-      "hash": "ae2e383"
+      "hash": "ae2e383f"
     },
     {
       "date": "2026-08-30",
       "type": "Fixed",
       "title": "Staff surfaces were reading the class list teachers attend, not teach",
-      "hash": "bf6dbc4"
+      "hash": "bf6dbc4d"
     },
     {
       "date": "2026-08-30",
       "type": "Added",
       "title": "Staff can record the classes they teach, with work and events",
-      "hash": "86d8e44"
+      "hash": "86d8e445"
     },
     {
       "date": "2026-08-30",
       "type": "Housekeeping",
       "title": "Record the morning and evening mood check-in",
-      "hash": "3a34a8f"
+      "hash": "3a34a8f1"
     },
     {
       "date": "2026-08-30",
       "type": "Added",
       "title": "Ask how you're doing, morning and evening",
-      "hash": "9c2a2eb"
+      "hash": "9c2a2eb3"
     },
     {
       "date": "2026-08-30",
       "type": "Housekeeping",
       "title": "Record full-screen focus mode; flag timer centring as not reproducible",
-      "hash": "7aabbb0"
+      "hash": "7aabbb0a"
     },
     {
       "date": "2026-08-30",
       "type": "Added",
       "title": "Full-screen focus mode for the Pomodoro timer",
-      "hash": "3f43586"
+      "hash": "3f43586c"
     },
     {
       "date": "2026-08-30",
       "type": "Housekeeping",
       "title": "Record the new clock, stopwatch, countdown and alarms",
-      "hash": "f7d7f73"
+      "hash": "f7d7f73a"
     },
     {
       "date": "2026-08-30",
       "type": "Added",
       "title": "Clock, world clocks, stopwatch, countdown and alarms on the Timer tab",
-      "hash": "8cb90f6"
+      "hash": "8cb90f68"
     },
     {
       "date": "2026-08-29",
       "type": "Housekeeping",
       "title": "Record the Flux AI scroll and length fixes",
-      "hash": "e51f8d0"
+      "hash": "e51f8d0d"
     },
     {
       "date": "2026-08-29",
       "type": "Fixed",
       "title": "Flux AI stops scrolling away from its own answer",
-      "hash": "3808a4b"
+      "hash": "3808a4be"
     },
     {
       "date": "2026-08-29",
       "type": "Housekeeping",
       "title": "Record the favourites sync fix",
-      "hash": "29dde97"
+      "hash": "29dde975"
     },
     {
       "date": "2026-08-29",
       "type": "Fixed",
       "title": "Favourite subjects follow your account instead of one device",
-      "hash": "125291f"
+      "hash": "125291fc"
     },
     {
       "date": "2026-08-29",
       "type": "Fixed",
       "title": "Light mode tab-by-tab sweep — 24 unreadable spots down to 1",
-      "hash": "70cf838"
+      "hash": "70cf838c"
     },
     {
       "date": "2026-08-29",
       "type": "Fixed",
       "title": "Owner sidebar icons no longer flash their emoji first",
-      "hash": "19c183d"
+      "hash": "19c183da"
     },
     {
       "date": "2026-08-29",
       "type": "Added",
       "title": "Pause counselor contact and office hours; your name leads Profile",
-      "hash": "55b9727"
+      "hash": "55b97278"
     },
     {
       "date": "2026-08-29",
       "type": "Housekeeping",
       "title": "Record the Notebook pause and the School Info rework",
-      "hash": "f58ff73"
+      "hash": "f58ff737"
     },
     {
       "date": "2026-08-29",
       "type": "Fixed",
       "title": "School Info leads with your classes, not the locker box",
-      "hash": "914a31d"
+      "hash": "914a31d7"
     },
     {
       "date": "2026-08-29",
       "type": "Added",
       "title": "Pause the Notebook tab",
-      "hash": "de63ce9"
+      "hash": "de63ce95"
     },
     {
       "date": "2026-08-29",
       "type": "Housekeeping",
       "title": "Record the removals batch",
-      "hash": "1450b29"
+      "hash": "1450b29d"
     },
     {
       "date": "2026-08-29",
       "type": "Added",
       "title": "Remove achievements",
-      "hash": "f5181ef"
+      "hash": "f5181ef0"
     },
     {
       "date": "2026-08-29",
       "type": "Fixed",
       "title": "Dismissed feedback stays dismissed",
-      "hash": "9a407e7"
+      "hash": "9a407e76"
     },
     {
       "date": "2026-08-29",
       "type": "Fixed",
       "title": "Task cards drop from nine buttons to four",
-      "hash": "5dee47a"
+      "hash": "5dee47aa"
     },
     {
       "date": "2026-08-29",
       "type": "Fixed",
       "title": "The graphing calculator opens empty instead of seeded with sin(x)",
-      "hash": "e8141a5"
+      "hash": "e8141a5b"
     },
     {
       "date": "2026-08-29",
       "type": "Housekeeping",
       "title": "Record the mobile spacing, highlight and centring fixes",
-      "hash": "5fd5caf"
+      "hash": "5fd5caf4"
     },
     {
       "date": "2026-08-29",
       "type": "Fixed",
       "title": "Centre the dashboard stat pills and stop rails clipping their first pill",
-      "hash": "006e96b"
+      "hash": "006e96bf"
     },
     {
       "date": "2026-08-29",
       "type": "Fixed",
       "title": "The mobile nav highlight stops getting stuck on the wrong tab",
-      "hash": "b3314fe"
+      "hash": "b3314fe4"
     },
     {
       "date": "2026-08-29",
       "type": "Fixed",
       "title": "Mobile tabs stop scrolling into a dead band under the content",
-      "hash": "dbbf480"
+      "hash": "dbbf4809"
     },
     {
       "date": "2026-08-29",
       "type": "Added",
       "title": "Owner announcements reach accounts other than the owner's",
-      "hash": "890bc1c"
+      "hash": "890bc1c6"
     },
     {
       "date": "2026-08-28",
       "type": "Housekeeping",
       "title": "Record the light mode root cause fix",
-      "hash": "d4c78fb"
+      "hash": "d4c78fbe"
     },
     {
       "date": "2026-08-28",
       "type": "Fixed",
       "title": "Light mode stops showing the dark theme's backdrop",
-      "hash": "acf22f9"
+      "hash": "acf22f92"
     },
     {
       "date": "2026-08-28",
       "type": "Housekeeping",
       "title": "Drop the launch-critical section, now empty",
-      "hash": "17fb77d"
+      "hash": "17fb77d3"
     },
     {
       "date": "2026-08-28",
       "type": "Housekeeping",
       "title": "Mark the legal review and data-deletion work done",
-      "hash": "5194bd8"
+      "hash": "5194bd8e"
     },
     {
       "date": "2026-08-28",
       "type": "Housekeeping",
       "title": "Make the privacy policy and terms match what Flux actually does",
-      "hash": "c599ff1"
+      "hash": "c599ff1d"
     },
     {
       "date": "2026-08-28",
       "type": "Added",
       "title": "Let people actually delete their own data",
-      "hash": "1399bd7"
+      "hash": "1399bd74"
     },
     {
       "date": "2026-08-27",
       "type": "Housekeeping",
       "title": "Mark the login page and staff verification work done",
-      "hash": "278a782"
+      "hash": "278a7824"
     },
     {
       "date": "2026-08-27",
       "type": "Fixed",
       "title": "A stuck submit button, and tell the owner staff are waiting",
-      "hash": "3bbfc95"
+      "hash": "3bbfc957"
     },
     {
       "date": "2026-08-27",
       "type": "Fixed",
       "title": "Empty the login page testimonials rather than invent them",
-      "hash": "58a22e8"
+      "hash": "58a22e85"
     },
     {
       "date": "2026-08-27",
       "type": "Housekeeping",
       "title": "Add a plain-language roadmap of the outstanding fix list",
-      "hash": "5223118"
+      "hash": "5223118e"
     },
     {
       "date": "2026-08-27",
       "type": "Fixed",
       "title": "Email sign-up actually completes, and the login page stops overselling",
-      "hash": "b9a543b"
+      "hash": "b9a543b7"
     },
     {
       "date": "2026-08-24",
       "type": "Fixed",
       "title": "AI actually asks before editing, and the tab is named Canvas everywhere",
-      "hash": "837b190"
+      "hash": "837b190d"
     },
     {
       "date": "2026-08-24",
       "type": "Housekeeping",
       "title": "Agent loop asserts propose-then-apply instead of auto-apply",
-      "hash": "80a91d7"
+      "hash": "80a91d7b"
     },
     {
       "date": "2026-08-24",
       "type": "Added",
       "title": "Canvas tab for students, Google paused, and AI edits behind confirmation",
-      "hash": "2c09b12"
+      "hash": "2c09b127"
     },
     {
       "date": "2026-08-24",
       "type": "Fixed",
       "title": "Bring every mobile tap target up to the WCAG 2.2 minimum",
-      "hash": "cb8e5c1"
+      "hash": "cb8e5c1b"
     },
     {
       "date": "2026-08-24",
       "type": "Fixed",
       "title": "Flux AI rate limiting, Desmos fullscreen, and three mobile breaks",
-      "hash": "5d8b333"
+      "hash": "5d8b3338"
     },
     {
       "date": "2026-08-24",
       "type": "Added",
       "title": "Default the Desmos grapher to its normal palette, with a dark toggle",
-      "hash": "14d77f0"
+      "hash": "14d77f06"
     },
     {
       "date": "2026-08-24",
       "type": "Housekeeping",
       "title": "Use the owner's Desmos API key for the Study Tools grapher",
-      "hash": "5fbe6e5"
+      "hash": "5fbe6e59"
     },
     {
       "date": "2026-08-24",
       "type": "Added",
       "title": "Desmos grapher in Study Tools, and restore the date field's calendar button",
-      "hash": "4456435"
+      "hash": "4456435d"
     },
     {
       "date": "2026-08-23",
       "type": "Added",
       "title": "Themed date picker, and fix two clipping bugs in educator surfaces",
-      "hash": "a058581"
+      "hash": "a0585815"
     },
     {
       "date": "2026-08-23",
       "type": "Fixed",
       "title": "Canvas really scrolls now, and cut the per-click cost behind the tab lag",
-      "hash": "f69f82a"
+      "hash": "f69f82a4"
     },
     {
       "date": "2026-08-23",
       "type": "Housekeeping",
       "title": "Point index.html at the rebuilt CSS bundle",
-      "hash": "16fdcd3"
+      "hash": "16fdcd3c"
     },
     {
       "date": "2026-08-23",
       "type": "Fixed",
       "title": "Make the study-tools favourite star a usable size on touch",
-      "hash": "52468d8"
+      "hash": "52468d89"
     },
     {
       "date": "2026-08-23",
       "type": "Added",
       "title": "Let the owner hide sidebar tabs across every planner",
-      "hash": "d67e6e3"
+      "hash": "d67e6e3e"
     },
     {
       "date": "2026-08-23",
       "type": "Added",
       "title": "A change log going back to the first commit, in the repo and in Settings",
-      "hash": "36793fe"
+      "hash": "36793fec"
     },
     {
       "date": "2026-08-23",
       "type": "Performance",
       "title": "Stop animating a blur over the live panel on every sidebar tab click",
-      "hash": "99a2456"
+      "hash": "99a24564"
     },
     {
       "date": "2026-08-23",
       "type": "Fixed",
       "title": "Canvas content was unreachable on desktop, and scale up the Google hub",
-      "hash": "75eb950"
+      "hash": "75eb950a"
     },
     {
       "date": "2026-08-23",
       "type": "Fixed",
       "title": "Restore Flux AI, and clear out the surfaces that were getting in the way",
-      "hash": "a73a578"
+      "hash": "a73a5784"
     },
     {
       "date": "2026-08-23",
       "type": "Performance",
       "title": "Cut the tab-switch reveal from ~1.6s, drop 268 standing GPU layers",
-      "hash": "e2f6782"
+      "hash": "e2f6782c"
     },
     {
       "date": "2026-08-23",
       "type": "Added",
       "title": "Load the IAE 2026-27 school year into the planner",
-      "hash": "3f5d5c3"
+      "hash": "3f5d5c30"
     },
     {
       "date": "2026-08-23",
       "type": "Fixed",
       "title": "Declare color-scheme so native dropdowns and date pickers match the theme",
-      "hash": "c17f212"
+      "hash": "c17f212d"
     },
     {
       "date": "2026-08-23",
       "type": "Added",
       "title": "One-tap International Academy East bell schedule when adding classes",
-      "hash": "6532fa5"
+      "hash": "6532fa5d"
     },
     {
       "date": "2026-08-22",
       "type": "Performance",
       "title": "Stop animating blur on tab switch, drop 178 needless compositor layers",
-      "hash": "45192d8"
+      "hash": "45192d88"
     },
     {
       "date": "2026-08-22",
       "type": "Fixed",
       "title": "Make calendar days and accent swatches keyboard-operable",
-      "hash": "6a598ed"
+      "hash": "6a598ed2"
     },
     {
       "date": "2026-08-22",
       "type": "Fixed",
       "title": "Calendar day tap selects the day instead of opening quick-add",
-      "hash": "61ae3e6"
+      "hash": "61ae3e63"
     },
     {
       "date": "2026-08-22",
       "type": "Fixed",
       "title": "Restore study-tools changes dropped by the consolidation",
-      "hash": "b50b818"
+      "hash": "b50b8187"
     },
     {
       "date": "2026-08-22",
       "type": "Fixed",
       "title": "Splash strands backgrounded tabs, hardcoded district, a11y and dead ends",
-      "hash": "8e8eeeb"
+      "hash": "8e8eeeb5"
     },
     {
       "date": "2026-08-22",
       "type": "Fixed",
       "title": "Four launch blockers — guest staff role, Notes panel, blank role dashboards",
-      "hash": "d876acf"
+      "hash": "d876acf0"
     },
     {
       "date": "2026-08-13",
       "type": "Fixed",
       "title": "Stop Study tools from bouncing to the Flux AI tab",
-      "hash": "1beff39"
+      "hash": "1beff395"
     },
     {
       "date": "2026-08-10",
       "type": "Fixed",
       "title": "Remove the Google Calendar event when a task is deleted",
-      "hash": "85e5035"
+      "hash": "85e50357"
     },
     {
       "date": "2026-08-10",
       "type": "Fixed",
       "title": "Restore missing task-button icons and complete the co-work feature",
-      "hash": "7cd4e02"
+      "hash": "7cd4e022"
     },
     {
       "date": "2026-08-09",
       "type": "Fixed",
       "title": "Revive dead pomodoro preset chip handlers (attribute quoting)",
-      "hash": "dd745eb"
+      "hash": "dd745eb6"
     },
     {
       "date": "2026-08-09",
       "type": "Fixed",
       "title": "Wait out Groq rate limits instead of reporting them as outages",
-      "hash": "4e18f31"
+      "hash": "4e18f317"
     },
     {
       "date": "2026-08-06",
       "type": "Fixed",
       "title": "Don't navigate away when restoring a saved Study Tools tab",
-      "hash": "e5967c3"
+      "hash": "e5967c3f"
     },
     {
       "date": "2026-08-06",
       "type": "Fixed",
       "title": "Study tools — atom drag, tab slider, psychology tab, AI essay scaffold",
-      "hash": "a6ed20c"
+      "hash": "a6ed20c2"
     },
     {
       "date": "2026-08-09",
       "type": "Fixed",
       "title": "Fix calendar day-click hijack and dead feedback-inbox Dismiss button (#8)",
-      "hash": "afebb2b"
+      "hash": "afebb2ba"
     },
     {
       "date": "2026-08-06",
       "type": "Fixed",
       "title": "Make todayStr() live, not a page-load snapshot",
-      "hash": "e41faab"
+      "hash": "e41faabf"
     },
     {
       "date": "2026-08-06",
       "type": "Fixed",
       "title": "Use local calendar dates instead of UTC slices across app.js",
-      "hash": "6855c9e"
+      "hash": "6855c9eb"
     },
     {
       "date": "2026-08-05",
       "type": "Added",
       "title": "Student→counselor help tickets with urgent wellbeing escalation",
-      "hash": "b72ea07"
+      "hash": "b72ea079"
     },
     {
       "date": "2026-08-05",
       "type": "Housekeeping",
       "title": "Add troy-martial-arts dev-server entry to launch.json",
-      "hash": "5dfceef"
+      "hash": "5dfceef1"
     },
     {
       "date": "2026-08-05",
       "type": "Fixed",
       "title": "Hide unbuilt connector tiles instead of advertising \"Coming soon\"",
-      "hash": "cba4e42"
+      "hash": "cba4e425"
     },
     {
       "date": "2026-08-05",
       "type": "Fixed",
       "title": "On-theme schedule upload, multi-select term focus, staff directory hydrate",
-      "hash": "7ed52c8"
+      "hash": "7ed52c8e"
     },
     {
       "date": "2026-08-05",
       "type": "Fixed",
       "title": "Repair dead staff nav paths, edu-modal a11y, and silent school-feed blank",
-      "hash": "dded4f3"
+      "hash": "dded4f3a"
     },
     {
       "date": "2026-07-24",
       "type": "Housekeeping",
       "title": "Phase-C go-live runbook + record IAE pilot enablement",
-      "hash": "3dfa7cb"
+      "hash": "3dfa7cbc"
     },
     {
       "date": "2026-07-23",
       "type": "Changed",
       "title": "Harden teacher RPC grants to match prod (revoke anon EXECUTE)",
-      "hash": "0480370"
+      "hash": "04803701"
     },
     {
       "date": "2026-07-23",
       "type": "Fixed",
       "title": "Resolve duplicate migration version 20260711140000",
-      "hash": "bcc48dc"
+      "hash": "bcc48dce"
     },
     {
       "date": "2026-07-11",
       "type": "Changed",
       "title": "M5: broad student-panel motion sweep",
-      "hash": "799cd3d"
+      "hash": "799cd3d0"
     },
     {
       "date": "2026-07-11",
       "type": "Changed",
       "title": "M4: educator-panel + AI-card auto-enhance (FluxMotion.autoEnhance)",
-      "hash": "d39facd"
+      "hash": "d39facd8"
     },
     {
       "date": "2026-07-11",
       "type": "Changed",
       "title": "M3: gamification unlock ceremonies (FluxMotion.celebrate)",
-      "hash": "e4e9d77"
+      "hash": "e4e9d779"
     },
     {
       "date": "2026-07-11",
       "type": "Changed",
       "title": "M2: onboarding step transitions (FluxMotion.stepTransition)",
-      "hash": "4895881"
+      "hash": "48958812"
     },
     {
       "date": "2026-07-11",
       "type": "Changed",
       "title": "M1: OriginKit motion primitives on FluxAnim (enable_originkit_motion)",
-      "hash": "d0b2519"
+      "hash": "d0b25197"
     },
     {
       "date": "2026-07-11",
       "type": "Changed",
       "title": "Phase D: verification & release closeout",
-      "hash": "931e956"
+      "hash": "931e9560"
     },
     {
       "date": "2026-07-11",
       "type": "Changed",
       "title": "C10: Ask-Your-Teacher Handoff (enable_ask_teacher)",
-      "hash": "d1ecb36"
+      "hash": "d1ecb366"
     },
     {
       "date": "2026-07-11",
       "type": "Changed",
       "title": "C9: Seasons & Streak Cosmetics (enable_seasons)",
-      "hash": "19ba990"
+      "hash": "19ba9909"
     },
     {
       "date": "2026-07-11",
       "type": "Changed",
       "title": "C8: Study Rooms v2 (enable_study_rooms_v2)",
-      "hash": "3ad63eb"
+      "hash": "3ad63ebc"
     },
     {
       "date": "2026-07-11",
       "type": "Changed",
       "title": "C7: Chromebook-grade PWA push (enable_web_push)",
-      "hash": "8857050"
+      "hash": "88570500"
     },
     {
       "date": "2026-07-11",
       "type": "Changed",
       "title": "C6: Family Digest (enable_family_digest)",
-      "hash": "ec1ed8c"
+      "hash": "ec1ed8c1"
     },
     {
       "date": "2026-07-11",
       "type": "Changed",
       "title": "C5 follow-up: reconcile with P8.2's accommodation cheat-sheet",
-      "hash": "7f93c1e"
+      "hash": "7f93c1ea"
     },
     {
       "date": "2026-07-11",
       "type": "Changed",
       "title": "C5: Accommodation Cards (enable_accommodation_cards)",
-      "hash": "55a1b0c"
+      "hash": "55a1b0c4"
     },
     {
       "date": "2026-07-11",
       "type": "Changed",
       "title": "C4: Grade GPS (enable_grade_gps)",
-      "hash": "296d71a"
+      "hash": "296d71aa"
     },
     {
       "date": "2026-07-11",
       "type": "Housekeeping",
       "title": "Commit deno.lock entries from supabase-js/animejs vendoring",
-      "hash": "c711fab"
+      "hash": "c711fabd"
     },
     {
       "date": "2026-07-10",
       "type": "Changed",
       "title": "C3: Sub-Plan Generator (enable_sub_plans)",
-      "hash": "dfa6a32"
+      "hash": "dfa6a32b"
     },
     {
       "date": "2026-07-10",
       "type": "Changed",
       "title": "C2: District Schedule Authority (enable_school_schedules)",
-      "hash": "cf667ac"
+      "hash": "cf667acd"
     },
     {
       "date": "2026-07-10",
       "type": "Changed",
       "title": "C1: FluxNow — bell-aware Now engine (enable_now_engine)",
-      "hash": "4413214"
+      "hash": "4413214b"
     },
     {
       "date": "2026-07-10",
       "type": "Accessibility",
       "title": "B6: keyboard & focus a11y — traps, focus return, visible rings, axe gate",
-      "hash": "5f04c44"
+      "hash": "5f04c44a"
     },
     {
       "date": "2026-07-10",
       "type": "Changed",
       "title": "B5 closeout: QA rows + Lighthouse baseline; defer B5.5 source split",
-      "hash": "9ff20d6"
+      "hash": "9ff20d61"
     },
     {
       "date": "2026-07-10",
       "type": "Changed",
       "title": "B5.4: content-hashed bundles, precache manifest, navigation preload",
-      "hash": "9d4a883"
+      "hash": "9d4a883a"
     },
     {
       "date": "2026-07-10",
       "type": "Changed",
       "title": "B5.3: window task + notes lists past 100 items",
-      "hash": "d5be2f1"
+      "hash": "d5be2f1b"
     },
     {
       "date": "2026-07-10",
       "type": "Changed",
       "title": "B5.2: coalesce document-wide MutationObservers into FluxDomWalker",
-      "hash": "a7879b0"
+      "hash": "a7879b0d"
     },
     {
       "date": "2026-07-10",
       "type": "Removed",
       "title": "B5.1: font diet — self-host variable Inter + JetBrains Mono, drop 3 families",
-      "hash": "e6df660"
+      "hash": "e6df660e"
     },
     {
       "date": "2026-07-10",
       "type": "Changed",
       "title": "B4: small visual defects — TODAY badge, Notebook naming, integrations grid, landing DOM",
-      "hash": "709e50b"
+      "hash": "709e50be"
     },
     {
       "date": "2026-07-10",
       "type": "Accessibility",
       "title": "B3: light-theme contrast pass + WCAG AA CI gate",
-      "hash": "6a4872c"
+      "hash": "6a4872ce"
     },
     {
       "date": "2026-07-09",
       "type": "Changed",
       "title": "B2: floating-widget layout contract for mobile",
-      "hash": "ac6206c"
+      "hash": "ac6206c8"
     },
     {
       "date": "2026-07-09",
       "type": "Changed",
       "title": "B1: one notification system — priority toast queue + tour discipline",
-      "hash": "e31929f"
+      "hash": "e31929fb"
     },
     {
       "date": "2026-07-09",
       "type": "Changed",
       "title": "A5: require auth on the AI proxies independent of payments",
-      "hash": "ddffd88"
+      "hash": "ddffd889"
     },
     {
       "date": "2026-07-09",
       "type": "Changed",
       "title": "A4: Flux AI proposes-then-confirms bulk/mutating actions (enable_ai_action_confirm)",
-      "hash": "2e7de74"
+      "hash": "2e7de74c"
     },
     {
       "date": "2026-07-09",
       "type": "Added",
       "title": "A3: end command-palette / quick-add keyboard chaos",
-      "hash": "730c5a6"
+      "hash": "730c5a6e"
     },
     {
       "date": "2026-07-09",
       "type": "Changed",
       "title": "A2: make the mobile More sheet reliably dismissable",
-      "hash": "2f0b4ec"
+      "hash": "2f0b4ecf"
     },
     {
       "date": "2026-07-09",
       "type": "Changed",
       "title": "A1: stop cleanClassName destroying course identity",
-      "hash": "edccc14"
+      "hash": "edccc144"
     },
     {
       "date": "2026-07-08",
       "type": "Changed",
       "title": "P4.3: gate get_benchmarks until deployed; make e2e console guard exclusion-free",
-      "hash": "ba78930"
+      "hash": "ba789301"
     },
     {
       "date": "2026-07-08",
       "type": "Changed",
       "title": "P4.2: harden BYOK key storage — disclosure + one-click wipe",
-      "hash": "0b380cc"
+      "hash": "0b380cca"
     },
     {
       "date": "2026-07-08",
       "type": "Removed",
       "title": "P4.1: vendor anime.js (pin exact, drop the CDN importmap)",
-      "hash": "8f7b5f5"
+      "hash": "8f7b5f56"
     },
     {
       "date": "2026-07-08",
       "type": "Changed",
       "title": "P3.5: label landing testimonials as illustrative",
-      "hash": "2303b1c"
+      "hash": "2303b1ce"
     },
     {
       "date": "2026-07-08",
       "type": "Changed",
       "title": "P3.4: E2E depth — RLS + ai-proxy boundary specs (live Supabase)",
-      "hash": "9a538bf"
+      "hash": "9a538bf3"
     },
     {
       "date": "2026-07-08",
       "type": "Changed",
       "title": "P3.3: codify one-off verifications as permanent tests (parser + XSS + CSP/console guard)",
-      "hash": "1112deb"
+      "hash": "1112debd"
     },
     {
       "date": "2026-07-08",
       "type": "Fixed",
       "title": "Follow-up (P3.2): fix i18n RTL e2e test for the CSS bundle",
-      "hash": "ece516c"
+      "hash": "ece516cc"
     },
     {
       "date": "2026-07-08",
       "type": "Changed",
       "title": "P3.2: bundle 139 CSS <link> tags into one minified flux.css",
-      "hash": "b559f61"
+      "hash": "b559f616"
     },
     {
       "date": "2026-07-08",
       "type": "Removed",
       "title": "P3.1: vendor @supabase/supabase-js (pin exact, drop CDN script tag)",
-      "hash": "fa5658e"
+      "hash": "fa5658e2"
     },
     {
       "date": "2026-07-06",
       "type": "Changed",
       "title": "Follow-up 3: restore trailing-dot number parsing in math graphing eval",
-      "hash": "eceb18d"
+      "hash": "eceb18d9"
     },
     {
       "date": "2026-07-06",
       "type": "Added",
       "title": "Follow-up 2: add api.deepseek.com to CSP connect-src (confirmed gap)",
-      "hash": "251e70e"
+      "hash": "251e70ea"
     },
     {
       "date": "2026-07-06",
       "type": "Changed",
       "title": "Follow-up 1: enforce bundle rebuild (CI + pre-commit hook + docs)",
-      "hash": "5916978"
+      "hash": "59169783"
     },
     {
       "date": "2026-07-06",
       "type": "Removed",
       "title": "P2.7: delete unshipped web/ Next.js shell",
-      "hash": "feb4667"
+      "hash": "feb4667a"
     },
     {
       "date": "2026-07-06",
       "type": "Changed",
       "title": "P1.5: bundle 197 per-file scripts into 3 minified bundles",
-      "hash": "9be5ccd"
+      "hash": "9be5ccda"
     },
     {
       "date": "2026-07-06",
       "type": "Accessibility",
       "title": "P1.6: index.html head — a11y viewport, descriptive title, noscript",
-      "hash": "9374635"
+      "hash": "9374635e"
     },
     {
       "date": "2026-07-06",
       "type": "Changed",
       "title": "P1.4: enable RLS on public.error_logs (the one unprotected table)",
-      "hash": "a548aff"
+      "hash": "a548aff8"
     },
     {
       "date": "2026-07-06",
       "type": "Added",
       "title": "P0.3: remove new Function() from graphing calculator expression eval",
-      "hash": "894712b"
+      "hash": "894712b5"
     },
     {
       "date": "2026-07-06",
       "type": "Changed",
       "title": "P0.2: XSS hardening — escape user-controlled innerHTML sites + meta CSP",
-      "hash": "e917be7"
+      "hash": "e917be72"
     },
     {
       "date": "2026-07-06",
       "type": "Removed",
       "title": "P0.1: remove internal docs from public web root",
-      "hash": "adb46ce"
+      "hash": "adb46ce0"
     },
     {
       "date": "2026-07-05",
       "type": "Removed",
       "title": "Modern UI always on; remove Settings toggle",
-      "hash": "e6cf041"
+      "hash": "e6cf0414"
     },
     {
       "date": "2026-07-05",
       "type": "Changed",
       "title": "Light mode (Cloud) redo: GitHub-light palette, theme-aware tokens + mesh canvas",
-      "hash": "571d108"
+      "hash": "571d108a"
     },
     {
       "date": "2026-07-04",
       "type": "Changed",
       "title": "Emoji-free UI (SVG icons), Settings reorg, 2026 polish, Teach Flux layer, backlog",
-      "hash": "e1c8693"
+      "hash": "e1c86933"
     },
     {
       "date": "2026-07-03",
       "type": "Changed",
       "title": "Theme 2026 redesign, Notebook+Knowledge merge, Google in Learn, role nav trim",
-      "hash": "6473648"
+      "hash": "64736489"
     },
     {
       "date": "2026-07-03",
       "type": "Fixed",
       "title": "Fix OAuth popup tab staying open and booting planner in both tabs",
-      "hash": "4c4e19d"
+      "hash": "4c4e19d2"
     },
     {
       "date": "2026-07-03",
       "type": "Changed",
       "title": "Site pass: office-hours approvals, staff messaging, role-aware AI menu, mode-split tasks, login gating",
-      "hash": "d75a17e"
+      "hash": "d75a17e2"
     },
     {
       "date": "2026-07-02",
       "type": "Added",
       "title": "Site-wide refresh: marketing landing page, login v3, new nav categories, staff life widgets",
-      "hash": "751ccea"
+      "hash": "751ccea2"
     },
     {
       "date": "2026-07-02",
       "type": "Added",
       "title": "Add integrations hub, onboarding tools step, modern UI + login split",
-      "hash": "7196964"
+      "hash": "7196964d"
     },
     {
       "date": "2026-06-26",
       "type": "Fixed",
       "title": "Notebook search/gen fixes, teacher work-mode features, import hub",
-      "hash": "283df5c"
+      "hash": "283df5ca"
     },
     {
       "date": "2026-06-26",
       "type": "Fixed",
       "title": "Fix Google OAuth callback tab opening planner in both tabs",
-      "hash": "aa3aaf2"
+      "hash": "aa3aaf28"
     },
     {
       "date": "2026-06-22",
       "type": "Changed",
       "title": "Tidy edge-function typing: clean auth union + safe casts",
-      "hash": "122cce8"
+      "hash": "122cce83"
     },
     {
       "date": "2026-06-17",
       "type": "Added",
       "title": "Add \"How Flux explains to you\" transparency card in Settings",
-      "hash": "1e3d373"
+      "hash": "1e3d373a"
     },
     {
       "date": "2026-06-17",
       "type": "Changed",
       "title": "Flux learns whether its explanations actually land, not just how students write",
-      "hash": "7ff9381"
+      "hash": "7ff93810"
     },
     {
       "date": "2026-06-17",
       "type": "Changed",
       "title": "Knowledge replaces Notes; Notebook becomes its own sidebar tab",
-      "hash": "c89334d"
+      "hash": "c89334d3"
     },
     {
       "date": "2026-06-16",
       "type": "Fixed",
       "title": "Fix notebook e2e: open Sources view-tab before source actions",
-      "hash": "9fbb4b1"
+      "hash": "9fbb4b1a"
     },
     {
       "date": "2026-06-16",
       "type": "Changed",
       "title": "Flux learns each student's communication style to explain better",
-      "hash": "d36ac2c"
+      "hash": "d36ac2cc"
     },
     {
       "date": "2026-06-16",
       "type": "Removed",
       "title": "Move Notebook to its own top-level tab; remove from hub + AI area",
-      "hash": "503a426"
+      "hash": "503a4260"
     },
     {
       "date": "2026-06-15",
       "type": "Changed",
       "title": "Unify Notes + Knowledge + Notebook into one Knowledge tab",
-      "hash": "b670fdc"
+      "hash": "b670fdcc"
     },
     {
       "date": "2026-06-15",
       "type": "Changed",
       "title": "Commit Teacher/Rubric agent + Opportunity matcher (files dropped by earlier index corruption)",
-      "hash": "9c31c18"
+      "hash": "9c31c18e"
     },
     {
       "date": "2026-06-15",
       "type": "Added",
       "title": "Add anonymized cross-user benchmarks layer (population priors, opt-in)",
-      "hash": "963891d"
+      "hash": "963891d2"
     },
     {
       "date": "2026-06-15",
       "type": "Added",
       "title": "Add prediction eval + per-user calibration loop (learn from your data, no training)",
-      "hash": "aa109e4"
+      "hash": "aa109e40"
     },
     {
       "date": "2026-06-14",
       "type": "Changed",
       "title": "Flux Intelligence: proactive daily briefing + server overnight pipeline",
-      "hash": "cfc2698"
+      "hash": "cfc26987"
     },
     {
       "date": "2026-06-14",
       "type": "Added",
       "title": "Add Flux Intelligence: proactive multi-engine briefing layer",
-      "hash": "8395997"
+      "hash": "83959979"
     },
     {
       "date": "2026-06-14",
       "type": "Changed",
       "title": "Surface Knowledge from the Notes panel header",
-      "hash": "b9bb894"
+      "hash": "b9bb8948"
     },
     {
       "date": "2026-06-14",
       "type": "Changed",
       "title": "Link Notes to Knowledge: 'Send to Knowledge' on the note editor",
-      "hash": "7c7fd70"
+      "hash": "7c7fd708"
     },
     {
       "date": "2026-06-14",
       "type": "Changed",
       "title": "Chat / Sources / Studio view tabs to declutter",
-      "hash": "7d98711"
+      "hash": "7d987116"
     },
     {
       "date": "2026-06-14",
       "type": "Changed",
       "title": "Inline study-tool references + always-accessible Report button",
-      "hash": "a74da61"
+      "hash": "a74da611"
     },
     {
       "date": "2026-06-13",
       "type": "Changed",
       "title": "Reference tools render inline in the Study Hub instead of modal popups",
-      "hash": "929e161"
+      "hash": "929e1619"
     },
     {
       "date": "2026-06-13",
       "type": "Added",
       "title": "Add per-curriculum Core requirements tracker to the profile",
-      "hash": "225442e"
+      "hash": "225442e6"
     },
     {
       "date": "2026-06-13",
       "type": "Added",
       "title": "Add PDF + image upload to the knowledge base",
-      "hash": "b58fe0a"
+      "hash": "b58fe0a9"
     },
     {
       "date": "2026-06-13",
       "type": "Fixed",
       "title": "Fix teacher re-onboarding, stray OAuth tab, and login-page polish",
-      "hash": "f816e7e"
+      "hash": "f816e7e6"
     },
     {
       "date": "2026-06-13",
       "type": "Changed",
       "title": "Discord-style slash-command picker in Flux AI",
-      "hash": "dcface3"
+      "hash": "dcface38"
     },
     {
       "date": "2026-06-13",
       "type": "Changed",
       "title": "AI provider + connection logos replace emoji",
-      "hash": "636d6f7"
+      "hash": "636d6f71"
     },
     {
       "date": "2026-06-13",
       "type": "Accessibility",
       "title": "Remove all keyboard-shortcut hint surfaces",
-      "hash": "39a7a26"
+      "hash": "39a7a26e"
     },
     {
       "date": "2026-06-13",
       "type": "Changed",
       "title": "Coplanar electron orbits + unrestricted rotation",
-      "hash": "de99920"
+      "hash": "de99920c"
     },
     {
       "date": "2026-06-12",
       "type": "Changed",
       "title": "Redo the staff Work hub as a command center",
-      "hash": "b9c16ef"
+      "hash": "b9c16ef0"
     },
     {
       "date": "2026-06-12",
       "type": "Changed",
       "title": "Students book staff availability; booked slots vanish for everyone else",
-      "hash": "0f4f3f4"
+      "hash": "0f4f3f49"
     },
     {
       "date": "2026-06-12",
       "type": "Changed",
       "title": "ZPeriod-style 3D atom: packed nucleon cluster, tilted orbits, trails",
-      "hash": "6037160"
+      "hash": "6037160e"
     },
     {
       "date": "2026-06-12",
       "type": "Changed",
       "title": "Study Hub Classic tools open directly on click — no intermediate Open button",
-      "hash": "adf34f0"
+      "hash": "adf34f01"
     },
     {
       "date": "2026-06-12",
       "type": "Changed",
       "title": "Replace straggling emoji glyphs with stroke SVG icons",
-      "hash": "5e34861"
+      "hash": "5e348612"
     },
     {
       "date": "2026-06-12",
       "type": "Added",
       "title": "Add Flux Notebook: NotebookLM-style sources, grounded chat, and study studio",
-      "hash": "48ff1f4"
+      "hash": "48ff1f43"
     },
     {
       "date": "2026-06-11",
       "type": "Changed",
       "title": "Make Flux smarter three ways: knowledge base, self-check, extension BYOK",
-      "hash": "efb5047"
+      "hash": "efb5047f"
     },
     {
       "date": "2026-06-11",
       "type": "Changed",
       "title": "Crank gpt-oss reasoning effort to high with 8K completion headroom",
-      "hash": "a683f29"
+      "hash": "a683f297"
     },
     {
       "date": "2026-06-11",
       "type": "Changed",
       "title": "Stop raw LaTeX leaks and sideways scroll in AI math",
-      "hash": "415c494"
+      "hash": "415c494c"
     },
     {
       "date": "2026-06-11",
       "type": "Changed",
       "title": "Open the side rail on Arc and other panel-less Chromium shells",
-      "hash": "0cb7246"
+      "hash": "0cb7246a"
     },
     {
       "date": "2026-06-11",
       "type": "Changed",
       "title": "Survive Groq rate limits with a model fallback ladder; Chromium-wide docs",
-      "hash": "0139736"
+      "hash": "01397367"
     },
     {
       "date": "2026-06-11",
       "type": "Changed",
       "title": "Sync lockfiles after adding esbuild dev dependency.",
-      "hash": "77356cc"
+      "hash": "77356ccd"
     },
     {
       "date": "2026-06-11",
       "type": "Changed",
       "title": "Make Flux much smarter on homework: two-stage vision + gpt-oss models",
-      "hash": "776af38"
+      "hash": "776af38d"
     },
     {
       "date": "2026-06-11",
       "type": "Changed",
       "title": "Use official Flux logo in extension header; replace emoji with SVG icons",
-      "hash": "4eefe4d"
+      "hash": "4eefe4d9"
     },
     {
       "date": "2026-06-11",
       "type": "Changed",
       "title": "Render AI math like ChatGPT; kill the robotic Step-1 tutor voice",
-      "hash": "699f305"
+      "hash": "699f305f"
     },
     {
       "date": "2026-06-10",
       "type": "Changed",
       "title": "Silence orphaned content-script errors: make content.js purely reactive",
-      "hash": "0d733f1"
+      "hash": "0d733f12"
     },
     {
       "date": "2026-06-10",
       "type": "Changed",
       "title": "Rework extension side rail: Flux always sees the tab, Gemini-style",
-      "hash": "793434a"
+      "hash": "793434a9"
     },
     {
       "date": "2026-06-10",
       "type": "Fixed",
       "title": "Fix extension AI connectivity: live planner host + anon-key auth",
-      "hash": "1d1a13c"
+      "hash": "1d1a13ce"
     },
     {
       "date": "2026-06-10",
       "type": "Removed",
       "title": "Remove legacy extensions",
-      "hash": "204e58d"
+      "hash": "204e58dc"
     },
     {
       "date": "2026-06-10",
       "type": "Changed",
       "title": "Stream Flux AI replies over SSE; meter agent-loop turns once; tool-aware free-tier routing",
-      "hash": "d16422a"
+      "hash": "d16422aa"
     },
     {
       "date": "2026-06-10",
       "type": "Fixed",
       "title": "Fix universal extension and build all browser targets",
-      "hash": "8c1c0d7"
+      "hash": "8c1c0d75"
     },
     {
       "date": "2026-06-10",
       "type": "Changed",
       "title": "Make Flux AI agentic: tool-use loop, 38-tool registry, ask-Flux-anywhere",
-      "hash": "533c95a"
+      "hash": "533c95a3"
     },
     {
       "date": "2026-06-10",
       "type": "Accessibility",
       "title": "Study Hub polish: recents quick-access, smarter search, keyboard shortcuts",
-      "hash": "3bdee53"
+      "hash": "3bdee53c"
     },
     {
       "date": "2026-06-10",
       "type": "Changed",
       "title": "Align study-tools e2e spec with native Study Hub; register enable_claude_mcp flag",
-      "hash": "75ca107"
+      "hash": "75ca107b"
     },
     {
       "date": "2026-06-08",
       "type": "Fixed",
       "title": "Fix Study Hub chemistry tab bar scroll and styling.",
-      "hash": "4d5de15"
+      "hash": "4d5de15d"
     },
     {
       "date": "2026-06-08",
       "type": "Changed",
       "title": "Polish Study Hub chemistry atom view and music tools.",
-      "hash": "a73c204"
+      "hash": "a73c204b"
     },
     {
       "date": "2026-06-07",
       "type": "Added",
       "title": "Add interactive 3D atom model and merge legacy tools as a Classic tab",
-      "hash": "df282c8"
+      "hash": "df282c8f"
     },
     {
       "date": "2026-06-07",
       "type": "Changed",
       "title": "Rebuild Study Tools as native in-app subject tools with Flux AI",
-      "hash": "86de322"
+      "hash": "86de322a"
     },
     {
       "date": "2026-06-07",
       "type": "Changed",
       "title": "Expand Study Hub with per-subject tool modules.",
-      "hash": "749cebf"
+      "hash": "749cebf7"
     },
     {
       "date": "2026-06-06",
       "type": "Added",
       "title": "Add Claude MCP, Study Hub, and Next.js educator shell updates.",
-      "hash": "77d6fe7"
+      "hash": "77d6fe70"
     },
     {
       "date": "2026-06-06",
       "type": "Fixed",
       "title": "Fix mobile layout bugs: guest reload, missing Study tab, AI input overlap, stuck animations",
-      "hash": "81a9be8"
+      "hash": "81a9be8e"
     },
     {
       "date": "2026-06-04",
       "type": "Changed",
       "title": "Register enable_locale_ai_fallback flag in a migration",
-      "hash": "c6e6f31"
+      "hash": "c6e6f31b"
     },
     {
       "date": "2026-06-04",
       "type": "Added",
       "title": "Add Claude MCP OAuth consent page",
-      "hash": "a28515d"
+      "hash": "a28515d2"
     },
     {
       "date": "2026-06-03",
       "type": "Changed",
       "title": "Overhaul study tools: rebalanced IB categories + DP subject packs",
-      "hash": "befa198"
+      "hash": "befa1980"
     },
     {
       "date": "2026-06-03",
       "type": "Changed",
       "title": "Stop student dashboard from leaking under the staff work dashboard",
-      "hash": "bd4048d"
+      "hash": "bd4048de"
     },
     {
       "date": "2026-06-02",
       "type": "Changed",
       "title": "Keep BYOK AI keys device-local under impersonation",
-      "hash": "13fda89"
+      "hash": "13fda892"
     },
     {
       "date": "2026-06-02",
       "type": "Changed",
       "title": "Harden i18n AI fallback with circuit breaker and dedupe.",
-      "hash": "e3c3d67"
+      "hash": "e3c3d67a"
     },
     {
       "date": "2026-06-02",
       "type": "Added",
       "title": "Add RTL layout for Arabic + fix locale layer gated-off-by-default bug",
-      "hash": "72dcac3"
+      "hash": "72dcac32"
     },
     {
       "date": "2026-06-02",
       "type": "Added",
       "title": "Add self-controlled full-site translator (replaces Google Translate widget)",
-      "hash": "22c657b"
+      "hash": "22c657b5"
     },
     {
       "date": "2026-06-02",
       "type": "Added",
       "title": "Add BYOK multi-provider AI bridge (Claude/GPT/Gemini/Groq/Mistral/DeepSeek)",
-      "hash": "98d36a3"
+      "hash": "98d36a33"
     },
     {
       "date": "2026-06-01",
       "type": "Fixed",
       "title": "Polish office hours with live indicators, migrations, and task toggle fix.",
-      "hash": "a13f7f0"
+      "hash": "a13f7f02"
     },
     {
       "date": "2026-06-01",
       "type": "Added",
       "title": "Add office hours, low-end perf mode, and classic-script window bridges.",
-      "hash": "3cec1e6"
+      "hash": "3cec1e65"
     },
     {
       "date": "2026-05-29",
       "type": "Fixed",
       "title": "Revert sidebar logo to single wordmark and fix SVG sizing.",
-      "hash": "4cd1e65"
+      "hash": "4cd1e655"
     },
     {
       "date": "2026-05-29",
       "type": "Added",
       "title": "Remove Pulse layout, add Cowork and login aurora, default dark theme.",
-      "hash": "9147db0"
+      "hash": "9147db04"
     },
     {
       "date": "2026-05-28",
       "type": "Added",
       "title": "Add command palette, inline form modals, and dashboard polish",
-      "hash": "8fa6bc8"
+      "hash": "8fa6bc86"
     },
     {
       "date": "2026-05-28",
       "type": "Fixed",
       "title": "Fix mobile nav gaps and guest role hydration on app entry.",
-      "hash": "7d57d86"
+      "hash": "7d57d863"
     },
     {
       "date": "2026-05-27",
       "type": "Removed",
       "title": "Remove cursor-follow glow effects site-wide.",
-      "hash": "fc65b87"
+      "hash": "fc65b879"
     },
     {
       "date": "2026-05-27",
       "type": "Removed",
       "title": "Remove Flux Elevate dashboard hero stats strip.",
-      "hash": "d0b970e"
+      "hash": "d0b970e7"
     },
     {
       "date": "2026-05-27",
       "type": "Added",
       "title": "Add Flux Elevate polish layer and remove Claude lock file.",
-      "hash": "c92677c"
+      "hash": "c92677c5"
     },
     {
       "date": "2026-05-27",
       "type": "Added",
       "title": "Add Connectors and Skills registries, browser extension, and reliability fixes.",
-      "hash": "59b4e26"
+      "hash": "59b4e26a"
     },
     {
       "date": "2026-05-27",
       "type": "Changed",
       "title": "Move gratitude and important dates off dashboard to Mood and Calendar.",
-      "hash": "8419563"
+      "hash": "8419563f"
     },
     {
       "date": "2026-05-27",
       "type": "Added",
       "title": "Add Motion-50 effects layer gated by Pulse perf tier.",
-      "hash": "7164532"
+      "hash": "7164532a"
     },
     {
       "date": "2026-05-27",
       "type": "Added",
       "title": "Fix dashboard chrome leak, hide Pulse badge, and add Google account switch.",
-      "hash": "9596ad7"
+      "hash": "9596ad7d"
     },
     {
       "date": "2026-05-27",
       "type": "Added",
       "title": "Add Pulse performance tier controller for adaptive layout quality.",
-      "hash": "505047f"
+      "hash": "505047f9"
     },
     {
       "date": "2026-05-27",
       "type": "Changed",
       "title": "Extend Apple motion with Pro effects and polish base layer.",
-      "hash": "8f610b7"
+      "hash": "8f610b7e"
     },
     {
       "date": "2026-05-26",
       "type": "Added",
       "title": "Add Apple-style motion layer with spring UI and view transitions.",
-      "hash": "133650b"
+      "hash": "133650bc"
     },
     {
       "date": "2026-05-26",
       "type": "Changed",
       "title": "Polish educator personal vs work surfaces and staff dashboard UX.",
-      "hash": "ab00b43"
+      "hash": "ab00b431"
     },
     {
       "date": "2026-05-26",
       "type": "Added",
       "title": "Counselor caseload tab, personal hub, and draggable dash board",
-      "hash": "bbd7e65"
+      "hash": "bbd7e653"
     },
     {
       "date": "2026-05-26",
       "type": "Fixed",
       "title": "Rollback Pulse default + stop CSV auto-download + data/sync safeguards",
-      "hash": "cc3cb41"
+      "hash": "cc3cb417"
     },
     {
       "date": "2026-05-26",
       "type": "Added",
       "title": "Structural dashboard redo (bento grid) + revert gradient buttons",
-      "hash": "7a5b4e7"
+      "hash": "7a5b4e73"
     },
     {
       "date": "2026-05-26",
       "type": "Fixed",
       "title": "Kill repeating role picker, harden login-hide, polish questionnaire",
-      "hash": "211c1f7"
+      "hash": "211c1f7b"
     },
     {
       "date": "2026-05-26",
       "type": "Added",
       "title": "Gratitude journal, class-section planner, priority sort, important-date pinning",
-      "hash": "c686c2a"
+      "hash": "c686c2a2"
     },
     {
       "date": "2026-05-26",
       "type": "Fixed",
       "title": "Repair dead canvas-context handler + de-throttle Pulse boot observer",
-      "hash": "73c8683"
+      "hash": "73c8683c"
     },
     {
       "date": "2026-05-26",
       "type": "Fixed",
       "title": "Load Pulse CSS last + harden specificity so reskin actually wins",
-      "hash": "54ed402"
+      "hash": "54ed4023"
     },
     {
       "date": "2026-05-26",
       "type": "Added",
       "title": "Ship Flux Pulse — modern reskin across all roles + legacy toggle",
-      "hash": "d0b2ba7"
+      "hash": "d0b2ba7c"
     },
     {
       "date": "2026-05-25",
       "type": "Added",
       "title": "Redesign sign-in screen with hero glass auth card",
-      "hash": "1a4ac39"
+      "hash": "1a4ac39c"
     },
     {
       "date": "2026-05-25",
       "type": "Added",
       "title": "FluxMagic inline prompts for staff and educator flows",
-      "hash": "69a436b"
+      "hash": "69a436b1"
     },
     {
       "date": "2026-05-25",
       "type": "Added",
       "title": "Polish login and staff dashboards; harden class join and booking",
-      "hash": "82062f3"
+      "hash": "82062f35"
     },
     {
       "date": "2026-05-25",
       "type": "Housekeeping",
       "title": "Add flag registry integrity check for Phase 37.2",
-      "hash": "68ed20b"
+      "hash": "68ed20be"
     },
     {
       "date": "2026-05-25",
       "type": "Added",
       "title": "Claude Code magic — animations, staff/student account polish, bug fixes",
-      "hash": "25ee381"
+      "hash": "25ee381b"
     },
     {
       "date": "2026-05-22",
       "type": "Housekeeping",
       "title": "Phase 37.1 PR-C - IAE school profile and promote pilot defaults",
-      "hash": "7fd89c0"
+      "hash": "7fd89c05"
     },
     {
       "date": "2026-05-22",
       "type": "Housekeeping",
       "title": "Phase 37.1 PR-B - promote default-on trio to core",
-      "hash": "aa96bba"
+      "hash": "aa96bba3"
     },
     {
       "date": "2026-05-21",
       "type": "Housekeeping",
       "title": "Phase 37.1 - remove orphan flags and initiate audit",
-      "hash": "ec9ed4b"
+      "hash": "ec9ed4bc"
     },
     {
       "date": "2026-05-21",
       "type": "Fixed",
       "title": "Unify onboarding routing state machine, strict counselor email claim, and fix availability RLS",
-      "hash": "46d0541"
+      "hash": "46d05417"
     },
     {
       "date": "2026-05-21",
       "type": "Performance",
       "title": "Remove liquid glass effects for performance and cleaner UI.",
-      "hash": "109803a"
+      "hash": "109803a6"
     },
     {
       "date": "2026-05-21",
       "type": "Fixed",
       "title": "Fix duplicate counselor accounts and exclude platform owner from booking.",
-      "hash": "e0a9b11"
+      "hash": "e0a9b113"
     },
     {
       "date": "2026-05-20",
       "type": "Added",
       "title": "Release phase 12-36 (mega-release) [44 modules]",
-      "hash": "4c6f697"
+      "hash": "4c6f6973"
     },
     {
       "date": "2026-05-20",
       "type": "Changed",
       "title": "Complete Phase 11.3 with calendar conflict markers and closeout docs.",
-      "hash": "98d76b2"
+      "hash": "98d76b2e"
     },
     {
       "date": "2026-05-20",
       "type": "Added",
       "title": "Add syllabus conflict detection and extend IAE student pilot.",
-      "hash": "c7cb8f9"
+      "hash": "c7cb8f99"
     },
     {
       "date": "2026-05-20",
       "type": "Fixed",
       "title": "Ship Phase 9–10: IAE pilot, sync conflict UI, educator i18n, smoke E2E, storage repair, and locale strings.",
-      "hash": "de46a92"
+      "hash": "de46a92f"
     },
     {
       "date": "2026-05-20",
       "type": "Added",
       "title": "Add student dashboard widget picker with show/hide and reorder.",
-      "hash": "437cfff"
+      "hash": "437cfffe"
     },
     {
       "date": "2026-05-20",
       "type": "Changed",
       "title": "Adopt locale formatters across dashboard task dates and calendar UI.",
-      "hash": "9df7a9b"
+      "hash": "9df7a9b0"
     },
     {
       "date": "2026-05-20",
       "type": "Changed",
       "title": "Ship P8.5–P8.10: counselor tools, admin ops, command palette, pilot, health, and i18n.",
-      "hash": "56bed01"
+      "hash": "56bed017"
     },
     {
       "date": "2026-05-20",
       "type": "Added",
       "title": "Add classroom hall pass, exit ticket, and Oops broadcast to student dashboards.",
-      "hash": "e2be75c"
+      "hash": "e2be75c7"
     },
     {
       "date": "2026-05-20",
       "type": "Changed",
       "title": "Ship Staff Productivity Suite foundation and classroom picker/timer widgets.",
-      "hash": "6255e99"
+      "hash": "6255e99e"
     },
     {
       "date": "2026-05-20",
       "type": "Fixed",
       "title": "Fix blank dashboard after sign-in skeleton wiped DOM.",
-      "hash": "113a33b"
+      "hash": "113a33b3"
     },
     {
       "date": "2026-05-20",
       "type": "Fixed",
       "title": "Fix sign-in blocked by offline gate and empty dashboard skeleton.",
-      "hash": "a393c5d"
+      "hash": "a393c5d6"
     },
     {
       "date": "2026-05-20",
       "type": "Changed",
       "title": "Ship counselor booking, staff platform polish, and 50 site enhancements.",
-      "hash": "8f65f4c"
+      "hash": "8f65f4c7"
     },
     {
       "date": "2026-05-20",
       "type": "Fixed",
       "title": "Fix login loop: show app early, persist role choice, and close OAuth popup.",
-      "hash": "4f2b102"
+      "hash": "4f2b1028"
     },
     {
       "date": "2026-05-20",
       "type": "Changed",
       "title": "Staff pilot: Phase 7 Google workspace hub and Phase 8 security hardening.",
-      "hash": "9ef9a4b"
+      "hash": "9ef9a4b6"
     },
     {
       "date": "2026-05-20",
       "type": "Changed",
       "title": "Staff accounts v2: routing, directory hydrate, caseload UI, and verification realtime.",
-      "hash": "8dd1de7"
+      "hash": "8dd1de7c"
     },
     {
       "date": "2026-05-20",
       "type": "Changed",
       "title": "Improve educator/student UX: staff profile, nav, calendar, and counselor save.",
-      "hash": "b36cc44"
+      "hash": "b36cc445"
     },
     {
       "date": "2026-05-19",
       "type": "Fixed",
       "title": "Ship Phases 2–8: feature modules, migrations, E2E, and role-picker fix.",
-      "hash": "e3bec8a"
+      "hash": "e3bec8a7"
     },
     {
       "date": "2026-05-19",
       "type": "Added",
       "title": "Add master roadmap execution plan and feature flags foundation.",
-      "hash": "8696bd1"
+      "hash": "8696bd18"
     },
     {
       "date": "2026-05-19",
       "type": "Added",
       "title": "Fix school join and class isolation; add staff Google integrations hub.",
-      "hash": "eab2af4"
+      "hash": "eab2af47"
     },
     {
       "date": "2026-05-19",
       "type": "Added",
       "title": "Add clear controls to collapse the Flux AI thread sidebar for a wider chat.",
-      "hash": "b577879"
+      "hash": "b577879a"
     },
     {
       "date": "2026-05-19",
       "type": "Added",
       "title": "Add unified Google integration hub and related platform updates.",
-      "hash": "7fac15b"
+      "hash": "7fac15bf"
     },
     {
       "date": "2026-05-19",
       "type": "Fixed",
       "title": "Keep topbar badge quiet during background cloud sync",
-      "hash": "52a147d"
+      "hash": "52a147db"
     },
     {
       "date": "2026-05-19",
       "type": "Added",
       "title": "EC calendar, ambient UI polish, nav fixes, and workload chart alignment",
-      "hash": "208b28b"
+      "hash": "208b28ba"
     },
     {
       "date": "2026-05-17",
       "type": "Fixed",
       "title": "Restore educator Workspace + School strip in renderSidebars",
-      "hash": "224ab01"
+      "hash": "224ab013"
     },
     {
       "date": "2026-05-17",
       "type": "Housekeeping",
       "title": "Tighten user_roles RLS, docs QA matrix, CSS stack, storage",
-      "hash": "b42294d"
+      "hash": "b42294de"
     },
     {
       "date": "2026-05-17",
       "type": "Housekeeping",
       "title": "Canonical storage, FluxDebug core, and docs checkpoint",
-      "hash": "dcdcd6b"
+      "hash": "dcdcd6b9"
     },
     {
       "date": "2026-05-17",
       "type": "Added",
       "title": "Add School workspace tab strip for educator Work mode",
-      "hash": "f834c47"
+      "hash": "f834c478"
     },
     {
       "date": "2026-05-17",
       "type": "Added",
       "title": "Move educator school tools to Work mode sidebar",
-      "hash": "f068e1b"
+      "hash": "f068e1ba"
     },
     {
       "date": "2026-05-17",
       "type": "Fixed",
       "title": "Polish topbar cloud sync chip",
-      "hash": "bef25ef"
+      "hash": "bef25efb"
     },
     {
       "date": "2026-05-17",
       "type": "Changed",
       "title": "Wire staff platform: verification UI, personal mode nav, school feed, owner tab.",
-      "hash": "d472833"
+      "hash": "d472833f"
     },
     {
       "date": "2026-05-17",
       "type": "Fixed",
       "title": "Align dashboard greeting with profile and impersonation",
-      "hash": "688c7e3"
+      "hash": "688c7e37"
     },
     {
       "date": "2026-05-17",
       "type": "Fixed",
       "title": "Auto-provision counselor profile + RLS for insert/claim",
-      "hash": "8d8b661"
+      "hash": "8d8b6610"
     },
     {
       "date": "2026-05-17",
       "type": "Added",
       "title": "Add gated FluxDebug instrumentation (Phase 2)",
-      "hash": "9512406"
+      "hash": "9512406c"
     },
     {
       "date": "2026-05-17",
       "type": "Housekeeping",
       "title": "Add Phase 1 architecture audit for stabilization work.",
-      "hash": "9d76e7b"
+      "hash": "9d76e7b7"
     },
     {
       "date": "2026-05-17",
       "type": "Changed",
       "title": "Ship educator platform expansion and tighten multi-account UX.",
-      "hash": "54f61d3"
+      "hash": "54f61d30"
     },
     {
       "date": "2026-05-16",
       "type": "Fixed",
       "title": "Topbar spacing; remove streak surfaces",
-      "hash": "0d96416"
+      "hash": "0d96416a"
     },
     {
       "date": "2026-05-15",
       "type": "Fixed",
       "title": "Keep Work/Personal toggle visible in Personal mode",
-      "hash": "93c3192"
+      "hash": "93c31928"
     },
     {
       "date": "2026-05-15",
       "type": "Changed",
       "title": "Owner suite: Switch to staff tab for preview impersonation",
-      "hash": "2cc60c1"
+      "hash": "2cc60c17"
     },
     {
       "date": "2026-05-15",
       "type": "Changed",
       "title": "Dev preview as any teacher with isolated localStorage + sync off",
-      "hash": "84e4806"
+      "hash": "84e4806e"
     },
     {
       "date": "2026-05-15",
       "type": "Changed",
       "title": "Per-role workspace tabs + sticky impersonated identity",
-      "hash": "0be1500"
+      "hash": "0be15002"
     },
     {
       "date": "2026-05-15",
       "type": "Fixed",
       "title": "Align topbar + mode switch under test/release banners",
-      "hash": "4eb1067"
+      "hash": "4eb10679"
     },
     {
       "date": "2026-05-15",
       "type": "Fixed",
       "title": "Impersonation banner stretched as flex child of #app",
-      "hash": "0b1a136"
+      "hash": "0b1a136f"
     },
     {
       "date": "2026-05-15",
       "type": "Changed",
       "title": "'Test as…' impersonation — switch into any teacher / staff seat",
-      "hash": "d9f51b2"
+      "hash": "d9f51b26"
     },
     {
       "date": "2026-05-15",
       "type": "Changed",
       "title": "Directory-gated identity picker + teacher planner shell",
-      "hash": "34fa89d"
+      "hash": "34fa89d9"
     },
     {
       "date": "2026-05-15",
       "type": "Added",
       "title": "Turn liquid glass OFF by default; gate new rules behind toggle",
-      "hash": "3677f60"
+      "hash": "3677f609"
     },
     {
       "date": "2026-05-15",
       "type": "Changed",
       "title": "Route Dashboard to teacher/counselor dashboard for educators in Work mode",
-      "hash": "638f22b"
+      "hash": "638f22bc"
     },
     {
       "date": "2026-05-15",
       "type": "Fixed",
       "title": "Make .cv-body the scroll container so expanding details scrolls",
-      "hash": "6c1f762"
+      "hash": "6c1f7629"
     },
     {
       "date": "2026-05-15",
       "type": "Fixed",
       "title": "Keep #quickAddPanel position:fixed (transparent-panels selector was too broad)",
-      "hash": "b2115dc"
+      "hash": "b2115dc9"
     },
     {
       "date": "2026-05-15",
       "type": "Removed",
       "title": "Drop teal blobs from animated background (accent + purple only)",
-      "hash": "320261c"
+      "hash": "320261ca"
     },
     {
       "date": "2026-05-15",
       "type": "Changed",
       "title": "Rebuild role/onboarding system + liquid glass + animated mesh",
-      "hash": "842bea9"
+      "hash": "842bea99"
     },
     {
       "date": "2026-05-15",
       "type": "Removed",
       "title": "Remove physics strip + duplicate analytics cards",
-      "hash": "bdda77a"
+      "hash": "bdda77af"
     },
     {
       "date": "2026-05-15",
       "type": "Changed",
       "title": "Roster tab lists Auth users with Flux roles + profile edit",
-      "hash": "52b2bbc"
+      "hash": "52b2bbc5"
     },
     {
       "date": "2026-05-15",
       "type": "Fixed",
       "title": "Blank screen — TDZ crash on typeof FluxBus before const",
-      "hash": "93d09fc"
+      "hash": "93d09fc3"
     },
     {
       "date": "2026-05-14",
       "type": "Changed",
       "title": "Staff-import: switch IA East roster to <initial><lastname>@bloomfield.org",
-      "hash": "b6a5319"
+      "hash": "b6a5319e"
     },
     {
       "date": "2026-05-14",
       "type": "Changed",
       "title": "V4: predictive gap-fill, effort accuracy, physics toolbox, chain reactions",
-      "hash": "8a01df1"
+      "hash": "8a01df18"
     },
     {
       "date": "2026-05-14",
       "type": "Changed",
       "title": "Role picker: gate on user_roles row existence, not role==='student'",
-      "hash": "65cd941"
+      "hash": "65cd941e"
     },
     {
       "date": "2026-05-14",
       "type": "Changed",
       "title": "Staff import: switch IA East list to @bloomfield.org domain",
-      "hash": "95f963b"
+      "hash": "95f963b9"
     },
     {
       "date": "2026-05-14",
       "type": "Added",
       "title": "Add IA East staff import list + optional auto-generated passwords",
-      "hash": "53124d5"
+      "hash": "53124d57"
     },
     {
       "date": "2026-05-14",
       "type": "Added",
       "title": "Staff onboarding: drop verification codes; add bulk account script",
-      "hash": "dd78162"
+      "hash": "dd78162d"
     },
     {
       "date": "2026-05-14",
       "type": "Changed",
       "title": "Release gate: opt-in update mode from Owner panel (no auto block)",
-      "hash": "921acb5"
+      "hash": "921acb59"
     },
     {
       "date": "2026-05-14",
       "type": "Changed",
       "title": "Schedule import: stop \"Processing PDF pages…\" overlay from being permanently visible",
-      "hash": "c6a654d"
+      "hash": "c6a654df"
     },
     {
       "date": "2026-05-14",
       "type": "Changed",
       "title": "AI topbar: stop right-toolbar from wrapping, tighten spacing",
-      "hash": "e9130fe"
+      "hash": "e9130fed"
     },
     {
       "date": "2026-05-14",
       "type": "Changed",
       "title": "Flux V4 foundation: behavior engine + cognitive load topbar + security lockdown",
-      "hash": "3dc2dc5"
+      "hash": "3dc2dc54"
     },
     {
       "date": "2026-05-13",
       "type": "Changed",
       "title": "Canvas external links: append session_locale to avoid wrong UI language",
-      "hash": "cc9c47a"
+      "hash": "cc9c47a0"
     },
     {
       "date": "2026-05-13",
       "type": "Changed",
       "title": "Canvas connect: guided \"Sign in to Canvas\" flow (Google SSO via Canvas)",
-      "hash": "96ccf42"
+      "hash": "96ccf42c"
     },
     {
       "date": "2026-05-13",
       "type": "Added",
       "title": "Canvas v3 — rebuild as a clean tabbed hub with per-row Add-to-Flux",
-      "hash": "aa84412"
+      "hash": "aa84412c"
     },
     {
       "date": "2026-05-13",
       "type": "Fixed",
       "title": "Fix analytics tab when completedAt is not a string",
-      "hash": "9d404c4"
+      "hash": "9d404c46"
     },
     {
       "date": "2026-05-13",
       "type": "Added",
       "title": "Restore login flow, fix greeting + analytics bug, add Nuke Controls tab",
-      "hash": "71a683a"
+      "hash": "71a683ad"
     },
     {
       "date": "2026-05-13",
       "type": "Added",
       "title": "Owner v2, AI/Canvas polish, mobile fix",
-      "hash": "98f7d9c"
+      "hash": "98f7d9cd"
     },
     {
       "date": "2026-05-09",
       "type": "Fixed",
       "title": "Fall back to Groq vision on Gemini 429/quota",
-      "hash": "3df7de1"
+      "hash": "3df7de10"
     },
     {
       "date": "2026-05-09",
       "type": "Added",
       "title": "Groq vision fallback when GEMINI_API_KEY unset",
-      "hash": "7369d65"
+      "hash": "7369d65a"
     },
     {
       "date": "2026-05-09",
       "type": "Fixed",
       "title": "Gemini vision model and prompt shape; clearer extension errors",
-      "hash": "df03f7c"
+      "hash": "df03f7c9"
     },
     {
       "date": "2026-05-09",
       "type": "Added",
       "title": "Google sign-in, vision capture, new chat",
-      "hash": "1d39d7b"
+      "hash": "1d39d7b5"
     },
     {
       "date": "2026-05-09",
       "type": "Fixed",
       "title": "Reliable page context — restricted URLs, inject retry, IIFE guard",
-      "hash": "9f24c86"
+      "hash": "9f24c86c"
     },
     {
       "date": "2026-05-09",
       "type": "Changed",
       "title": "Replace cycling flip word with static empty-state hint",
-      "hash": "f4f9fae"
+      "hash": "f4f9fae5"
     },
     {
       "date": "2026-05-09",
       "type": "Fixed",
       "title": "DeltaMath/SPA page text + selection priority for solving",
-      "hash": "9a12687"
+      "hash": "9a126873"
     },
     {
       "date": "2026-05-09",
       "type": "Fixed",
       "title": "AI via background relay + CORS + icon opens side panel",
-      "hash": "6a258a0"
+      "hash": "6a258a09"
     },
     {
       "date": "2026-05-09",
       "type": "Added",
       "title": "Add Flux Chrome extension, visual layer, settings Extension ID field; ignore .cursor",
-      "hash": "466f869"
+      "hash": "466f869c"
     },
     {
       "date": "2026-05-08",
       "type": "Fixed",
       "title": "Toolbox polish; owner Product ideas tab (100 items); fix feedback dismiss IDs",
-      "hash": "b34182c"
+      "hash": "b34182c4"
     },
     {
       "date": "2026-05-07",
       "type": "Removed",
       "title": "Study tools UI, Google Docs + NotebookLM wiring, AI sidebar layout, remove FAB",
-      "hash": "a80615e"
+      "hash": "a80615eb"
     },
     {
       "date": "2026-05-05",
       "type": "Removed",
       "title": "AI sidebar compact toggle, prompt depth update, remove debug instrumentation",
-      "hash": "7f00210"
+      "hash": "7f00210b"
     },
     {
       "date": "2026-05-05",
       "type": "Fixed",
       "title": "Fix blank page: stop fluxRenderDashMob from shadowing todayStr",
-      "hash": "5a5cf41"
+      "hash": "5a5cf41a"
     },
     {
       "date": "2026-05-05",
       "type": "Added",
       "title": "Add debug instrumentation for blank-page investigation",
-      "hash": "d10a13d"
+      "hash": "d10a13de"
     },
     {
       "date": "2026-05-05",
       "type": "Changed",
       "title": "Data migration v6, storage compact, overdue-day helper, AI memory core",
-      "hash": "4f89e70"
+      "hash": "4f89e702"
     },
     {
       "date": "2026-05-05",
       "type": "Fixed",
       "title": "Flux AI: fix topbar flex overlap, scroll chain, topbar logo, layout debug logs",
-      "hash": "74515a0"
+      "hash": "74515a02"
     },
     {
       "date": "2026-05-05",
       "type": "Changed",
       "title": "Refactor Flux AI panel to ChatGPT-style ai-root layout",
-      "hash": "097b487"
+      "hash": "097b4876"
     },
     {
       "date": "2026-05-05",
       "type": "Changed",
       "title": "Redesign Flux AI shell layout and composer chrome",
-      "hash": "42377cf"
+      "hash": "42377cf7"
     },
     {
       "date": "2026-05-05",
       "type": "Added",
       "title": "Add FluxKit modular JS layer (core, features, UI, utils)",
-      "hash": "cd291e5"
+      "hash": "cd291e5f"
     },
     {
       "date": "2026-05-05",
       "type": "Added",
       "title": "Add Next.js 15 Flux shell (motion, planner, AI, command palette)",
-      "hash": "36cfa16"
+      "hash": "36cfa163"
     },
     {
       "date": "2026-05-05",
       "type": "Fixed",
       "title": "Fix login screen top: hero visible on load, clearer top bar, no mesh clip",
-      "hash": "809abea"
+      "hash": "809abead"
     },
     {
       "date": "2026-05-05",
       "type": "Changed",
       "title": "Owner Auth admin via release-admin, platform broadcast, Flux AI connections",
-      "hash": "af7a1ee"
+      "hash": "af7a1ee2"
     },
     {
       "date": "2026-05-05",
       "type": "Added",
       "title": "Add Flux anime catalog: 50+ motions, CSS utilities, flux-ac UI wiring",
-      "hash": "0ad4a18"
+      "hash": "0ad4a181"
     },
     {
       "date": "2026-05-05",
       "type": "Fixed",
       "title": "Equalize nav and marketing spacing; fix onboarding feature chips",
-      "hash": "881d53e"
+      "hash": "881d53e6"
     },
     {
       "date": "2026-05-04",
       "type": "Fixed",
       "title": "Fix login hero gradient headline after char-split animation",
-      "hash": "ccf40d9"
+      "hash": "ccf40d9e"
     },
     {
       "date": "2026-05-04",
       "type": "Changed",
       "title": "Tighten login showcase spacing between feature sections",
-      "hash": "86a6185"
+      "hash": "86a61857"
     },
     {
       "date": "2026-05-04",
       "type": "Changed",
       "title": "Login scroll showcase, mobile release banner tweak, Motion swipe demo",
-      "hash": "80b1571"
+      "hash": "80b15716"
     },
     {
       "date": "2026-05-04",
       "type": "Changed",
       "title": "Reorder Explore block, gradient hover previews",
-      "hash": "7055897"
+      "hash": "70558971"
     },
     {
       "date": "2026-05-04",
       "type": "Added",
       "title": "Login hover previews, PDF schedule import UI, user feedback inbox",
-      "hash": "713b37a"
+      "hash": "713b37af"
     },
     {
       "date": "2026-05-04",
       "type": "Changed",
       "title": "Scroll-sync path draw on dashboard; login stroke tuning",
-      "hash": "96f4e85"
+      "hash": "96f4e85f"
     },
     {
       "date": "2026-05-04",
       "type": "Fixed",
       "title": "Fix headline clipping, remove tagline letter-spacing loop",
-      "hash": "25ea801"
+      "hash": "25ea8010"
     },
     {
       "date": "2026-05-03",
       "type": "Changed",
       "title": "Hub strip + reader DOM, pending nav flush, hub JSON for AI",
-      "hash": "3556945"
+      "hash": "35569452"
     },
     {
       "date": "2026-05-03",
       "type": "Fixed",
       "title": "Persist LMS credentials across data migrations and sign-out",
-      "hash": "d4fbd1a"
+      "hash": "d4fbd1a1"
     },
     {
       "date": "2026-05-03",
       "type": "Fixed",
       "title": "Tagline letter-spacing eases down before growing again (timeline loop)",
-      "hash": "886729d"
+      "hash": "886729d4"
     },
     {
       "date": "2026-05-03",
       "type": "Added",
       "title": "Study Tools sectionToggle + strip CSS transition; Pomodoro mini ring",
-      "hash": "6948676"
+      "hash": "6948676d"
     },
     {
       "date": "2026-05-03",
       "type": "Added",
       "title": "Complete FluxAnim stubs — cog meter, scroll reveal, workload bars, canvas nav, pill, chain unlock, AI thinking, planner success",
-      "hash": "833b531"
+      "hash": "833b5313"
     },
     {
       "date": "2026-05-03",
       "type": "Changed",
       "title": "Richer anime.js motion: cubicBezier, spring, waapi, login text split",
-      "hash": "2d90f2e"
+      "hash": "2d90f2e2"
     },
     {
       "date": "2026-05-03",
       "type": "Added",
       "title": "Add push-all Cursor rule, toolbox updates; remove jarvis-assistant",
-      "hash": "15fd458"
+      "hash": "15fd458a"
     },
     {
       "date": "2026-05-03",
       "type": "Added",
       "title": "Add anime.js v4 motion on login and app shell",
-      "hash": "314d6f6"
+      "hash": "314d6f67"
     },
     {
       "date": "2026-04-30",
       "type": "Fixed",
       "title": "Apply liquid glass across main content, not only sidebar",
-      "hash": "f20aaee"
+      "hash": "f20aaee7"
     },
     {
       "date": "2026-04-29",
       "type": "Changed",
       "title": "Separate Quick chart from ring diagram (two Study Tools chips)",
-      "hash": "02ca75e"
+      "hash": "02ca75e8"
     },
     {
       "date": "2026-04-29",
       "type": "Changed",
       "title": "Music dimensions: classic diagram, bubble labels, side chart",
-      "hash": "a5398c7"
+      "hash": "a5398c7f"
     },
     {
       "date": "2026-04-29",
       "type": "Changed",
       "title": "Restore Music dimensions as concentric ring diagram",
-      "hash": "bde8bcd"
+      "hash": "bde8bcd9"
     },
     {
       "date": "2026-04-29",
       "type": "Changed",
       "title": "Polish Music dimensions UI; rename section to Music",
-      "hash": "7c9a0a6"
+      "hash": "7c9a0a6c"
     },
     {
       "date": "2026-04-29",
       "type": "Added",
       "title": "Remove Workspace tab; add DP Music dimensions chart to Study Tools",
-      "hash": "c7c92b6"
+      "hash": "c7c92b64"
     },
     {
       "date": "2026-04-29",
       "type": "Added",
       "title": "Add Workspace panel; release-admin dev platform sync; fix owner release UI",
-      "hash": "de6cab8"
+      "hash": "de6cab8c"
     },
     {
       "date": "2026-04-28",
       "type": "Fixed",
       "title": "Fix mobile login width overflow; center settings tabs on wrap",
-      "hash": "681987f"
+      "hash": "681987fb"
     },
     {
       "date": "2026-04-27",
       "type": "Removed",
       "title": "Mobile dashboard: task list visible, remove See all and bulk Select",
-      "hash": "158798a"
+      "hash": "158798aa"
     },
     {
       "date": "2026-04-27",
       "type": "Changed",
       "title": "Mega-spec polish: logo vars, splash accent, Pomo pill, mobile UI",
-      "hash": "f72c19e"
+      "hash": "f72c19e3"
     },
     {
       "date": "2026-04-27",
       "type": "Fixed",
       "title": "Remove debug nav instrumentation after mobile Canvas fix verified",
-      "hash": "b75d0ac"
+      "hash": "b75d0ac8"
     },
     {
       "date": "2026-04-27",
       "type": "Changed",
       "title": "Hide inactive Canvas/Toolbox panels; close Canvas sheet on nav",
-      "hash": "4138704"
+      "hash": "41387045"
     },
     {
       "date": "2026-04-27",
       "type": "Fixed",
       "title": "Fix mobile layout for Canvas, study tools, and dashboard tasks",
-      "hash": "4c8a5d2"
+      "hash": "4c8a5d26"
     },
     {
       "date": "2026-04-26",
       "type": "Removed",
       "title": "Groq-only proxy; remove engine UI; Style row beside Flux AI title",
-      "hash": "61a957e"
+      "hash": "61a957e3"
     },
     {
       "date": "2026-04-26",
       "type": "Changed",
       "title": "Mention OpenRouter/DeepSeek for second AI engine",
-      "hash": "293a6f8"
+      "hash": "293a6f83"
     },
     {
       "date": "2026-04-26",
       "type": "Changed",
       "title": "Ai-proxy: OpenRouter headers + backend defaults; document Gemini/OpenRouter/DeepSeek",
-      "hash": "77a6952"
+      "hash": "77a69523"
     },
     {
       "date": "2026-04-26",
       "type": "Changed",
       "title": "Multi-provider Flux AI: Groq + official Anthropic Claude via ai-proxy",
-      "hash": "3f694f9"
+      "hash": "3f694f9b"
     },
     {
       "date": "2026-04-26",
       "type": "Removed",
       "title": "Remove Canvas layout debug ingest; avoid clearing canvas overflow-y in split layout",
-      "hash": "1551903"
+      "hash": "15519030"
     },
     {
       "date": "2026-04-26",
       "type": "Changed",
       "title": "Force Canvas panel overflow hidden (important)",
-      "hash": "48d3f5e"
+      "hash": "48d3f5ef"
     },
     {
       "date": "2026-04-26",
       "type": "Fixed",
       "title": "Canvas layout: beat .panel overflow-y with !important, fix grid row min height",
-      "hash": "b09277b"
+      "hash": "b09277b3"
     },
     {
       "date": "2026-04-26",
       "type": "Fixed",
       "title": "Fix Canvas panel layout overflow after connect (flex min-height chain)",
-      "hash": "88705ce"
+      "hash": "88705ce1"
     },
     {
       "date": "2026-04-26",
       "type": "Added",
       "title": "Add Canvas API mini-browser panel with AI context and hardened proxy",
-      "hash": "7780fd9"
+      "hash": "7780fd99"
     },
     {
       "date": "2026-04-26",
       "type": "Changed",
       "title": "Echo CORS origins for AI proxy; simplify study toolbox UI",
-      "hash": "677c3b5"
+      "hash": "677c3b5c"
     },
     {
       "date": "2026-04-26",
       "type": "Fixed",
       "title": "Fix history map Ask Flux: system messages, JSON mode, robust parse",
-      "hash": "d0ed85c"
+      "hash": "d0ed85c9"
     },
     {
       "date": "2026-04-26",
       "type": "Changed",
       "title": "CORS for Pages deploys, history map AI hardening, larger periodic type",
-      "hash": "641691c"
+      "hash": "641691c6"
     },
     {
       "date": "2026-04-25",
       "type": "Changed",
       "title": "Persist liquid glass across sign-out and cloud sync",
-      "hash": "9f00d7e"
+      "hash": "9f00d7eb"
     },
     {
       "date": "2026-04-25",
       "type": "Fixed",
       "title": "Billing entitlements, Edge functions, scroll perf fixes",
-      "hash": "4fd21f5"
+      "hash": "4fd21f54"
     },
     {
       "date": "2026-04-25",
       "type": "Added",
       "title": "CARTO dark basemap for dark themes, Positron for light",
-      "hash": "35d320e"
+      "hash": "35d320e7"
     },
     {
       "date": "2026-04-25",
       "type": "Fixed",
       "title": "Stash #periodic before clearing tool body on reopen",
-      "hash": "a49b5fc"
+      "hash": "a49b5fce"
     },
     {
       "date": "2026-04-25",
       "type": "Changed",
       "title": "Persist personalization across migrations; study tools by-class view",
-      "hash": "3822ca7"
+      "hash": "3822ca71"
     },
     {
       "date": "2026-04-25",
       "type": "Changed",
       "title": "Style periodic table cells with slight corner radius",
-      "hash": "cfa68f9"
+      "hash": "cfa68f94"
     },
     {
       "date": "2026-04-25",
       "type": "Fixed",
       "title": "Fix inactive study tools panel overlapping other tabs",
-      "hash": "5986380"
+      "hash": "5986380d"
     },
     {
       "date": "2026-04-25",
       "type": "Changed",
       "title": "Restore Study tools panel (#toolbox) and in-panel navigation",
-      "hash": "18c7c18"
+      "hash": "18c7c182"
     },
     {
       "date": "2026-04-25",
       "type": "Performance",
       "title": "Perf defaults: snappy on, glass off on desktop; strip main blur",
-      "hash": "a592fc4"
+      "hash": "a592fc43"
     },
     {
       "date": "2026-04-25",
       "type": "Fixed",
       "title": "Remove study tools panel, modal bridge, and scroll perf fixes",
-      "hash": "49cfa04"
+      "hash": "49cfa04c"
     },
     {
       "date": "2026-04-25",
       "type": "Fixed",
       "title": "Remove toolbox sticky header bar to fix clipped content",
-      "hash": "1090895"
+      "hash": "1090895f"
     },
     {
       "date": "2026-04-25",
       "type": "Added",
       "title": "Add payment feature flags, tester mode, and owner Testers tab",
-      "hash": "8a1df4b"
+      "hash": "8a1df4bc"
     },
     {
       "date": "2026-04-25",
       "type": "Changed",
       "title": "Study Tools unified panel, Flux AI panel CSS, smoother task hovers",
-      "hash": "cccc23d"
+      "hash": "cccc23d9"
     },
     {
       "date": "2026-04-24",
       "type": "Changed",
       "title": "Periodic table: force square element tiles and sharp 90° corners",
-      "hash": "7668a6d"
+      "hash": "7668a6d0"
     },
     {
       "date": "2026-04-24",
       "type": "Changed",
       "title": "World history map (Leaflet + OSM), periodic table detail UX, fluxAiSimple",
-      "hash": "5d19da8"
+      "hash": "5d19da8b"
     },
     {
       "date": "2026-04-24",
       "type": "Fixed",
       "title": "Claude-style Flux AI, nav fixes, dashboard and periodic tweaks",
-      "hash": "1463056"
+      "hash": "14630562"
     },
     {
       "date": "2026-04-24",
       "type": "Added",
       "title": "Full mobile UI rebuild + GCal push + references + polish",
-      "hash": "c199f1e"
+      "hash": "c199f1ef"
     },
     {
       "date": "2026-04-24",
       "type": "Fixed",
       "title": "Regenerate 192/512 icons from new lemniscate mark",
-      "hash": "1a165b9"
+      "hash": "1a165b91"
     },
     {
       "date": "2026-04-24",
       "type": "Housekeeping",
       "title": "Square cells with clean rounded corners",
-      "hash": "4e10616"
+      "hash": "4e10616f"
     },
     {
       "date": "2026-04-24",
       "type": "Housekeeping",
       "title": "Swap primary logo to PNG mark",
-      "hash": "81a6410"
+      "hash": "81a64106"
     },
     {
       "date": "2026-04-24",
       "type": "Added",
       "title": "Staged rollout gate + liquid-glass default + polish",
-      "hash": "3db0544"
+      "hash": "3db05440"
     },
     {
       "date": "2026-04-23",
       "type": "Housekeeping",
       "title": "Make greeting gradient follow accent color",
-      "hash": "8d3430d"
+      "hash": "8d3430d8"
     },
     {
       "date": "2026-04-23",
       "type": "Housekeeping",
       "title": "Swap in v5 logo, keep tight icon-fill treatment",
-      "hash": "a97a7d0"
+      "hash": "a97a7d0f"
     },
     {
       "date": "2026-04-23",
       "type": "Added",
       "title": "AI-powered Spanish/French conjugation — any verb, all tenses",
-      "hash": "96cff42"
+      "hash": "96cff42e"
     },
     {
       "date": "2026-04-23",
       "type": "Fixed",
       "title": "Periodic table edge glow clipping, tighter corners, swap-btn centering",
-      "hash": "b1c81c2"
+      "hash": "b1c81c26"
     },
     {
       "date": "2026-04-23",
       "type": "Fixed",
       "title": "Tight app-icon SVG, move periodic into Toolbox, PT UX fixes",
-      "hash": "05a35ff"
+      "hash": "05a35ff0"
     },
     {
       "date": "2026-04-23",
       "type": "Added",
       "title": "V2 logo + mobile calendar dots + task/topbar mobile fixes",
-      "hash": "28ebd71"
+      "hash": "28ebd71b"
     },
     {
       "date": "2026-04-23",
       "type": "Fixed",
       "title": "Tighten login screen layout on phone viewports",
-      "hash": "4cd636e"
+      "hash": "4cd636ed"
     },
     {
       "date": "2026-04-23",
       "type": "Added",
       "title": "Toolbox hub with 18 cross-subject study tools",
-      "hash": "fac45a8"
+      "hash": "fac45a83"
     },
     {
       "date": "2026-04-22",
       "type": "Added",
       "title": "Interactive periodic table panel",
-      "hash": "ac34789"
+      "hash": "ac34789d"
     },
     {
       "date": "2026-04-22",
       "type": "Fixed",
       "title": "\"due in 12h\" panic banner now clears reliably",
-      "hash": "283664b"
+      "hash": "283664b4"
     },
     {
       "date": "2026-04-20",
       "type": "Removed",
       "title": "Drop Capacitor; always open planner to dashboard",
-      "hash": "3b28601"
+      "hash": "3b286014"
     },
     {
       "date": "2026-04-20",
       "type": "Changed",
       "title": "Capacitor + mobile-app foundation",
-      "hash": "5afe140"
+      "hash": "5afe140b"
     },
     {
       "date": "2026-04-20",
       "type": "Removed",
       "title": "Remove sidebar mini-stats strip",
-      "hash": "ea7df9d"
+      "hash": "ea7df9d0"
     },
     {
       "date": "2026-04-19",
       "type": "Fixed",
       "title": "Fix Ask Flux button on task cards — was calling wrong function",
-      "hash": "9761604"
+      "hash": "9761604c"
     },
     {
       "date": "2026-04-19",
       "type": "Removed",
       "title": "Remove fluxAiScratch editable output panel from AI tab",
-      "hash": "ee2449d"
+      "hash": "ee2449d1"
     },
     {
       "date": "2026-04-19",
       "type": "Removed",
       "title": "Move Ask Flux button to task card actions, remove from modals",
-      "hash": "b0f7e8c"
+      "hash": "b0f7e8c9"
     },
     {
       "date": "2026-04-19",
       "type": "Fixed",
       "title": "Fix bugs: nav blank screen, bulk mode toggle, achievement keys, AI counter, SW cache, CSS vars, missing UI elements",
-      "hash": "e381791"
+      "hash": "e3817911"
     },
     {
       "date": "2026-04-19",
       "type": "Added",
       "title": "Add Flux Pro premium feature layer",
-      "hash": "8cd2008"
+      "hash": "8cd20080"
     },
     {
       "date": "2026-04-18",
       "type": "Changed",
       "title": "Show only one notice at a time in topbar sub-bar",
-      "hash": "851d885"
+      "hash": "851d885c"
     },
     {
       "date": "2026-04-18",
       "type": "Changed",
       "title": "Overhaul Flux AI: Claude-like personality, reasoning, and rich markdown",
-      "hash": "2f0f5b7"
+      "hash": "2f0f5b71"
     },
     {
       "date": "2026-04-18",
       "type": "Changed",
       "title": "Enable clickable links in Flux AI responses",
-      "hash": "be12272"
+      "hash": "be122726"
     },
     {
       "date": "2026-04-18",
       "type": "Removed",
       "title": "Move notices below topbar, remove ⌘ cmd palette button",
-      "hash": "fa3aed3"
+      "hash": "fa3aed33"
     },
     {
       "date": "2026-04-18",
       "type": "Removed",
       "title": "Remove effort tracking prompt after task completion",
-      "hash": "e54f5ad"
+      "hash": "e54f5ad8"
     },
     {
       "date": "2026-04-18",
       "type": "Added",
       "title": "Add 16 new features: shortcuts, smart UX, recurring tasks, AI integration",
-      "hash": "338aeff"
+      "hash": "338aeffc"
     },
     {
       "date": "2026-04-12",
       "type": "Fixed",
       "title": "Fix service worker: skip cache.put for non-http(s) schemes",
-      "hash": "9e7ae8c"
+      "hash": "9e7ae8c4"
     },
     {
       "date": "2026-04-12",
       "type": "Changed",
       "title": "Topbar notice strip; Flux AI layout and composer polish",
-      "hash": "da71ff4"
+      "hash": "da71ff4f"
     },
     {
       "date": "2026-04-12",
       "type": "Removed",
       "title": "Remove sticky focus bar and next-best task card from dashboard",
-      "hash": "b022a49"
+      "hash": "b022a496"
     },
     {
       "date": "2026-04-12",
       "type": "Changed",
       "title": "Align Flux wordmark SVG: laser row, node stacking, typography",
-      "hash": "2ac7061"
+      "hash": "2ac70614"
     },
     {
       "date": "2026-04-11",
       "type": "Removed",
       "title": "Remove Flux AI scheduling demo block from sign-in left column",
-      "hash": "eb53e12"
+      "hash": "eb53e121"
     },
     {
       "date": "2026-04-11",
       "type": "Fixed",
       "title": "Fix login shell flash and SVG logos; expand sign-in with rotating feature bar",
-      "hash": "ece9f87"
+      "hash": "ece9f874"
     },
     {
       "date": "2026-04-11",
       "type": "Changed",
       "title": "Restore Flux wordmark + laser in UI; keep SVG for favicon and previews",
-      "hash": "7aa9f07"
+      "hash": "7aa9f077"
     },
     {
       "date": "2026-04-11",
       "type": "Changed",
       "title": "Unified logos, AI modes, login showcase; trim tasks UI",
-      "hash": "c20c5a3"
+      "hash": "c20c5a33"
     },
     {
       "date": "2026-04-06",
       "type": "Added",
       "title": "Fix onboarding visibility; add questionnaire redo in Settings",
-      "hash": "d5db558"
+      "hash": "d5db5583"
     },
     {
       "date": "2026-04-05",
       "type": "Changed",
       "title": "Canvas full import hub, logo full-bleed and larger type, manifest SVG icon",
-      "hash": "0c26a15"
+      "hash": "0c26a154"
     },
     {
       "date": "2026-04-04",
       "type": "Changed",
       "title": "Dashboard class schedule controls, liquid glass off by default, assets and Canvas proxy",
-      "hash": "8612c03"
+      "hash": "8612c03f"
     },
     {
       "date": "2026-04-03",
       "type": "Changed",
       "title": "Google OAuth via popup; postMessage to opener tab",
-      "hash": "417bfeb"
+      "hash": "417bfebc"
     },
     {
       "date": "2026-04-03",
       "type": "Changed",
       "title": "Restore inline wordmark logos; use brand SVG in Settings about card.",
-      "hash": "237a46d"
+      "hash": "237a46d7"
     },
     {
       "date": "2026-04-03",
       "type": "Added",
       "title": "Add Flux AI Orchestrator: tools, memory, decision context, UI hooks.",
-      "hash": "029ac72"
+      "hash": "029ac72c"
     },
     {
       "date": "2026-04-03",
       "type": "Added",
       "title": "Add Flux Planner brand SVG logo across login, nav, and splash.",
-      "hash": "f699e33"
+      "hash": "f699e331"
     },
     {
       "date": "2026-04-03",
       "type": "Changed",
       "title": "Login polish: safe-area layout, Flux AI copy, feature demo rotator",
-      "hash": "3493e8a"
+      "hash": "3493e8a1"
     },
     {
       "date": "2026-04-03",
       "type": "Removed",
       "title": "Multi-select academic program, remove Earned Badges card; styling and personalization updates",
-      "hash": "e58e0d6"
+      "hash": "e58e0d61"
     },
     {
       "date": "2026-04-02",
       "type": "Fixed",
       "title": "Flux logo beam from left node, clearer PLANNER, splash laser UX",
-      "hash": "fb513a4"
+      "hash": "fb513a43"
     },
     {
       "date": "2026-04-02",
       "type": "Added",
       "title": "Flux wordmark + beam logo and laser splash loader",
-      "hash": "6225000"
+      "hash": "62250001"
     },
     {
       "date": "2026-04-02",
       "type": "Housekeeping",
       "title": "Rename Flux Agent to Flux AI in UI and prompts",
-      "hash": "d37df04"
+      "hash": "d37df042"
     },
     {
       "date": "2026-04-02",
       "type": "Housekeeping",
       "title": "Remove dashboard pulse and focus blocks, simplify section order",
-      "hash": "b1b61e1"
+      "hash": "b1b61e13"
     },
     {
       "date": "2026-04-02",
       "type": "Housekeeping",
       "title": "Remove Flux100 shell and heavy dashboard intel blocks",
-      "hash": "3db75b6"
+      "hash": "3db75b63"
     },
     {
       "date": "2026-04-02",
       "type": "Housekeeping",
       "title": "Visual premium layer (ambient, glass, motion, cursor sheen)",
-      "hash": "fa019e0"
+      "hash": "fa019e07"
     },
     {
       "date": "2026-04-02",
       "type": "Added",
       "title": "Flux100 enhancements pack (intel hub, fuzzy search, OS shell)",
-      "hash": "ac39120"
+      "hash": "ac39120a"
     },
     {
       "date": "2026-04-02",
       "type": "Added",
       "title": "Personalization mega (DNA scheduling, density, mood tint, patterns)",
-      "hash": "029801f"
+      "hash": "029801f6"
     },
     {
       "date": "2026-04-02",
       "type": "Added",
       "title": "Simplify pulse hero and Flux gradient greeting",
-      "hash": "27ce0e6"
+      "hash": "27ce0e62"
     },
     {
       "date": "2026-04-02",
       "type": "Housekeeping",
       "title": "Remove Flux Agent corner chip and FAB + badge",
-      "hash": "a6b8df6"
+      "hash": "a6b8df6e"
     },
     {
       "date": "2026-04-02",
       "type": "Housekeeping",
       "title": "Remove cursor glow (splash + app)",
-      "hash": "66c6d77"
+      "hash": "66c6d770"
     },
     {
       "date": "2026-04-02",
       "type": "Added",
       "title": "Flux Agent + FAB (✦+), AI-first menu, planner-wide agent copy",
-      "hash": "ef80ee3"
+      "hash": "ef80ee33"
     },
     {
       "date": "2026-04-02",
       "type": "Fixed",
       "title": "Splash cursor glow stacking; app-wide glow + Flux AI chip; longer splash",
-      "hash": "425a38e"
+      "hash": "425a38ec"
     },
     {
       "date": "2026-04-02",
       "type": "Added",
       "title": "Center logo, cursor glow, Flux AI corner",
-      "hash": "4e3d4ae"
+      "hash": "4e3d4ae5"
     },
     {
       "date": "2026-04-02",
       "type": "Added",
       "title": "Use full sidebar Flux SVG on loader",
-      "hash": "dd7b4e2"
+      "hash": "dd7b4e2c"
     },
     {
       "date": "2026-04-02",
       "type": "Fixed",
       "title": "Sync real onboarded flag; remove weekly card; refresh splash",
-      "hash": "5d628da"
+      "hash": "5d628dab"
     },
     {
       "date": "2026-04-02",
       "type": "Fixed",
       "title": "Fresh HTML/docs + SW update checks (navigate + no-store)",
-      "hash": "d49a5e9"
+      "hash": "d49a5e9f"
     },
     {
       "date": "2026-04-02",
       "type": "Fixed",
       "title": "Dynamic base href + relative assets (any repo path/casing)",
-      "hash": "0bf8dbd"
+      "hash": "0bf8dbdf"
     },
     {
       "date": "2026-04-02",
       "type": "Fixed",
       "title": "Root-relative /Fluxplanner/ URLs for CSS/JS/icons; favicon; SW v29",
-      "hash": "c02555f"
+      "hash": "c02555fe"
     },
     {
       "date": "2026-04-01",
       "type": "Fixed",
       "title": "Inject base href so CSS loads on GitHub Pages project URLs",
-      "hash": "f22763e"
+      "hash": "f22763ed"
     },
     {
       "date": "2026-04-01",
       "type": "Fixed",
       "title": "Force SW refresh (v27) for stale Arc/cache clients",
-      "hash": "24b1760"
+      "hash": "24b17609"
     },
     {
       "date": "2026-03-31",
       "type": "Fixed",
       "title": "Resolve service worker URL from page location (fixes SW 404)",
-      "hash": "8e87b27"
+      "hash": "8e87b27c"
     },
     {
       "date": "2026-03-31",
       "type": "Added",
       "title": "Reading filter, iCal alarms, timer presets, mood journal, data tools",
-      "hash": "13e3cd5"
+      "hash": "13e3cd55"
     },
     {
       "date": "2026-03-31",
       "type": "Changed",
       "title": "Roadmap catalog + tasks: snooze, bulk, repeat weekly, waiting on",
-      "hash": "bdd23ef"
+      "hash": "bdd23ef3"
     },
     {
       "date": "2026-03-31",
       "type": "Accessibility",
       "title": "Feature batch: notifications, offline banner, weekly review, PWA, AI, a11y",
-      "hash": "7fd7160"
+      "hash": "7fd71608"
     },
     {
       "date": "2026-03-31",
       "type": "Fixed",
       "title": "Onboarding questionnaire step, tour fixes for guests, and perf tweaks",
-      "hash": "2421da8"
+      "hash": "2421da8e"
     },
     {
       "date": "2026-03-31",
       "type": "Removed",
       "title": "Remove Workload view toggle and dead code",
-      "hash": "6e47675"
+      "hash": "6e47675e"
     },
     {
       "date": "2026-03-31",
       "type": "Changed",
       "title": "Preset accents sync glass hue; accent-tinted surfaces",
-      "hash": "987fefb"
+      "hash": "987fefb5"
     },
     {
       "date": "2026-03-31",
       "type": "Added",
       "title": "New short splash (aurora + glass ring), light theme token + V6 fixes",
-      "hash": "6ac0386"
+      "hash": "6ac0386b"
     },
     {
       "date": "2026-03-31",
       "type": "Removed",
       "title": "Calendar legend removed, sidebar liquid-glass polish, light-theme rail",
-      "hash": "7160aea"
+      "hash": "7160aea7"
     },
     {
       "date": "2026-03-31",
       "type": "Added",
       "title": "Remove Next chip; labeled New task button",
-      "hash": "52d663f"
+      "hash": "52d663fa"
     },
     {
       "date": "2026-03-31",
       "type": "Added",
       "title": "Next-up in top bar; new task modal; remove moon button",
-      "hash": "617f7eb"
+      "hash": "617f7eb8"
     },
     {
       "date": "2026-03-30",
       "type": "Changed",
       "title": "Developer first in Data & info; subtle credits (meta, login, PWA, privacy)",
-      "hash": "5d02ab7"
+      "hash": "5d02ab7b"
     },
     {
       "date": "2026-03-30",
       "type": "Changed",
       "title": "Topbar pill + accent headers; grades cumulative GPA and sync",
-      "hash": "aad9627"
+      "hash": "aad9627b"
     },
     {
       "date": "2026-03-29",
       "type": "Fixed",
       "title": "Fix my schedule uses short prompt + auto-send (context stays in system)",
-      "hash": "daf8340"
+      "hash": "daf83400"
     },
     {
       "date": "2026-03-29",
       "type": "Changed",
       "title": "Replace last-7-days completions with next-week workload chart",
-      "hash": "fd3fd07"
+      "hash": "fd3fd072"
     },
     {
       "date": "2026-03-29",
       "type": "Added",
       "title": "Add weekly insight, AI schedule optimizer, task hints, backlog catalog",
-      "hash": "7b905ac"
+      "hash": "7b905acf"
     },
     {
       "date": "2026-03-29",
       "type": "Changed",
       "title": "Owner Mega map: full mega-prompt checklist, Supabase links, compliance export",
-      "hash": "e965630"
+      "hash": "e9656300"
     },
     {
       "date": "2026-03-29",
       "type": "Changed",
       "title": "Platform usage tab — anonymized aggregates, completion chart, RLS note",
-      "hash": "9f1f420"
+      "hash": "9f1f4206"
     },
     {
       "date": "2026-03-29",
       "type": "Changed",
       "title": "Backlog pass: completedAt backfill, sync tooltips, tour replay, Escape unify, search debounce",
-      "hash": "4c42346"
+      "hash": "4c42346a"
     },
     {
       "date": "2026-03-29",
       "type": "Accessibility",
       "title": "Week strip, smart-suggestion why, calmer banners, task rows; keyboard ⌘⇧K search",
-      "hash": "999ed0c"
+      "hash": "999ed0c3"
     },
     {
       "date": "2026-03-29",
       "type": "Changed",
       "title": "Full questionnaire init, profile program, app init + tour for guests",
-      "hash": "68b5901"
+      "hash": "68b59015"
     },
     {
       "date": "2026-03-29",
       "type": "Changed",
       "title": "Short splash: bar loader with gradient effects; reduced-motion path",
-      "hash": "3f473a2"
+      "hash": "3f473a2c"
     },
     {
       "date": "2026-03-29",
       "type": "Removed",
       "title": "Remove glass shine animations; improve mobile safe areas and layout",
-      "hash": "3b14aba"
+      "hash": "3b14aba4"
     },
     {
       "date": "2026-03-29",
       "type": "Changed",
       "title": "Accent-tinted glass shine and light animations from user color",
-      "hash": "59c5cc3"
+      "hash": "59c5cc34"
     },
     {
       "date": "2026-03-29",
       "type": "Changed",
       "title": "Liquid glass UI: tokens, blur, and glass surfaces app-wide",
-      "hash": "81b3d4e"
+      "hash": "81b3d4eb"
     },
     {
       "date": "2026-03-29",
       "type": "Changed",
       "title": "Improve FAB quick-actions layout: vertical stack, equal width",
-      "hash": "24921a3"
+      "hash": "24921a3f"
     },
     {
       "date": "2026-03-29",
       "type": "Changed",
       "title": "Revert sidebar and drawer logo to original radar Flux mark",
-      "hash": "5686fbb"
+      "hash": "5686fbbf"
     },
     {
       "date": "2026-03-29",
       "type": "Changed",
       "title": "Playful planner pad (binding, list, check, sparkle)",
-      "hash": "283d4a6"
+      "hash": "283d4a65"
     },
     {
       "date": "2026-03-29",
       "type": "Changed",
       "title": "Redesign Flux sidebar logo (squircle, bolt, gradients)",
-      "hash": "faec6b3"
+      "hash": "faec6b32"
     },
     {
       "date": "2026-03-29",
       "type": "Removed",
       "title": "Move panel titles to topbar with accent color; remove duplicate h1s",
-      "hash": "e77fd2a"
+      "hash": "e77fd2ad"
     },
     {
       "date": "2026-03-29",
       "type": "Changed",
       "title": "Apply Flux UI (dashboard v2 style) across all main panels",
-      "hash": "1a674ab"
+      "hash": "1a674ab2"
     },
     {
       "date": "2026-03-29",
       "type": "Changed",
       "title": "Dashboard v2 layout, school scope on tasks, and task list updates",
-      "hash": "d9a55f1"
+      "hash": "d9a55f17"
     },
     {
       "date": "2026-03-29",
       "type": "Fixed",
       "title": "Move cycle/weekly schedule card below month grid",
-      "hash": "196d8e9"
+      "hash": "196d8e9f"
     },
     {
       "date": "2026-03-29",
       "type": "Added",
       "title": "Cycle day labels (A/B/…) and weekly repeating activities",
-      "hash": "6892951"
+      "hash": "6892951a"
     },
     {
       "date": "2026-03-29",
       "type": "Added",
       "title": "Full-width month grid, integrated day panel, sidebar below",
-      "hash": "d00af09"
+      "hash": "d00af095"
     },
     {
       "date": "2026-03-29",
       "type": "Added",
       "title": "Cinematic splash for first-time/guest; simplify returning-user loader",
-      "hash": "3218f39"
+      "hash": "3218f39d"
     },
     {
       "date": "2026-03-29",
       "type": "Changed",
       "title": "UI polish, EC college chat, full planner AI context, owner suite",
-      "hash": "29b939f"
+      "hash": "29b939fa"
     },
     {
       "date": "2026-03-28",
       "type": "Changed",
       "title": "Tighten sidebar nav: smaller padding, font, icons (main area unchanged)",
-      "hash": "4b6283b"
+      "hash": "4b6283b2"
     },
     {
       "date": "2026-03-28",
       "type": "Fixed",
       "title": "Fix FAB blocking clicks: pointer-events on container vs trigger",
-      "hash": "083304d"
+      "hash": "083304d2"
     },
     {
       "date": "2026-03-28",
       "type": "Fixed",
       "title": "Fix tour showing for returning users + increase all UI sizes",
-      "hash": "6ce3fa4"
+      "hash": "6ce3fa49"
     },
     {
       "date": "2026-03-28",
       "type": "Changed",
       "title": "Redesign login page: interactive features, dot-grid pattern, glassmorphism",
-      "hash": "dc3da9c"
+      "hash": "dc3da9c2"
     },
     {
       "date": "2026-03-28",
       "type": "Fixed",
       "title": "Fix calendar days having unequal widths",
-      "hash": "b3e4fc5"
+      "hash": "b3e4fc53"
     },
     {
       "date": "2026-03-28",
       "type": "Fixed",
       "title": "Fix extracurriculars not persisting across login sessions",
-      "hash": "9c816da"
+      "hash": "9c816da4"
     },
     {
       "date": "2026-03-28",
       "type": "Fixed",
       "title": "Fix FAB menu buttons snapping instead of animating",
-      "hash": "2c9ab3d"
+      "hash": "2c9ab3d0"
     },
     {
       "date": "2026-03-28",
       "type": "Fixed",
       "title": "Fix AI chat leaking empty actions block at end of replies",
-      "hash": "36e1c74"
+      "hash": "36e1c74f"
     },
     {
       "date": "2026-03-28",
       "type": "Added",
       "title": "Add fun microinteractions and animations throughout the app",
-      "hash": "cb220ae"
+      "hash": "cb220aef"
     },
     {
       "date": "2026-03-28",
       "type": "Changed",
       "title": "V6 planner-first premium polish pass",
-      "hash": "48907a0"
+      "hash": "48907a04"
     },
     {
       "date": "2026-03-28",
       "type": "Fixed",
       "title": "Fix list view inconsistency when switching from board/timeline",
-      "hash": "3312927"
+      "hash": "33129276"
     },
     {
       "date": "2026-03-28",
       "type": "Added",
       "title": "Add edit support for extracurricular activities",
-      "hash": "806b800"
+      "hash": "806b8006"
     },
     {
       "date": "2026-03-28",
       "type": "Changed",
       "title": "Allow multi-select types for extracurricular activities",
-      "hash": "e89fab6"
+      "hash": "e89fab6d"
     },
     {
       "date": "2026-03-28",
       "type": "Changed",
       "title": "V5 premium polish: density, hierarchy, motion, accessibility",
-      "hash": "132f8b6"
+      "hash": "132f8b62"
     },
     {
       "date": "2026-03-28",
       "type": "Changed",
       "title": "Replace Goals/Habits with Extracurriculars tab + AI advisor",
-      "hash": "a09d73e"
+      "hash": "a09d73eb"
     },
     {
       "date": "2026-03-28",
       "type": "Changed",
       "title": "Reorganize dashboard into 5 clear sections with professional layout",
-      "hash": "0207a5b"
+      "hash": "0207a5b4"
     },
     {
       "date": "2026-03-28",
       "type": "Added",
       "title": "Add cyan (#00bfff) as first swatch and default active accent color",
-      "hash": "6d2d99b"
+      "hash": "6d2d99b2"
     },
     {
       "date": "2026-03-28",
       "type": "Changed",
       "title": "Rebuild FAB from scratch with CSS-only centering and animations",
-      "hash": "0a6e6cc"
+      "hash": "0a6e6ccf"
     },
     {
       "date": "2026-03-28",
       "type": "Changed",
       "title": "Bump service worker cache to v6 to flush stale app.js",
-      "hash": "dac4a99"
+      "hash": "dac4a994"
     },
     {
       "date": "2026-03-28",
       "type": "Fixed",
       "title": "Fix _recoveryMode temporal dead zone — use var for hoisting",
-      "hash": "7eeae60"
+      "hash": "7eeae607"
     },
     {
       "date": "2026-03-28",
       "type": "Changed",
       "title": "Flux V4: dependency system, recovery mode, achievements, momentum zones, UI polish",
-      "hash": "e0b5749"
+      "hash": "e0b57495"
     },
     {
       "date": "2026-03-28",
       "type": "Fixed",
       "title": "Fix accent color reset on refresh and FAB button centering",
-      "hash": "fbdce78"
+      "hash": "fbdce784"
     },
     {
       "date": "2026-03-28",
       "type": "Added",
       "title": "Add favicon link to fix 404 on /favicon.ico",
-      "hash": "24ca556"
+      "hash": "24ca5566"
     },
     {
       "date": "2026-03-28",
       "type": "Fixed",
       "title": "Fix IIFE scope trapping global functions + auth session persistence",
-      "hash": "e35bd1d"
+      "hash": "e35bd1d8"
     },
     {
       "date": "2026-03-28",
       "type": "Fixed",
       "title": "Fix Google OAuth redirect using dynamic base URL",
-      "hash": "7697cf1"
+      "hash": "7697cf1c"
     },
     {
       "date": "2026-03-19",
       "type": "Removed",
       "title": "Remove icons from root",
-      "hash": "7e8f4be"
+      "hash": "7e8f4bea"
     },
     {
       "date": "2026-03-19",
       "type": "Added",
       "title": "Add icons folder",
-      "hash": "245305a"
+      "hash": "245305a4"
     },
     {
       "date": "2026-03-18",
       "type": "Changed",
       "title": "Switch vision to groq llama-4",
-      "hash": "4d76c6c"
+      "hash": "4d76c6c6"
     }
   ]
 }
