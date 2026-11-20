@@ -274,7 +274,8 @@
     "public/js/flux-originkit-motion.js",
     "public/js/flux-changelog.js",
     "public/js/flux-platform-ui.js",
-    "public/js/flux-datepicker.js"
+    "public/js/flux-datepicker.js",
+    "public/js/flux-boards.js"
   ],
   "css": [
     "public/css/styles.css",
@@ -442,6 +443,7 @@
     "public/css/flux-datepicker.css",
     "public/css/flux-settings-shell.css",
     "public/css/flux-design-2026.css",
-    "public/css/flux-staff-2026.css"
+    "public/css/flux-staff-2026.css",
+    "public/css/flux-boards.css"
   ]
 }
