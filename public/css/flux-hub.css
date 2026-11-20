@@ -6,6 +6,22 @@
  * different documents: the planner and standalone product pages.
  * ───────────────────────────────────────────────────────────────────────── */
 
+/*
+ * Suite accent families
+ *
+ * Each Suite card sets --c1 (label, arrow) and --c2 (gradient end) in
+ * suite.html under .app--<slug>. Apps are grouped into four families so the
+ * grid reads as related tools, not nine random colours. A new app joins a
+ * family instead of inventing a tenth hue.
+ *
+ *   Sky    planner #00c2ff/#6a7dff · periodic #7fe3ff/#3b82f6 · tutor #7dd3fc/#6366f1
+ *   Mint   grapher #6ee7b7/#00c2ff · pixel #6ee7b7/#34d399
+ *   Violet composer #c4b5fd/#a78bfa · synara #c9a7ff/#7c4dff
+ *   Warm   calculator #fbbf24/#f97316 · flashcards #f9a8d4/#f472b6
+ *
+ * --c1 sits on the dark card (#0e1424-ish), so keep it at 4.5:1 or lighter.
+ */
+
 .fxhub {
   display: inline-flex;
   flex: 0 0 auto;
