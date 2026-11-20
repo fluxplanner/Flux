@@ -97,6 +97,8 @@
   .tips p { margin: 0 0 8px; }
   .tips ul { margin: 0; padding-left: 18px; }
   .tips li { margin: 3px 0; }
+  .tips-more summary { cursor: pointer; font-weight: 700; color: var(--text); margin: 8px 0 0; }
+  .tips-more[open] summary { margin-bottom: 4px; }
   kbd {
     display: inline-block; min-width: 1.6em; padding: 0 .35em;
     border: 1px solid var(--border2); border-bottom-width: 2px; border-radius: 5px;
@@ -149,6 +151,8 @@
     <aside class="tips">
       <h1>TI-84-style graphing calculator</h1>
       <p>Choose the Plus CE or Evo-style layout. Flux84 includes MathPrint, graphing, tables, statistics, finance, matrices and programs. It does not yet support every TI app or hardware feature.</p>
+      <details class="tips-more" id="calcTips" open>
+        <summary>Keyboard shortcuts and tips</summary>
       <h2>On a keyboard</h2>
       <ul>
         <li>Click the calculator, then type numbers and <kbd>+</kbd> <kbd>-</kbd> <kbd>*</kbd> <kbd>/</kbd> <kbd>^</kbd> <kbd>(</kbd> <kbd>)</kbd></li>
@@ -162,9 +166,15 @@
         <li>Everything you store stays in this browser, like the calculator's memory. <b>2nd mem</b> resets it.</li>
         <li>Short answers stay in ordinary decimal form, even in Sci or Eng mode. Exponents appear when the decimal would be long.</li>
       </ul>
+      </details>
     </aside>
   </main>
 
+  <script>
+  /* Above 900px the tips sit beside the calculator and pushed the page past one
+     screen; start them folded there. Narrow screens stack them below, open. */
+  if (window.matchMedia('(min-width: 900px)').matches) document.getElementById('calcTips').open = false;
+  </script>
   <!-- Plain script tags, not the app bundles: this page has to stand alone. -->
   <script src="public/js/flux-hub.js?v=68b4d34f"></script>
   <script src="public/js/flux-ti84-stats.js?v=fe6c2118"></script>
