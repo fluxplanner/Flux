@@ -425,7 +425,7 @@
             <div class="login-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
             <div class="login-feature-info">
               <div class="login-feature-name">Study tools <span class="lx-tag-new">NEW</span></div>
-              <div class="login-feature-desc">100+ tools across 16 subjects, sorted into units: a periodic table, equation balancer, formula sheets, a verb drill for French, German and Spanish, and a graphing calculator.</div>
+              <div class="login-feature-desc"><span data-flux-count="toolCount"></span> tools across <span data-flux-count="subjectCount"></span> subjects, sorted into units: a periodic table, equation balancer, formula sheets, a verb drill for French, German and Spanish, and a graphing calculator.</div>
             </div>
           </div>
           <div class="login-feature-card" data-color="59,130,246">
@@ -554,8 +554,8 @@
     <section class="login-scroll-section lx-section lx-stats-sec" aria-label="Flux by the numbers">
       <div class="lx-wrap">
         <div class="lx-statband">
-          <div class="lx-statcell"><b class="grad">16</b><span>study subjects</span></div>
-          <div class="lx-statcell"><b class="grad">100+</b><span>built-in study tools</span></div>
+          <div class="lx-statcell"><b class="grad" data-flux-count="subjectCount"></b><span>study subjects</span></div>
+          <div class="lx-statcell"><b class="grad" data-flux-count="toolCount"></b><span>built-in study tools</span></div>
           <div class="lx-statcell"><b class="grad">2-in-1</b><span>graphing and lab grapher</span></div>
           <div class="lx-statcell"><b class="grad">4</b><span>account types, student to admin</span></div>
         </div>
@@ -3023,7 +3023,7 @@
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.984821d2.js"></script>
 <script defer src="public/bundles/flux-core.dd335571.js"></script>
-<script defer src="public/bundles/flux-features.c450bbc0.js"></script>
+<script defer src="public/bundles/flux-features.6d3a2a4c.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->

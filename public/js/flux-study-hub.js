@@ -1839,7 +1839,29 @@
     /* Lets a shared tool tell which subject opened it — the formula sheet uses
        this to show only the relevant science instead of all three. */
     currentSubject: () => state.subject,
+    counts: studyCounts,
     helpers: { elements, elByN, massOf, shellFill, esc, subFmt } };
+
+  /* The marketing copy said "100+ tools", "16 subjects" by hand and drifted
+     every time a tool landed. Count what is really registered instead; the
+     same filter the subject stage uses, so a tool with no screen isn't sold. */
+  function studyCounts() {
+    let toolCount = 0;
+    Object.keys(registry).forEach((sid) => { toolCount += registry[sid].filter((t) => t && typeof t.render === 'function').length; });
+    const products = (window.FluxHub && window.FluxHub.PRODUCTS) || [];
+    return { toolCount, subjectCount: SUBJECTS.length, appCount: products.length };
+  }
+  /* Tools register from later modules, so fill on `load`, when they are all in.
+     DECISION: tools round down to the nearest ten with a "+", so the copy reads
+     the same between small additions and never overstates. */
+  window.addEventListener('load', () => {
+    const c = studyCounts();
+    document.querySelectorAll('[data-flux-count]').forEach((el) => {
+      const k = el.getAttribute('data-flux-count');
+      if (!(k in c) || !c[k]) return;
+      el.textContent = k === 'toolCount' && c[k] >= 20 ? Math.floor(c[k] / 10) * 10 + '+' : String(c[k]);
+    });
+  });
 
   document.addEventListener('DOMContentLoaded', () => { const tb = $('toolbox'); if (tb && tb.classList.contains('active')) renderHub(); });
 })();
