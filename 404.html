@@ -12,24 +12,50 @@
 -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com; frame-src 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Flux Planner</title>
+<title>Page not found · Flux</title>
+<link rel="icon" type="image/png" href="public/flux-planner-logo.png">
 <script>
-/* GitHub Pages: send any unknown path back to the app (same folder as index.html). */
+/* GitHub Pages serves this for every unknown path. Extensionless paths are
+   old app deep links (/Flux/calendar), so those still go to the planner.
+   DECISION: a missing *.html or asset is a real dead link and stays here, so
+   the reader sees why instead of landing in the app with no explanation. */
 (function(){
-  var path=location.pathname||'/';
-  var seg=path.split('/').filter(Boolean);
-  var base='/';
-  if(seg.length) base='/'+seg[0]+'/';
-  var target=base+'index.html'+location.search+location.hash;
-  location.replace(target);
+  var seg=(location.pathname||'/').split('/').filter(Boolean);
+  /* This page is served at the missing URL, so relative links would resolve
+     inside the dead folder. Anchor them at the site root (first segment). */
+  var b=document.createElement('base');b.href='/'+(seg.length>1?seg[0]+'/':'');document.head.appendChild(b);
+  if(/\.[a-z0-9]+$/i.test(seg[seg.length-1]||''))return;
+  location.replace('/'+(seg.length?seg[0]+'/':'')+'index.html'+location.search+location.hash);
 })();
 </script>
-<meta http-equiv="refresh" content="0;url=index.html">
+<style>
+:root{--bg:#0b0f1a;--text:#e8eaed;--text-2:#b6c2d9;--accent:#38bdf8;--line:rgba(255,255,255,.1)}
+@media (prefers-color-scheme:light){:root{--bg:#f7f8fb;--text:#0f172a;--text-2:#475569;--accent:#0369a1;--line:rgba(0,0,0,.1)}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+header a{color:var(--text);text-decoration:none;font-weight:700}
+main{flex:1;display:grid;place-items:center;padding:32px 16px;text-align:center}
+h1{font-size:1.6rem;margin:0 0 8px}
+p{color:var(--text-2);margin:0 0 20px;line-height:1.6}
+ul{list-style:none;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+li a{display:inline-block;padding:10px 16px;border:1px solid var(--line);border-radius:999px;color:var(--accent);text-decoration:none}
+li a:hover,li a:focus-visible{border-color:var(--accent)}
+</style>
 </head>
-<body style="margin:0;background:#0B0F1A;color:#e8eaed;font-family:system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;text-align:center;padding:1.5rem">
+<body>
+<header><a href="index.html">Flux</a></header>
+<main>
   <div>
-    <p style="margin:0 0 12px">Opening Flux…</p>
-    <p style="margin:0"><a href="index.html" style="color:#38bdf8">Open Flux Planner</a></p>
+    <h1>We couldn’t find that page</h1>
+    <p>The link may be old, or the address may have a typo.</p>
+    <ul>
+      <li><a href="index.html">Flux Planner</a></li>
+      <li><a href="suite.html">All Flux apps</a></li>
+      <li><a href="grapher.html">Grapher</a></li>
+      <li><a href="privacy.html">Privacy</a></li>
+    </ul>
   </div>
+</main>
 </body>
 </html>
