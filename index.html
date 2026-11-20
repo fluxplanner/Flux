@@ -100,7 +100,7 @@
   try{
     var root=document.querySelector('base');
     var base=root&&root.href?root.href:location.href;
-    var preview=new URL('public/flux-planner-logo.png', base).href;
+    var preview=new URL('public/og-card.png', base).href;
     var og=document.createElement('meta');og.setAttribute('property','og:image');og.setAttribute('content',preview);document.head.appendChild(og);
     var tw=document.createElement('meta');tw.setAttribute('name','twitter:image');tw.setAttribute('content',preview);document.head.appendChild(tw);
   }catch(e){}
