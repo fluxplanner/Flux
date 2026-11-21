@@ -104,7 +104,7 @@
     list.push({
       icon: '♻️', title: 'Restore from backup',
       desc: 'Bring everything back from a Flux backup file.',
-      run: function () { close(); if (!clickInput('importEncryptedFile')) { go('settings'); toast('Open Settings → Data to restore a backup.', 'info'); } },
+      run: function () { close(); if (!clickInput('importEncryptedFile')) { go('settings'); toast('Open Settings → Your data & info to restore a backup.', 'info'); } },
     });
 
     return list;

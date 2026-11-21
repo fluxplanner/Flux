@@ -427,6 +427,24 @@
     }
   }
 
+  /* The bar is placed from the tab's measured box, which moves when the web
+     font swaps in (labels widen) or the phone rotates. Without a re-measure it
+     sat off-centre under the active tab until the next tap. No .fx-tab-line
+     exists in this codebase; this bottom-bar indicator is the measured one. */
+  function remeasureNavIndicator() {
+    const ind = document.getElementById('fluxBnavIndicator');
+    const active = document.querySelector('.bottom-nav .bnav-item.active');
+    if (!ind || !active) return;
+    const prev = ind.style.transition;
+    ind.style.transition = 'none';
+    animateNavIndicator(active);
+    void ind.offsetWidth;
+    ind.style.transition = prev;
+  }
+  let remeasureTimer = 0;
+  window.addEventListener('resize', () => { clearTimeout(remeasureTimer); remeasureTimer = setTimeout(remeasureNavIndicator, 120); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasureNavIndicator).catch(() => {});
+
   function hexToUri(hex) {
     const h = (hex || '').replace('#', '');
     return '%23' + h;

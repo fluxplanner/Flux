@@ -2,6 +2,8 @@
   "vendor": [
     "public/js/flux-sb-config.js",
     "public/js/flux-supabase-vendor.js",
+    "public/js/core/flux-esc.js",
+    "public/js/core/flux-file-sniff.js",
     "public/js/core/dom-walker.js",
     "public/js/flux-anime-catalog.js",
     "public/js/flux-animations.js",
@@ -283,7 +285,8 @@
     "public/js/flux-originkit-motion.js",
     "public/js/flux-changelog.js",
     "public/js/flux-platform-ui.js",
-    "public/js/flux-datepicker.js"
+    "public/js/flux-datepicker.js",
+    "public/js/flux-boards.js"
   ],
   "css": [
     "public/css/styles.css",
@@ -449,7 +452,8 @@
     "public/css/flux-settings-shell.css",
     "public/css/flux-design-2026.css",
     "public/css/flux-staff-2026.css",
-    "public/css/flux-look-flat.css"
+    "public/css/flux-look-flat.css",
+    "public/css/flux-boards.css"
   ],
   "ownerVendor": [
     "public/js/flux-sb-config.js",

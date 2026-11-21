@@ -2,7 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<!--
+  GitHub Pages can't send headers, so the CSP rides in a meta tag. A meta CSP
+  ignores frame-ancestors; flux-frame-guard.js stays the clickjacking control.
+  TODO(csp): 'unsafe-inline' stays until inline <script> blocks and on*= handlers
+  move out — worst offenders are index.html (~386 on*= attributes) and the
+  inline boot scripts on every standalone page.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com; frame-src 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Privacy Policy · Flux Planner</title>
 <style>
@@ -47,7 +55,8 @@
     <li><strong>Gmail data</strong> — email subjects and senders only (read-only, only if you connect Gmail). <em>Gmail, Calendar, Classroom and Drive connections are currently switched off for everyone; the entries below describe what is collected if and when they are switched back on.</em></li>
     <li><strong>Google Calendar</strong> — upcoming events (read-only, only if you connect Calendar)</li>
     <li><strong>Google Classroom &amp; Drive</strong> — read-only course/file metadata for educator imports when you connect Workspace</li>
-    <li><strong>Canvas LMS</strong> — course and assignment data when you authorize your school Canvas login</li>
+    <li><strong>Canvas LMS</strong> — course and assignment data when you authorize your school Canvas login. The Canvas access key you paste is stored in this browser's localStorage and copied to your Flux account so your other devices stay connected. It expires after 90 days. Tick "Keep it for this session only" when you paste it to keep it in this tab only (sessionStorage) and off your account. "Forget Canvas token" in the Canvas panel removes it from this browser and your account</li>
+    <li><strong>Appearance settings</strong> — the board you pick to sit behind your planner, with its strength, blur and dim levels. It is saved in this browser and copied to your Flux account so your other devices match. It holds no personal information. Choosing "Plain" or "Reset board" in Settings → Layout clears it</li>
     <li><strong>School info</strong> — locker, student ID, class schedule, and role profile you optionally enter</li>
     <li><strong>Mood and wellbeing entries</strong> — the check-ins you record. These are private to you by default. A school counselor can only see them if you are assigned to that counselor <em>and</em> you have separately opted in to share; sharing is off unless you turn it on, and the basic level shares only your name and an engagement band, not what you wrote</li>
     <li><strong>Staff verification details</strong> — if you apply for teacher, counselor or staff access: your name, role, school, department, the school email you give on the form and your Flux username, so your request can be checked</li>
@@ -84,11 +93,11 @@
   </ul>
 
   <h2>5. Data Retention & Deletion</h2>
-  <p>Go to <strong>Settings → Data &amp; info → Your data</strong>. <strong>Download my data</strong> saves a copy as a file. <strong>Delete my data</strong> removes your planner — tasks, notes, grades, mood entries, schedule and school info — from this device and from your Flux account straight away, and signs you out. It cannot be undone.</p>
+  <p>Go to <strong>Settings → Your data &amp; info</strong>. <strong>Download my data</strong> saves a copy as a file. <strong>Delete my data</strong> removes your planner — tasks, notes, grades, mood entries, schedule and school info — from this device and from your Flux account straight away, and signs you out. It cannot be undone.</p>
   <p>Two things deletion does not cover, so that you know before you use it. Your sign-in itself remains until you ask for the account to be closed — email the address below and it will be removed. And records a teacher or counselor created about you as part of their work, such as class rosters or counseling notes, belong to your school's records rather than your Flux account; ask your school to remove those.</p>
 
   <h2>6. Children's Privacy</h2>
-  <p>Flux Planner is designed for high school students (14+). We do not knowingly collect data from children under 13. If you are under 13, please do not use this app.</p>
+  <p>Flux Planner is for students aged 13 and over. We do not knowingly collect data from children under 13. If you are under 13, please do not use this app.</p>
 
   <h2>7. Contact</h2>
   <p>Questions about privacy? Email <a href="mailto:azfermohammed21@gmail.com">azfermohammed21@gmail.com</a>. See also our <a href="terms.html">Terms of Service</a>.</p>

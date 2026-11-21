@@ -1501,7 +1501,7 @@ body[data-theme="light"]{
   --border3:rgba(0,0,0,.14);
   --text:#12141f;
   --text2:#282c3a;
-  --muted:#5a5f76;
+  --muted:#57606a; /* 6.2:1 on white; one grey shared with the wordmark sub */
   --muted2:#6c7188;
   --glass-tint:linear-gradient(155deg,rgba(var(--accent-rgb),.14) 0%,rgba(255,255,255,.94) 32%,rgba(248,250,255,.85) 72%,rgba(var(--accent-rgb),.08) 100%);
   --shadow-sm:0 2px 10px rgba(0,0,0,.06);
@@ -5982,3 +5982,26 @@ body{
   #editModal .ed-subtasks textarea{flex:1 1 100%!important;min-width:0!important}
   #editModal .ed-subtasks .btn-sec{flex:1 1 0!important}
 }
+
+/* #keyHint carries white-space:nowrap inline, which ran it off both edges of
+   a narrow phone. Below 420px let it wrap inside the gutters instead. */
+@media (max-width:419px){
+  #keyHint{white-space:normal!important;flex-wrap:wrap;justify-content:center;text-align:center;width:max-content;max-width:calc(100vw - 32px)}
+}
+
+/* Task pill states, set by app.js as data-state. Moved out of inline styles so
+   media queries and the countdown rule can still hide or resize the pill. */
+#topbarTaskPill{display:block}
+#topbarTaskPill[hidden]{display:none}
+#topbarTaskPill[data-state="overdue"]{background:rgba(244,63,94,.15);border:1px solid rgba(244,63,94,.3);color:var(--red)}
+#topbarTaskPill[data-state="today"]{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25);color:var(--gold)}
+#topbarTaskPill[data-state="open"]{background:rgba(var(--accent-rgb),.1);border:1px solid rgba(var(--accent-rgb),.2);color:var(--accent)}
+#topbarTaskPill[data-state="done"]{background:rgba(16,217,160,.1);border:1px solid rgba(16,217,160,.25);color:var(--green)}
+
+/* Text roles that index.html used to repeat as inline style="" strings
+   (46 copies). Inline styles can't be themed or overridden by the mobile
+   sheets; classes can. Values are exactly what the inline styles said. */
+.fx-hint{font-size:.7rem;color:var(--muted)}
+.fx-caption{font-size:.72rem;color:var(--muted)}
+.fx-soft{color:var(--muted);font-weight:400}
+.fx-note{font-size:.78rem;color:var(--muted2);line-height:1.65;margin:8px 0 0}

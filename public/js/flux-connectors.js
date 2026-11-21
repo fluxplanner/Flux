@@ -180,7 +180,8 @@
     supports: ['assignments', 'courses', 'grades'],
     role: 'student',
     status: () => {
-      const t = ls('flux_canvas_token', null) || ls('flux_canvas_v3_token', null);
+      // load() knows about session-only tokens (sessionStorage) and the 90-day expiry; raw ls() doesn't.
+      const t = (typeof window.load === 'function' ? window.load('flux_canvas_token', null) : ls('flux_canvas_token', null)) || ls('flux_canvas_v3_token', null);
       const h = ls('flux_canvas_host', null) || ls('flux_canvas_v3_host', null);
       if (t && h) return 'connected';
       return 'off';
@@ -218,6 +219,13 @@
     // Status is coming-soon until OAuth backend is wired
     status: () => 'coming_soon',
   });
+
+  /** Schoology and Moodle connect from their tab in the Connect panel. */
+  function openLmsTab(id) {
+    try { if (typeof window.nav === 'function') window.nav('canvas'); } catch (_) {}
+    try { window.FluxGoogle?.setTab?.(id); } catch (_) {}
+    return false;
+  }
 
   // 4 · Schoology
   register({

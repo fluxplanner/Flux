@@ -775,6 +775,25 @@
       + '</section>';
   }
 
+  /* With several sets the library is a grid of equals, and a student opening
+     it the night before a test has to work out which one matters. Name it:
+     the nearest upcoming exam first, else the set left longest. A set with no
+     guide yet points at building one, since nothing else works until then. */
+  function startHere(sets) {
+    const upcoming = sets.filter((m) => m.daysLeft != null && m.daysLeft >= 0)
+      .sort((a, b) => a.daysLeft - b.daysLeft);
+    const pick = upcoming[0] || sets.slice().sort((a, b) => (a.studiedAt || 0) - (b.studiedAt || 0))[0];
+    if (!pick) return '';
+    const title = pick.title || 'Untitled study set';
+    const why = upcoming[0] ? examLine(pick.daysLeft) : (pick.studiedAt ? 'Last studied ' + ago(pick.studiedAt) : 'Not studied yet');
+    const go = pick.hasGuide ? 'Study it' : 'Build its study guide';
+    return '<p class="ft-start-here"><span class="ft-start-label">Start here</span>'
+      + '<strong>' + esc(title) + '</strong><span class="ft-help">' + esc(why) + '</span>'
+      /* The action is the link, not the title: the card below already links the
+         title, and two links with one name read as a duplicate to a screen reader. */
+      + '<a href="' + esc(setHash(pick.id, '')) + '" data-open="' + esc(pick.id) + '">' + esc(go) + ' →</a></p>';
+  }
+
   /** IB notes: pick a subject, then any unit opens with Flux's notes ready. */
   function ibHtml(sets) {
     return '<p class="ft-mode-lead">Every unit of every IB subject comes with Flux starter notes. Pick a unit to get its study guide, flashcards and practice straight away, then add your class notes to it.'
@@ -792,7 +811,7 @@
       + (app.metas.length ? '<button type="button" class="ft-btn ft-btn--quiet" data-act="export-all">' + icon('download') + 'Back up all</button>' : '')
       + '</div>'
       + '<p id="ftLibAlert" class="ft-alert" role="alert"' + (app.libError ? '' : ' hidden') + '>' + esc(app.libError) + '</p>'
-      + (mine.length ? '<ul class="ft-sets" aria-label="Study sets">' + mine.map(setCard).join('') + '</ul>' : emptyLibrary());
+      + (mine.length ? startHere(mine) + '<ul class="ft-sets" aria-label="Study sets">' + mine.map(setCard).join('') + '</ul>' : emptyLibrary());
   }
 
   /** The progress dashboard: streak, cards due and a predicted grade per subject, from every set. */
@@ -1512,6 +1531,8 @@
           }
           if (file.size > MAX_FILE_BYTES) throw new Error('Files must be 15 MB or smaller.');
           if (!file.size) throw new Error('This file is empty.');
+          // The name and MIME type are the sender's word; the first bytes are not.
+          if (kind === 'PDF' || kind === 'Photo') await window.FluxFileSniff.check(file, [kind === 'PDF' ? 'pdf' : 'image']);
           setImportStatus('Reading ' + file.name + (job.files.length > 1 ? ' (' + (i + 1) + ' of ' + job.files.length + ')' : '') + '…');
           const got = await extractFileText(file, kind);
           let text = T.normalizeText(got.text);

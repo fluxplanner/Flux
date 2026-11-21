@@ -34,6 +34,7 @@ window.FluxProducts = {
     },
     {
       "id": "teacher",
+      "slug": "tutor",
       "group": "study",
       "name": "Flux Tutor",
       "tagline": "Learn from your class materials",

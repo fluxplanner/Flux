@@ -24,6 +24,16 @@
   const JQUERY_SRC = 'public/vendor/jquery-3.7.1/jquery.min.js';
   const MQ_SRC = 'public/vendor/mathquill-0.10.1/mathquill.min.js';
   const MQ_CSS = 'public/vendor/mathquill-0.10.1/mathquill.min.css';
+  /* Subresource Integrity for the vendored files. They are same-origin, but a
+     cached or tampered copy (a stale CDN edge, a bad service-worker entry)
+     would otherwise run with full page access. Regenerate with
+     openssl dgst -sha384 -binary <file> | openssl base64 -A
+     whenever a vendor file changes, or the editor falls back to plain text. */
+  const SRI = {
+    [JQUERY_SRC]: 'sha384-1H217gwSVyLSIfaLxHbE7dRb3v4mYCKbpQvzx0cegeju1MVsGrX5xXxAvs/HgeFs',
+    [MQ_SRC]: 'sha384-/RBk1jltzHKz5l1cUO7JrI/xiKAtaZjvvBvu1/wSkohgWoJ2toB+6IRzMvemWy+f',
+    [MQ_CSS]: 'sha384-VHqJP7yeClm39h9e9S2PesERdEn49xfTObsmlXi4t4wToWJpQ7P/yduPfXD0wBUC',
+  };
 
   /* The grapher's built-in functions (flux-expr.js), used before it loads. */
   const FNS_FALLBACK = ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'ln', 'log', 'log2',
@@ -419,6 +429,8 @@
     return new Promise((resolve, reject) => {
       const el = document.createElement('script');
       el.src = src;
+      el.integrity = SRI[src] || '';
+      el.crossOrigin = 'anonymous';
       el.async = true;
       el.onload = () => resolve();
       el.onerror = () => reject(new Error('Could not load ' + src));
@@ -434,6 +446,8 @@
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = MQ_CSS;
+      link.integrity = SRI[MQ_CSS];
+      link.crossOrigin = 'anonymous';
       link.setAttribute('data-flux-mathquill', '');
       document.head.appendChild(link);
     }

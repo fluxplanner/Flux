@@ -2,8 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<!--
+  GitHub Pages can't send headers, so the CSP rides in a meta tag. A meta CSP
+  ignores frame-ancestors; flux-frame-guard.js stays the clickjacking control.
+  TODO(csp): 'unsafe-inline' stays until inline <script> blocks and on*= handlers
+  move out — worst offenders are index.html (~386 on*= attributes) and the
+  inline boot scripts on every standalone page.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob: https://fluxplanner.github.io; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://fluxplanner.github.io; worker-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com; frame-src 'self'; form-action 'self'">
 <script src="public/js/flux-look.js?v=81a3e0d1"></script>
-<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
 <script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="synara"></script>
 <script defer src="public/js/flux-site-notices.js?v=5e36c924"></script>
@@ -22,10 +30,12 @@
   (including one for Purple Day, March 26), a "Powered by Flux" badge for
   their own site, and screenshots (public/partners/).
 -->
-<link rel="stylesheet" href="public/css/flux-hub.css?v=d76c413f">
+<link rel="stylesheet" href="public/css/flux-hub.css?v=a473f365">
 <link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
 <link rel="stylesheet" href="public/css/flux-scroll-story.css?v=cb163716">
 <style>
+  /* --text-2: body copy one step below --text. Replaces six hand-typed #cbd6ea. */
+  :root { --text-2: #cbd6ea; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background-color: #070b14; }
   html { scroll-behavior: smooth; }
@@ -173,7 +183,7 @@
   @keyframes partnersRise { from { opacity: 0; transform: translateY(26px); } }
   .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px; }
   .card { padding: 20px; border-radius: 18px; background: var(--card); border: 1px solid var(--border); }
-  .card p { margin: 0; color: #cbd6ea; font-size: .94rem; }
+  .card p { margin: 0; color: var(--text-2); font-size: .94rem; }
   .step-n { display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: 12px; border-radius: 10px; font-weight: 800; color: #061020; background: linear-gradient(135deg, #7fe3ff, #00c2ff); }
 
   /* The partner, in its own violet — the same frame it wears in Flux Suite. */
@@ -221,11 +231,11 @@
   .shot img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--border); }
   .shot figcaption { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: .85rem; color: var(--muted2); }
 
-  ul.rules { margin: 0; padding-left: 1.2em; color: #cbd6ea; }
+  ul.rules { margin: 0; padding-left: 1.2em; color: var(--text-2); }
   ul.rules li { margin: 4px 0; }
 
   .join { text-align: center; padding: clamp(24px, 5vw, 40px); }
-  .join p { margin: 0 auto 16px; max-width: 560px; color: #cbd6ea; }
+  .join p { margin: 0 auto 16px; max-width: 560px; color: var(--text-2); }
   .foot { margin-top: 28px; text-align: center; font-size: .85rem; color: var(--muted2); }
 </style>
 <script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
@@ -432,7 +442,7 @@ https://fluxplanner.github.io/Flux/synara.html
     <p class="foot"><a href="suite.html">Every Flux app →</a></p>
   </main>
 
-  <script src="public/data/products.js?v=bebae07f"></script>
+  <script src="public/data/products.js?v=9634bc03"></script>
 <script src="public/js/flux-hub.js?v=eb42b549"></script>
   <script>
     (function () {

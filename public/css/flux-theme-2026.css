@@ -32,7 +32,9 @@
   --orange:#f0883e; --blue:#58a6ff;
 
   /* Text — GitHub grays */
-  --text:#e6edf3; --text2:#b6bfca; --muted:#6e7681; --muted2:#8b949e;
+  /* --muted was #6e7681, 4.0:1 on the dark card: below WCAG AA for the small
+     captions it colours. #8b949e clears 4.5:1 on --bg and --card alike. */
+  --text:#e6edf3; --text2:#b6bfca; --muted:#8b949e; --muted2:#8b949e;
 
   /* Structural chrome */
   --rail:#0b0f14;                    /* sidebar / segmented-control wells */

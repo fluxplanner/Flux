@@ -38,7 +38,7 @@
         + '<div class="app-tag">' + esc(p.tagline) + '</div>';
     };
     var card = function (p) {
-      return '<a class="app app--' + esc(p.id) + '" href="' + esc(p.href) + '">'
+      return '<a class="app app--' + esc(p.slug || p.id) + '" href="' + esc(p.href) + '">'
         + '<div class="app-top">' + icon(p) + '<div>' + title(p) + '</div></div>'
         + '<p class="app-desc">' + blurb(p) + '</p>'
         + '<div class="app-foot"><span class="go">Open →</span></div>'
@@ -46,7 +46,7 @@
     };
     /* The planner: one wide bar across the top, above the tabs. */
     var bar = function (p) {
-      return '<a class="app app--feature app--' + esc(p.id) + '" href="' + esc(p.href) + '">'
+      return '<a class="app app--feature app--' + esc(p.slug || p.id) + '" href="' + esc(p.href) + '">'
         + '<div class="app-head">' + icon(p) + '<div class="app-head-t">' + title(p) + '</div></div>'
         + '<div class="app-main"><p class="app-desc">' + blurb(p) + '</p></div>'
         + '<span class="go">Open the planner →</span>'

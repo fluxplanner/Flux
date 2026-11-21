@@ -30,7 +30,7 @@ const FLUX_IMPERSONATION_GLOBAL_KEYS=new Set([
   // every time you switch into a different teacher to test something.
   'flux_user_name','flux_accent','flux_accent_rgb','flux_theme','flux_font','flux_texture',
   'flux_profile_pic',
-  'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
+  'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled','flux_board',
   'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
   'flux_last_sync',
 ]);
@@ -71,7 +71,53 @@ function fluxNamespacedKey(k){
 }
 function _fluxLoadRaw(k,def){try{const v=localStorage.getItem(fluxNamespacedKey(k));return v?JSON.parse(v):def;}catch(e){return def;}}
 function _fluxSaveRaw(k,v){try{localStorage.setItem(fluxNamespacedKey(k),JSON.stringify(v));}catch(e){console.warn('Storage full',e);}}
+/* Canvas access token. It is a password-equivalent for the student's Canvas
+   account, so it gets rules no other key has: it expires 90 days after it was
+   saved, "this session only" keeps it in sessionStorage (gone when the tab
+   closes, never synced), and Forget leaves a tombstone so a cloud pull can't
+   quietly bring an older copy back. Every reader goes through load/save, so
+   enforcing it here covers app.js, the Canvas panel and the Google hub. */
+const FLUX_CANVAS_TOKEN_TTL=90*864e5;
+function _fluxCanvasMeta(){const m=_fluxLoadRaw('flux_canvas_token_meta',null);return m&&typeof m==='object'?m:{};}
+function _fluxCanvasTokenClear(meta){
+  try{localStorage.removeItem(fluxNamespacedKey('flux_canvas_token'));}catch(_){}
+  try{sessionStorage.removeItem(fluxNamespacedKey('flux_canvas_token'));}catch(_){}
+  _fluxSaveRaw('flux_canvas_token_meta',{sessionOnly:!!meta.sessionOnly,forgottenAt:meta.forgottenAt||0});
+}
+function _fluxCanvasTokenRead(def){
+  const meta=_fluxCanvasMeta();
+  let tok=null;
+  try{const s=sessionStorage.getItem(fluxNamespacedKey('flux_canvas_token'));if(s)tok=JSON.parse(s);}catch(_){}
+  if(!tok)tok=_fluxLoadRaw('flux_canvas_token',null);
+  if(!tok)return def;
+  if(!meta.savedAt){meta.savedAt=Date.now();_fluxSaveRaw('flux_canvas_token_meta',meta);} // legacy token: the 90 days start now
+  if(Date.now()-meta.savedAt>FLUX_CANVAS_TOKEN_TTL){_fluxCanvasTokenClear(meta);return def;}
+  return tok;
+}
+function _fluxCanvasTokenWrite(v){
+  const meta=_fluxCanvasMeta();
+  if(!v){_fluxCanvasTokenClear(meta);return;}
+  if(_fluxCanvasTokenRead(null)!==v)meta.savedAt=Date.now();
+  _fluxSaveRaw('flux_canvas_token_meta',meta);
+  if(meta.sessionOnly){
+    try{sessionStorage.setItem(fluxNamespacedKey('flux_canvas_token'),JSON.stringify(v));}catch(_){}
+    try{localStorage.removeItem(fluxNamespacedKey('flux_canvas_token'));}catch(_){}
+  }else{
+    try{sessionStorage.removeItem(fluxNamespacedKey('flux_canvas_token'));}catch(_){}
+    _fluxSaveRaw('flux_canvas_token',v);
+  }
+}
+window.fluxCanvasTokenInfo=()=>{const m=_fluxCanvasMeta();return{sessionOnly:!!m.sessionOnly,savedAt:m.savedAt||0,forgottenAt:m.forgottenAt||0,expiresAt:m.savedAt?m.savedAt+FLUX_CANVAS_TOKEN_TTL:0};};
+window.fluxCanvasTokenSetSessionOnly=on=>{const tok=_fluxCanvasTokenRead(null);const m=_fluxCanvasMeta();m.sessionOnly=!!on;_fluxSaveRaw('flux_canvas_token_meta',m);if(tok){const keep=m.savedAt;_fluxCanvasTokenWrite(tok);const m2=_fluxCanvasMeta();m2.savedAt=keep;_fluxSaveRaw('flux_canvas_token_meta',m2);}};
+window.fluxCanvasForgetToken=()=>{
+  const m=_fluxCanvasMeta();m.forgottenAt=Date.now();_fluxCanvasTokenClear(m);
+  ['flux_canvas_host','flux_canvas_url'].forEach(k=>_fluxSaveRaw(k,null));
+  try{canvasToken='';canvasUrl='';}catch(_){}
+  // Push now so the account copy is replaced by "no integrations" before the next pull.
+  try{if(typeof syncToCloud==='function')void syncToCloud();}catch(_){}
+};
 const load=(k,def)=>{
+  if(k==='flux_canvas_token')return _fluxCanvasTokenRead(def);
   const o=_fluxLoadRaw(k,def);
   try{if(window.FluxDebug&&typeof FluxDebug.traceStorage==='function')FluxDebug.traceStorage('load',k);}catch(e){}
   return o;
@@ -81,6 +127,7 @@ const save=(k,v)=>{
   // Tasks and notes merge item by item on a cloud pull, so each write notes
   // which items changed (see fluxNoteListEdits by the sync code).
   if(k==='tasks'||k==='flux_notes'){try{fluxNoteListEdits(k,v);}catch(_){}}
+  if(k==='flux_canvas_token'){_fluxCanvasTokenWrite(v);return;}
   _fluxSaveRaw(k,v);
 };
 /* This tab's bookkeeping for the merged task and note lists: its own merge
@@ -232,7 +279,7 @@ const DATA_VERSION=6;
   if(stored>=DATA_VERSION)return;
   const keepExact=new Set([
     'flux_data_version','flux_splash_shown',
-    'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
+    'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled','flux_board',
     'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
     'flux_schoology_v1',
     'flux_moodle_v1',
@@ -3575,7 +3622,8 @@ async function fetchAndCacheEntitlement(){
 // ══ HELPERS ══
 const G=10.0000; // Physics constant — enforced everywhere
 const precise=n=>Number(n).toFixed(4);
-const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+// FluxEsc (core/flux-esc.js) also escapes quotes — the old copy here didn't.
+const esc=window.FluxEsc.html;
 window.esc=esc; // 144 cross-module reads expected this on window
 /** Settings → Account: lets student-role accounts become educators so Work/Personal mode appears. */
 function syncStudentEducatorUpgradeCard(){
@@ -4579,31 +4627,13 @@ function updateTopbarStats(){
   const active=tasks.filter(t=>!t.done);
   const overdue=active.filter(t=>t.date&&new Date(t.date+'T00:00:00')<now);
   const today=active.filter(t=>t.date===todayStr());
-  if(overdue.length){
-    pill.style.display='block';
-    pill.textContent=overdue.length+' overdue';
-    pill.style.background='rgba(244,63,94,.15)';
-    pill.style.border='1px solid rgba(244,63,94,.3)';
-    pill.style.color='var(--red)';
-  } else if(today.length){
-    pill.style.display='block';
-    pill.textContent=today.length+' due today';
-    pill.style.background='rgba(251,191,36,.1)';
-    pill.style.border='1px solid rgba(251,191,36,.25)';
-    pill.style.color='var(--gold)';
-  } else if(active.length){
-    pill.style.display='block';
-    pill.textContent=active.length+' tasks';
-    pill.style.background='rgba(var(--accent-rgb),.1)';
-    pill.style.border='1px solid rgba(var(--accent-rgb),.2)';
-    pill.style.color='var(--accent)';
-  } else {
-    pill.style.display='block';
-    pill.textContent='✓ All done';
-    pill.style.background='rgba(16,217,160,.1)';
-    pill.style.border='1px solid rgba(16,217,160,.25)';
-    pill.style.color='var(--green)';
-  }
+  // Colours live in styles.css under [data-state]. Inline display:block used
+  // to beat every responsive rule, so the pill could not be hidden on phones.
+  const [state,text]=overdue.length?['overdue',overdue.length+' overdue']
+    :today.length?['today',today.length+' due today']
+    :active.length?['open',active.length+' tasks']:['done','✓ All done'];
+  pill.hidden=false;pill.style.display='';
+  pill.dataset.state=state;pill.textContent=text;
   if(before&&pill.textContent!==before){try{window.FluxMotionMore?.bump(pill);}catch(_){}}
 }
 
@@ -4649,7 +4679,7 @@ function showTOS(){
       <div style="font-weight:700;color:var(--text);margin:12px 0 4px">1. Use</div>
       <p>Flux is for personal, non-commercial educational use. You may not resell, redistribute, or misuse the platform.</p>
       <div style="font-weight:700;color:var(--text);margin:12px 0 4px">2. Your Data</div>
-      <p>You own your data. We sync it to Supabase for your convenience. You can delete it anytime from Settings → Data.</p>
+      <p>You own your data. We sync it to Supabase for your convenience. You can delete it anytime from Settings → Your data & info.</p>
       <div style="font-weight:700;color:var(--text);margin:12px 0 4px">3. Google Integrations</div>
       <p>Gmail and Calendar access is read-only. We never send emails, create events, or modify your Google account.</p>
       <div style="font-weight:700;color:var(--text);margin:12px 0 4px">4. AI</div>
@@ -7328,7 +7358,7 @@ function renderNotesList(){const el=document.getElementById('notesList');if(!el)
   el.innerHTML=win.html;
   fluxArmListSentinel(el,win.rest,renderNoteCard);}
 function openNewNote(){currentNoteId=null;document.getElementById('noteTitleInput').value='';document.getElementById('noteEditor').innerHTML='';document.getElementById('noteSubjectTag').value='';document.getElementById('starBtn').textContent='☆';document.getElementById('aiNoteResult').style.display='none';document.getElementById('notesListView').style.display='none';document.getElementById('notesEditorView').style.display='block';}
-function openNote(id){const n=notes.find(x=>x.id===id);if(!n)return;currentNoteId=id;document.getElementById('noteTitleInput').value=n.title||'';document.getElementById('noteEditor').innerHTML=n.body||'';document.getElementById('noteSubjectTag').value=n.subject||'';document.getElementById('starBtn').textContent=n.starred?'⭐':'☆';document.getElementById('aiNoteResult').style.display='none';document.getElementById('notesListView').style.display='none';document.getElementById('notesEditorView').style.display='block';const shareBtn=document.getElementById('noteShareLinkBtn');if(shareBtn)shareBtn.style.display=window.FluxDeepLinks?.enabled?.()?'inline-flex':'none';}
+function openNote(id){const n=notes.find(x=>x.id===id);if(!n)return;currentNoteId=id;document.getElementById('noteTitleInput').value=n.title||'';document.getElementById('noteEditor').innerHTML=window.FluxEsc.richText(n.body||'');document.getElementById('noteSubjectTag').value=n.subject||'';document.getElementById('starBtn').textContent=n.starred?'⭐':'☆';document.getElementById('aiNoteResult').style.display='none';document.getElementById('notesListView').style.display='none';document.getElementById('notesEditorView').style.display='block';const shareBtn=document.getElementById('noteShareLinkBtn');if(shareBtn)shareBtn.style.display=window.FluxDeepLinks?.enabled?.()?'inline-flex':'none';}
 function backToNotesList(){document.getElementById('notesEditorView').style.display='none';document.getElementById('flashcardView').style.display='none';document.getElementById('notesListView').style.display='block';renderNotesList();}
 function saveNote(){const title=document.getElementById('noteTitleInput').value.trim()||'Untitled';const body=document.getElementById('noteEditor').innerHTML;const subject=document.getElementById('noteSubjectTag').value;const starred=document.getElementById('starBtn').textContent==='⭐';if(currentNoteId){const n=notes.find(x=>x.id===currentNoteId);if(n){n.title=title;n.body=body;n.subject=subject;n.starred=starred;n.updatedAt=Date.now();}}else{const n={id:Date.now(),title,body,subject,starred,flashcards:[],createdAt:Date.now(),updatedAt:Date.now()};notes.unshift(n);currentNoteId=n.id;}save('flux_notes',notes);syncKey('notes',notes);const b=event?.target;if(b){b.textContent='✓ Saved';setTimeout(()=>b.textContent='Save',1500);}}
 function deleteNote(){if(!currentNoteId)return;if(!confirm('Delete this note?'))return;notes=notes.filter(n=>n.id!==currentNoteId);save('flux_notes',notes);backToNotesList();}
@@ -8014,6 +8044,8 @@ function fluxSetFont(key){
   if(typeof syncKey==='function')try{syncKey('flux_font');}catch(_){}
 }
 function fluxSetTexture(key){
+  /* A texture and a board both paint behind the planner; one at a time. */
+  if(FLUX_TEXTURES[key]&&key&&window.FluxBoards)try{window.FluxBoards.clear();}catch(_){}
   fluxSaveStoredString('flux_texture',FLUX_TEXTURES[key]!==undefined?key:'');
   fluxApplyTexture(key);fluxRenderLookExtras();
   if(typeof syncKey==='function')try{syncKey('flux_texture');}catch(_){}
@@ -8414,7 +8446,7 @@ function clearCache(){
   if(inp!=='DELETE'){if(inp!==null)alert('Cancelled — you must type DELETE exactly.');return;}
   const keep=[
     'flux_settings','flux_accent','flux_accent_rgb','flux_theme','flux_font','flux_texture','profile','flux_user_name',
-    'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
+    'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled','flux_board',
     'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
     'flux_data_version','flux_splash_shown',
   ];
@@ -10179,6 +10211,7 @@ function getCloudPayload(){
     noHWDays:loadRestDaysList().map(r=>r.date),
     restDays:loadRestDaysList(),
     flux_ui_density:load('flux_ui_density','comfortable'),
+    flux_board:load('flux_board',null),
     flux_mood_tint_enabled:load('flux_mood_tint_enabled',true),
     flux_nav_counts_v1:load('flux_nav_counts_v1',{}),
     events:load('flux_events',[]),
@@ -10259,8 +10292,8 @@ function getCloudPayload(){
       if(window.FluxGoogle&&typeof FluxGoogle.getIntegrationsForCloud==='function')return FluxGoogle.getIntegrationsForCloud();
       const tok=load('flux_canvas_token','');
       const host=load('flux_canvas_host','');
-      if(!tok||!host)return null;
-      return{canvasToken:String(tok),canvasHost:String(host),canvasUrl:load('flux_canvas_url','')};
+      if(!tok||!host||window.fluxCanvasTokenInfo?.().sessionOnly)return null;
+      return{canvasToken:String(tok),canvasHost:String(host),canvasUrl:load('flux_canvas_url',''),updatedAt:Date.now()};
     })(),
     ...(isOwner()?{
       devAccounts:load('flux_dev_accounts',[]),
@@ -10991,6 +11024,8 @@ async function syncFromCloud(opts){
     if(Array.isArray(d.restDays)&&d.restDays.length){saveRestDaysList(d.restDays.filter(x=>x&&x.date));}
     else if(d.noHWDays&&Array.isArray(d.noHWDays)){saveRestDaysList(d.noHWDays.map(x=>typeof x==='string'?{date:x,kind:'lazy'}:x));}
     if(d.flux_ui_density)save('flux_ui_density',d.flux_ui_density);
+    // Board choice follows the account; FluxBoards re-validates the shape.
+    if(d.flux_board&&typeof d.flux_board==='object'){save('flux_board',d.flux_board);try{window.FluxBoards?.apply();}catch(_){}}
     if(d.flux_mood_tint_enabled!==undefined)save('flux_mood_tint_enabled',d.flux_mood_tint_enabled);
     if(d.flux_nav_counts_v1&&typeof d.flux_nav_counts_v1==='object')save('flux_nav_counts_v1',d.flux_nav_counts_v1);
     if(d.events&&!(window.FluxOfflineSync?.shouldSkipCloudOverwrite?.('events'))){save('flux_events',d.events);}
@@ -12302,6 +12337,17 @@ async function handleScheduleImg(event){
   if(!file)return;
   const errEl=document.getElementById('obScheduleImportError');
   if(errEl){errEl.textContent='';errEl.setAttribute('hidden','');}
+  // Reject by content, not by name, before pdf.js or an <img> sees the bytes.
+  // DECISION: pdf.js already parses in its own worker (workerSrc above); the
+  // page-to-image step stays on the main thread because moving it needs
+  // OffscreenCanvas + pdf.js inside our own worker, which Safari 16 lacks.
+  try{await window.FluxFileSniff.check(file,['pdf','image']);}
+  catch(e){
+    if(event.target)event.target.value='';
+    if(errEl){errEl.textContent=e.message;errEl.removeAttribute('hidden');}
+    if(typeof showToast==='function')showToast(e.message,'error');
+    return;
+  }
   const prev=document.getElementById('schedulePreview');
   const prevImg=document.getElementById('schedulePreviewImg');
   const overlay=document.getElementById('obSchedulePdfOverlay');
@@ -14994,7 +15040,7 @@ function handleSignedOut(){
   sessionStorage.clear();
   const keysToKeep=[
     'flux_splash_shown','flux_theme','flux_accent','flux_accent_rgb','flux_font','flux_texture',
-    'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
+    'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled','flux_board',
     'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
     'flux_data_version',
     'flux_profile_pic',

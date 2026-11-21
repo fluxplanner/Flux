@@ -33,9 +33,11 @@ test('paints within 400ms on a cold visit', async ({ page }) => {
 test('every visible product has a card, a colour pair and a blurb', async ({ page }) => {
   await page.goto('/suite.html');
   for (const p of DATA.products.filter((x: { ownerOnly?: boolean }) => !x.ownerOnly)) {
-    await expect(page.locator(`#apps .app--${p.id}`), p.id).toHaveCount(1);
+    // Cards are classed by the public slug (Flux Tutor keeps id "teacher").
+    const cls = p.slug || p.id;
+    await expect(page.locator(`#apps .app--${cls}`), p.id).toHaveCount(1);
     expect(p.blurb, `${p.id} blurb`).toBeTruthy();
-    expect(HUB_CSS.includes(`.app--${p.id} {`) || HUB_CSS.includes(`.app--${p.id}{`), `${p.id} colour pair`).toBe(true);
+    expect(HUB_CSS.includes(`.app--${cls} {`) || HUB_CSS.includes(`.app--${cls}{`), `${p.id} colour pair`).toBe(true);
   }
 });
 

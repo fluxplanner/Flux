@@ -2,8 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<!--
+  GitHub Pages can't send headers, so the CSP rides in a meta tag. A meta CSP
+  ignores frame-ancestors; flux-frame-guard.js stays the clickjacking control.
+  TODO(csp): 'unsafe-inline' stays until inline <script> blocks and on*= handlers
+  move out — worst offenders are index.html (~386 on*= attributes) and the
+  inline boot scripts on every standalone page.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com; frame-src 'self'; form-action 'self'">
 <script src="public/js/flux-look.js?v=81a3e0d1"></script>
-<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
 <script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="pixel"></script>
 <script defer src="public/js/flux-site-notices.js?v=5e36c924"></script>
@@ -23,7 +31,7 @@
   composer.html is — no app bundles and no Supabase, so it opens on any school
   computer without an account. Drawings are kept in this browser.
 -->
-<link rel="stylesheet" href="public/css/flux-hub.css?v=d76c413f">
+<link rel="stylesheet" href="public/css/flux-hub.css?v=a473f365">
 <link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
 <link rel="stylesheet" href="public/css/flux-pixel.css?v=bd05e392">
 <style>
@@ -67,9 +75,11 @@
 </style>
 <script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
 <script src="public/js/flux-purple-day.js?v=b8cd878a"></script>
+<style>/* Off-screen until focused, so keyboard users can jump past the header. */.flux-skip{position:absolute;left:12px;top:-60px;z-index:10000;padding:10px 16px;border-radius:10px;background:#0b0f1a;color:#fff;font:600 14px/1.2 system-ui,sans-serif;text-decoration:none;box-shadow:0 0 0 2px #38bdf8}.flux-skip:focus{top:12px}</style>
 <link rel="stylesheet" href="public/css/flux-look-flat.css?v=8156dbe3">
 </head>
 <body>
+<a class="flux-skip" href="#pxHost">Skip to content</a>
   <header class="top">
     <a class="brand" href="#/" aria-label="Flux Pixel: all drawings">
       <img class="brand-mark" src="public/flux-planner-logo.png" alt="" width="30" height="30">
@@ -82,7 +92,7 @@
   <main id="pxHost" class="px-app" aria-label="Flux Pixel"></main>
 
   <!-- Plain script tags, not the app bundles: this page has to stand alone. -->
-  <script src="public/data/products.js?v=bebae07f"></script>
+  <script src="public/data/products.js?v=9634bc03"></script>
 <script src="public/js/flux-hub.js?v=eb42b549"></script>
 <script src="public/js/flux-tool-embed.js?v=aa0e3f08"></script>
 <script src="public/js/flux-suite-timer.js?v=998cda1e"></script>

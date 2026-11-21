@@ -75,7 +75,7 @@
     } catch (e) { return system; }
   }
 
-  /* opt-in toggle card injected into Settings → Data & info */
+  /* opt-in toggle card injected into Settings → Your data & info */
   function injectToggle() {
     /* The card is withdrawn along with its toggle — there is nothing left to
        choose now that contributing is always on. */

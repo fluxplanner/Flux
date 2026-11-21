@@ -2,8 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<!--
+  GitHub Pages can't send headers, so the CSP rides in a meta tag. A meta CSP
+  ignores frame-ancestors; flux-frame-guard.js stays the clickjacking control.
+  TODO(csp): 'unsafe-inline' stays until inline <script> blocks and on*= handlers
+  move out — worst offenders are index.html (~386 on*= attributes) and the
+  inline boot scripts on every standalone page.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com; frame-src 'self'; form-action 'self'">
 <script src="public/js/flux-look.js?v=81a3e0d1"></script>
-<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
 <script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="calculator"></script>
 <script defer src="public/js/flux-site-notices.js?v=5e36c924"></script>
@@ -28,7 +36,7 @@
   programs) stays in this browser, like the handheld's RAM.
 -->
 <link rel="stylesheet" href="public/css/flux-ti84.css?v=d4e9a15e">
-<link rel="stylesheet" href="public/css/flux-hub.css?v=d76c413f">
+<link rel="stylesheet" href="public/css/flux-hub.css?v=a473f365">
 <link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
 <style>
   * { box-sizing: border-box; }
@@ -89,6 +97,8 @@
   .tips p { margin: 0 0 8px; }
   .tips ul { margin: 0; padding-left: 18px; }
   .tips li { margin: 3px 0; }
+  .tips-more summary { cursor: pointer; font-weight: 700; color: var(--text); margin: 8px 0 0; }
+  .tips-more[open] summary { margin-bottom: 4px; }
   kbd {
     display: inline-block; min-width: 1.6em; padding: 0 .35em;
     border: 1px solid var(--border2); border-bottom-width: 2px; border-radius: 5px;
@@ -109,9 +119,11 @@
 </style>
 <script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
 <script src="public/js/flux-purple-day.js?v=b8cd878a"></script>
+<style>/* Off-screen until focused, so keyboard users can jump past the header. */.flux-skip{position:absolute;left:12px;top:-60px;z-index:10000;padding:10px 16px;border-radius:10px;background:#0b0f1a;color:#fff;font:600 14px/1.2 system-ui,sans-serif;text-decoration:none;box-shadow:0 0 0 2px #38bdf8}.flux-skip:focus{top:12px}</style>
 <link rel="stylesheet" href="public/css/flux-look-flat.css?v=8156dbe3">
 </head>
 <body>
+<a class="flux-skip" href="#calcMain">Skip to content</a>
   <header class="top">
     <img class="brand-mark" src="public/flux-planner-logo.png" alt="Flux" width="30" height="30">
     <span class="title">Calculator</span>
@@ -119,11 +131,13 @@
     <div data-flux-hub="calculator"></div>
   </header>
 
-  <main>
+  <main id="calcMain">
     <div id="calcHost" aria-label="Graphing calculator"></div>
     <aside class="tips">
       <h1>TI-84-style graphing calculator</h1>
       <p>Choose the Plus CE or Evo-style layout. Flux84 includes MathPrint, graphing, tables, statistics, finance, matrices and programs. It does not yet support every TI app or hardware feature.</p>
+      <details class="tips-more" id="calcTips" open>
+        <summary>Keyboard shortcuts and tips</summary>
       <h2>On a keyboard</h2>
       <ul>
         <li>Click the calculator, then type numbers and <kbd>+</kbd> <kbd>-</kbd> <kbd>*</kbd> <kbd>/</kbd> <kbd>^</kbd> <kbd>(</kbd> <kbd>)</kbd></li>
@@ -137,11 +151,17 @@
         <li>Everything you store stays in this browser, like the calculator's memory. <b>2nd mem</b> resets it.</li>
         <li>Short answers stay in ordinary decimal form, even in Sci or Eng mode. Exponents appear when the decimal would be long.</li>
       </ul>
+      </details>
     </aside>
   </main>
 
+  <script>
+  /* Above 900px the tips sit beside the calculator and pushed the page past one
+     screen; start them folded there. Narrow screens stack them below, open. */
+  if (window.matchMedia('(min-width: 900px)').matches) document.getElementById('calcTips').open = false;
+  </script>
   <!-- Plain script tags, not the app bundles: this page has to stand alone. -->
-  <script src="public/data/products.js?v=bebae07f"></script>
+  <script src="public/data/products.js?v=9634bc03"></script>
 <script src="public/js/flux-hub.js?v=eb42b549"></script>
 <script src="public/js/flux-suite-timer.js?v=998cda1e"></script>
   <script src="public/js/flux-ti84-stats.js?v=90a9dced"></script>

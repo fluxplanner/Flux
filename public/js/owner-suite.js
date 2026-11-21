@@ -1277,7 +1277,7 @@
               <div style="color:var(--text);white-space:pre-wrap;word-break:break-word;line-height:1.5">${esc(e.message||'')}</div>
               ${e.path?`<div style="font-size:.62rem;color:var(--muted);margin-top:8px;font-family:JetBrains Mono,monospace">Path: ${esc(e.path)}</div>`:''}
             </div>`;
-          }).join(''):'<div style="padding:24px;text-align:center;color:var(--muted);font-size:.82rem">No feedback yet. Ask users to use Settings → Data &amp; info → Send feedback (or ⌘K → Send feedback).</div>'}
+          }).join(''):'<div style="padding:24px;text-align:center;color:var(--muted);font-size:.82rem">No feedback yet. Ask users to use Settings → Your data &amp; info → Send feedback (or ⌘K → Send feedback).</div>'}
         </div>`;
       }
 

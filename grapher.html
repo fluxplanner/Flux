@@ -2,8 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<!--
+  GitHub Pages can't send headers, so the CSP rides in a meta tag. A meta CSP
+  ignores frame-ancestors; flux-frame-guard.js stays the clickjacking control.
+  TODO(csp): 'unsafe-inline' stays until inline <script> blocks and on*= handlers
+  move out — worst offenders are index.html (~386 on*= attributes) and the
+  inline boot scripts on every standalone page.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com; frame-src 'self'; form-action 'self'">
 <script src="public/js/flux-look.js?v=81a3e0d1"></script>
-<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
 <script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="grapher"></script>
 <script defer src="public/js/flux-site-notices.js?v=5e36c924"></script>
@@ -35,10 +43,11 @@
   inside the planner so both look the same.
 -->
 <link rel="stylesheet" href="public/css/flux-tex.css?v=b68bf637">
-<link rel="stylesheet" href="public/css/flux-grapher.css?v=fe83419c">
+<link rel="stylesheet" href="public/css/flux-grapher.css?v=dc3bbf37">
 <link rel="stylesheet" href="public/css/flux-grapher-3d.css?v=8bc1f300">
-<link rel="stylesheet" href="public/css/flux-hub.css?v=d76c413f">
+<link rel="stylesheet" href="public/css/flux-hub.css?v=a473f365">
 <link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=806aa2b8">
+<link rel="stylesheet" href="public/css/flux-print-watermark.css?v=b7067319">
 <style>
   /* No page margin when printing, so the browser has nowhere to put its own
      date, time and address; the print sheet pads itself instead. */
@@ -186,8 +195,10 @@
 <script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
 <script src="public/js/flux-purple-day.js?v=b8cd878a"></script>
 <link rel="stylesheet" href="public/css/flux-look-flat.css?v=8156dbe3">
+<style>/* Off-screen until focused, so keyboard users can jump past the header. */.flux-skip{position:absolute;left:12px;top:-60px;z-index:10000;padding:10px 16px;border-radius:10px;background:#0b0f1a;color:#fff;font:600 14px/1.2 system-ui,sans-serif;text-decoration:none;box-shadow:0 0 0 2px #38bdf8}.flux-skip:focus{top:12px}</style>
 </head>
 <body>
+<a class="flux-skip" href="#grapherHost">Skip to content</a>
   <div class="wrap">
     <header class="top">
       <!-- The mark does not navigate. Switching apps is the hub's job, and a
@@ -239,14 +250,14 @@
   </div>
 
   <!-- Plain script tags, not the app bundles: this page has to stand alone. -->
-  <script src="public/data/products.js?v=bebae07f"></script>
+  <script src="public/data/products.js?v=9634bc03"></script>
 <script src="public/js/flux-hub.js?v=eb42b549"></script>
 <script src="public/js/flux-tool-embed.js?v=aa0e3f08"></script>
 <script src="public/js/flux-suite-timer.js?v=998cda1e"></script>
   <script src="public/js/flux-expr.js?v=8f27a6da"></script>
   <script src="public/js/flux-lab-fit.js?v=da22f751"></script>
   <script src="public/js/flux-formula-typeset.js?v=4b6135e4"></script>
-  <script src="public/js/flux-mathfield.js?v=ddaf78a5"></script>
+  <script src="public/js/flux-mathfield.js?v=603e2d55"></script>
   <script src="public/js/flux-grapher.js?v=475dd98a"></script>
   <script src="public/js/flux-space3d.js?v=21ef9ce8"></script>
   <script src="public/js/flux-grapher-3d.js?v=934f12ee"></script>
@@ -372,10 +383,11 @@
       });
       document.getElementById('ghHelp').addEventListener('click', function () { if (T) T.start(); });
 
-      /* The short link, not this page's own address: /graph/ is the one
-         worth putting on a slide or in a class chat. */
+      /* Share the canonical page, not /graph/: the redirect costs a hop on a
+         school network, and a 3D hash only survives it because graph/ copies
+         location.hash by hand. grapher.html is what <link rel=canonical> names. */
       document.getElementById('ghShare').addEventListener('click', function () {
-        var url = new URL('graph/', location.href.replace(/[^/]*([?#].*)?$/, '')).href;
+        var url = new URL('grapher.html', location.href.replace(/[^/]*([?#].*)?$/, '')).href;
         // A 3D graph travels in the link itself: its rows, its box and the view.
         if (inst && inst.kind === '3d' && inst.shareHash) url += inst.shareHash();
         var is3d = /#3d=/.test(url);

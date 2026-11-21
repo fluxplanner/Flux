@@ -47,7 +47,7 @@
     'sync.review': 'Review conflicts',
     'sync.flush': 'Sync pending now',
     'sync.syncing': 'Syncing…',
-    'sync.toast_new': '{n} sync conflict(s) — open Settings → Data or tap the pill',
+    'sync.toast_new': '{n} sync conflict(s) — open Settings → Your data & info or tap the pill',
     'sync.queue_title': 'Pending sync queue',
     'sync.queue_lede': 'Changes waiting to upload when you are back online.',
     'sync.queue_empty': 'Nothing waiting — you are fully synced.',

@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://lfigdijuqmbensebnevo.supabase.co">
 <script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
 <script src="public/js/flux-app-visibility.js?v=ade4d827"></script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://lfigdijuqmbensebnevo.supabase.co">
 <script>
 (function(){
   try{
@@ -34,7 +35,7 @@
   try{
     var m=document.createElement('meta');
     m.setAttribute('property','og:image');
-    m.setAttribute('content', new URL('icons/icon-512.png', location.href).href);
+    m.setAttribute('content', new URL('public/og-card.png', location.href).href);
     document.head.appendChild(m);
   }catch(e){}
 })();
