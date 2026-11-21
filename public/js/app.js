@@ -1719,7 +1719,37 @@ function getSubjects(){
     if(c.icon)subjs[key].icon=c.icon;
   });
   try{if(window.FluxSubjectThemes?.enrich)FluxSubjectThemes.enrich(subjs);}catch(_){}
+  // Clubs live in School info and sit beside classes so tasks can be filed
+  // under a club. Keys are CLUB<id>, so they never collide with CLS keys.
+  getClubs().forEach((c,i)=>{
+    subjs['CLUB'+c.id]={name:c.name,short:c.name.length>8?c.name.slice(0,3).toUpperCase():c.name,color:c.color||SUBJECT_COLORS[(classes.length+i)%SUBJECT_COLORS.length],club:true};
+  });
   return subjs;
+}
+function getClubs(){
+  return (schoolInfo&&Array.isArray(schoolInfo.clubs))?schoolInfo.clubs.filter(c=>c&&c.id&&c.name):[];
+}
+function saveClubs(list){
+  schoolInfo={...schoolInfo,clubs:list};
+  save('flux_school',schoolInfo);syncKey('school',schoolInfo);
+  renderClubs();populateSubjectSelects();
+}
+function addClub(){
+  const el=document.getElementById('inputClubName');
+  const name=(el?.value||'').trim().slice(0,60);
+  if(!name)return;
+  if(getClubs().some(c=>c.name.toLowerCase()===name.toLowerCase())){el.value='';return;}
+  saveClubs([...getClubs(),{id:String(Date.now()),name}]);
+  el.value='';
+}
+function removeClub(id){
+  saveClubs(getClubs().filter(c=>c.id!==String(id)));
+}
+function renderClubs(){
+  const box=document.getElementById('clubList');
+  if(!box)return;
+  const clubs=getClubs();
+  box.innerHTML=clubs.length?clubs.map(c=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)"><span style="flex:1">${esc(c.name)}</span><button type="button" class="btn-sm" onclick="removeClub('${esc(c.id)}')" title="Remove club" aria-label="Remove ${esc(c.name)}">✕</button></div>`).join(''):'<div style="font-size:.78rem;color:var(--muted)">No clubs yet. Add one, then pick it as the subject when you add a task.</div>';
 }
 // ── COURSE IDENTITY ──
 // Course level (AP/IB/Honors…) drives weighted GPA, transcript language, and
@@ -5290,7 +5320,7 @@ function renderTasks(){
     return;
   }
   const keep=fluxTaskListKeep(el);
-  if(!list.length){
+  if(!list.length&&!fluxTaskFoldersOn()){
     const msgs={active:"You're free — want to plan your day or add one task?",overdue:'No overdue tasks',today:'Nothing due today',high:'No high-priority tasks',all:'No tasks yet — press T to quick add'};
     const icons={active:'✓',overdue:'⏰',today:'📋',high:'🔥',all:'✦'};
     const smartMeta=window.FluxSmartLists?.getEmptyMeta?.(taskFilter);
@@ -5387,7 +5417,8 @@ ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick
 </div>
 </div>`;
   };
-  const win=fluxWindowedListHtml(active,renderCard,'tasks',keep&&keep.count);
+  const foldersOn=fluxTaskFoldersOn();
+  const win=foldersOn?{html:fluxTaskFoldersHtml(active,renderCard),rest:[]}:fluxWindowedListHtml(active,renderCard,'tasks',keep&&keep.count);
   const html=win.html;
   const listSig=list.map(t=>`${t.id}:${t.done?1:0}`).join('|');
   const prevSig=el.dataset.fluxTaskListSig||'';
@@ -5408,11 +5439,50 @@ ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick
       }catch(e){}
     });
   }
+  {const fb=document.getElementById('dashFoldersBtn');if(fb){fb.setAttribute('aria-pressed',String(fluxTaskFoldersOn()));fb.classList.toggle('active',fluxTaskFoldersOn());}}
   if(typeof fluxAfterRenderTasks==='function')fluxAfterRenderTasks();
   if(typeof fluxRenderDashMob==='function')fluxRenderDashMob();
   try{if(typeof renderScheduleConflictNotices==='function')renderScheduleConflictNotices();}catch(_){}
   // Last: the swipe binder above moves each row's children, which drops focus.
   fluxTaskListRestore(el,keep);
+}
+// ── TASK FOLDERS ──
+// One folder per class/club (plus "No subject"), so a student can open
+// "A1 Math" and see only its tasks. A view over task.subject, not new data:
+// adding a task inside a folder just presets that subject.
+function fluxTaskFoldersOn(){return !!load('flux_task_folders',false);}
+function toggleTaskFolders(){
+  save('flux_task_folders',!fluxTaskFoldersOn());
+  renderTasks();
+}
+function fluxTaskFoldersHtml(active,renderCard){
+  const subjs=getSubjects();
+  const closed=load('flux_task_folders_closed',{});
+  const groups=new Map(Object.keys(subjs).map(k=>[k,[]]));
+  groups.set('',[]);
+  active.forEach(t=>{const k=subjs[t.subject]?t.subject:'';groups.get(k).push(t);});
+  let html='';
+  groups.forEach((ts,k)=>{
+    if(!k&&!ts.length)return;
+    const s=subjs[k];
+    const name=s?esc(s.name):'No subject';
+    const color=s?.color||'var(--muted)';
+    html+=`<details class="task-folder" data-folder="${esc(k)}" ${closed[k]?'':'open'} ontoggle="fluxTaskFolderToggled(this)" style="border:1px solid var(--border);border-left:3px solid ${color};border-radius:12px;margin:0 0 10px;padding:4px 10px">
+<summary style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 0;font-weight:600;list-style:none"><span style="flex:1">${name}</span><span class="completed-toggle-count">${ts.length}</span><button type="button" class="btn-sm task-folder-add" title="Add a task to this folder" aria-label="Add a task to ${s?esc(s.name):'No subject'}" onclick="event.preventDefault();event.stopPropagation();fluxAddTaskInFolder('${esc(k)}')">+</button></summary>
+${ts.length?ts.map(renderCard).join(''):'<div style="font-size:.78rem;color:var(--muted);padding:4px 0 8px">No open tasks.</div>'}
+</details>`;
+  });
+  return html;
+}
+function fluxTaskFolderToggled(d){
+  const c=load('flux_task_folders_closed',{});
+  if(d.open)delete c[d.dataset.folder];else c[d.dataset.folder]=1;
+  save('flux_task_folders_closed',c);
+}
+function fluxAddTaskInFolder(key){
+  openDashAddTaskModal();
+  const sel=document.getElementById('taskSubject');
+  if(sel)sel.value=key;
 }
 function renderSmartSug(){}
 function openDashAddTaskModal(instant){
@@ -6555,7 +6625,7 @@ async function syncEnrolledTeacherClassesToPlanner(){
   }
 }
 window.syncEnrolledTeacherClassesToPlanner=syncEnrolledTeacherClassesToPlanner;
-function saveSchoolInfo(){schoolInfo={locker:document.getElementById('inputLocker').value.trim(),combo:document.getElementById('inputCombo').value.trim(),counselor:document.getElementById('inputCounselor').value.trim(),studentID:document.getElementById('inputStudentID').value.trim()};save('flux_school',schoolInfo);renderSchool();syncKey('school',schoolInfo);const b=event?.target;if(b){b.textContent='✓ Saved!';setTimeout(()=>b.textContent='Save Info',1500);}}
+function saveSchoolInfo(){schoolInfo={...schoolInfo,locker:document.getElementById('inputLocker').value.trim(),combo:document.getElementById('inputCombo').value.trim(),counselor:document.getElementById('inputCounselor').value.trim(),studentID:document.getElementById('inputStudentID').value.trim()};save('flux_school',schoolInfo);renderSchool();syncKey('school',schoolInfo);const b=event?.target;if(b){b.textContent='✓ Saved!';setTimeout(()=>b.textContent='Save Info',1500);}}
 /** Fill the timetable from a school preset (see flux-school-presets.js).
  *  Adds only the A/B blocks the student does not already have, so running it
  *  twice, or after entering a class by hand, never duplicates or overwrites. */
@@ -6819,6 +6889,7 @@ function renderSchool(){
   const comboEl=document.getElementById('inputCombo');
   const counselorEl=document.getElementById('inputCounselor');
   const sidEl=document.getElementById('inputStudentID');
+  renderClubs();
   if(lockerEl)lockerEl.value=schoolInfo.locker||'';
   if(comboEl){
     comboEl.value=schoolInfo.combo||'';
