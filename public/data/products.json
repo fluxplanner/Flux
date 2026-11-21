@@ -1,5 +1,5 @@
 {
-  "_comment": "The one list of Flux products. Edit here, then run npm run build:suite: it writes public/data/products.js (window.FluxProducts, loaded before flux-hub.js) and the static cards in suite.html. `group` places a product in Flux Suite; a group of kind \"bar\" is the wide bar on top (the planner), \"tab\" a pill tab over a grid. Order is display order. `blurb` is the Suite card's sentence; `tagline` the switcher's one line. A new product also needs a .app--<id> --c1/--c2 pair in public/css/flux-hub.css.",
+  "_comment": "The one list of Flux products. Edit here, then run npm run build:suite: it writes public/data/products.js (window.FluxProducts, loaded before flux-hub.js) and the static cards in suite.html. `group` places a product in Flux Suite; a group of kind \"bar\" is the wide bar on top (the planner), \"tab\" a pill tab over a grid. Order is display order. `blurb` is the Suite card's sentence; `tagline` the switcher's one line. A new product also needs a .app--<slug or id> --c1/--c2 pair in suite.html.",
   "groups": [
     {
       "id": "planner",
