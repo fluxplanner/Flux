@@ -37,8 +37,8 @@ window.FluxProducts = {
       "slug": "tutor",
       "group": "study",
       "name": "Flux Tutor",
-      "tagline": "Learn from your class materials",
-      "blurb": "Turn your class notes, PDFs, Word documents and photos into a study guide with sources, step-by-step lessons, practice tests and flashcards, built only from what you give it, with no AI. Drag files straight in.",
+      "tagline": "Your IB study partner",
+      "blurb": "Notes for every IB unit, exam-style questions marked point by point by Flux AI, a tutor that cites your notes, mock exams and orals, IA, EE and TOK feedback, flashcards, a Daily 5 and a study plan that works with your planner. Add your own notes, PDFs and photos too.",
       "href": "teacher.html",
       "free": true,
       "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 3 2.5 8 12 13l9.5-5L12 3Z\"/><path d=\"M6.5 11v5.2c3.1 2.4 7.9 2.4 11 0V11M21.5 8v6\"/></svg>"

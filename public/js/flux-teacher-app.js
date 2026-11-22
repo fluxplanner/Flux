@@ -51,26 +51,40 @@
     return;
   }
 
-  const PROMISE = 'Flux Tutor works only from your notes — it doesn\'t make things up.';
+  const PROMISE = 'Built from your notes: every answer shows where in your notes it came from.';
   /* IB-style practice, mock exams and predicted grades. Paused on 24 Oct,
      switched back on with the IB syllabus. False hides all of it again. */
   const DP_EXAMS = true;
   /** The IB DP syllabus (flux-ib-syllabus.js); null if it failed to load. */
   const IB = window.FluxIbSyllabus || null;
   const unitLabel = (id) => (IB && id ? IB.label(IB.unit(id)) : '');
+  /* Seven tabs, each a plain job: read it, learn it, practise it, review the
+     cards, ask about it, plan it, change the notes. Practice and the study
+     guide open a second row for their parts. */
   const TABS = [
-    { id: 'notes', label: 'Notes', icon: 'notes' },
     { id: 'guide', label: 'Study guide', icon: 'guide' },
-    { id: 'topics', label: 'Topics', icon: 'guide' },
     { id: 'learn', label: 'Learn', icon: 'learn' },
-    { id: 'test', label: 'Practice test', icon: 'test' },
-    { id: 'ib', label: 'IB practice', icon: 'test' },
-    { id: 'exam', label: 'Mock exam', icon: 'plan' },
+    { id: 'practice', label: 'Practice', icon: 'test' },
     { id: 'cards', label: 'Flashcards', icon: 'cards' },
-    { id: 'ask', label: 'Ask your notes', icon: 'ask' },
+    { id: 'ask', label: 'Ask', icon: 'ask' },
     { id: 'plan', label: 'Study plan', icon: 'plan' },
+    { id: 'notes', label: 'Notes', icon: 'notes' },
+  ];
+  const PRACTICE = [
+    { id: 'ib', label: 'Exam questions', desc: 'IB-style questions with command terms and marks. Flux AI marks your written answers point by point.' },
+    { id: 'exam', label: 'Mock exam', desc: 'A timed paper: multiple choice and written answers, then your predicted grade.' },
+    { id: 'test', label: 'Quick test', desc: 'Multiple choice, true or false, fill the gap and matching, marked at once.' },
+    { id: 'teach', label: 'Teach it back', desc: 'Explain a topic in your own words and see what you missed.' },
+    { id: 'blurt', label: 'Blurting', desc: 'Write everything you remember, then see the terms and facts you left out.' },
   ].filter((t) => DP_EXAMS || (t.id !== 'ib' && t.id !== 'exam'));
-  const TAB_IDS = TABS.map((t) => t.id);
+  const GROUPS = { practice: ['practice'].concat(PRACTICE.map((t) => t.id)), guide: ['guide', 'topics'] };
+  const TAB_IDS = TABS.map((t) => t.id).concat(GROUPS.practice, ['topics']);
+  const Hub = window.FluxTutorHub || null;
+  const AI = window.FluxTutorAI || null;
+  const Cloud = window.FluxTutorCloud || null;
+  function frame(active) { if (Hub) Hub.frame(active); }
+  function track(kind, data) { if (Hub) Hub.track(kind, data); }
+  function aiReady() { return !!(Hub && Hub.aiReady()); }
   const TEST_KEY = 'flux_tutor.v2.test.';
   const MAX_FILE_BYTES = 15 * 1024 * 1024;
   const MAX_PDF_PAGES = 40;
@@ -202,7 +216,7 @@
     pendingUnit: '',     // a syllabus unit "New set" was pressed for
   };
   function freshUi() {
-    return { editing: null, learnPick: false, learnNote: '', test: null, exam: null, cards: null, ib: null, askQuery: '', planNote: '', guideMap: false, mapPick: null };
+    return { editing: null, learnPick: false, learnNote: '', test: null, exam: null, cards: null, ib: null, askQuery: '', planNote: '', guideMap: false, mapPick: null, teach: null, blurt: null };
   }
   let busy = false;
 
@@ -256,7 +270,11 @@
     return o.index;
   }
   function guideChanged() { app.open.guideVer++; }
-  function studied() { app.open.set.studiedAt = nowIso(); T.logActivity(app.open.set); }
+  function studied() { app.open.set.studiedAt = nowIso(); T.logActivity(app.open.set); track('studied'); }
+  /** A wrong answer goes in the set's mistakes log (Mistakes in the sidebar). */
+  function mistake(kind, q, given, conceptIds, why) {
+    T.logMistake(app.open.set, { kind, prompt: typeof q === 'string' ? q : T.questionText(q), given: typeof given === 'string' ? given : '', answer: typeof q === 'string' ? '' : T.answerText(q), conceptIds: conceptIds || [], why: why || '' });
+  }
 
   /* ── Saving ─────────────────────────────────────────────────────────── */
 
@@ -540,6 +558,9 @@
       try { id = decodeURIComponent(parts[1]); } catch (_) { id = ''; }
       if (id) return { view: 'set', id, tab: TAB_IDS.includes(parts[2]) ? parts[2] : '', query };
     }
+    if (parts[0] === 'library') return { view: 'library' };
+    const hub = Hub ? Hub.parse('#' + raw) : null;
+    if (hub) return { view: 'hub', hub };
     return { view: 'library' };
   }
   function go(hash) {
@@ -574,6 +595,16 @@
     const r = parseHash();
     closeToast();
     stopTestTimer();
+    if (r.view === 'hub') {
+      await leaveSet();
+      await loadLibrary();
+      if (seq !== routeSeq) return;
+      app.view = 'hub';
+      setSaveLabel(idleLabel(), app.store.persistent ? 'idle' : 'warn');
+      Hub.render(r.hub.view, r.hub.params);
+      afterRoute('#ftScreenTitle');
+      return;
+    }
     if (r.view === 'library') {
       await leaveSet();
       await loadLibrary();
@@ -586,7 +617,8 @@
       await leaveSet();
       if (seq !== routeSeq) return;
       app.view = 'learn';
-      document.title = 'Learn · Flux Tutor';
+      frame('learn');
+      document.title = 'Lessons · Flux Tutor';
       if (window.FluxTeachUI) window.FluxTeachUI.render(root, r);
       else root.innerHTML = '<p class="ft-alert" role="alert">Lessons did not load. Reload the page.</p>';
       afterRoute('#ftScreenTitle');
@@ -726,6 +758,7 @@
   }
   async function refreshLibrary(focusSel) {
     await loadLibrary();
+    if (Cloud) Cloud.soon();
     if (app.open || parseHash().view !== 'library') return;
     renderLibrary();
     if (focusSel) focusEl(focusSel) || focusEl('#ftLibTitle');
@@ -748,6 +781,7 @@
 
   function renderLibrary() {
     app.view = 'library';
+    frame('library');
     document.title = 'Flux Tutor · Study from your notes';
     setSaveLabel(idleLabel(), app.store.persistent ? 'idle' : 'warn');
     const sets = app.metas;
@@ -1009,6 +1043,7 @@
     const ok = await dialog({ title: 'Delete for good?', text: '“' + title + '” and everything in it will be removed from this device. This cannot be undone.', okLabel: 'Delete forever', danger: true });
     if (!ok) return;
     const res = await app.store.purge(id);
+    if (res.ok && Cloud) Cloud.remove(id);
     if (!res.ok) { libAlert(res.error.message); return; }
     await refreshLibrary('#ftLibTitle');
     announce('Deleted “' + title + '” for good.');
@@ -1031,7 +1066,7 @@
    * unit it is built straight away (guide, cards, questions) and opens on the
    * guide; without them it opens the notes screen, titled and filed, as before.
    */
-  async function startUnitSet(unitId) {
+  async function startUnitSet(unitId, tab) {
     const N = window.FluxIbNotes;
     const text = N && N.has(unitId) ? await N.load(unitId) : '';
     if (!text) { app.pendingUnit = unitId; location.hash = '#new'; return; }
@@ -1043,7 +1078,7 @@
     const res = await app.store.save(set);
     if (!res.ok) { libAlert(res.error.message); return; }
     app.notice = '';
-    go(setHash(res.set.id, 'guide'));
+    go(setHash(res.set.id, TAB_IDS.includes(tab) ? tab : 'guide'));
   }
 
   async function createSample() {
@@ -1064,8 +1099,16 @@
 
   function tabsNav() {
     const id = app.open.set.id;
+    const inGroup = (t) => t.id === app.tab || (GROUPS[t.id] && GROUPS[t.id].includes(app.tab));
+    let sub = '';
+    if (GROUPS.practice.includes(app.tab) && app.tab !== 'practice') {
+      sub = '<nav class="ft-subtabs" aria-label="Practice"><ul>' + PRACTICE.map((t) => '<li><a href="' + esc(setHash(id, t.id)) + '"' + (t.id === app.tab ? ' aria-current="page"' : '') + '>' + esc(t.label) + '</a></li>').join('') + '</ul></nav>';
+    } else if (GROUPS.guide.includes(app.tab)) {
+      sub = '<nav class="ft-subtabs" aria-label="Study guide"><ul>' + [['guide', 'Whole guide'], ['topics', 'Topic by topic']].map((t) => '<li><a href="' + esc(setHash(id, t[0])) + '"' + (t[0] === app.tab ? ' aria-current="page"' : '') + '>' + t[1] + '</a></li>').join('') + '</ul></nav>';
+    }
     return '<nav class="ft-tabs" aria-label="Study set"><ul>' + TABS.map((t) => '<li><a href="' + esc(setHash(id, t.id)) + '"'
-      + (t.id === app.tab ? ' aria-current="page"' : '') + '>' + icon(t.icon, 17) + '<span>' + t.label + '</span></a></li>').join('') + '</ul></nav>';
+      + (inGroup(t) ? ' aria-current="page"' : '') + '>' + icon(t.icon, 17) + '<span>' + t.label + '</span>'
+      + (t.id === 'practice' && (app.open.set.mistakes || []).some((m) => !m.fixedAt) ? '<span class="ft-tab-dot" aria-hidden="true"></span>' : '') + '</a></li>').join('') + '</ul></nav>' + sub;
   }
   function subline(set) {
     const bits = [];
@@ -1079,12 +1122,24 @@
     const set = o.set;
     const title = set.title || (o.draft ? 'New study set' : 'Untitled study set');
     document.title = title + ' · Flux Tutor';
+    // Keep the sidebar's counts (mistakes, cards due) in step with the set on screen.
+    if (!o.draft) {
+      const mi = app.metas.findIndex((m) => m.id === set.id);
+      const fresh = Object.assign(T.summarizeSet(set), { deletedAt: set.deletedAt || '' });
+      if (mi >= 0) app.metas[mi] = fresh; else if (!set.deletedAt) app.metas.unshift(fresh);
+    }
+    // A set filed under one of the student's subjects lights that subject in the sidebar.
+    const sid = set.unit ? set.unit.split(':')[0] : (IB && set.subject && IB.find(set.subject) ? IB.find(set.subject).id : '');
+    frame(sid && Hub && Hub.profile().subjects.some((x) => x.id === sid) ? 'subject:' + sid : 'library');
     let screen = '';
     switch (app.tab) {
       case 'guide': screen = guideScreen(); break;
       case 'learn': screen = learnScreen(); break;
       case 'test': screen = testScreen(); break;
       case 'ib': screen = ibScreen(); break;
+      case 'practice': screen = practiceScreen(); break;
+      case 'teach': screen = teachScreen(); break;
+      case 'blurt': screen = blurtScreen(); break;
       case 'exam': screen = examScreen(); break;
       case 'topics': screen = topicsScreen(); break;
       case 'cards': screen = cardsScreen(); break;
@@ -2101,6 +2156,7 @@
     if (!unsure && blank(q, given)) { form.querySelector('.ft-error').textContent = 'Choose or type an answer, or press “I’m not sure”.'; return; }
     const rec = T.answerCheck(s, set.mastery, q.id, given);
     if (unsure && rec) rec.unsure = true;
+    if (rec) track('answer', { right: !unsure && T.isRight(rec.verdict) });
     studied();
     save();
     renderScreen('#ftNextBtn');
@@ -2135,6 +2191,11 @@
       const given = readGiven(form, step.q);
       if (blank(step.q, given)) { form.querySelector('.ft-error').textContent = 'Choose or type an answer, or press “I’m not sure”.'; return; }
       rec = T.answerStep(s, set.mastery, given);
+    }
+    if (rec) {
+      const right = !unsure && T.isRight(rec.verdict);
+      track('answer', { right });
+      if (!right) mistake('learn', step.q, unsure ? '' : readGiven(form, step.q), step.q.conceptId ? [step.q.conceptId] : []);
     }
     app.ui.learnNote = '';
     studied();
@@ -2338,6 +2399,8 @@
     g.results.forEach((r) => {
       const q = t.qs.find((x) => x.id === r.qid);
       if (!q || r.blank) return;
+      track('answer', { right: T.isRight(r.verdict) });
+      if (!T.isRight(r.verdict) && q.type !== 'match') mistake('test', q, t.answers[q.id], q.conceptId ? [q.conceptId] : []);
       if (q.type === 'match') {
         (q.pairs || []).forEach((p) => { set.mastery[p.conceptId] = T.applyResult(set.mastery[p.conceptId], r.perConcept && r.perConcept[p.conceptId] ? 'correct' : 'incorrect', at); });
       } else if (q.conceptId) set.mastery[q.conceptId] = T.applyResult(set.mastery[q.conceptId], r.verdict, at);
@@ -2394,12 +2457,12 @@
     return head + '<p class="ft-help">' + esc(ui.programme) + ' · ' + plural(ui.qs.length, 'question') + ' · ' + plural(total, 'mark')
       + (marked ? ' · You have ' + got + ' of ' + ui.qs.filter((q) => ui.done[q.id] != null).reduce((n, q) => n + q.marks, 0) + ' so far' : '') + '</p>'
       + '<ol class="ft-ib-list">' + ui.qs.map((q) => {
-        const term = T.COMMAND_TERMS[q.command];
+        const term = T.COMMAND_TERMS[q.command] || (AI && AI.COMMANDS[q.command]) || { meaning: '' };
         const shown = !!ui.shown[q.id];
         const ticks = ui.ticks[q.id] || [];
         const done = ui.done[q.id];
         return '<li class="ft-ib-q" id="ftIb-' + esc(q.id) + '"><p class="ft-ib-meta"><span class="ft-score-pill" title="' + esc(term.meaning) + '">' + esc(q.command) + '</span> '
-          + '<span class="ft-help">Paper ' + (q.paper || 2) + ' · Difficulty ' + q.level + ' · [' + plural(q.marks, 'mark') + ']</span></p>'
+          + '<span class="ft-help">Paper ' + (q.paper || 2) + ' · Difficulty ' + q.level + ' · [' + plural(q.marks, 'mark') + ']' + (q.ai ? ' · written by Flux AI from your notes' : '') + '</span></p>'
           + '<p class="ft-ib-prompt"><strong>' + esc(q.prompt) + '</strong></p>'
           + '<p class="ft-help"><em>' + esc(q.command) + '</em>: ' + esc(term.meaning) + '</p>'
           + (q.paper === 1
@@ -2410,16 +2473,23 @@
             ? '<div class="ft-ib-scheme"><p class="ft-label">Markscheme</p><p><strong>' + esc(q.answer) + '</strong> [1]</p>' + quote(q.scheme[0]) + '</div>'
               + '<p class="ft-ib-score" role="status">' + (done ? 'Right: 1 of 1.' : 'Not this time: 0 of 1.') + '</p>'
             : shown
-            ? '<fieldset class="ft-fieldset ft-ib-scheme"><legend class="ft-label">Markscheme: tick each point your answer makes</legend>'
+            ? aiMarkHtml(q, ui.ai && ui.ai[q.id] && ui.ai[q.id].res)
+              + '<fieldset class="ft-fieldset ft-ib-scheme"><legend class="ft-label">' + (ui.ai && ui.ai[q.id] && ui.ai[q.id].res ? 'Markscheme' : 'Markscheme: tick each point your answer makes') + '</legend>'
               + q.scheme.map((p, i) => '<label class="ft-check ft-check--plain"><input type="checkbox" data-ib-tick="' + esc(q.id) + '" value="' + i + '"' + (ticks[i] ? ' checked' : '') + (done != null ? ' disabled' : '') + '> <span>' + esc(p.text) + ' ' + cite(p.ref, p.text) + '</span></label>').join('')
               + '</fieldset>'
               + (done != null
                 ? '<p class="ft-ib-score" role="status">You gave yourself ' + done + ' of ' + q.marks + '.</p>'
                 : '<div class="ft-row"><button type="button" class="ft-btn" data-act="ib-mark" data-q="' + esc(q.id) + '">Save my mark</button></div>')
-            : '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="ib-show" data-q="' + esc(q.id) + '">' + (q.paper === 1 ? 'Check my answer' : 'Show the markscheme') + '</button></div>')
+            : q.paper === 1
+            ? '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="ib-show" data-q="' + esc(q.id) + '">Check my answer</button></div>'
+            : '<div class="ft-row">' + (tutorAiOn() ? '<button type="button" class="ft-btn" data-act="ib-ai" data-q="' + esc(q.id) + '"' + (ui.ai && ui.ai[q.id] && ui.ai[q.id].state === 'busy' ? ' disabled' : '') + '>' + icon('sparkle', 16) + (ui.ai && ui.ai[q.id] && ui.ai[q.id].state === 'busy' ? 'Marking…' : 'Mark it with Flux AI') + '</button>' : '')
+              + '<button type="button" class="ft-btn ft-btn--quiet" data-act="ib-show" data-q="' + esc(q.id) + '">Mark it myself</button></div>'
+              + (ui.ai && ui.ai[q.id] && ui.ai[q.id].state === 'error' ? (ui.ai[q.id].code === 'signin' && Hub ? Hub.signInCard('Sign in to have Flux AI mark your answers.') : '<p class="ft-alert" role="alert">' + esc(ui.ai[q.id].message) + '</p>') : ''))
           + '</li>';
       }).join('') + '</ol>'
-      + '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="ib-new">New questions</button></div>'
+      + '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="ib-new">New questions</button>'
+      + (tutorAiOn() && ui.programme ? '<button type="button" class="ft-btn ft-btn--quiet" data-act="ib-ai-more"' + (ui.genBusy ? ' disabled' : '') + '>' + icon('sparkle', 16) + (ui.genBusy ? 'Writing questions…' : 'Write more with Flux AI') + '</button>' : '') + '</div>'
+      + (ui.genError ? '<p class="ft-alert" role="alert">' + esc(ui.genError) + '</p>' : '')
       + weakHtml + '</section>';
   }
   function startIb(form, focus) {
@@ -2431,7 +2501,7 @@
       programme, paper: fd ? Number(fd.get('paper')) : 2, topic: fd ? String(fd.get('topic') || '') : '',
       level: fd ? Number(fd.get('level')) : 0, count: fd ? Number(fd.get('count')) : 6, focus: focus || 'all',
     });
-    app.ui.ib = { qs, programme, answers: {}, shown: {}, ticks: {}, done: {} };
+    app.ui.ib = { qs, programme, answers: {}, shown: {}, ticks: {}, done: {}, ai: {}, topic: fd ? String(fd.get('topic') || '') : '', level: fd ? Number(fd.get('level')) : 0 };
     renderScreen('#ftScreenTitle');
     announce(qs.length ? plural(qs.length, 'question') + ' ready.' : 'No questions could be made from these notes.');
   }
@@ -2459,6 +2529,11 @@
     ui.done[qid] = awarded;
     const verdict = T.ibVerdict(awarded, q.marks);
     q.conceptIds.forEach((id) => { set.mastery[id] = T.applyResult(set.mastery[id], verdict, nowIso()); });
+    track('answer', { right: awarded * 2 >= q.marks && awarded > 0 });
+    if (awarded < q.marks) {
+      const ai = ui.ai && ui.ai[qid] && ui.ai[qid].res;
+      mistake('ib', q.prompt, ui.answers[qid] || '', q.conceptIds, q.paper === 1 ? 'Answer: ' + q.answer : (ai && ai.next ? ai.next + ' ' : '') + 'Markscheme: ' + q.scheme.map((p) => p.text).join(' / '));
+    }
     studied();
     save();
     renderScreen('#ftIb-' + qid);
@@ -2536,10 +2611,11 @@
         body += '<div class="ft-ib-scheme"><p class="ft-label">Markscheme</p><p><strong>' + esc(q.answer) + '</strong> [1]</p>' + quote(q.scheme[0]) + '</div>';
       } else if (locked) {
         const ticks = x.ticks[q.id] || [];
+        body += aiMarkHtml(q, x.ai && x.ai[q.id]);
         body += '<fieldset class="ft-fieldset ft-ib-scheme"><legend class="ft-label">Markscheme: tick each point your answer makes</legend>'
           + q.scheme.map((p, k) => '<label class="ft-check ft-check--plain"><input type="checkbox" data-ex-tick="' + esc(q.id) + '" value="' + k + '"' + (ticks[k] ? ' checked' : '') + (x.phase === 'done' ? ' disabled' : '') + '> <span>' + esc(p.text) + ' ' + cite(p.ref, p.text) + '</span></label>').join('') + '</fieldset>';
       }
-      return '<li class="ft-ib-q" id="ftEx-' + esc(q.id) + '"><p class="ft-ib-meta"><span class="ft-score-pill" title="' + esc(T.COMMAND_TERMS[q.command].meaning) + '">' + esc(q.command) + '</span> <span class="ft-help">Question ' + (i + 1) + ' · [' + plural(q.marks, 'mark') + ']</span></p>'
+      return '<li class="ft-ib-q" id="ftEx-' + esc(q.id) + '"><p class="ft-ib-meta"><span class="ft-score-pill" title="' + esc((T.COMMAND_TERMS[q.command] || { meaning: '' }).meaning) + '">' + esc(q.command) + '</span> <span class="ft-help">Question ' + (i + 1) + ' · [' + plural(q.marks, 'mark') + ']</span></p>'
         + '<p class="ft-ib-prompt"><strong>' + esc(q.prompt) + '</strong></p>' + body + '</li>';
     };
     const section = (paper, title) => {
@@ -2555,6 +2631,7 @@
     }
     if (x.phase === 'marking') {
       return head(false) + '<p class="ft-lead">' + (x.timeUp ? 'Time is up. ' : '') + 'Now mark your paper. Paper 1 is marked for you. For Paper 2, tick each markscheme point your answer makes (points it already seems to make are ticked; you decide).</p>'
+        + (tutorAiOn() && x.qs.some((q) => q.paper === 2) ? '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="exam-ai"' + (x.aiBusy ? ' disabled' : '') + '>' + icon('sparkle', 16) + (x.aiBusy ? 'Flux AI is marking… ' + (x.aiDone || 0) + ' of ' + x.qs.filter((q) => q.paper === 2).length : 'Mark Paper 2 with Flux AI') + '</button></div>' + (x.aiError ? (x.aiErrorCode === 'signin' && Hub ? Hub.signInCard('Sign in to have Flux AI mark your paper.') : '<p class="ft-alert" role="alert">' + esc(x.aiError) + '</p>') : '') : '')
         + papers + '<div class="ft-row"><button type="button" class="ft-btn" data-act="exam-save">Save my marks</button></div></section>';
     }
     const rec = set.exams.find((e) => e.id === x.recordId) || set.exams[set.exams.length - 1];
@@ -2607,7 +2684,11 @@
       const verdict = (x.answers[q.id] || '').trim() ? T.ibVerdict(awarded[q.id], q.marks) : 'incorrect';
       q.conceptIds.forEach((id) => { set.mastery[id] = T.applyResult(set.mastery[id], verdict, at); });
     });
+    x.qs.forEach((q) => {
+      if (awarded[q.id] < q.marks) mistake('exam', q.prompt, x.answers[q.id] || '', q.conceptIds, q.paper === 1 ? 'Answer: ' + q.answer : 'Markscheme: ' + q.scheme.map((p) => p.text).join(' / '));
+    });
     const rec = T.examRecord(x.qs, awarded, { programme: x.programme, minutes: x.minutes, seconds: x.seconds });
+    track('exam');
     set.exams.push(rec);
     if (set.exams.length > T.LIMITS.tests) set.exams.splice(0, set.exams.length - T.LIMITS.tests);
     x.phase = 'done';
@@ -2617,6 +2698,297 @@
     persistExam();
     renderScreen('#ftScreenTitle');
     announce('Saved: ' + rec.got + ' of ' + rec.total + ' marks.');
+  }
+
+  /* ── Flux AI: marking, more questions ───────────────────────────────── */
+
+  /** The passages Flux AI may use for a topic ('' = the whole set): each term's definition and a sentence or two about it. */
+  function topicPassages(topicId, max) {
+    const corpus = corpusNow();
+    const set = app.open.set;
+    let pool = conceptsNow();
+    if (topicId) pool = pool.filter((c) => c.sectionId === topicId);
+    pool = pool.slice().sort((a, b) => T.weakness(set.mastery[b.id]) - T.weakness(set.mastery[a.id]));
+    const seen = new Set();
+    const out = [];
+    pool.forEach((c) => {
+      if (out.length >= (max || 10)) return;
+      const extra = (c.mentions || []).map((id) => corpus.byId[id]).filter((x) => x && x.id !== c.definition.sentenceId && !seen.has(x.id)).slice(0, 2);
+      extra.forEach((x) => seen.add(x.id));
+      const text = [c.definition.full].concat(extra.map((x) => x.text)).join(' ');
+      out.push({ text, ref: c.definition.ref, sentenceId: c.definition.sentenceId, conceptId: c.id });
+    });
+    return out;
+  }
+  function chatLink() {
+    const set = app.open && app.open.set;
+    const sid = set && set.unit ? set.unit.split(':')[0] : (set && IB && set.subject && IB.find(set.subject) ? IB.find(set.subject).id : '');
+    return '#chat' + (sid ? '?subject=' + enc(sid) : '');
+  }
+  /** The examiner's marking of one answer: each point with the words that earned it. */
+  function aiMarkHtml(q, res) {
+    if (!res) return '';
+    const conf = { high: 'Sure of this mark', medium: 'Fairly sure', low: 'Not sure: check it against the markscheme' }[res.confidence] || '';
+    return '<div class="ft-aimark" role="status"><p class="ft-aimark-head">' + icon('sparkle', 16) + '<strong>Flux AI: ' + res.awarded + ' of ' + res.marks + '</strong><span class="ft-help">' + esc(conf) + (res.fromCache ? ' · same answer, same mark' : '') + '</span></p>'
+      + '<ol class="ft-aimark-points">' + q.scheme.map((p, i) => {
+        const pt = res.points[i] || {};
+        return '<li class="' + (pt.met ? 'is-met' : 'is-missed') + '">' + icon(pt.met ? 'check' : 'cross', 15) + '<span><span class="ft-visually-hidden">' + (pt.met ? 'Mark given: ' : 'No mark: ') + '</span>' + esc(p.text)
+          + (pt.met && pt.evidence ? '<span class="ft-aimark-ev">Your words: <q>' + esc(pt.evidence) + '</q></span>' : '')
+          + (pt.note ? '<span class="ft-help">' + esc(pt.note) + '</span>' : '') + '</span></li>';
+      }).join('') + '</ol>'
+      + (res.wrong && res.wrong.length ? '<p class="ft-label">Not right</p><ul class="ft-aimark-wrong">' + res.wrong.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul>' : '')
+      + (res.comment ? '<p class="ft-note">' + esc(res.comment) + '</p>' : '')
+      + (res.next && res.awarded < res.marks ? '<p class="ft-aimark-next"><strong>For full marks:</strong> ' + esc(res.next) + '</p>' : '')
+      + (res.model ? '<details class="ft-aimark-model"><summary>See a full-mark answer</summary><p>' + esc(res.model) + '</p></details>' : '')
+      + '<p class="ft-help">A mark is only given when Flux AI can quote the words in your answer that earn it.</p></div>';
+  }
+  async function aiMarkIb(qid) {
+    const ui = app.ui.ib;
+    const q = ui && ui.qs.find((x) => x.id === qid);
+    if (!q || !AI || ui.done[qid] != null) return;
+    const box = document.getElementById('ftIbA-' + qid);
+    if (box) ui.answers[qid] = box.value;
+    if (!String(ui.answers[qid] || '').trim()) { announce('Write your answer first.'); if (box) box.focus(); return; }
+    ui.ai[qid] = { state: 'busy' };
+    renderScreen('#ftIb-' + qid + ' [data-act="ib-ai"]');
+    announce('Flux AI is marking your answer.');
+    try {
+      const res = await AI.markAnswer(q, ui.answers[qid]);
+      if (app.ui.ib !== ui) return;
+      if (res.failed) throw new Error('Flux AI could not mark that one. Try again, or mark it yourself.');
+      ui.ai[qid] = { state: 'done', res };
+      ui.shown[qid] = true;
+      ui.ticks[qid] = res.points.map((p) => p.met);
+      track('ai');
+      markIb(qid);
+      announce('Flux AI gave ' + res.awarded + ' of ' + res.marks + '.');
+    } catch (e) {
+      if (app.ui.ib !== ui) return;
+      ui.ai[qid] = { state: 'error', code: e.code || '', message: e.message || 'Flux AI is not available right now.' };
+      renderScreen('#ftIb-' + qid);
+    }
+  }
+  async function aiMoreQuestions() {
+    const ui = app.ui.ib;
+    if (!ui || ui.genBusy || !AI) return;
+    if (!aiReady()) { ui.genError = 'Sign in on the Tutor chat page to have Flux AI write questions.'; renderScreen(); return; }
+    const passages = topicPassages(ui.topic, 10);
+    if (!passages.length) return;
+    ui.genBusy = true; ui.genError = '';
+    renderScreen('[data-act="ib-ai-more"]');
+    try {
+      const set = app.open.set;
+      const qs = await AI.makeQuestions(passages, { programme: ui.programme, subject: set.subject, level: ui.level || 0, count: 4 });
+      if (app.ui.ib !== ui) return;
+      const concepts = conceptsNow();
+      qs.forEach((q) => {
+        const low = q.prompt.toLowerCase() + ' ' + q.scheme.map((p) => p.text).join(' ').toLowerCase();
+        q.conceptIds = concepts.filter((c) => c.label.length > 2 && low.indexOf(c.label.toLowerCase()) >= 0).slice(0, 3).map((c) => c.id);
+        if (!ui.qs.some((x) => x.prompt === q.prompt)) ui.qs.push(q);
+      });
+      if (!qs.length) ui.genError = 'Flux AI could not write questions that stick to your notes this time. Try again.';
+      track('ai');
+      announce(qs.length ? plural(qs.length, 'new question') + ' added at the end.' : ui.genError);
+    } catch (e) {
+      if (app.ui.ib === ui) ui.genError = e.message || 'Flux AI is not available right now.';
+    }
+    ui.genBusy = false;
+    if (app.ui.ib === ui && app.tab === 'ib') renderScreen();
+  }
+  async function aiMarkExam() {
+    const x = app.ui.exam;
+    if (!x || x.phase !== 'marking' || x.aiBusy || !AI) return;
+    x.aiBusy = true; x.aiDone = 0; x.aiError = ''; x.ai = x.ai || {};
+    renderScreen('[data-act="exam-ai"]');
+    for (const q of x.qs.filter((y) => y.paper === 2)) {
+      if (app.ui.exam !== x) return;
+      try {
+        const res = await AI.markAnswer(q, x.answers[q.id] || '');
+        if (!res.failed) { x.ai[q.id] = res; x.ticks[q.id] = res.points.map((p) => p.met); }
+      } catch (e) {
+        x.aiError = e.message || 'Flux AI is not available right now.';
+        x.aiErrorCode = e.code || '';
+        break;
+      }
+      x.aiDone++;
+      persistExam();
+      if (app.tab === 'exam') renderScreen();
+    }
+    x.aiBusy = false;
+    persistExam();
+    track('ai');
+    if (app.tab === 'exam') renderScreen('[data-act="exam-save"]');
+    announce(x.aiError || 'Flux AI has marked Paper 2. Check the ticks, then save your marks.');
+  }
+
+  /* ── Practice: the menu ─────────────────────────────────────────────── */
+
+  function practiceScreen() {
+    const set = app.open.set;
+    if (!set.guide) return needGuide('Practice');
+    const weak = T.weakTopics(conceptsNow(), set.mastery, 50).length;
+    const last = set.tests.length ? set.tests[set.tests.length - 1] : null;
+    const mist = T.openMistakes(set).length;
+    const stat = { ib: weak ? plural(weak, 'weak term') : '', exam: set.exams.length ? plural(set.exams.length, 'exam') + ' taken' : '', test: last ? 'Last ' + last.pct + '%' : '', teach: '', blurt: '' };
+    const icons = { ib: 'test', exam: 'plan', test: 'check', teach: 'learn', blurt: 'notes' };
+    return '<section class="ft-panel" aria-labelledby="ftScreenTitle"><h2 class="ft-h2" id="ftScreenTitle" tabindex="-1">Practice</h2>'
+      + '<p class="ft-lead">Pick how you want to practise. Everything is built from this set’s notes, and every wrong answer goes to Mistakes for another go.</p>'
+      + gradeHtml(T.predictGrade(set))
+      + '<ul class="ft-modes-grid">' + PRACTICE.map((t) => '<li><a href="' + esc(setHash(set.id, t.id)) + '">' + icon(icons[t.id] || 'test', 22) + '<strong>' + esc(t.label) + '</strong><span class="ft-help">' + esc(t.desc) + '</span>'
+        + (stat[t.id] ? '<span class="ft-chip">' + esc(stat[t.id]) + '</span>' : '') + '</a></li>').join('')
+      + '<li><a href="#mistakes">' + icon('check', 22) + '<strong>Fix my mistakes</strong><span class="ft-help">Every question you got wrong, ready for another go.</span>' + (mist ? '<span class="ft-chip ft-chip--warn">' + plural(mist, 'mistake') + '</span>' : '') + '</a></li>'
+      + '</ul></section>';
+  }
+
+  /* ── Teach it back ──────────────────────────────────────────────────── */
+
+  function topicSelect(id, current, label) {
+    const topics = T.topicsFor(corpusNow(), conceptsNow());
+    return '<div class="ft-field"><label class="ft-label" for="' + id + '">' + esc(label) + '</label><select class="ft-select" id="' + id + '"><option value="">Everything in this set</option>'
+      + topics.filter((t) => t.id).map((t) => '<option value="' + esc(t.id) + '"' + (t.id === current ? ' selected' : '') + '>' + esc(t.title) + '</option>').join('') + '</select></div>';
+  }
+  function topicTitle(id) {
+    const t = T.topicsFor(corpusNow(), conceptsNow()).find((x) => x.id === id);
+    return t ? t.title : (app.open.set.title || 'this set');
+  }
+  function teachScreen() {
+    const set = app.open.set;
+    if (!set.guide) return needGuide('Teach it back');
+    if (!conceptsNow().length) return noTerms('Teach it back');
+    const t = app.ui.teach || (app.ui.teach = { topic: '', text: '', result: null, busy: false, prompt: '' });
+    const r = t.result;
+    let res = '';
+    if (r && r.rules) {
+      res = '<div class="ft-teach-res"><h3 class="ft-h3">What your explanation covered</h3>' + blurtTermsHtml(r.rules) + '<p class="ft-help">Checked by matching the key terms and their definitions in your notes. Sign in for Flux AI to judge the explanation itself.</p></div>';
+    } else if (r) {
+      const passages = t.passages || [];
+      const pCite = (n) => (n && passages[n - 1] ? ' ' + cite(passages[n - 1].ref, passages[n - 1].text) : '');
+      res = '<div class="ft-teach-res" role="status"><p class="ft-teach-score" aria-label="' + r.score + ' out of 5">' + [1, 2, 3, 4, 5].map((k) => '<span class="ft-pip' + (k <= r.score ? ' is-on' : '') + '"></span>').join('') + '<strong>' + r.score + ' / 5</strong></p>'
+        + (r.praise ? '<p class="ft-lead">' + esc(r.praise) + '</p>' : '')
+        + (r.right.length ? '<h3 class="ft-h4">You explained</h3><ul class="ft-list-good">' + r.right.map((x) => '<li>' + icon('check', 15) + esc(x) + '</li>').join('') + '</ul>' : '')
+        + (r.missing.length ? '<h3 class="ft-h4">You left out</h3><ul class="ft-list-miss">' + r.missing.map((x) => '<li>' + icon('info', 15) + esc(x) + '</li>').join('') + '</ul>' : '')
+        + (r.wrong.length ? '<h3 class="ft-h4">Not quite right</h3><ul class="ft-list-bad">' + r.wrong.map((w) => '<li>' + icon('cross', 15) + '<span><q>' + esc(w.quote) + '</q> ' + esc(w.fix) + pCite(w.p) + '</span></li>').join('') + '</ul>' : '')
+        + (r.question ? '<div class="ft-teach-q"><p class="ft-label">Your classmate asks</p><p class="ft-teach-ask">' + esc(r.question) + '</p><button type="button" class="ft-btn ft-btn--quiet ft-btn--small" data-act="teach-follow">Answer it</button></div>' : '')
+        + '</div>';
+    }
+    return '<section class="ft-panel" aria-labelledby="ftScreenTitle"><h2 class="ft-h2" id="ftScreenTitle" tabindex="-1">Teach it back</h2>'
+      + '<p class="ft-lead">Explaining something in your own words is one of the fastest ways to learn it. Pick a topic and teach it as if to a classmate who missed the lesson.</p>'
+      + topicSelect('ftTeachTopic', t.topic, 'Topic')
+      + (t.prompt ? '<p class="ft-notice">' + icon('ask', 17) + '<span>' + esc(t.prompt) + '</span></p>' : '')
+      + '<div class="ft-field"><label class="ft-label" for="ftTeachText">Your explanation</label><textarea class="ft-textarea ft-textarea--tall" id="ftTeachText" rows="8"' + (r ? ' readonly' : '') + ' placeholder="Start with what it is, then how it works and why it matters…">' + esc(t.text) + '</textarea></div>'
+      + '<div class="ft-row">' + (r ? '<button type="button" class="ft-btn" data-act="teach-again">Teach it again</button>'
+        : '<button type="button" class="ft-btn" data-act="teach-check"' + (t.busy ? ' disabled' : '') + '>' + icon('sparkle', 16) + (t.busy ? 'Checking…' : 'Check my explanation') + '</button>') + '</div>'
+      + (t.error ? (t.errorCode === 'signin' && Hub ? Hub.signInCard('Sign in so Flux AI can check your explanation.') : '<p class="ft-alert" role="alert">' + esc(t.error) + '</p>') : '')
+      + res + '</section>';
+  }
+  async function teachCheck() {
+    const t = app.ui.teach;
+    const box = document.getElementById('ftTeachText');
+    if (box) t.text = box.value;
+    if (T.wordCount(t.text) < 12) { t.error = 'Write a few sentences first: at least a dozen words.'; t.errorCode = ''; renderScreen('#ftTeachText'); return; }
+    t.error = '';
+    const set = app.open.set;
+    const pool = conceptsNow().filter((c) => !t.topic || c.sectionId === t.topic);
+    if (!aiReady()) {
+      const rules = T.blurtCheck(corpusNow(), pool, null, t.text, {});
+      t.result = { rules };
+      applyRecall(rules, 'teach');
+      renderScreen('#ftScreenTitle');
+      return;
+    }
+    t.busy = true;
+    renderScreen('[data-act="teach-check"]');
+    const passages = topicPassages(t.topic, 8);
+    try {
+      const r = await AI.teachBack(topicTitle(t.topic), passages, t.text);
+      if (r.failed) throw new Error('Flux AI could not check that. Try again.');
+      t.result = r;
+      t.passages = passages;
+      const verdict = r.score >= 4 ? 'correct' : r.score >= 3 ? 'partial' : 'incorrect';
+      const at = nowIso();
+      pool.forEach((c) => { set.mastery[c.id] = T.applyResult(set.mastery[c.id], verdict, at); });
+      r.missing.forEach((m) => mistake('teach', 'Teach it back (' + topicTitle(t.topic) + '): ' + m, t.text.slice(0, 400), pool.map((c) => c.id).slice(0, 6)));
+      track('answer', { right: r.score >= 4 });
+      track('ai');
+      studied();
+      save();
+    } catch (e) { t.error = e.message || 'Flux AI is not available right now.'; t.errorCode = e.code || ''; }
+    t.busy = false;
+    renderScreen(t.result ? '#ftScreenTitle' : '[data-act="teach-check"]');
+  }
+
+  /* ── Blurting ───────────────────────────────────────────────────────── */
+
+  function blurtTermsHtml(r) {
+    const done = r.terms.filter((x) => x.explained);
+    const named = r.terms.filter((x) => x.named && !x.explained);
+    const missed = r.terms.filter((x) => !x.named);
+    const row = (x, k) => '<li class="is-' + k + '">' + icon(k === 'good' ? 'check' : k === 'part' ? 'info' : 'cross', 15) + '<span><strong>' + esc(x.label) + '</strong>' + (k !== 'good' ? ': ' + esc(x.def) + ' ' + cite(x.ref, x.def) : '') + '</span></li>';
+    return '<p class="ft-blurt-score"><strong>' + r.pct + '%</strong> recalled · ' + done.length + ' explained, ' + named.length + ' named only, ' + missed.length + ' missed</p>'
+      + '<div class="ft-meter"><span style="width:' + r.pct + '%"></span></div>'
+      + (missed.length ? '<h3 class="ft-h4">You left out</h3><ul class="ft-blurt-list">' + missed.map((x) => row(x, 'miss')).join('') + '</ul>' : '')
+      + (named.length ? '<h3 class="ft-h4">Named, but not explained</h3><ul class="ft-blurt-list">' + named.map((x) => row(x, 'part')).join('') + '</ul>' : '')
+      + (done.length ? '<h3 class="ft-h4">Explained</h3><ul class="ft-blurt-list">' + done.map((x) => row(x, 'good')).join('') + '</ul>' : '')
+      + (r.facts.length ? '<h3 class="ft-h4">Key facts</h3><ul class="ft-blurt-list">' + r.facts.map((f) => '<li class="is-' + (f.recalled ? 'good' : 'miss') + '">' + icon(f.recalled ? 'check' : 'cross', 15) + '<span>' + esc(f.text) + (f.ref ? ' ' + cite(f.ref, f.text) : '') + '</span></li>').join('') + '</ul>' : '');
+  }
+  /** What a blurt or a rules-checked explanation shows moves each term's mastery; missed terms go to Mistakes. */
+  function applyRecall(r, kind) {
+    const set = app.open.set;
+    const at = nowIso();
+    r.terms.forEach((x) => {
+      set.mastery[x.id] = T.applyResult(set.mastery[x.id], x.explained ? 'correct' : x.named ? 'partial' : 'incorrect', at);
+      if (!x.named) T.logMistake(set, { kind, prompt: 'What is ' + x.label + '?', given: '', answer: x.def, conceptIds: [x.id] });
+    });
+    // One blurt counts as one answer, right when most of it was recalled.
+    track('answer', { right: r.pct >= 60 });
+    studied();
+    save();
+  }
+  function blurtScreen() {
+    const set = app.open.set;
+    if (!set.guide) return needGuide('Blurting');
+    if (!conceptsNow().length) return noTerms('Blurting');
+    const b = app.ui.blurt || (app.ui.blurt = { topic: '', text: '', started: 0 });
+    const r = b.result;
+    return '<section class="ft-panel" aria-labelledby="ftScreenTitle"><h2 class="ft-h2" id="ftScreenTitle" tabindex="-1">Blurting</h2>'
+      + '<p class="ft-lead">Close your notes. Write down everything you remember about the topic, in any order, as fast as you can. Then check what you got and what you left out.</p>'
+      + topicSelect('ftBlurtTopic', b.topic, 'Topic')
+      + '<div class="ft-field"><label class="ft-label" for="ftBlurtText">Everything you remember</label><textarea class="ft-textarea ft-textarea--tall" id="ftBlurtText" rows="10"' + (r ? ' readonly' : '') + ' placeholder="Key terms, definitions, facts, examples, diagrams in words…">' + esc(b.text) + '</textarea>'
+      + '<p class="ft-help">' + T.wordCount(b.text) + ' words</p></div>'
+      + '<div class="ft-row">' + (r ? '<button type="button" class="ft-btn" data-act="blurt-again">Blurt again</button>'
+        + (tutorAiOn() && !b.ai ? '<button type="button" class="ft-btn ft-btn--quiet" data-act="blurt-ai"' + (b.aiBusy ? ' disabled' : '') + '>' + icon('sparkle', 16) + (b.aiBusy ? 'Checking…' : 'Find anything I got wrong') + '</button>' : '')
+        : '<button type="button" class="ft-btn" data-act="blurt-check">Check what I remembered</button>') + '</div>'
+      + (b.error ? (b.errorCode === 'signin' && Hub ? Hub.signInCard('Sign in so Flux AI can check what you wrote.') : '<p class="ft-alert" role="alert">' + esc(b.error) + '</p>') : '')
+      + (b.ai ? '<div class="ft-teach-res"><h3 class="ft-h4">' + icon('sparkle', 15) + ' Flux AI</h3>' + (b.ai.wrong.length ? '<ul class="ft-list-bad">' + b.ai.wrong.map((w) => '<li>' + icon('cross', 15) + '<span><q>' + esc(w.quote) + '</q> ' + esc(w.fix) + '</span></li>').join('') + '</ul>' : '<p class="ft-lead">Nothing you wrote looks wrong.</p>') + (b.ai.tip ? '<p class="ft-note">' + esc(b.ai.tip) + '</p>' : '') + '</div>' : '')
+      + (r ? '<div class="ft-teach-res" role="status">' + blurtTermsHtml(r) + '<p class="ft-help">Recall is checked by matching the key terms and definitions in your notes; it does not judge whether what you wrote is true' + (tutorAiOn() ? ' (Flux AI can)' : '') + '.</p></div>' : '')
+      + '</section>';
+  }
+  function blurtCheck() {
+    const b = app.ui.blurt;
+    const box = document.getElementById('ftBlurtText');
+    if (box) b.text = box.value;
+    if (T.wordCount(b.text) < 5) { b.error = 'Write down what you remember first.'; b.errorCode = ''; renderScreen('#ftBlurtText'); return; }
+    b.error = '';
+    const r = T.blurtCheck(corpusNow(), conceptsNow(), app.open.set.guide, b.text, { topic: b.topic });
+    b.result = r;
+    applyRecall(r, 'blurt');
+    renderScreen('#ftScreenTitle');
+    announce(r.pct + '% recalled.');
+  }
+  async function blurtAi() {
+    const b = app.ui.blurt;
+    if (!b || !b.result || b.aiBusy) return;
+    if (!aiReady()) { b.error = 'Sign in to Flux so Flux AI can check what you wrote.'; b.errorCode = 'signin'; renderScreen(); return; }
+    b.aiBusy = true;
+    renderScreen('[data-act="blurt-ai"]');
+    try {
+      const r = await AI.checkBlurt(topicTitle(b.topic), topicPassages(b.topic, 10), b.text);
+      if (r.failed) throw new Error('Flux AI could not check that. Try again.');
+      b.ai = r;
+      track('ai');
+    } catch (e) { b.error = e.message || 'Flux AI is not available right now.'; b.errorCode = e.code || ''; }
+    b.aiBusy = false;
+    renderScreen('#ftScreenTitle');
   }
 
   /* ── Topic notes ────────────────────────────────────────────────────── */
@@ -2732,6 +3104,7 @@
       const c = { s: card.s };
       FF.review(c, grade, Date.now(), { examAt: examAt() });
       set.cards[card.id] = c.s;
+      track('answer', { right: grade >= 3 });
       studied();
       save();
     }
@@ -2816,25 +3189,14 @@
     return '<section class="ft-answer" aria-labelledby="ftAnswerTitle"><h3 class="ft-h4" id="ftAnswerTitle">Answer</h3>' + body
       + (ai && ai.state === 'busy' ? '<p class="ft-help" role="status">Flux AI is writing an answer from these passages…</p>' : '')
       + (ai && ai.state === 'error' ? '<p class="ft-help" role="status">' + esc(ai.message) + '</p>' : '')
-      + (tutorAiOn() && (!ai || ai.state === 'error') ? '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="ask-ai">' + icon('sparkle', 16) + 'Write it as a paragraph with Flux AI</button></div>' : '')
+      + (tutorAiOn() && (!ai || ai.state === 'error') ? '<div class="ft-row"><button type="button" class="ft-btn ft-btn--quiet" data-act="ask-ai">' + icon('sparkle', 16) + 'Explain it with Flux AI</button>' + '<a class="ft-btn ft-btn--quiet" href="' + esc(chatLink()) + '">' + icon('ask', 16) + 'Ask a follow-up in Tutor chat</a></div>' : '')
       + '</section>';
   }
 
   /* Flux AI is paused across the suite (FLUX_AI_ENABLED in the planner), so
      this stays off until that switch is turned back on here too. When on, it
      goes through the same ai-proxy as the planner, with the planner's session. */
-  const TUTOR_AI_ENABLED = false;
-  const SB_URL = window.FluxSB.url;
-  const SB_ANON = window.FluxSB.anon;
-  const PLANNER_KEY = 'sb-lfigdijuqmbensebnevo-auth-token';
-  function tutorAiOn() { return TUTOR_AI_ENABLED || window.FLUX_TUTOR_AI === true; }
-  function plannerToken() {
-    try {
-      let s = JSON.parse(localStorage.getItem(PLANNER_KEY) || 'null');
-      if (s && s.currentSession) s = s.currentSession;
-      return s && s.access_token && s.expires_at * 1000 > Date.now() + 60000 ? s.access_token : '';
-    } catch (_) { return ''; }
-  }
+  function tutorAiOn() { return !!(AI && AI.ENABLED); }
   const ASK_AI_SYSTEM = 'You answer a student\'s question using ONLY the numbered passages from their own notes. '
     + 'Write 2 to 4 short sentences. End every sentence with the number of the passage it comes from, like [1] or [2][3]. '
     + 'Do not add facts that are not in the passages. If the passages do not answer the question, reply exactly: NOT IN NOTES';
@@ -2842,10 +3204,9 @@
     const query = app.ui.askQuery;
     const r = app.ui.askResult;
     if (!r || !r.covered) return;
-    const token = plannerToken();
     const redraw = () => { const box = document.getElementById('ftAskResults'); if (box) box.innerHTML = askResultsHtml(query); };
-    if (!token) {
-      app.ui.askAi = { query, state: 'error', message: 'Sign in to Flux Planner in this browser to use Flux AI here. The answer from your notes above still works.' };
+    if (!aiReady()) {
+      app.ui.askAi = { query, state: 'error', message: 'Sign in to Flux on the Tutor chat page to use Flux AI here. The answer from your notes above still works.' };
       redraw();
       return;
     }
@@ -2853,14 +3214,8 @@
     redraw();
     const passages = r.results.map((x, i) => '[' + (i + 1) + '] ' + x.sentences.map((p) => p.text).join(' ')).join('\n');
     try {
-      const res = await fetch(SB_URL + '/functions/v1/ai-proxy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, apikey: SB_ANON },
-        body: JSON.stringify({ messages: [{ role: 'system', content: ASK_AI_SYSTEM }, { role: 'user', content: 'Passages:\n' + passages + '\n\nQuestion: ' + query }] }),
-      });
-      if (!res.ok) throw new Error('Flux AI is not available right now (' + res.status + ').');
-      const data = await res.json();
-      const text = (data && data.content && data.content[0] && data.content[0].text) || '';
+      const text = await AI.call({ system: ASK_AI_SYSTEM, messages: [{ role: 'user', content: 'Passages:\n' + passages + '\n\nQuestion: ' + query }] });
+      track('ai');
       const parts = /NOT IN NOTES/.test(text) ? [] : T.groundedParts(text, r.results.length);
       if (app.ui.askQuery !== query) return;
       app.ui.askAi = parts.length
@@ -3055,6 +3410,15 @@
       case 'test-quit': app.ui.test = null; persistTest(); stopTestTimer(); renderScreen('#ftScreenTitle'); announce('Test stopped. Nothing was marked.'); break;
       case 'test-new': app.ui.test = null; persistTest(); renderScreen('#ftScreenTitle'); break;
       case 'ib-show': showIbScheme(btn.dataset.q); break;
+      case 'ib-ai': aiMarkIb(btn.dataset.q); break;
+      case 'ib-ai-more': aiMoreQuestions(); break;
+      case 'exam-ai': aiMarkExam(); break;
+      case 'teach-check': teachCheck(); break;
+      case 'teach-again': app.ui.teach.result = null; app.ui.teach.text = ''; renderScreen('#ftTeachText'); break;
+      case 'teach-follow': { const t = app.ui.teach; t.text = ''; t.prompt = t.result && t.result.question; t.result = null; renderScreen('#ftTeachText'); break; }
+      case 'blurt-check': blurtCheck(); break;
+      case 'blurt-ai': blurtAi(); break;
+      case 'blurt-again': app.ui.blurt = { topic: app.ui.blurt ? app.ui.blurt.topic : '', text: '', started: Date.now() }; renderScreen('#ftBlurtText'); break;
       case 'ib-mark': markIb(btn.dataset.q); break;
       case 'ib-new': app.ui.ib = null; renderScreen('#ftScreenTitle'); break;
       case 'ib-weak': startIb(null, 'weak'); break;
@@ -3119,6 +3483,8 @@
 
   root.addEventListener('input', (e) => {
     const t = e.target;
+    if (t.id === 'ftTeachText' && app.ui.teach) { app.ui.teach.text = t.value; return; }
+    if (t.id === 'ftBlurtText' && app.ui.blurt) { app.ui.blurt.text = t.value; if (!app.ui.blurt.started) app.ui.blurt.started = Date.now(); return; }
     if (t.dataset && (t.dataset.field || t.dataset.srcText)) { onNotesInput(t); return; }
     if (t.dataset && t.dataset.ibAnswer && app.ui.ib && t.type !== 'radio') { app.ui.ib.answers[t.dataset.ibAnswer] = t.value; return; }
     if (t.dataset && t.dataset.exAnswer && app.ui.exam && t.type !== 'radio') { app.ui.exam.answers[t.dataset.exAnswer] = t.value; persistExam(); return; }
@@ -3126,6 +3492,8 @@
   });
   root.addEventListener('change', (e) => {
     const t = e.target;
+    if (t.id === 'ftTeachTopic' && app.ui.teach) { app.ui.teach.topic = t.value; app.ui.teach.result = null; renderScreen('#ftTeachTopic'); return; }
+    if (t.id === 'ftBlurtTopic' && app.ui.blurt) { app.ui.blurt.topic = t.value; app.ui.blurt.result = null; renderScreen('#ftBlurtTopic'); return; }
     if (t.id === 'ftSylSubject') { app.sylSubject = t.value; renderLibrary(); const s = document.getElementById('ftSylSubject'); if (s) s.focus(); return; }
     if (t.dataset && t.dataset.ibAnswer && t.type === 'radio' && app.ui.ib) { app.ui.ib.answers[t.dataset.ibAnswer] = t.value; return; }
     if (t.dataset && t.dataset.exAnswer && t.type === 'radio' && app.ui.exam) { app.ui.exam.answers[t.dataset.exAnswer] = t.value; persistExam(); return; }
@@ -3244,7 +3612,31 @@
         ? 'Your session from the first Flux Tutor beta is now a study set below, with everything you wrote in it.'
         : 'Your sessions from the first Flux Tutor beta are now ' + mig.migrated + ' study sets below, with everything you wrote in them.';
     } else if (!mig.ok && mig.error) app.libError = mig.error.message;
+    if (Hub) {
+      Hub.attach({
+        root, esc, icon, toast, announce, dialog, go, setHash,
+        metas: () => app.metas,
+        getSet: (id) => app.store.get(id),
+        saveSet: async (set) => { const res = await app.store.save(set); if (res.ok) { await loadLibrary(); if (Cloud) Cloud.soon(); } return res; },
+        startUnitSet: (unitId, tab) => guarded(() => startUnitSet(unitId, tab)),
+        questionBody, readGiven, blank, feedbackHtml,
+        isHubView: () => app.view === 'hub',
+      });
+    }
     window.addEventListener('hashchange', () => { route(); });
+    // Study sets and progress follow the student's Flux account to other devices.
+    if (Cloud) {
+      Cloud.start({
+        store, AI,
+        onPulled: () => {
+          if (Hub) Hub.refreshProfile();
+          // Never redraw under someone mid-question: a set on screen picks the change up next time.
+          if (app.view !== 'set') route();
+        },
+      });
+    }
+    // Signing in from a card on a study-set screen: draw that screen again with Flux AI on.
+    window.addEventListener('flux-tutor:signin', () => { if (app.view === 'set' && app.open) renderScreen(); });
     await route();
   }
 

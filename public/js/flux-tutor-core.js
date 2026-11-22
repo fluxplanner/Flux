@@ -2591,6 +2591,118 @@
     return { ok: true, daysLeft: left, truncated: left > LIMITS.planDays, examDate: o.examDate, days: days.filter((d) => d.items.length) };
   }
 
+  /* ── Mistakes log ───────────────────────────────────────────────────── */
+
+  /*
+   * Every question a student gets wrong, kept so they can try it again later
+   * ("Redo my mistakes"). One entry per prompt: getting the same question
+   * wrong twice bumps its count instead of adding a copy. A mistake answered
+   * right on a redo is marked fixed, and fixed ones drop off after 30 days.
+   */
+  const MISTAKES_MAX = 200;
+  const MISTAKE_KINDS = ['learn', 'test', 'ib', 'exam', 'blurt', 'teach', 'cards'];
+  function normMistake(m) {
+    if (!plainObject(m) || typeof m.prompt !== 'string' || !m.prompt.trim()) return null;
+    return {
+      id: safeKey(m.id) ? m.id : uid('mis-'),
+      key: /^[0-9a-f]{8}$/.test(m.key) ? m.key : hashText(norm(m.prompt)),
+      kind: MISTAKE_KINDS.includes(m.kind) ? m.kind : 'test',
+      prompt: str(m.prompt, 600),
+      given: str(m.given, LIMITS.answer),
+      answer: str(m.answer, LIMITS.answer),
+      why: str(m.why, 1200),
+      conceptIds: strList(m.conceptIds, 6, 120).filter(safeKey),
+      count: clampInt(m.count, 1, 999, 1),
+      at: isoOr(m.at, new Date().toISOString()),
+      fixedAt: isoOr(m.fixedAt, ''),
+    };
+  }
+  /** Adds (or bumps) a mistake on the set. entry: { kind, prompt, given, answer, why, conceptIds }. */
+  function logMistake(set, entry, nowIso) {
+    if (!set || !entry || !String(entry.prompt || '').trim()) return null;
+    const at = nowIso || new Date().toISOString();
+    const list = Array.isArray(set.mistakes) ? set.mistakes : (set.mistakes = []);
+    const key = hashText(norm(entry.prompt));
+    const old = list.find((m) => m.key === key);
+    if (old) {
+      old.count = Math.min(999, old.count + 1);
+      old.given = str(entry.given, LIMITS.answer);
+      if (entry.why) old.why = str(entry.why, 1200);
+      old.at = at;
+      old.fixedAt = '';
+      return old;
+    }
+    const m = normMistake(Object.assign({}, entry, { key, at, count: 1, fixedAt: '' }));
+    if (!m) return null;
+    list.push(m);
+    // Over the cap: drop fixed ones first, then the oldest.
+    while (list.length > MISTAKES_MAX) {
+      const i = list.findIndex((x) => x.fixedAt);
+      list.splice(i >= 0 ? i : 0, 1);
+    }
+    return m;
+  }
+  function fixMistake(set, id, nowIso) {
+    const m = (set && set.mistakes || []).find((x) => x.id === id);
+    if (m) m.fixedAt = nowIso || new Date().toISOString();
+    return m || null;
+  }
+  /** Mistakes still to fix, most-missed and most recent first. */
+  function openMistakes(set) {
+    return (set && set.mistakes || []).filter((m) => !m.fixedAt)
+      .sort((a, b) => (b.count - a.count) || (Date.parse(b.at) - Date.parse(a.at)));
+  }
+  function pruneMistakes(list, today) {
+    const day = isYmd(today) ? today : ymd();
+    return list.filter((m) => !m.fixedAt || daysBetween(ymd(Date.parse(m.fixedAt)), day) <= 30);
+  }
+
+  /* ── Blurting ───────────────────────────────────────────────────────── */
+
+  /*
+   * Blurting: the student writes down everything they remember about a topic
+   * from memory, then sees what they got and what they left out. Checked by
+   * rules: a key term counts as recalled when its name (or another name the
+   * notes give it) is in the text, and as explained when most of the content
+   * words of its definition are there too. Key facts count when most of their
+   * content words are there. Nothing here judges whether what was written is
+   * true; the screen says so.
+   */
+  function blurtCheck(corpus, concepts, guide, text, opts) {
+    const o = opts || {};
+    const toks = tokenize(text || '');
+    const hay = toks.map((t) => stem(t.w));
+    const have = new Set(hay);
+    let pool = (concepts || []).slice();
+    if (o.topic) pool = pool.filter((c) => c.sectionId === o.topic);
+    const keyStems = (t) => Array.from(new Set(words(t).filter(isContent).map(stem)));
+    const share = (need) => (need.length ? need.filter((w) => have.has(w)).length / need.length : 0);
+    const terms = pool.map((c) => {
+      const names = [c.stems].concat((c.aliases || []).map(termStems)).filter((x) => x && x.length);
+      const named = names.some((st) => indexOfSeq(hay, st, 0) >= 0);
+      const defNeed = keyStems(c.def).filter((w) => !c.stems.includes(w));
+      const explained = named && share(defNeed) >= 0.4;
+      return { id: c.id, label: c.label, def: c.def, ref: c.definition.ref, named, explained };
+    });
+    let facts = ((guide && guide.facts) || []).filter((f) => f && f.text);
+    if (o.topic) {
+      const inTopic = new Set(pool.map((c) => c.id));
+      const secOf = (f) => (f.sentenceId && corpus.byId[f.sentenceId] ? corpus.byId[f.sentenceId].sectionId : '');
+      facts = facts.filter((f) => secOf(f) === o.topic || (!secOf(f) && inTopic.size === 0));
+    }
+    const factRows = facts.slice(0, 40).map((f) => ({ id: f.id, text: f.text, ref: f.ref || null, recalled: share(keyStems(f.text)) >= 0.55 }));
+    const total = terms.length * 2 + factRows.length;
+    const got = terms.reduce((n, t) => n + (t.named ? 1 : 0) + (t.explained ? 1 : 0), 0) + factRows.filter((f) => f.recalled).length;
+    return {
+      words: toks.length,
+      terms,
+      facts: factRows,
+      got,
+      total,
+      pct: total ? Math.round(got / total * 100) : 0,
+    };
+  }
+
   /* ── The saved study set ────────────────────────────────────────────── */
 
   function newSource(name, kind, text) {
@@ -2627,6 +2739,7 @@
       activity: {},
       cards: {},
       flashDeckId: '',
+      mistakes: [],
       plan: null,
       planDone: {},
       legacy: null,
@@ -2920,6 +3033,7 @@
     out.activity = normMap(raw.activity, (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Math.min(1e6, Math.round(Number(v))) : null), 400);
     Object.keys(out.activity).forEach((k) => { if (!isYmd(k)) delete out.activity[k]; });
     out.cards = normMap(raw.cards, normCardState);
+    out.mistakes = pruneMistakes((Array.isArray(raw.mistakes) ? raw.mistakes : []).slice(-MISTAKES_MAX).map(normMistake).filter(Boolean));
     out.flashDeckId = typeof raw.flashDeckId === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(raw.flashDeckId) ? raw.flashDeckId : '';
     out.plan = normPlan(raw.plan);
     out.planDone = normMap(raw.planDone, (v) => (v === true ? true : null), 3000);
@@ -2991,6 +3105,7 @@
       predicted: predictGrade(s),
       exams: Array.isArray(s.exams) ? s.exams.length : 0,
       cardsDue: s.guide ? cardCounts(s).due : 0,
+      mistakes: Array.isArray(s.mistakes) ? s.mistakes.filter((m) => m && !m.fixedAt).length : 0,
       activity: plainObject(s.activity) ? Object.assign({}, s.activity) : {},
       sample: (s.sources || []).some((src) => src && src.kind === 'Sample'),
     };
@@ -3307,6 +3422,7 @@
     buildMockExam, examRecord, gradeFor, predictGrade, logActivity, studyStreak, topicPages,
     buildSearchIndex, searchNotes, highlightSegments, answerFromNotes, groundedParts,
     buildStudyPlan,
+    logMistake, fixMistake, openMistakes, blurtCheck,
     newSet, newSource, normalizeSet, cloneSet, guideStale, hasNotes, summarizeSet, wordCount,
     cardList, cardQueue, cardCounts, flashDeckFrom,
     migrateLegacy, splitLegacyMaterial,
