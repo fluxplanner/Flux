@@ -1361,6 +1361,9 @@
                  seven days around classes and plans. Also on the calendar. -->
             <button type="button" class="pw-entry dash-add-task-btn" id="dashAddTaskBtn" onclick="openDashAddTaskModal()" title="Add a new task">+ Add task</button>
             <button type="button" class="pw-entry" id="dashPlanWeekBtn" onclick="openPlanWeek()">Plan my week</button>
+            <!-- Folders: groups open tasks by class/club, each folder collapsible
+                 with its own + that adds a task straight into it. -->
+            <button type="button" class="pw-entry" id="dashFoldersBtn" onclick="toggleTaskFolders()" aria-pressed="false"><svg class="fxi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg> Folders</button>
           </div>
         </div>
 
@@ -2058,6 +2061,12 @@
           <button onclick="saveSchoolInfo()" style="width:100%">Save Info</button>
         </div>
       </details>
+      <div class="card" data-student-profile-only>
+        <h3>Clubs</h3>
+        <div style="font-size:.82rem;color:var(--muted2);margin-bottom:10px">Add your clubs so you can file tasks under them, just like a class.</div>
+        <div id="clubList" style="margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px;align-items:center"><input type="text" id="inputClubName" maxlength="60" placeholder="e.g. Robotics Club" style="margin:0;flex:1" onkeydown="if(event.key==='Enter')addClub()"><button type="button" class="btn-sm" onclick="addClub()">Add</button></div>
+      </div>
       <div class="card" data-student-profile-only>
         <h3>Study DNA</h3>
         <div style="font-size:.82rem;color:var(--muted2);margin-bottom:12px">How do you learn best?</div>
@@ -3033,7 +3042,7 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.b78557ee.js"></script>
-<script defer src="public/bundles/flux-core.ad65087c.js"></script>
+<script defer src="public/bundles/flux-core.96ad4435.js"></script>
 <script defer src="public/bundles/flux-features.7de78789.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
