@@ -2923,8 +2923,8 @@
          other two types stay one tap away instead of vanishing with it. -->
     <div id="taskCalTypeRow" style="display:none;gap:8px;margin-bottom:16px">
       <button type="button" id="taskCalTypeTask" style="flex:1;background:var(--accent)" aria-pressed="true">Task</button>
-      <button type="button" id="taskCalTypeEvent" onclick="closeDashAddTaskModal(true);openAddEventModal('event',true)" style="flex:1" class="btn-sec" aria-pressed="false">Event</button>
-      <button type="button" id="taskCalTypeEc" onclick="closeDashAddTaskModal(true);openAddEventModal('ec',true)" style="flex:1" class="btn-sec" aria-pressed="false">Activity</button>
+      <button type="button" id="taskCalTypeEvent" onclick="fluxCalTaskSwitchTo('event')" style="flex:1" class="btn-sec" aria-pressed="false">Event</button>
+      <button type="button" id="taskCalTypeEc" onclick="fluxCalTaskSwitchTo('ec')" style="flex:1" class="btn-sec" aria-pressed="false">Activity</button>
     </div>
     <div class="modal-field-group" style="margin-bottom:10px">
       <label class="modal-micro-label" for="taskName">Title</label>
@@ -3041,8 +3041,8 @@
 <div id="toastLive" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
-<script type="module" src="public/bundles/flux-vendor.b78557ee.js"></script>
-<script defer src="public/bundles/flux-core.96ad4435.js"></script>
+<script type="module" src="public/bundles/flux-vendor.c9e011ba.js"></script>
+<script defer src="public/bundles/flux-core.116333be.js"></script>
 <script defer src="public/bundles/flux-features.7de78789.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 

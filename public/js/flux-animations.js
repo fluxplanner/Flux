@@ -701,6 +701,13 @@ function modalClose(overlayEl, cardEl, onComplete) {
       if (overlayEl && pendingCloses.get(overlayEl)?.tl !== tl) return;
       if (overlayEl) pendingCloses.delete(overlayEl);
       onComplete?.();
+      // The timeline ends on opacity 0; leave nothing behind for a reopen
+      // that skips the open animation (see modalCancelClose).
+      [overlayEl, cardEl].forEach((el) => {
+        if (!el) return;
+        el.style.opacity = '';
+        el.style.transform = '';
+      });
     };
     const tl = createTimeline({ onComplete: done });
     if (overlayEl) pendingCloses.set(overlayEl, { tl, cardEl });
