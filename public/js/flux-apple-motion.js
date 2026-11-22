@@ -721,35 +721,69 @@ function springModalOpen(overlay, card) {
   });
 }
 
+/* The close animation ends on opacity 0 and leaves it inline. A later open
+   that skips the open animation (the calendar's Task / Event / Activity
+   switch reopens the New task dialog "instantly") then showed a full-screen,
+   invisible overlay that swallowed every click — the page looked frozen.
+   So a finished close clears what it painted, and opening cancels a close
+   still in flight instead of letting its stale callback hide the dialog. */
+const springCloses = new WeakMap();
+function clearModalInline(...els) {
+  els.forEach((el) => {
+    if (!el) return;
+    el.style.opacity = '';
+    el.style.transform = '';
+    el.style.backdropFilter = '';
+  });
+}
+function springModalCancelClose(overlay, card) {
+  const p = overlay && springCloses.get(overlay);
+  if (!p) return;
+  springCloses.delete(overlay);
+  p.anims.forEach((a) => {
+    try { a?.cancel?.(); } catch (_) {}
+  });
+  clearModalInline(overlay, card || p.card);
+}
+
 function springModalClose(overlay, card, done) {
+  springModalCancelClose(overlay, card);
   if (!motionAllowed()) {
     done?.();
     return;
   }
+  const token = { anims: [], card };
   let pending = 0;
   const finish = () => {
     pending--;
-    if (pending <= 0) done?.();
+    if (pending > 0) return;
+    if (overlay) {
+      if (springCloses.get(overlay) !== token) return;
+      springCloses.delete(overlay);
+    }
+    done?.();
+    clearModalInline(overlay, card);
   };
   if (overlay) {
+    springCloses.set(overlay, token);
     pending++;
-    animate(overlay, {
+    token.anims.push(animate(overlay, {
       opacity: [1, 0],
       duration: 200,
       ease: APPLE_EASE.accel,
       onComplete: finish,
-    });
+    }));
   }
   if (card) {
     pending++;
-    animate(card, {
+    token.anims.push(animate(card, {
       opacity: [1, 0],
       translateY: [0, 24],
       scale: [1, 0.96],
       duration: 220,
       ease: APPLE_EASE.accel,
       onComplete: finish,
-    });
+    }));
   }
   if (pending === 0) done?.();
 }
@@ -918,6 +952,11 @@ function upgradeFluxAnim() {
 
   FA.modalOpen = (overlay, card) => springModalOpen(overlay, card);
   FA.modalClose = (overlay, card, done) => springModalClose(overlay, card, done);
+  const origCancelClose = FA.modalCancelClose;
+  FA.modalCancelClose = (overlay, card) => {
+    springModalCancelClose(overlay, card);
+    if (typeof origCancelClose === 'function') origCancelClose(overlay, card);
+  };
   FA.sheetOpen = (sheet, overlay) => springSheetOpen(sheet, overlay);
 
   const origToastIn = FA.toastIn;

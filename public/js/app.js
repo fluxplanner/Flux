@@ -5579,6 +5579,7 @@ function closeDashAddTaskModal(instant){
   const card=m.querySelector('.modal-card');
   const hide=()=>{m.style.display='none';};
   const calRow=document.getElementById('taskCalTypeRow');if(calRow)calRow.style.display='none';
+  const ttl=document.getElementById('dashAddTaskModalTitle');if(ttl)ttl.textContent='New task';
   try{
     if(!instant&&window.FluxAnim?.modalClose)FluxAnim.modalClose(m,card||m,hide);
     else hide();
@@ -6167,28 +6168,54 @@ function setAddEventScope(scope){
 /* Set while the New task dialog is turning an existing calendar event into a
    task: the event is removed only once the task is actually saved. */
 var fluxConvertEventId=null;
+/* What has been typed travels with each switch, both ways, so changing the
+   type never throws away a title, date, time or notes. ids: [title, date,
+   time, notes] in the dialog being left / entered. */
+const FLUX_CAL_EVENT_FIELDS=['addEventTitle','addEventDate','addEventTime','addEventNotes'];
+const FLUX_CAL_TASK_FIELDS=['taskName','taskDate','taskTime','taskNotes'];
+function fluxReadCalFields(ids){return ids.map(id=>document.getElementById(id)?.value||'');}
+function fluxWriteCalFields(ids,vals){
+  ids.forEach((id,i)=>{const el=document.getElementById(id);if(el&&i<vals.length)el.value=vals[i];});
+}
 function openCalendarNewTask(){
   const ymd=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
   const ev=editCalendarEventId?load('flux_events',[]).find(x=>String(x.id)===String(editCalendarEventId)):null;
+  const evOpen=document.getElementById('addEventModal')?.style.display==='flex';
+  const vals=evOpen?fluxReadCalFields(FLUX_CAL_EVENT_FIELDS):[];
   closeAddEventModal();
   openDashAddTaskModal(true);
   fluxConvertEventId=ev?ev.id:null;
-  const d=document.getElementById('taskDate');if(d)d.value=ev?.date||ymd;
-  if(ev){
-    const n=document.getElementById('taskName');if(n)n.value=ev.title||'';
-    const no=document.getElementById('taskNotes');if(no)no.value=ev.notes||'';
-    const tt=document.getElementById('taskTime');if(tt)tt.value=ev.time||'';
-  }
+  const d=document.getElementById('taskDate');if(d)d.value=ymd;
+  fluxWriteCalFields(FLUX_CAL_TASK_FIELDS,vals);
+  const t=document.getElementById('dashAddTaskModalTitle');if(t)t.textContent=ev?'Turn event into a task':'New task';
   const row=document.getElementById('taskCalTypeRow');if(row)row.style.display='flex';
+}
+/* The New task dialog's Event / Activity buttons. A task that started as an
+   edit of a calendar event goes back to editing that event — opening a blank
+   Add dialog instead used to drop the edit and save a second copy. */
+function fluxCalTaskSwitchTo(type){
+  const id=fluxConvertEventId;
+  const vals=fluxReadCalFields(FLUX_CAL_TASK_FIELDS);
+  closeDashAddTaskModal(true);
+  const ev=id!=null?load('flux_events',[]).find(x=>String(x.id)===String(id)):null;
+  if(ev){openEditCalendarEventModal(ev.id,true);setAddEventType(type);}
+  else openAddEventModal(type,true);
+  fluxWriteCalFields(FLUX_CAL_EVENT_FIELDS,vals);
+}
+/* It sits inside #flux-main, which centres it over the content area while
+   the New task dialog centres on the whole screen; switching between them
+   made the box jump sideways. Centre both the same way. */
+function fluxShowAddEventModal(modal,instant){
+  if(modal.parentElement!==document.body)document.body.appendChild(modal);
+  modal.classList.toggle('flux-modal-swap',!!instant);
+  modal.style.opacity='';
+  modal.hidden=false;
+  modal.style.display='flex';
+  modal.setAttribute('aria-hidden','false');
 }
 function openAddEventModal(preferredType,instant){
   if(preferredType==='task'){openCalendarNewTask();return;}
   const modal=document.getElementById('addEventModal');if(!modal)return;
-  /* It sits inside #flux-main, which centres it over the content area while
-     the New task dialog centres on the whole screen; switching between them
-     made the box jump sideways. Centre both the same way. */
-  if(modal.parentElement!==document.body)document.body.appendChild(modal);
-  modal.classList.toggle('flux-modal-swap',!!instant);
   fluxSyncSubjectUiForRole();
   editCalendarEventId=null;
   document.getElementById('addEventDate').value=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
@@ -6201,11 +6228,9 @@ function openAddEventModal(preferredType,instant){
   const defaultScope=preferredType==='ec'?'outside':(fluxIsStaffPersonalMode()?'outside':'school');
   setAddEventScope(defaultScope);
   setAddEventType(preferredType==='ec'?'ec':'event');
-  modal.hidden=false;
-  modal.style.display='flex';
-  modal.setAttribute('aria-hidden','false');
+  fluxShowAddEventModal(modal,instant);
 }
-function openEditCalendarEventModal(id){
+function openEditCalendarEventModal(id,instant){
   const events=load('flux_events',[]);
   const ev=events.find(x=>String(x.id)===String(id));
   if(!ev)return;
@@ -6221,9 +6246,7 @@ function openEditCalendarEventModal(id){
   setAddEventScope(ev.scope==='outside'?'outside':'school');
   setAddEventType(ev.kind==='ec'?'ec':'event');
   if(ev.kind==='ec'&&ev.extraId!=null){const sel=document.getElementById('addEventExtraSelect');if(sel)sel.value=String(ev.extraId);}
-  modal.hidden=false;
-  modal.style.display='flex';
-  modal.setAttribute('aria-hidden','false');
+  fluxShowAddEventModal(modal,instant);
 }
 function closeAddEventModal(){
   const modal=document.getElementById('addEventModal');
@@ -19393,6 +19416,7 @@ document.addEventListener('keydown',function(e){
          rather than another id in the condition beside it, so the next
          must-answer dialog is covered by declaring itself. */
       if(m.hasAttribute('data-flux-no-dismiss'))return;
+      if(m.id==='addEventModal'){if(m.style.display!=='none')closeAddEventModal();return;}
       if(m.style.display!=='none'&&m.id&&m.id!=='dashAddTaskModal')closeModal(m.id);
     });
     if(typeof closeKanban==='function')closeKanban();
