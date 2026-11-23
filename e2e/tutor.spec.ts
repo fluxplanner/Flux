@@ -9,7 +9,7 @@ import AxeBuilder from '@axe-core/playwright';
  * the student sees and does, and that it is all still there after a reload.
  */
 
-const APP = '/teacher.html';
+const APP = '/teacher.html#library';
 const EVIL = '<img src=x onerror=window.__x=1>';
 
 /** The open set as saved, read through the store's own API in the page. */
@@ -72,8 +72,26 @@ async function openSample(page: Page) {
   await expect(page.getByRole('heading', { name: 'Study guide' })).toBeVisible();
 }
 
-function tab(page: Page, name: string) {
-  return page.getByRole('navigation', { name: 'Study set' }).getByRole('link', { name, exact: true });
+/* The set's tabs: seven main ones; Practice and the study guide open a
+   second row. Old names map onto where those screens live now. */
+const PRACTICE_TABS: Record<string, string> = { 'Practice test': 'test', 'IB practice': 'ib', 'Mock exam': 'exam' };
+function tab(page: Page, name: string): any {
+  const main = (n: string) => page.getByRole('navigation', { name: 'Study set' }).getByRole('link', { name: n, exact: true });
+  if (name === 'Ask your notes') return main('Ask');
+  if (name === 'Topics') {
+    return { click: async () => { await main('Study guide').click(); await page.getByRole('navigation', { name: 'Study guide' }).getByRole('link', { name: 'Topic by topic' }).click(); } };
+  }
+  if (PRACTICE_TABS[name]) {
+    const id = PRACTICE_TABS[name];
+    return {
+      click: async () => {
+        await main('Practice').click();
+        await page.locator('.ft-modes-grid a[href$="/' + id + '"]').click();
+        await expect(page).toHaveURL(new RegExp('/' + id + '$'));
+      },
+    };
+  }
+  return main(name);
 }
 
 /* Mirrors DP_EXAMS in flux-teacher-app.js: IB practice, mock exams and
@@ -89,7 +107,7 @@ test.describe('Flux Tutor', () => {
 
   test('IB syllabus: every unit listed, a set started from a unit is filed under it', async ({ page }) => {
     const D = '/private/tmp/claude-503/-Users-AzferMohammed-dev-Flux-Planner/90d122e6-8ef4-4284-a24d-18026299ae02/scratchpad/shots/';
-    await page.goto('/teacher.html');
+    await page.goto('/teacher.html#library');
     await page.getByRole('tab', { name: 'IB notes' }).click();
     const syl = page.locator('.ft-syllabus');
     await expect(syl).toBeVisible();
@@ -110,7 +128,7 @@ test.describe('Flux Tutor', () => {
   });
 
   test('IB notes: "Study" makes a set from Flux IB notes and opens its guide, and My notes keeps it apart', async ({ page }) => {
-    await page.goto('/teacher.html');
+    await page.goto('/teacher.html#library');
     await page.getByRole('tab', { name: 'IB notes' }).click();
     const syl = page.locator('.ft-syllabus');
     await page.locator('#ftSylSubject').selectOption('physics');
@@ -124,7 +142,7 @@ test.describe('Flux Tutor', () => {
     // The set says where its notes came from, and is filed under the unit.
     await tab(page, 'Notes').click();
     await expect(page.getByText('Flux IB notes').first()).toBeVisible();
-    await page.goto('/teacher.html');
+    await page.goto('/teacher.html#library');
     // The library remembers IB notes was the last half used.
     await expect(page.getByRole('tab', { name: 'IB notes' })).toHaveAttribute('aria-selected', 'true');
     await page.locator('#ftSylSubject').selectOption('physics');
@@ -162,7 +180,7 @@ test.describe('Flux Tutor', () => {
     page.on('request', (r) => { if (!/^(http:\/\/127\.0\.0\.1|blob:|data:)/.test(r.url())) external.push(r.url()); });
 
     await page.goto(APP);
-    await expect(page.getByText('Flux Tutor works only from your notes — it doesn\'t make things up.')).toBeVisible();
+    await expect(page.getByText('Built from your notes: every answer shows where in your notes it came from.')).toBeVisible();
     await page.getByRole('button', { name: 'Try it with a sample' }).click();
 
     // ── Study guide: every item cites the notes; the student fixes a term.
@@ -606,7 +624,7 @@ test.describe('Flux Tutor', () => {
     await openSample(a);
     await saved(a);
     const id = decodeURIComponent(/#set\/([^/]+)/.exec(a.url())![1]);
-    await b.goto(APP + '#set/' + encodeURIComponent(id) + '/notes');
+    await b.goto('/teacher.html#set/' + encodeURIComponent(id) + '/notes');
     await expect(b.locator('#ftTitle')).toHaveValue('Sample: Cells and energy');
     // Tab A: the student's own definition, and a flashcard rating.
     await a.getByRole('button', { name: 'Edit Cell', exact: true }).click();
@@ -711,7 +729,7 @@ test.describe('Flux Tutor', () => {
       await store.save(set);
       return set.id;
     });
-    await page.goto(APP + '#set/' + id + '/guide');
+    await page.goto('/teacher.html#set/' + id + '/guide');
     await expect(page.locator('#ftOmitted')).toHaveText('20 more terms in your notes were left out: a study set holds up to 500 key terms. Put the rest of the notes in a second study set to study them too.');
   });
 
@@ -889,7 +907,7 @@ test.describe('Flux Tutor', () => {
     const first = page.locator('.ft-ib-q').first();
     await expect(first.locator('.ft-score-pill')).toHaveText(/^(Define|State|Outline|Describe|Explain|Compare)$/);
     await first.locator('textarea').fill('no idea');
-    await first.getByRole('button', { name: 'Show the markscheme' }).click();
+    await first.getByRole('button', { name: 'Mark it myself' }).click();
     await expect(first.locator('.ft-ib-scheme cite').first()).toContainText('Sample biology notes');
     await expect(first.locator('.ft-ib-scheme input:checked')).toHaveCount(0);
     await first.getByRole('button', { name: 'Save my mark' }).click();
@@ -937,7 +955,8 @@ test.describe('Flux Tutor', () => {
     const answer = page.locator('.ft-answer');
     await expect(answer).toContainText('From your notes');
     await expect(answer).toContainText('cell wall');
-    await expect(page.getByRole('button', { name: /Flux AI/ })).toHaveCount(0);
+    // Flux AI is on: the offer to explain shows, and the notes' own answer stands without it.
+    await expect(page.getByRole('button', { name: /Flux AI/ })).toHaveCount(1);
     await answer.locator('.ft-cite-num').first().click();
     await expect(page.locator('#ftPassage1')).toHaveClass(/is-target/);
     await page.locator('#ftPassage1 .ft-cite-link').click();

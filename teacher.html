@@ -17,8 +17,8 @@
 <script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="teacher"></script>
 <script defer src="public/js/flux-site-notices.js?v=5e36c924"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Flux Tutor · Study from your notes</title>
-<meta name="description" content="Turn your class notes, PDFs, Word documents and photos into a study guide with sources, step-by-step lessons, practice tests, flashcards and a plan to your exam, built only from your own notes.">
+<title>Flux Tutor · Your IB study partner</title>
+<meta name="description" content="Free IB study: notes for every unit, exam-style questions marked by Flux AI, a tutor that cites your notes, mock exams and orals, IA, EE and TOK feedback, flashcards and a study plan that works with the Flux Planner.">
 <meta name="theme-color" content="#080d18">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -27,13 +27,15 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta name="apple-mobile-web-app-title" content="Flux Tutor">
 <!--
-  Flux Tutor: study sets built only from the student's own notes. Plain
-  scripts, no app bundles and no account needed: sets are saved in this
-  browser (IndexedDB) by flux-tutor-store.js. Flux AI is never called.
+  Flux Tutor: IB study built from the student's notes. Plain scripts, no app
+  bundles and no account needed for study sets (saved in this browser by
+  flux-tutor-store.js). Flux AI (marking, the tutor chat, coursework feedback,
+  orals) needs a Flux sign-in: flux-tutor-ai.js.
 -->
 <link rel="stylesheet" href="public/css/flux-hub.css?v=a473f365">
 <link rel="stylesheet" href="public/css/flux-loader.css?v=cd68603a">
 <link rel="stylesheet" href="public/css/flux-teacher-app.css?v=28ffd9bb">
+<link rel="stylesheet" href="public/css/flux-tutor-hub.css?v=90dbbaee">
 <script src="public/js/flux-theme-carry.js?v=c2d84cfb"></script>
 <script src="public/js/flux-tutor-theme.js?v=85252ce1"></script>
 <style>/* Off-screen until focused, so keyboard users can jump past the header. */.flux-skip{position:absolute;left:12px;top:-60px;z-index:10000;padding:10px 16px;border-radius:10px;background:#0b0f1a;color:#fff;font:600 14px/1.2 system-ui,sans-serif;text-decoration:none;box-shadow:0 0 0 2px #38bdf8}.flux-skip:focus{top:12px}</style>
@@ -42,9 +44,12 @@
 <body>
 <a class="flux-skip" href="#teacherApp">Skip to content</a>
   <header class="top ft-top">
-    <img class="brand-mark" src="public/flux-planner-logo.png" alt="Flux" width="32" height="32">
-    <span class="brand">Flux Tutor</span>
+    <button type="button" class="ft-menu-btn" id="ftMenuBtn" aria-controls="ftSide" aria-expanded="false" aria-label="Menu">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <a class="ft-brand-link" href="#home"><img class="brand-mark" src="public/flux-planner-logo.png" alt="" width="32" height="32"><span class="brand">Flux Tutor</span></a>
     <span class="grow"></span>
+    <span class="ft-top-stats" id="ftTopStats"></span>
     <span class="ft-save" id="ftSaveState" hidden></span>
     <button type="button" class="ft-theme-btn" id="ftThemeBtn" aria-label="Switch to light mode" title="Switch to light mode" hidden>
       <svg class="ft-ico-sun" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.3 4.3l1.6 1.6M18.1 18.1l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.3 19.7l1.6-1.6M18.1 5.9l1.6-1.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -53,6 +58,9 @@
     <div data-flux-hub="teacher"></div>
   </header>
 
+  <div class="ft-shell">
+  <aside class="ft-side" id="ftSide" aria-label="Flux Tutor sections"></aside>
+  <div class="ft-side-scrim" id="ftSideScrim" aria-hidden="true"></div>
   <main id="teacherApp" class="ft-main">
     <div class="flux-loader flux-loader--quick ft-loading" role="status">
       <svg class="flux-loader__mark" viewBox="0 0 440 220" aria-hidden="true">
@@ -65,15 +73,16 @@
     </div>
     <noscript><p class="ft-alert">Flux Tutor needs JavaScript to run.</p></noscript>
   </main>
+  </div>
   <div class="ft-toasts" id="ftToasts"></div>
   <div class="ft-visually-hidden" id="ftLive" aria-live="polite" aria-atomic="true"></div>
 
-  <script src="public/data/products.js?v=9634bc03"></script>
+  <script src="public/data/products.js?v=1eb75b57"></script>
 <script src="public/js/flux-hub.js?v=eb42b549"></script>
   <script src="public/js/core/flux-file-sniff.js"></script>
   <script src="public/js/flux-ib-syllabus.js?v=3b55e681"></script>
   <script src="public/js/flux-ib-notes.js?v=7e0459a8"></script>
-  <script src="public/js/flux-tutor-core.js?v=c55ca063"></script>
+  <script src="public/js/flux-tutor-core.js?v=5aa90a25"></script>
   <script src="public/js/flux-tutor-store.js?v=d29051a8"></script>
   <script src="public/js/flux-flash-core.js?v=23848655"></script>
   <script src="public/js/flux-conj.js?v=1962084d"></script>
@@ -86,6 +95,9 @@
   <script src="public/js/flux-teach-languages.js?v=930a4b72"></script>
   <script src="public/js/flux-teach-methods.js?v=37a2a0c9"></script>
   <script src="public/js/flux-teach-ui.js?v=fd47f509"></script>
-  <script src="public/js/flux-teacher-app.js?v=1703e716"></script>
+  <script src="public/js/flux-tutor-ai.js?v=fb0c1cc0"></script>
+  <script src="public/js/flux-tutor-hub.js?v=396c27dc"></script>
+  <script src="public/js/flux-tutor-cloud.js?v=daef4a34"></script>
+  <script src="public/js/flux-teacher-app.js?v=f892a951"></script>
 </body>
 </html>
