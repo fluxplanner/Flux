@@ -367,3 +367,22 @@
 /* Mock orals: the microphone message, hidden while there is nothing to say. */
 .ft-mic-msg { margin: 6px 0 0; }
 .ft-mic-msg:empty { display: none; }
+
+/* Record a lesson */
+.ft-lesson-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 14px 0 8px; }
+.ft-lesson-clock { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 4ch; }
+.ft-lesson-clock.is-live::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: #ef4444; vertical-align: middle; }
+.ft-file-btn { cursor: pointer; position: relative; }
+.ft-file-btn:focus-within { outline: 2px solid currentColor; outline-offset: 2px; }
+.ft-lesson-text { font-size: 15px; line-height: 1.55; }
+.ft-lesson-interim { min-height: 1.4em; margin: 4px 0 0; opacity: .6; font-style: italic; }
+.ft-lesson-interim:empty { display: none; }
+.ft-lesson-part + .ft-lesson-part { margin-top: 18px; }
+.ft-lesson-terms { display: grid; grid-template-columns: minmax(0, max-content) 1fr; gap: 6px 14px; margin: 6px 0 0; }
+.ft-lesson-terms dt { font-weight: 600; }
+.ft-lesson-terms dd { margin: 0; }
+@media (max-width: 560px) { .ft-lesson-terms { grid-template-columns: 1fr; } .ft-lesson-terms dd { margin-bottom: 6px; } }
+.ft-lesson-transcript { margin-top: 18px; }
+.ft-lesson-transcript ol { max-height: 360px; overflow: auto; padding-left: 2.6em; }
+.ft-lesson-transcript li:focus { outline: 2px solid currentColor; outline-offset: 2px; }
+.ft-crit-level { margin: 8px 0 0; }

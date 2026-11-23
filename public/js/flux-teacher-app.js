@@ -1081,6 +1081,21 @@
     go(setHash(res.set.id, TAB_IDS.includes(tab) ? tab : 'guide'));
   }
 
+  /** A study set made from text another screen produced (lesson notes or a transcript), built and opened on its guide. */
+  async function createSetFromText(o) {
+    const set = T.newSet({ title: String(o.title || 'Lesson notes'), subject: String(o.subject || '') });
+    set.sources = (o.sources || []).filter((s) => s && String(s.text || '').trim()).slice(0, T.LIMITS.sources).map((s) => T.newSource(s.name, 'Notes', s.text));
+    if (!set.sources.length) return { ok: false, error: { message: 'There is nothing to save yet.' } };
+    const corpus = T.buildCorpus(set.sources);
+    set.guide = T.buildGuide(set.sources, { corpus });
+    const res = await app.store.save(set);
+    if (!res.ok) return res;
+    await loadLibrary();
+    if (Cloud) Cloud.soon();
+    go(setHash(res.set.id, 'guide'));
+    return res;
+  }
+
   async function createSample() {
     const set = T.sampleSet();
     const corpus = T.buildCorpus(set.sources);
@@ -3619,6 +3634,7 @@
         getSet: (id) => app.store.get(id),
         saveSet: async (set) => { const res = await app.store.save(set); if (res.ok) { await loadLibrary(); if (Cloud) Cloud.soon(); } return res; },
         startUnitSet: (unitId, tab) => guarded(() => startUnitSet(unitId, tab)),
+        createSetFromText: (o) => createSetFromText(o),
         questionBody, readGiven, blank, feedbackHtml,
         isHubView: () => app.view === 'hub',
       });

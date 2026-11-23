@@ -35,13 +35,18 @@
   const CHAT_KEY = 'flux_tutor_chats.v1';
   const COURSE_KEY = 'flux_tutor_coursework.v1';
   const AGENDA_KEY = 'flux_tutor_agenda';
-  const VIEWS = ['home', 'setup', 'subject', 'bank', 'daily', 'mistakes', 'chat', 'tool', 'coursework', 'oral', 'progress', 'plan'];
+  const LESSON_KEY = 'flux_tutor_lesson.v1';
+  const VIEWS = ['home', 'setup', 'subject', 'bank', 'daily', 'mistakes', 'chat', 'tool', 'coursework', 'oral', 'lesson', 'progress', 'plan'];
   let api = null;
 
   /* ── Icons (line style, like the rest of Flux) ──────────────────────── */
 
   const IC = {
     home: '<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
+    wave: '<path d="M3 12h2M7 8v8M11 5v14M15 8v8M19 11v2"/>',
+    record: '<circle cx="12" cy="12" r="6"/>',
+    pause: '<path d="M9 6v12M15 6v12"/>',
+    upload: '<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>',
     plan: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8.5 15.5l2 2 4-4"/>',
     book: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 0 4 22V5.5Z"/><path d="M4 17a2.5 2.5 0 0 1 2.5-2.5H20"/>',
     bank: '<path d="M9 3h6v3H9z"/><path d="M8 4.5H6V21h12V4.5h-2"/><path d="m9 13 2 2 4-4"/>',
@@ -292,6 +297,7 @@
       + '<p class="ft-side-sec">Study</p><ul>'
       + link('#library', 'library', 'Notes and study sets', active === 'library' || active === 'set')
       + (window.FluxTeach ? link('#learn', 'lessons', 'Lessons', active === 'learn') : '')
+      + link('#lesson', 'wave', 'Record a lesson', active === 'lesson')
       + link('#bank', 'bank', 'Question bank', active === 'bank')
       + link('#daily', 'bolt', 'Daily 5', active === 'daily', dailyDone ? '<span class="ft-side-done" title="Done today">' + ic('check', 14) + '<span class="ft-visually-hidden"> done today</span></span>' : '')
       + link('#tool/cards', 'cards', 'Flashcards', active === 'tool:cards', badge(due, 'card due'))
@@ -373,7 +379,7 @@
   function render(view, params) {
     const changed = current.view !== view || JSON.stringify(current.params) !== JSON.stringify(params || {});
     current = { view, params: params || {} };
-    if (changed) { if (view !== 'daily') ui.daily = null; if (view !== 'mistakes') ui.mist = null; if (view !== 'oral') leaveOral(); }
+    if (changed) { if (view !== 'daily') ui.daily = null; if (view !== 'mistakes') ui.mist = null; if (view !== 'oral') leaveOral(); if (view !== 'lesson') lessonPause(); }
     const p = profile();
     let html = '';
     let active = view;
@@ -387,6 +393,7 @@
       case 'tool': html = toolView(current.params.id); active = 'tool:' + (TOOLS[current.params.id] ? current.params.id : 'teach'); break;
       case 'coursework': { const g = ['IA', 'EE', 'TOK'].includes(current.params.id) ? current.params.id : 'IA'; html = courseView(g); active = 'coursework:' + g; break; }
       case 'oral': html = oralView(); break;
+      case 'lesson': html = lessonView(); break;
       case 'progress': html = progressView(); break;
       case 'plan': html = planView(); break;
       default:
@@ -402,7 +409,7 @@
     if (view === 'home') writeAgenda(api.metas());
   }
   function titleFor(view) {
-    return { home: 'Home', setup: 'Your subjects', subject: subjectName(current.params.id) || 'Subject', bank: 'Question bank', daily: 'Daily 5', mistakes: 'Mistakes', chat: 'Tutor chat', tool: (TOOLS[current.params.id] || TOOLS.teach).title, coursework: current.params.id || 'IA', oral: 'Mock orals', progress: 'Progress', plan: 'Study plan' }[view] || 'Flux Tutor';
+    return { home: 'Home', setup: 'Your subjects', subject: subjectName(current.params.id) || 'Subject', bank: 'Question bank', daily: 'Daily 5', mistakes: 'Mistakes', chat: 'Tutor chat', tool: (TOOLS[current.params.id] || TOOLS.teach).title, coursework: current.params.id || 'IA', oral: 'Mock orals', lesson: 'Record a lesson', progress: 'Progress', plan: 'Study plan' }[view] || 'Flux Tutor';
   }
 
   /* ── Setup ──────────────────────────────────────────────────────────── */
@@ -574,6 +581,7 @@
     const p = profile();
     const tool = (href, icon, name, desc) => '<li><a href="' + href + '">' + ic(icon, 22) + '<strong>' + esc(name) + '</strong><span class="ft-help">' + esc(desc) + '</span></a></li>';
     return '<section class="ft-home-sec" aria-labelledby="ftToolsTitle"><h2 class="ft-h2" id="ftToolsTitle">Study tools</h2><ul class="ft-tools">'
+      + tool('#lesson', 'wave', 'Record a lesson', 'A live transcript, then notes and flashcards.')
       + tool('#chat', 'chat', 'Tutor chat', 'Ask anything. Answers cite your notes.')
       + tool('#bank', 'bank', 'Question bank', 'Exam-style questions, marked by Flux AI.')
       + tool('#tool/teach', 'teach', 'Teach it back', 'Explain a topic and see what you missed.')
@@ -922,6 +930,7 @@
       + '<p class="ft-help" id="ftCCount">' + AI.wordsIn(st.draft) + ' words' + (comp && comp.words ? ' of ' + comp.words : '') + '</p></div>'
       + (checks.length ? '<ul class="ft-checks">' + checks.map((c) => '<li class="is-' + c.kind + '">' + ic(c.kind === 'good' ? 'check' : 'info', 16) + '<span>' + esc(c.text) + '</span></li>').join('') + '</ul>' : '')
       + '<div class="ft-row"><button type="submit" class="ft-btn"' + (st.busy || !aiReady() ? ' disabled' : '') + '>' + ic('sparkle', 17) + (st.busy ? 'Reading your draft…' : 'Get feedback') + '</button></div>'
+      + (st.busy ? '<p class="ft-help" id="ftCProgress" role="status">' + esc(st.progress || 'Reading your draft…') + '</p><p class="ft-help">Long drafts are read part by part and each criterion is marked on its own, so this can take a minute or two.</p>' : '')
       + '</form>'
       + (st.err ? aiErrorHtml(st.err) : '')
       + (st.result ? courseResultHtml(st.result) : '')
@@ -933,12 +942,17 @@
     return '<section class="ft-panel ft-course-result" aria-labelledby="ftCResTitle"><div class="ft-sec-head"><h2 class="ft-h2" id="ftCResTitle" tabindex="-1">Predicted ' + r.total + ' / ' + r.max + '</h2><span class="ft-chip ft-chip--accent">' + pct + '%</span></div>'
       + (r.summary ? '<p class="ft-lead">' + esc(r.summary) + '</p>' : '')
       + (r.priorities.length ? '<h3 class="ft-h4">Do these first</h3><ol class="ft-priorities">' + r.priorities.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ol>' : '')
-      + r.rows.map((k) => '<article class="ft-crit"><header><h3 class="ft-h4">' + esc(k.id) + ' · ' + esc(k.name) + '</h3><span class="ft-crit-mark">' + k.mark + ' / ' + k.max + '</span></header>'
+      + r.rows.map((k) => '<article class="ft-crit"><header><h3 class="ft-h4">' + esc(k.id) + ' · ' + esc(k.name) + '</h3>'
+        + (k.confidence === 'low' ? '<span class="ft-chip" title="Flux AI could not see enough of the draft to be sure">Unsure</span>' : '')
+        + '<span class="ft-crit-mark">' + k.mark + ' / ' + k.max + '</span></header>'
         + '<div class="ft-meter"><span style="width:' + Math.round(k.mark / k.max * 100) + '%"></span></div>'
+        + (k.levelText ? '<p class="ft-crit-level"><strong>Level ' + esc(k.level) + '.</strong> ' + esc(k.levelText) + '</p>' : '')
         + (k.working.length ? '<p class="ft-label">What works</p><ul>' + k.working.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '')
+        + (k.evidence && k.evidence.length ? '<p class="ft-label">From your draft</p><ul class="ft-fixes">' + k.evidence.map((q) => '<li><q>' + esc(q) + '</q></li>').join('') + '</ul>' : '')
+        + (k.missing && k.missing.length ? '<p class="ft-label">' + (k.next ? 'To reach level ' + esc(k.next.name) : 'Holding it back') + '</p><ul>' + k.missing.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '')
         + (k.fixes.length ? '<p class="ft-label">To gain marks</p><ul class="ft-fixes">' + k.fixes.map((f) => '<li>' + (f.quote ? '<q>' + esc(f.quote) + '</q> ' : '') + esc(f.advice) + '</li>').join('') + '</ul>' : '')
         + '</article>').join('')
-      + '<p class="ft-help">A prediction to guide your next draft, not an IB mark. Your teacher and the IB moderators decide the real one.' + (r.fromCache ? ' This draft was marked before, so you see the same feedback.' : '') + '</p></section>';
+      + '<p class="ft-help">A prediction to guide your next draft, not an IB mark. Flux AI places your work against each level of the criteria, one criterion at a time' + (r.whole === false ? ', after reading the whole draft part by part' : '') + '. Your teacher and the IB moderators decide the real mark. The same draft always gets the same feedback.</p></section>';
   }
   async function runCourse(form) {
     const st = ui.course;
@@ -951,7 +965,11 @@
     st.busy = true; st.err = null; st.result = null;
     rerender();
     try {
-      st.result = await AI.courseFeedback(comp, st.draft, st.criteria);
+      st.progress = '';
+      st.result = await AI.courseFeedback(comp, st.draft, st.criteria, {
+        title: st.title,
+        onProgress: (t) => { st.progress = t; const el = document.getElementById('ftCProgress'); if (el) el.textContent = t; },
+      });
       if (!st.result.failed) {
         const c = courseList();
         c.items.push({ id: 'cw' + Date.now().toString(36), comp: comp.id, title: st.title || (st.draft.trim().split('\n')[0] || '').slice(0, 80), at: new Date().toISOString(), draft: st.draft.slice(0, 40000), criteria: st.criteria, result: st.result });
@@ -1137,6 +1155,266 @@
   window.addEventListener('pagehide', leaveOral);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') leaveOral(); });
 
+  /* ── Record a lesson ────────────────────────────────────────────────── */
+
+  /* The browser's own speech recognition writes down the lesson as it
+     happens (Chrome, Edge and Safari; nothing to install, no audio kept).
+     A transcript from another app (Granola, Otter, Zoom, Teams) can be
+     pasted or opened instead. Flux AI then turns it into notes, each point
+     pointing back at the lines it came from, and the notes become a study
+     set. The transcript is saved in this browser as it grows, so a reload or
+     a crash mid-lesson loses nothing. */
+  const LESSON_LANGS = [['en-GB', 'English (UK)'], ['en-US', 'English (US)'], ['fr-FR', 'French'], ['es-ES', 'Spanish'], ['de-DE', 'German'], ['zh-CN', 'Mandarin']];
+  let lessonMic = null;
+  let lessonTimer = 0;
+  let lessonSaveTimer = 0;
+  let wake = null;
+  function lessonState() {
+    if (ui.lesson) return ui.lesson;
+    const saved = readLs(LESSON_KEY, null) || {};
+    const p = profile();
+    ui.lesson = {
+      subject: typeof saved.subject === 'string' ? saved.subject : (p.subjects[0] ? p.subjects[0].id : ''),
+      title: typeof saved.title === 'string' ? saved.title : '',
+      lang: LESSON_LANGS.some((l) => l[0] === saved.lang) ? saved.lang : 'en-GB',
+      text: typeof saved.text === 'string' ? saved.text : '',
+      seconds: Number(saved.seconds) || 0,
+      recording: false, since: 0, interim: '', quick: 0,
+      notes: null, busy: false, progress: '', err: null, micErr: '',
+    };
+    return ui.lesson;
+  }
+  function lessonSave() {
+    clearTimeout(lessonSaveTimer);
+    lessonSaveTimer = setTimeout(() => {
+      const st = ui.lesson;
+      if (!st) return;
+      writeLs(LESSON_KEY, { subject: st.subject, title: st.title, lang: st.lang, text: st.text.slice(0, 190000), seconds: lessonSeconds(), updatedAt: new Date().toISOString() });
+    }, 600);
+  }
+  function lessonSeconds() {
+    const st = ui.lesson;
+    return st ? st.seconds + (st.recording && st.since ? Math.floor((Date.now() - st.since) / 1000) : 0) : 0;
+  }
+  function clock(s) { const m = Math.floor(s / 60); return (m >= 60 ? Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0') : m) + ':' + String(s % 60).padStart(2, '0'); }
+  function lessonView() {
+    const st = lessonState();
+    const p = profile();
+    const words = AI ? AI.wordsIn(st.text) : 0;
+    const subjOpts = [['', 'No subject']].concat(p.subjects.map((s) => [s.id, subjectName(s.id) || s.id]));
+    const head = '<header><p class="ft-kicker">Study</p><h1 class="ft-h1" id="ftScreenTitle" tabindex="-1">Record a lesson</h1>'
+      + '<p class="ft-lead">Flux Tutor writes down what is said in class as it happens. Then Flux AI turns it into notes, key terms and what the teacher said will be on the test, and makes a study set with flashcards from them.</p></header>'
+      + '<p class="ft-notice">' + ic('info', 17) + '<span>Ask your teacher before you record a lesson. Flux Tutor keeps only the words, never the audio. Your browser turns speech into words: Chrome sends the sound to Google to do it, Safari to Apple.</span></p>';
+    const setup = '<div class="ft-panel"><div class="ft-grid">'
+      + '<div class="ft-field"><label class="ft-label" for="ftLSubj">Subject</label><select class="ft-select" id="ftLSubj" data-hub-change="lesson-subject">' + subjOpts.map((o) => '<option value="' + esc(o[0]) + '"' + (o[0] === st.subject ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') + '</select></div>'
+      + '<div class="ft-field"><label class="ft-label" for="ftLTitle">Lesson title <span class="ft-optional">(optional)</span></label><input class="ft-input" id="ftLTitle" maxlength="120" data-hub-input="lesson-title" value="' + esc(st.title) + '" placeholder="Lesson on ' + esc(new Date().toLocaleDateString()) + '"></div>'
+      + '<div class="ft-field"><label class="ft-label" for="ftLLang">Language spoken</label><select class="ft-select" id="ftLLang" data-hub-change="lesson-lang"' + (st.recording ? ' disabled' : '') + '>' + LESSON_LANGS.map((l) => '<option value="' + l[0] + '"' + (l[0] === st.lang ? ' selected' : '') + '>' + l[1] + '</option>').join('') + '</select></div>'
+      + '</div>'
+      + '<div class="ft-lesson-bar">'
+      + (Rec ? '<button type="button" class="ft-btn' + (st.recording ? ' ft-btn--quiet' : '') + '" data-hub="lesson-rec" aria-pressed="' + st.recording + '">' + ic(st.recording ? 'pause' : 'record', 18) + '<span>' + (st.recording ? 'Pause' : (st.text ? 'Carry on recording' : 'Start recording')) + '</span></button>'
+        : '<p class="ft-help">This browser cannot listen. Use Chrome, Edge or Safari to record, or paste a transcript below.</p>')
+      + '<span class="ft-lesson-clock' + (st.recording ? ' is-live' : '') + '" id="ftLClock" aria-label="Time recorded">' + clock(lessonSeconds()) + '</span>'
+      + '<span class="ft-help" id="ftLWords">' + plural(words, 'word') + '</span>'
+      + '<label class="ft-btn ft-btn--quiet ft-file-btn">' + ic('upload', 17) + '<span>Open a transcript</span><input type="file" class="ft-visually-hidden" accept=".txt,.md,.vtt,.srt,text/plain,text/vtt" data-hub-change="lesson-file"></label>'
+      + '</div>'
+      + '<p class="ft-help ft-mic-msg" id="ftLMsg" role="status">' + esc(st.micErr || (st.recording ? 'Recording. Keep this page open: the screen stays on while it listens.' : '')) + '</p>'
+      + '<div class="ft-field"><label class="ft-label" for="ftLText">Transcript</label>'
+      + '<textarea class="ft-textarea ft-textarea--tall ft-lesson-text" id="ftLText" rows="12" data-hub-input="lesson"' + (st.recording ? ' readonly' : '') + ' placeholder="Press Start recording, or paste a transcript from Granola, Otter, Zoom or Teams.">' + esc(st.text) + '</textarea>'
+      + '<p class="ft-lesson-interim" id="ftLInterim" aria-hidden="true">' + esc(st.interim) + '</p></div>'
+      + '<div class="ft-row">'
+      + (aiReady() ? '<button type="button" class="ft-btn" data-hub="lesson-notes"' + (st.busy || words < 30 ? ' disabled' : '') + '>' + ic('sparkle', 17) + (st.busy ? 'Making notes…' : 'Make notes with Flux AI') + '</button>' : '')
+      + '<button type="button" class="ft-btn ft-btn--quiet" data-hub="lesson-raw"' + (st.busy || words < 30 ? ' disabled' : '') + '>Save the transcript as a study set</button>'
+      + (st.text ? '<button type="button" class="ft-btn ft-btn--quiet" data-hub="lesson-clear"' + (st.busy ? ' disabled' : '') + '>Start a new lesson</button>' : '')
+      + '</div>'
+      + (st.busy ? '<p class="ft-help" id="ftLProgress" role="status">' + esc(st.progress || 'Making notes…') + '</p>' : '')
+      + '</div>';
+    return head + (aiReady() ? '' : signInCard('Sign in to have Flux AI turn the transcript into notes. Recording works without signing in.'))
+      + setup + (st.err ? aiErrorHtml(st.err) : '') + (st.notes ? lessonNotesHtml(st.notes) : '')
+      + '<p class="ft-help">Have Granola? Its API is only on Granola’s Business and Enterprise plans, so copy the transcript from the meeting in Granola and paste it above, or open a .txt, .vtt or .srt file from Otter, Zoom or Teams.</p>';
+  }
+  function lessonNotesHtml(n) {
+    if (n.failed) return '<p class="ft-alert" role="alert">' + esc(n.message) + '</p>';
+    const seg = new Map(n.segments.map((s) => [s.n, s.text]));
+    const cites = (s) => s.map((k) => '<a class="ft-cite-num" href="#ftSeg-' + k + '" data-hub="lesson-cite" data-n="' + k + '" title="' + esc(String(seg.get(k) || '').slice(0, 200)) + '">' + k + '</a>').join('');
+    const li = (x) => '<li>' + esc(x.text) + ' ' + cites(x.s) + '</li>';
+    return '<section class="ft-panel ft-lesson-notes" aria-labelledby="ftLNotesTitle"><div class="ft-sec-head"><h2 class="ft-h2" id="ftLNotesTitle" tabindex="-1">Lesson notes</h2>'
+      + '<button type="button" class="ft-btn" data-hub="lesson-save">' + ic('check', 17) + 'Save as a study set</button></div>'
+      + '<p class="ft-help">Every note links to the lines of the lesson it came from. Check anything that matters against the transcript: speech recognition mishears words.</p>'
+      + n.parts.map((p) => '<article class="ft-lesson-part">' + (p.title ? '<h3 class="ft-h4">' + esc(p.title) + '</h3>' : '')
+        + (p.points.length ? '<ul>' + p.points.map(li).join('') + '</ul>' : '')
+        + (p.terms.length ? '<p class="ft-label">Key terms</p><dl class="ft-lesson-terms">' + p.terms.map((t) => '<dt>' + esc(t.term) + '</dt><dd>' + esc(t.def) + ' ' + cites(t.s) + '</dd>').join('') + '</dl>' : '')
+        + (p.exam.length ? '<p class="ft-label">For the test</p><ul>' + p.exam.map(li).join('') + '</ul>' : '')
+        + (p.tasks.length ? '<p class="ft-label">To do</p><ul>' + p.tasks.map(li).join('') + '</ul>' : '')
+        + '</article>').join('')
+      + (n.missed ? '<p class="ft-help">' + plural(n.missed, 'part') + ' of the lesson could not be turned into notes. Press Make notes again to retry them.</p>' : '')
+      + '<details class="ft-lesson-transcript"><summary>The transcript, line by line</summary><ol>' + n.segments.map((s) => '<li id="ftSeg-' + s.n + '" value="' + s.n + '">' + esc(s.text) + '</li>').join('') + '</ol></details>'
+      + '</section>';
+  }
+  function paintLesson() {
+    const st = ui.lesson;
+    if (!st || current.view !== 'lesson') return;
+    const msg = document.getElementById('ftLMsg');
+    if (msg) msg.textContent = st.micErr || (st.recording ? 'Recording. Keep this page open: the screen stays on while it listens.' : '');
+    const t = document.getElementById('ftLText');
+    if (t && t.value !== st.text) { t.value = st.text; t.scrollTop = t.scrollHeight; }
+    const w = document.getElementById('ftLWords');
+    if (w) w.textContent = plural(AI ? AI.wordsIn(st.text) : 0, 'word');
+    const i = document.getElementById('ftLInterim');
+    if (i) i.textContent = st.interim;
+  }
+  function lessonLine(text) {
+    const st = ui.lesson;
+    const t = String(text || '').trim();
+    if (!st || !t) return;
+    st.text = st.text ? st.text.replace(/\s+$/, '') + '\n' + t : t;
+    st.quick = 0;
+    lessonSave();
+    paintLesson();
+  }
+  async function keepAwake(on) {
+    try {
+      if (on && !wake && navigator.wakeLock) { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); }
+      if (!on && wake) { const w = wake; wake = null; await w.release(); }
+    } catch (_) { wake = null; /* not allowed here: the screen may sleep */ }
+  }
+  /** One listening run. Browsers end runs by themselves (after a pause, after a minute, or on Android after each sentence), so it starts again until Pause. */
+  function lessonListen() {
+    const st = ui.lesson;
+    if (!Rec || !st || !st.recording) return;
+    let r;
+    try { r = new Rec(); } catch (_) { lessonStop(MIC_ERR['service-not-allowed']); return; }
+    r.lang = st.lang;
+    r.continuous = !ONE_AT_A_TIME;
+    r.interimResults = true;
+    r.maxAlternatives = 1;
+    const m = { r, done: 0, failed: false, at: Date.now(), heard: false };
+    r.onresult = (e) => {
+      if (lessonMic !== m) return;
+      let interim = '';
+      for (let i = e.resultIndex || 0; i < e.results.length; i++) {
+        const res = e.results[i];
+        const t = res && res[0] ? String(res[0].transcript || '').trim() : '';
+        if (res.isFinal) { if (i >= m.done) { m.done = i + 1; if (t) { m.heard = true; lessonLine(t); } } } else if (t) interim += (interim ? ' ' : '') + t;
+      }
+      st.interim = interim;
+      const el = document.getElementById('ftLInterim');
+      if (el) el.textContent = interim;
+    };
+    r.onerror = (e) => {
+      if (lessonMic !== m) return;
+      const msg = MIC_ERR[e && e.error];
+      if (msg) { m.failed = true; lessonStop(msg); }
+    };
+    r.onend = () => {
+      if (lessonMic !== m) return;
+      lessonMic = null;
+      if (st.interim) { lessonLine(st.interim); st.interim = ''; }
+      if (!st.recording || m.failed) return;
+      // A run that keeps ending at once without hearing anything is a broken microphone, not a pause.
+      st.quick = !m.heard && Date.now() - m.at < 1500 ? st.quick + 1 : 0;
+      if (st.quick >= 5) { lessonStop('Listening keeps stopping. Check the microphone, then press Carry on recording.'); return; }
+      setTimeout(() => { if (st.recording && !lessonMic && ui.lesson === st) lessonListen(); }, st.quick ? 600 : 150);
+    };
+    lessonMic = m;
+    try { r.start(); } catch (_) { lessonMic = null; lessonStop('Could not start listening. Press Start recording again.'); }
+  }
+  function lessonStart() {
+    const st = lessonState();
+    if (!Rec || st.recording) return;
+    leaveOral();
+    st.recording = true; st.since = Date.now(); st.micErr = ''; st.quick = 0;
+    keepAwake(true);
+    clearInterval(lessonTimer);
+    lessonTimer = setInterval(() => { const c = document.getElementById('ftLClock'); if (c) c.textContent = clock(lessonSeconds()); }, 1000);
+    lessonListen();
+    rerenderKeepFocus('[data-hub="lesson-rec"]');
+  }
+  /** Pause (or stop on an error): the words so far are kept and saved. */
+  function lessonStop(message) {
+    const st = ui.lesson;
+    if (!st) return;
+    if (st.recording) { st.seconds = lessonSeconds(); st.recording = false; st.since = 0; }
+    if (message) st.micErr = message;
+    const m = lessonMic;
+    lessonMic = null;
+    if (m) { try { m.r.stop(); } catch (_) { /* stopped */ } }
+    if (st.interim) { const t = st.interim; st.interim = ''; lessonLine(t); }
+    clearInterval(lessonTimer);
+    keepAwake(false);
+    lessonSave();
+    if (current.view === 'lesson') rerenderKeepFocus('[data-hub="lesson-rec"]');
+  }
+  function lessonPause() { if (ui.lesson && ui.lesson.recording) lessonStop(); }
+  function rerenderKeepFocus(sel) {
+    const had = document.activeElement && document.activeElement.matches && document.activeElement.matches(sel);
+    rerender();
+    if (had) { const b = root().querySelector(sel); if (b) b.focus(); }
+  }
+  // Back from another tab or app: the screen lock is lost and listening may have ended.
+  document.addEventListener('visibilitychange', () => {
+    const st = ui.lesson;
+    if (document.visibilityState !== 'visible' || !st || !st.recording) return;
+    keepAwake(true);
+    if (!lessonMic) lessonListen();
+  });
+  window.addEventListener('hashchange', () => { if (!/^#lesson\b/.test(location.hash)) lessonPause(); });
+  window.addEventListener('pagehide', () => { if (ui.lesson) { lessonPause(); } });
+  async function lessonMakeNotes() {
+    const st = ui.lesson;
+    if (!st || st.busy) return;
+    if (st.recording) lessonStop();
+    st.busy = true; st.err = null; st.progress = '';
+    rerender();
+    try {
+      st.notes = await AI.lessonNotes(st.text, {
+        subject: subjectName(st.subject) || '',
+        onProgress: (t) => { st.progress = t; const el = document.getElementById('ftLProgress'); if (el) el.textContent = t; },
+      });
+      if (!st.notes.failed) track('ai');
+    } catch (e) { st.err = { code: e.code, message: e.message }; }
+    st.busy = false;
+    rerender();
+    const h = document.getElementById(st.notes && !st.notes.failed ? 'ftLNotesTitle' : 'ftScreenTitle');
+    if (h) { h.focus({ preventScroll: true }); h.scrollIntoView({ block: 'start' }); }
+  }
+  async function lessonToSet(useNotes) {
+    const st = ui.lesson;
+    if (!st) return;
+    if (st.recording) lessonStop();
+    const title = (st.title.trim() || ('Lesson on ' + new Date().toLocaleDateString())).slice(0, 120);
+    const subject = subjectName(st.subject) || '';
+    const notesText = useNotes && st.notes && !st.notes.failed ? AI.lessonNotesText(st.notes, title) : '';
+    const sources = notesText
+      ? [{ name: 'Lesson notes: ' + title, text: notesText }]
+      : [{ name: 'Lesson transcript: ' + title, text: st.text }];
+    const res = await api.createSetFromText({ title: (subject ? subject + ': ' : '') + title, subject, sources });
+    if (res && res.ok) {
+      step('lesson');
+      api.toast('Saved as a study set. The transcript stays here until you start a new lesson.');
+    } else if (res && res.error) {
+      st.err = { message: res.error.message || 'Could not save the study set.' };
+      rerender();
+    }
+  }
+  async function lessonFile(input) {
+    const f = input.files && input.files[0];
+    input.value = '';
+    if (!f) return;
+    const st = lessonState();
+    if (f.size > 3e6) { api.announce('That file is too big. Open a transcript under 3 MB.'); return; }
+    let text = '';
+    try { text = await f.text(); } catch (_) { api.announce('That file could not be read.'); return; }
+    const clean = AI.cleanTranscript(text);
+    if (!clean) { api.announce('No words were found in that file.'); return; }
+    if (st.recording) lessonStop();
+    st.text = st.text ? st.text.replace(/\s+$/, '') + '\n' + clean : clean;
+    if (!st.title) st.title = f.name.replace(/\.[^.]+$/, '').slice(0, 120);
+    st.notes = null;
+    lessonSave();
+    rerender();
+    api.announce('Transcript added: ' + plural(AI.wordsIn(clean), 'word') + '.');
+  }
+
   /* ── Progress ───────────────────────────────────────────────────────── */
 
   function progressView() {
@@ -1226,6 +1504,26 @@
         break;
       }
       case 'oral-mic': toggleMic(); break;
+      case 'lesson-rec': if (ui.lesson && ui.lesson.recording) lessonStop(); else lessonStart(); break;
+      case 'lesson-notes': lessonMakeNotes(); break;
+      case 'lesson-save': lessonToSet(true); break;
+      case 'lesson-raw': lessonToSet(false); break;
+      case 'lesson-clear': (async () => {
+        const ok = await api.dialog({ title: 'Start a new lesson?', text: 'This clears the transcript and notes on this screen. Study sets you saved from them are kept.', okLabel: 'Clear it', danger: true });
+        if (!ok) return;
+        lessonStop();
+        try { localStorage.removeItem(LESSON_KEY); } catch (_) { /* blocked */ }
+        const keep = ui.lesson ? { subject: ui.lesson.subject, lang: ui.lesson.lang } : {};
+        ui.lesson = null;
+        Object.assign(lessonState(), keep, { text: '', title: '', seconds: 0, notes: null, micErr: '' });
+        rerender();
+      })(); break;
+      case 'lesson-cite': {
+        e.preventDefault();
+        const li = document.getElementById('ftSeg-' + b.dataset.n);
+        if (li) { const d = li.closest('details'); if (d) d.open = true; li.setAttribute('tabindex', '-1'); li.focus({ preventScroll: true }); li.scrollIntoView({ block: 'center' }); }
+        break;
+      }
       case 'oral-reset': leaveOral(); ui.oral = null; rerender(); break;
       case 'oral-mark': (async () => {
         const st = ui.oral;
@@ -1268,6 +1566,9 @@
     if (!k) return false;
     if (k === 'programme') { const p = profile(); p.programme = t.value === 'MYP' ? 'MYP' : 'DP'; p.subjects = []; saveProfile(); rerender(); }
     if (k === 'chat-subject') api.go('#chat' + (t.value ? '?subject=' + encodeURIComponent(t.value) : ''));
+    if (k === 'lesson-subject' && ui.lesson) { ui.lesson.subject = t.value; lessonSave(); }
+    if (k === 'lesson-lang' && ui.lesson) { ui.lesson.lang = t.value; lessonSave(); }
+    if (k === 'lesson-file') lessonFile(t);
     if (k === 'course-comp') { ui.course.comp = t.value; ui.course.result = null; const d = document.getElementById('ftCDraft'); if (d) ui.course.draft = d.value; rerender(); const s = document.getElementById('ftCComp'); if (s) s.focus(); }
     return true;
   }
@@ -1281,6 +1582,15 @@
       const comp = AI.COMPONENTS.find((x) => x.id === ui.course.comp);
       if (c) c.textContent = AI.wordsIn(t.value) + ' words' + (comp && comp.words ? ' of ' + comp.words : '');
     }
+    if (k === 'lesson' && ui.lesson && !ui.lesson.recording) {
+      ui.lesson.text = t.value;
+      ui.lesson.notes = null;
+      lessonSave();
+      const w = document.getElementById('ftLWords');
+      if (w) w.textContent = plural(AI ? AI.wordsIn(t.value) : 0, 'word');
+      root().querySelectorAll('[data-hub="lesson-notes"],[data-hub="lesson-raw"]').forEach((x) => { x.disabled = AI.wordsIn(t.value) < 30; });
+    }
+    if (k === 'lesson-title' && ui.lesson) { ui.lesson.title = t.value.slice(0, 120); lessonSave(); }
     if (k === 'oral' && ui.oral) {
       // Typing takes over from the microphone, so it cannot overwrite the edit.
       if (mic) stopMic(true);

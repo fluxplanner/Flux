@@ -115,51 +115,146 @@
    * one. kind: 'written' (paste a draft) or 'oral' (a spoken mock with an
    * examiner asking follow-up questions).
    */
+  /*
+   * Each criterion has its levels, top first: [range, what work at that level
+   * does]. They summarise the IB descriptors in Flux's own words (the guides
+   * themselves are the IB's), so the examiner prompt can place work in a
+   * level the way a moderator does, not guess a number. `traps` are the
+   * mistakes examiners' subject reports name year after year; `rules` are
+   * the hard requirements of the component.
+   */
   const COMPONENTS = [
-    { id: 'tok-essay', group: 'TOK', kind: 'written', name: 'TOK essay', words: 1600, note: 'One mark out of 10 for the whole essay.',
+    { id: 'tok-essay', group: 'TOK', kind: 'written', name: 'TOK essay', words: 1600, note: 'One mark out of 10 for the whole essay, on one of the six prescribed titles for your session.',
+      rules: 'At most 1,600 words (examiners stop reading there). Must answer one prescribed title for the session, word for word. References and a bibliography are required; personal examples are allowed.',
       criteria: [{ id: 'TOK', name: 'A clear, coherent and critical exploration of the prescribed title', max: 10,
-        bands: 'Excellent 9–10: focused on the title throughout, links to areas of knowledge clear, effective real examples, counterclaims explored, implications drawn. Very good 7–8. Good 5–6. Adequate 3–4: some links to the title, examples not always effective. Rudimentary 1–2.' }] },
+        levels: [
+          ['9-10', 'Excellent: a sustained focus on the title, linked effectively to areas of knowledge. Arguments clear, coherent and supported by specific, effective examples. Implications are considered. Different points of view are explored and evaluated.'],
+          ['7-8', 'Very good: focused on the title and often linked effectively to areas of knowledge. Arguments clear and supported by examples. Some awareness and evaluation of different points of view.'],
+          ['5-6', 'Good: enough focus on the title; links to areas of knowledge are made but not always developed. Some arguments are clear and supported by examples. Some awareness of other points of view.'],
+          ['3-4', 'Adequate: some relevant points, but the link to the title is weak or undeveloped; links to areas of knowledge are superficial. Arguments are offered but often unclear or not backed by effective examples.'],
+          ['1-2', 'Rudimentary: only loosely connected to the title; largely descriptive; little or no evidence; links to areas of knowledge missing or irrelevant.'],
+        ],
+        traps: 'Answering a different question from the title or ignoring its key terms; generic or hypothetical examples instead of specific real ones; describing knowledge instead of analysing how we know; counterclaims named but not evaluated; a conclusion that only repeats.' }] },
     { id: 'tok-exhibition', group: 'TOK', kind: 'written', name: 'TOK exhibition', words: 950, note: 'Three objects, one IA prompt, one mark out of 10.',
-      criteria: [{ id: 'TOK', name: 'How well the exhibition shows TOK in the world around us', max: 10,
-        bands: 'Excellent 9–10: three objects and their real-world contexts identified, links to the IA prompt clearly explained, each inclusion justified with evidence and specific to the object. Good 5–6. Adequate 3–4. Rudimentary 1–2.' }] },
-    { id: 'ee', group: 'EE', kind: 'written', name: 'Extended essay', words: 4000, note: 'Criteria for first assessment 2027 (out of 30).',
+      rules: 'Exactly three objects (or images of them), all linked to the same one of the 35 IA prompts. At most 950 words in all. Each object needs its specific real-world context, and sources must be referenced.',
+      criteria: [{ id: 'TOK', name: 'Does the exhibition show how TOK appears in the world around us?', max: 10,
+        levels: [
+          ['9-10', 'Excellent: three objects with specific real-world contexts. The link from each object to the IA prompt is clear and well explained. A strong justification of what each object adds, supported by evidence and explicit reference to the prompt.'],
+          ['7-8', 'Good: three objects and their contexts identified. Links to the prompt explained. Each inclusion justified, mostly supported by evidence and reference to the prompt.'],
+          ['5-6', 'Satisfactory: three objects identified, though contexts may be vague. Links to the prompt explained in places. Some justification, not always supported.'],
+          ['3-4', 'Basic: objects identified, but links to the prompt are made with little explanation. Justification is superficial or repetitive.'],
+          ['1-2', 'Rudimentary: links to the prompt are tenuous or missing. Justification is ineffective or absent.'],
+        ],
+        traps: 'Objects too general (a "phone" instead of one particular phone in one place and time); commentary that describes the object without linking it to the prompt; the same point made for all three objects; quoting the prompt without using it.' }] },
+    { id: 'ee', group: 'EE', kind: 'written', name: 'Extended essay', words: 4000, note: 'Criteria for first assessment 2027 (out of 30). Check the levels against the guide your school gives you.',
+      rules: 'At most 4,000 words (examiners stop reading there; the bibliography and in-text references do not count). A focused research question, clearly stated. Every source cited consistently. Reflection is also assessed through the reflection form and viva voce, which Flux Tutor cannot see.',
       criteria: [
-        { id: 'A', name: 'Framework for the essay', max: 6, bands: 'Topic and research question clear and focused; methods and sources appropriate and justified; structure supports the argument.' },
-        { id: 'B', name: 'Knowledge and understanding', max: 6, bands: 'Relevant, accurate knowledge of the topic and its context; subject terms and concepts used precisely.' },
-        { id: 'C', name: 'Analysis and line of argument', max: 6, bands: 'Sources and data analysed, not just described; a coherent argument that answers the research question.' },
-        { id: 'D', name: 'Discussion and evaluation', max: 8, bands: 'Conclusions supported by the analysis; strengths and limitations of the research and its sources weighed.' },
-        { id: 'E', name: 'Reflection', max: 4, bands: 'Reflection on the research process, choices made and what was learned.' },
+        { id: 'A', name: 'Framework for the essay', max: 6, levels: [
+          ['5-6', 'A clear, focused research question or aim that the whole essay serves. Methods and sources are appropriate to the subject and their choice is explained. The structure moves the argument forward.'],
+          ['3-4', 'A research question that is mostly clear but broad or not always followed. Methods and sources are appropriate but their choice is not well explained. The structure mostly works.'],
+          ['1-2', 'The research question is unclear, too broad or not followed. Methods or sources are poorly suited. The structure gets in the way of the argument.'],
+        ], traps: 'A question too broad for 4,000 words; methods never justified; headings that follow a template instead of the argument.' },
+        { id: 'B', name: 'Knowledge and understanding', max: 6, levels: [
+          ['5-6', 'Accurate, relevant knowledge of the topic and its wider context. Subject terms and concepts are used precisely and correctly. Sources are understood, not just quoted.'],
+          ['3-4', 'Mostly accurate and relevant knowledge, with some gaps or irrelevance. Terms are mostly used correctly.'],
+          ['1-2', 'Knowledge is limited, often inaccurate or not relevant. Subject terms are missing or misused.'],
+        ], traps: 'Background that never connects to the question; textbook knowledge with no specialist sources; terms used loosely.' },
+        { id: 'C', name: 'Analysis and line of argument', max: 6, levels: [
+          ['5-6', 'Evidence and sources are analysed, not described. A coherent, well-supported line of argument answers the research question throughout.'],
+          ['3-4', 'Some analysis, mixed with description. An argument is present but not always connected to the evidence or the question.'],
+          ['1-2', 'Mostly description or summary. Little or no argument.'],
+        ], traps: 'Summarising sources one after another; data presented but never interpreted; an argument that appears only in the conclusion.' },
+        { id: 'D', name: 'Discussion and evaluation', max: 8, levels: [
+          ['7-8', 'Conclusions follow from the analysis and are consistent with it. The strengths and limitations of the research, methods and sources are weighed critically, including how they affect the answer.'],
+          ['5-6', 'Conclusions are mostly supported. Strengths and limitations are discussed, though not always their effect on the answer.'],
+          ['3-4', 'Conclusions are partly supported. Evaluation is general or brief.'],
+          ['1-2', 'Conclusions are not supported by the essay. Little or no evaluation.'],
+        ], traps: 'Sources never evaluated for reliability; limitations listed in a final paragraph instead of discussed; a conclusion that introduces new material.' },
+        { id: 'E', name: 'Reflection', max: 4, levels: [
+          ['3-4', 'Reflection shows how the student’s thinking and choices developed during the research, what they learned, and how it shaped the essay.'],
+          ['1-2', 'Reflection is descriptive: what was done, with little on why or what was learned.'],
+        ], traps: 'Diary-style descriptions of the process; reflection with nothing about choices and their consequences.' },
       ] },
     { id: 'sci-ia', group: 'IA', kind: 'written', name: 'Science IA (Biology, Chemistry, Physics)', words: 3000, note: 'Criteria for first assessment 2025 (out of 24).',
+      rules: 'At most 3,000 words (tables, graphs, equations and references do not count). A research question with its context, enough relevant data, uncertainties handled, a conclusion compared with accepted science, and an evaluation of the method.',
       criteria: [
-        { id: 'RD', name: 'Research design', max: 6, bands: 'Focused research question in context; methodology appropriate and described so it could be repeated; variables, controls, safety and data collection explained.' },
-        { id: 'DA', name: 'Data analysis', max: 6, bands: 'Recording and processing clear, precise and accurate; uncertainties considered; processing fits the question; tables and graphs clear.' },
-        { id: 'CO', name: 'Conclusion', max: 6, bands: 'Conclusion relevant to the research question and justified by the data; compared with accepted scientific context.' },
-        { id: 'EV', name: 'Evaluation', max: 6, bands: 'Weaknesses and limitations of the method explained with their effect; realistic, relevant improvements and extensions.' },
+        { id: 'RD', name: 'Research design', max: 6, levels: [
+          ['5-6', 'The purpose of the investigation gives detailed context for a clearly and precisely stated research question. The method’s considerations for collecting relevant and sufficient data are described. The method is described well enough to be reproduced.'],
+          ['3-4', 'The research question is stated but its context is not detailed. Methodological considerations are described. The method could mostly be reproduced, with a few gaps or ambiguities.'],
+          ['1-2', 'The research question is outlined in a broad context. Methodological considerations are only stated. The method is unclear and could not be reproduced.'],
+        ], traps: 'A question with no named independent and dependent variables or ranges; too few values of the independent variable or too few repeats to see a trend; controlled variables listed without saying how they were controlled.' },
+        { id: 'DA', name: 'Data analysis', max: 6, levels: [
+          ['5-6', 'Recording and processing of data is clear and precise. Processing is appropriate to the research question and carried out accurately. Uncertainties are appropriately considered and carried through.'],
+          ['3-4', 'Recording and processing are communicated, with some lapses in clarity or precision. Processing is relevant but has significant omissions or errors. Uncertainties are considered in places.'],
+          ['1-2', 'Recording and processing are unclear. Processing is inappropriate or has many errors. Little or no consideration of uncertainties.'],
+        ], traps: 'Raw data without units or uncertainties; averages with no spread; graphs without error bars or a line of best fit; inconsistent significant figures.' },
+        { id: 'CO', name: 'Conclusion', max: 6, levels: [
+          ['5-6', 'The conclusion is relevant to the research question and fully consistent with the analysis. It is justified by comparison with the accepted scientific context.'],
+          ['3-4', 'The conclusion is relevant but not fully consistent with the analysis. Some comparison with accepted scientific context.'],
+          ['1-2', 'The conclusion is stated but not supported by the analysis. Comparison with scientific context is superficial or missing.'],
+        ], traps: 'Claiming more than the data shows (e.g. "proves"); ignoring scatter and anomalies; no literature value or theory to compare against.' },
+        { id: 'EV', name: 'Evaluation', max: 6, levels: [
+          ['5-6', 'The effect of specific, relevant weaknesses and limitations of the method on the results is discussed. Realistic, relevant improvements and extensions are explained.'],
+          ['3-4', 'Weaknesses and their effect are described. Improvements and extensions are described.'],
+          ['1-2', 'Weaknesses are stated generically (e.g. "human error"). Improvements are only listed.'],
+        ], traps: '"Human error" or "more repeats" with no specific cause or effect; improvements that do not fix the weakness named.' },
       ] },
-    { id: 'math-ia', group: 'IA', kind: 'written', name: 'Maths exploration (AA or AI)', words: 0, note: '12–20 pages, out of 20.',
+    { id: 'math-ia', group: 'IA', kind: 'written', name: 'Maths exploration (AA or AI)', words: 0, note: 'About 12–20 pages, out of 20.',
+      rules: 'About 12–20 pages, double-spaced. The mathematics must be at the level of the course (HL needs sophistication and rigour for the top of E). Sources and any technology used must be acknowledged.',
       criteria: [
-        { id: 'A', name: 'Presentation', max: 4, bands: 'Coherent, well organised and concise, with an introduction, aim and conclusion.' },
-        { id: 'B', name: 'Mathematical communication', max: 4, bands: 'Correct notation, symbols and terminology; key terms defined; graphs and tables labelled; consistent throughout.' },
-        { id: 'C', name: 'Personal engagement', max: 3, bands: 'Clear evidence of personal engagement: own ideas, independent thinking, creativity.' },
-        { id: 'D', name: 'Reflection', max: 3, bands: 'Critical reflection on results, methods and limitations throughout, not just at the end.' },
-        { id: 'E', name: 'Use of mathematics', max: 6, bands: 'Mathematics relevant, correct and at the level of the course; understanding shown, not just results.' },
+        { id: 'A', name: 'Presentation', max: 4, levels: [
+          ['4', 'Coherent, well organised and concise.'], ['3', 'Coherent and well organised.'], ['2', 'Some coherence or some organisation.'], ['1', 'Some coherence or organisation, but hard to follow.'],
+        ], traps: 'No clear aim at the start; long tangents and repeated calculations that make it not concise; a conclusion that does not answer the aim.' },
+        { id: 'B', name: 'Mathematical communication', max: 4, levels: [
+          ['4', 'Relevant notation, symbols and terminology used appropriately and consistently, with suitable multiple forms of representation (formulae, diagrams, tables, graphs).'],
+          ['3', 'Mostly appropriate and consistent notation and terminology.'], ['2', 'Some appropriate notation and terminology, with lapses.'], ['1', 'Limited appropriate mathematical communication.'],
+        ], traps: 'Calculator notation (x^2, *, E-3); variables not defined; graphs without labelled axes or scales.' },
+        { id: 'C', name: 'Personal engagement', max: 3, levels: [
+          ['3', 'Abundant evidence of significant personal engagement: independent thinking, creativity, own questions and approaches.'], ['2', 'Significant evidence of personal engagement.'], ['1', 'Some evidence, often only stated ("I find this interesting").'],
+        ], traps: 'Saying the topic is interesting instead of showing it through own choices, data or extensions.' },
+        { id: 'D', name: 'Reflection', max: 3, levels: [
+          ['3', 'Substantial critical reflection on results, methods and limitations throughout the exploration.'], ['2', 'Meaningful reflection.'], ['1', 'Limited or superficial reflection, often only at the end.'],
+        ], traps: 'Reflection only in the conclusion; no comment on the validity or limits of the model or method.' },
+        { id: 'E', name: 'Use of mathematics', max: 6, levels: [
+          ['5-6', 'Relevant mathematics at the level of the course, correct, with thorough knowledge and understanding (for HL, with sophistication and rigour).'],
+          ['3-4', 'Relevant mathematics, mostly correct, with good or some knowledge and understanding.'],
+          ['1-2', 'Some relevant mathematics, with limited understanding or many errors.'],
+        ], traps: 'Mathematics below the level of the course; results from software with no working or understanding shown; errors in the core method.' },
       ] },
-    { id: 'econ-ia', group: 'IA', kind: 'written', name: 'Economics IA commentary', words: 800, note: 'One commentary. Check the criteria against your guide.',
+    { id: 'econ-ia', group: 'IA', kind: 'written', name: 'Economics IA commentary', words: 800, note: 'One commentary, out of 14 (the three-commentary rubric, F, is marked on the whole portfolio).',
+      rules: 'At most 800 words. A news article published within one year before writing. Each commentary uses a different unit of the syllabus and a key concept, with diagrams that are referred to in the text.',
       criteria: [
-        { id: 'A', name: 'Diagrams', max: 3, bands: 'Relevant, accurate diagrams, fully explained and linked to the article.' },
-        { id: 'B', name: 'Terminology', max: 2, bands: 'Relevant economic terms used appropriately throughout.' },
-        { id: 'C', name: 'Application', max: 3, bands: 'Economic theory applied effectively to the article.' },
-        { id: 'D', name: 'Analysis', max: 3, bands: 'Effective economic analysis relating to the article.' },
-        { id: 'E', name: 'Key concept', max: 3, bands: 'The chosen key concept identified and used effectively.' },
-        { id: 'F', name: 'Evaluation', max: 3, bands: 'Judgements supported by effective, balanced reasoning.' },
+        { id: 'A', name: 'Diagrams', max: 3, levels: [
+          ['3', 'Relevant, accurate diagrams with a full explanation, referred to in the text and applied to the article.'], ['2', 'Relevant, accurate diagrams with a limited explanation, or minor errors.'], ['1', 'Relevant diagrams with significant errors, or not explained.'],
+        ], traps: 'Generic textbook diagrams with no figures or labels from the article; diagrams never mentioned in the text.' },
+        { id: 'B', name: 'Terminology', max: 2, levels: [
+          ['2', 'Relevant economic terms used appropriately throughout.'], ['1', 'Some relevant terms used, not always appropriately.'],
+        ], traps: 'Terms defined but then not used; everyday words where an economic term is needed.' },
+        { id: 'C', name: 'Application and analysis', max: 3, levels: [
+          ['3', 'Relevant economic theory applied effectively to the article throughout, with effective economic analysis.'], ['2', 'Theory applied to the article with some analysis, not throughout.'], ['1', 'Theory described with little application to the article.'],
+        ], traps: 'Retelling the article; theory explained in general with no link to the case.' },
+        { id: 'D', name: 'Key concept', max: 3, levels: [
+          ['3', 'The chosen key concept is clearly linked to the article and its use is explained and developed.'], ['2', 'The key concept is linked to the article, with some explanation.'], ['1', 'The key concept is named but the link is not explained.'],
+        ], traps: 'Naming the key concept only in the cover sheet or first line.' },
+        { id: 'E', name: 'Evaluation', max: 3, levels: [
+          ['3', 'Effective evaluation: judgements supported by effective, balanced reasoning (e.g. stakeholders, short and long run, assumptions).'], ['2', 'Evaluation present but judgements not always supported.'], ['1', 'Limited or unsupported evaluation.'],
+        ], traps: 'Evaluation as a list of points with no final judgement; one-sided arguments.' },
       ] },
-    { id: 'lit-essay', group: 'IA', kind: 'written', name: 'English A HL essay', words: 1500, note: '1200–1500 words, out of 20.',
+    { id: 'lit-essay', group: 'IA', kind: 'written', name: 'English A HL essay', words: 1500, note: '1,200–1,500 words, out of 20.',
+      rules: '1,200–1,500 words on one work studied in the course, following a line of inquiry. References to the work and any secondary sources must be cited.',
       criteria: [
-        { id: 'A', name: 'Knowledge, understanding and interpretation', max: 5, bands: 'Thorough knowledge of the work; persuasive interpretation supported by well-chosen references.' },
-        { id: 'B', name: 'Analysis and evaluation', max: 5, bands: 'Insightful analysis of how the writer\'s choices shape meaning.' },
-        { id: 'C', name: 'Focus, organization and development', max: 5, bands: 'Effectively organised, coherent and well developed line of inquiry.' },
-        { id: 'D', name: 'Language', max: 5, bands: 'Clear, carefully chosen, accurate language; register and style effective.' },
+        { id: 'A', name: 'Knowledge, understanding and interpretation', max: 5, levels: [
+          ['5', 'Excellent knowledge and understanding of the work; persuasive interpretation of its implications, effectively supported by well-chosen references.'], ['4', 'Very good, with a sustained interpretation and relevant references.'], ['3', 'Good: a satisfactory interpretation, supported in places.'], ['2', 'Some knowledge, superficial interpretation.'], ['1', 'Little knowledge, little or no interpretation.'],
+        ], traps: 'Plot summary in place of interpretation; quotations dropped in without discussion.' },
+        { id: 'B', name: 'Analysis and evaluation', max: 5, levels: [
+          ['5', 'Insightful, convincing analysis and evaluation of how the writer’s choices create meaning.'], ['4', 'Very good analysis with some evaluation.'], ['3', 'Generally appropriate analysis, mostly descriptive in places.'], ['2', 'Some analysis, largely descriptive.'], ['1', 'Little or no analysis.'],
+        ], traps: 'Feature-spotting (naming techniques) without saying what they do.' },
+        { id: 'C', name: 'Focus, organization and development', max: 5, levels: [
+          ['5', 'Effectively organised, coherent; the line of inquiry is well developed throughout.'], ['4', 'Well organised and mostly coherent and developed.'], ['3', 'Adequately organised; development uneven.'], ['2', 'Some organisation; little development.'], ['1', 'Little organisation or focus.'],
+        ], traps: 'A line of inquiry that drifts; paragraphs not linked.' },
+        { id: 'D', name: 'Language', max: 5, levels: [
+          ['5', 'Very clear, carefully chosen, accurate and varied language; effective register and style.'], ['4', 'Clear, carefully chosen language with a good degree of accuracy.'], ['3', 'Clear language, generally accurate, with lapses.'], ['2', 'Sometimes clear; errors affect it.'], ['1', 'Rarely clear and appropriate.'],
+        ], traps: 'Informal register; long quotations padding the word count.' },
       ] },
     { id: 'custom', group: 'IA', kind: 'written', name: 'Another IA (paste the criteria)', words: 0, note: 'Paste the criteria from your subject guide or your teacher, one per line, like "A. Research design (6)".', criteria: [] },
     { id: 'eng-io', group: 'Oral', kind: 'oral', name: 'English A individual oral', words: 0, note: '10 minutes on a global issue, then 5 minutes of questions. Out of 40.',
@@ -179,6 +274,18 @@
         { id: 'C', name: 'Interactive skills', max: 6, bands: 'Understands and keeps the conversation going naturally.' },
       ] },
   ];
+  // A short summary of the levels for prompts that mark several criteria at once (orals).
+  COMPONENTS.forEach((c) => c.criteria.forEach((k) => {
+    if (k.levels && !k.bands) k.bands = k.levels.map((l) => l[0] + ': ' + l[1]).join(' ');
+  }));
+  /** "5-6" → [5, 6]; "4" → [4, 4]. */
+  function levelRange(r) {
+    const m = String(r || '').match(/^\s*(\d{1,2})\s*(?:[-–]\s*(\d{1,2}))?\s*$/);
+    if (!m) return null;
+    const a = Number(m[1]);
+    const b = m[2] ? Number(m[2]) : a;
+    return a <= b ? [a, b] : null;
+  }
 
   /* ── Signing in and calling Flux AI ─────────────────────────────────── */
 
@@ -687,14 +794,328 @@
     if (component.id === 'math-ia' && !has(/conclusion/i)) out.push({ kind: 'info', text: 'No conclusion found. Presentation expects an introduction, an aim and a conclusion.' });
     return out;
   }
-  async function courseFeedback(component, draft, extra) {
+  /*
+   * Precise marking: one criterion at a time, over the whole draft.
+   *
+   * Groq allows about 8,000 tokens a minute per model, and ai-proxy cuts a
+   * request that is too big from the FRONT, so sending a 4,000-word EE in one
+   * go lost its introduction and research question. Instead a long draft is
+   * read in parts first (evidence for each criterion, every quote checked
+   * against the draft), then each criterion is marked on its own from that
+   * evidence plus the opening and the end of the draft. One criterion per
+   * call means the examiner weighs one set of level descriptors at a time,
+   * and the code holds the mark to the level it chose.
+   */
+  const WHOLE_MAX = 11000;
+  const PART_CHARS = 7000;
+  const CRIT_SYSTEM = [
+    'You are a senior IB moderator marking ONE criterion of a student\'s coursework draft.',
+    'Mark as IB examiners do:',
+    '1. Read the level descriptors from the top level down and choose the level that best fits the work as a whole (best fit: the work need not meet every word of a level).',
+    '2. Within the level, give the higher mark when the description is clearly and consistently met, the lower when it is only just met.',
+    '3. Mark only what is on the page. Never reward plans, intentions or sections the student says they will add. Do not inflate marks: most drafts sit in the middle levels.',
+    '4. Words beyond the word limit are not read by examiners and earn nothing.',
+    'Academic honesty: never rewrite the student\'s work and never write sentences for them to copy.',
+    'Reply ONLY with JSON: {"level":"5-6","mark":5,"met":["…"],"missing":["…"],"evidence":["…"],"fixes":[{"quote":"…","advice":"…"}],"confidence":"high"}',
+    '- level: one of the given level ranges, written exactly as given ("0" if the work does not reach the lowest level).',
+    '- met: at most 2 parts of the chosen level the work clearly meets, each under 20 words.',
+    '- missing: at most 2 things that keep it out of the next level up, each under 25 words.',
+    '- evidence: at most 2 short quotes (under 20 words) copied exactly from the draft that justify the mark.',
+    '- fixes: at most 2. "quote" is a short exact quote from the draft the fix is about, or "". "advice" says what to do in under 35 words, without writing it for them.',
+    '- confidence: "low" if the draft is short, a section is missing, or you cannot see enough to judge; otherwise "medium" or "high".',
+  ].join('\n');
+  const PART_SYSTEM = [
+    'You help an IB moderator by reading ONE part of a longer coursework draft. Do not give marks.',
+    'For each criterion, note the evidence in THIS part that an examiner would weigh: strengths and weaknesses.',
+    'Reply ONLY with JSON: {"notes":[{"c":"A","kind":"strength","quote":"exact words from this part, under 20 words","note":"what it shows, under 20 words"}]}',
+    'kind is "strength" or "weakness". At most 2 notes per criterion; leave out criteria this part says nothing about. Copy every quote exactly.',
+  ].join('\n');
+
+  /** Splits a draft at paragraph breaks into parts of at most `size` characters. */
+  function splitDraft(draft, size) {
+    const max = size || PART_CHARS;
+    const paras = String(draft || '').split(/\n\s*\n|\n/).map((p) => p.trim()).filter(Boolean);
+    const pieces = [];
+    paras.forEach((p) => {
+      if (p.length <= max) { pieces.push(p); return; }
+      // A very long paragraph: at sentence ends, or hard cuts if there are none.
+      let cur = '';
+      p.split(/(?<=[.!?])\s+/).forEach((s) => {
+        while (s.length > max) { if (cur) { pieces.push(cur); cur = ''; } pieces.push(s.slice(0, max)); s = s.slice(max); }
+        if (cur && cur.length + s.length + 1 > max) { pieces.push(cur); cur = ''; }
+        cur = cur ? cur + ' ' + s : s;
+      });
+      if (cur) pieces.push(cur);
+    });
+    const parts = [];
+    let cur = '';
+    pieces.forEach((p) => {
+      if (cur && cur.length + p.length + 2 > max) { parts.push(cur); cur = ''; }
+      cur = cur ? cur + '\n\n' + p : p;
+    });
+    if (cur) parts.push(cur);
+    return parts;
+  }
+  /** Short lines that look like section headings, in order. */
+  function headingsOf(draft) {
+    return String(draft || '').split('\n').map((l) => l.trim())
+      .filter((l) => l.length >= 3 && l.length <= 80 && !/[.,;:]$/.test(l) && wordsIn(l) <= 10 && /^[\p{Lu}\d]/u.test(l))
+      .slice(0, 30);
+  }
+  function topLevel(k) { return k.levels && k.levels[0] ? k.levels[0][1] : (k.bands || ''); }
+  function partPrompt(component, criteria, part, i, n) {
+    return 'Component: ' + component.name + '\nCriteria (what the top level asks for):\n'
+      + criteria.map((k) => k.id + '. ' + k.name + ': ' + str(topLevel(k), 260)).join('\n')
+      + '\n\nPart ' + (i + 1) + ' of ' + n + ' of the draft:\n"""' + part + '"""';
+  }
+  function parsePart(text, criteria, part) {
+    const j = parseJson(text);
+    if (!plainObject(j) || !Array.isArray(j.notes)) return null;
+    const ids = new Set(criteria.map((k) => k.id.toUpperCase()));
+    const per = {};
+    const notes = [];
+    j.notes.forEach((x) => {
+      if (!plainObject(x)) return;
+      const c = String(x.c || '').toUpperCase();
+      const q = str(x.quote, 240).trim();
+      if (!ids.has(c) || !q || !quoted(part, q)) return;
+      per[c] = (per[c] || 0) + 1;
+      if (per[c] > 3) return;
+      notes.push({ c, kind: x.kind === 'weakness' ? 'weakness' : 'strength', quote: q, note: str(x.note, 200).trim() });
+    });
+    return { notes };
+  }
+  function criterionPrompt(component, k, draft, evidence, title) {
+    const words = wordsIn(draft);
+    const head = 'Component: ' + component.name
+      + (component.words ? ' (word limit ' + component.words + '; this draft has ' + words + ' words' + (words > component.words ? ', over the limit' : '') + ')' : ' (this draft has ' + words + ' words)')
+      + (component.rules ? '\nRules: ' + component.rules : '')
+      + (title ? '\nThe student\'s title or research question: ' + str(title, 200) : '')
+      + '\n\nCriterion ' + k.id + '. ' + k.name + ' (out of ' + k.max + ')'
+      + (k.levels && k.levels.length ? '\nLevels, top first:\n' + k.levels.map((l) => l[0] + ': ' + l[1]).join('\n')
+        : (k.bands ? '\nWhat it asks for: ' + k.bands : '\nNo level descriptors were given: judge it out of ' + k.max + ' the way an IB examiner would.'))
+      + (k.traps ? '\nMistakes examiners often report for this criterion: ' + k.traps : '');
+    if (!evidence) return head + '\n\nThe draft:\n"""' + draft + '"""';
+    const notes = evidence.filter((x) => x.c === k.id.toUpperCase());
+    const hs = headingsOf(draft);
+    return head + '\n\nThe draft is long, so it was read in full, part by part. Evidence found for this criterion (quotes are exact):\n'
+      + (notes.length ? notes.map((x) => '- part ' + x.part + ', ' + x.kind + ': "' + x.quote + '"' + (x.note ? ' (' + x.note + ')' : '')).join('\n') : '- nothing specific was found for this criterion.')
+      + (hs.length ? '\n\nSection headings, in order: ' + hs.join(' | ') : '')
+      + '\n\nThe opening of the draft:\n"""' + draft.slice(0, 2500) + '"""'
+      + '\n\nThe end of the draft:\n"""' + draft.slice(-2000) + '"""';
+  }
+  function normLevel(s) { return String(s == null ? '' : s).replace(/[–—]/g, '-').replace(/\s+/g, ''); }
+  /** One criterion's reply, held to the level descriptors: the mark must sit inside the level chosen. */
+  function parseCriterion(text, k, draft) {
+    const j = parseJson(text);
+    if (!plainObject(j)) return null;
+    const levels = (k.levels || []).map((l) => ({ name: l[0], text: l[1], range: levelRange(normLevel(l[0])) })).filter((l) => l.range);
+    const rawMark = Number(j.mark);
+    let mark = Number.isFinite(rawMark) ? Math.max(0, Math.min(k.max, Math.round(rawMark))) : null;
+    let level = levels.find((l) => normLevel(l.name) === normLevel(j.level)) || null;
+    if (normLevel(j.level) === '0' && mark == null) mark = 0;
+    if (level) {
+      if (mark == null) mark = level.range[0];
+      else mark = Math.max(level.range[0], Math.min(level.range[1], mark));
+    } else if (mark != null) {
+      level = levels.find((l) => mark >= l.range[0] && mark <= l.range[1]) || null;
+    }
+    if (mark == null) return null;
+    const evidence = strs(j.evidence, 3, 240).filter((q) => quoted(draft, q)).slice(0, 2);
+    let confidence = ['high', 'medium', 'low'].includes(j.confidence) ? j.confidence : 'medium';
+    if (mark > 0 && !evidence.length && confidence === 'high') confidence = 'medium';
+    const next = levels.filter((l) => l.range[0] > mark).pop() || null;
+    return {
+      id: k.id, name: k.name, max: k.max, mark,
+      level: level ? level.name.replace('-', '–') : String(mark),
+      levelText: level ? level.text : '',
+      next: next ? { name: next.name.replace('-', '–'), text: next.text } : null,
+      working: strs(j.met, 2, 240),
+      missing: strs(j.missing, 2, 300),
+      evidence,
+      fixes: list(j.fixes).filter(plainObject).slice(0, 2).map((f) => {
+        const q = str(f.quote, 240).trim();
+        return { quote: q && quoted(draft, q) ? q : '', advice: str(f.advice, 400).trim() };
+      }).filter((f) => f.advice),
+      confidence,
+    };
+  }
+  /** The headline and the three changes worth most marks, worked out from the rows (no extra AI call). */
+  function courseSummary(rows, component, draft) {
+    const total = rows.reduce((n, r) => n + r.mark, 0);
+    const max = rows.reduce((n, r) => n + r.max, 0);
+    const gap = rows.slice().sort((a, b) => (b.max - b.mark) / b.max - (a.max - a.mark) / a.max || (b.max - b.mark) - (a.max - a.mark));
+    const best = rows.slice().sort((a, b) => b.mark / b.max - a.mark / a.max)[0];
+    const priorities = gap.filter((r) => r.mark < r.max).slice(0, 3).map((r) => {
+      const how = r.missing[0] || (r.fixes[0] && r.fixes[0].advice) || (r.next ? 'Reach the next level: ' + r.next.text : '');
+      return r.id + ' ' + r.name + ' (' + r.mark + ' of ' + r.max + '): ' + how;
+    }).filter((x) => !/: $/.test(x));
+    const words = wordsIn(draft);
+    const parts = ['Predicted ' + total + ' of ' + max + '.'];
+    if (best && rows.length > 1) parts.push('Strongest: ' + best.id + ' ' + best.name + '.');
+    if (gap[0] && rows.length > 1 && gap[0].mark < gap[0].max) parts.push('Most marks to gain: ' + gap[0].id + ' ' + gap[0].name + '.');
+    if (component.words && words > component.words) parts.push('The draft is over the ' + component.words + '-word limit; examiners stop reading there.');
+    if (rows.some((r) => r.confidence === 'low')) parts.push('Marks shown as unsure could move by a level.');
+    return { total, max, priorities, summary: parts.join(' ') };
+  }
+  /** Runs a Flux AI step, waiting and trying again (twice) when Flux AI is busy. */
+  async function patiently(run, onWait) {
+    for (let i = 0; ; i++) {
+      try { return await run(); } catch (e) {
+        if (!(e instanceof AiError) || e.code !== 'busy' || i >= 2) throw e;
+        if (typeof onWait === 'function') onWait();
+        await new Promise((r) => setTimeout(r, 20000));
+      }
+    }
+  }
+  async function courseFeedback(component, draft, extra, opts) {
+    const o = opts || {};
     const criteria = criteriaFor(component, extra);
     if (!criteria.length) return { failed: true, message: 'Paste the criteria with a letter, a name and the marks on each line, like "A. Research design (6)".' };
-    const d = String(draft || '');
-    return cached('course', { c: component.id, k: criteria, d }, async () => {
-      const text = await call({ system: COURSE_SYSTEM, json: true, messages: [{ role: 'user', content: coursePrompt(component, d, criteria) }] });
-      return parseCourse(text, criteria, d);
+    const d = String(draft || '').slice(0, DRAFT_MAX * 2);
+    const progress = (text) => { if (typeof o.onProgress === 'function') o.onProgress(text); };
+    const wait = () => progress('Flux AI is busy. Waiting a moment, then carrying on…');
+    // Each step is cached on its own, so trying again after an error carries on where it stopped.
+    let evidence = null;
+    if (d.length > WHOLE_MAX) {
+      const parts = splitDraft(d, PART_CHARS);
+      evidence = [];
+      for (let i = 0; i < parts.length; i++) {
+        progress('Reading part ' + (i + 1) + ' of ' + parts.length + ' of your draft…');
+        const got = await patiently(() => cached('course-part', { c: component.id, k: criteria.map((k) => k.id), p: parts[i] }, async () => {
+          const text = await call({ system: PART_SYSTEM, json: true, messages: [{ role: 'user', content: partPrompt(component, criteria, parts[i], i, parts.length) }] });
+          return parsePart(text, criteria, parts[i]) || { failed: true };
+        }), wait);
+        if (got && !got.failed) got.notes.forEach((x) => evidence.push(Object.assign({ part: i + 1 }, x)));
+      }
+    }
+    const rows = [];
+    for (let i = 0; i < criteria.length; i++) {
+      const k = criteria[i];
+      progress('Marking ' + (k.id === 'TOK' ? 'your ' + component.name : 'criterion ' + k.id + ', ' + k.name) + '…');
+      const prompt = criterionPrompt(component, k, d, evidence, o.title);
+      let row = null;
+      for (let attempt = 0; attempt < 2 && !row; attempt++) {
+        const got = await patiently(() => cached('course-crit', { v: 2, a: attempt, p: prompt }, async () => {
+          const text = await call({ system: CRIT_SYSTEM, json: true, messages: [{ role: 'user', content: prompt }] });
+          return parseCriterion(text, k, d) || { failed: true };
+        }), wait);
+        if (got && !got.failed) row = got;
+      }
+      if (!row) return { failed: true, message: 'Flux AI could not mark criterion ' + k.id + '. Try again: the parts already done are kept.' };
+      rows.push(row);
+    }
+    return Object.assign({ rows, whole: !evidence }, courseSummary(rows, component, d));
+  }
+
+  /* ── 8. Lesson transcripts into notes ───────────────────────────────── */
+
+  /** Plain lines from a pasted transcript or a caption file (WebVTT, SRT, Otter, Granola, Teams). */
+  function cleanTranscript(raw) {
+    const out = [];
+    String(raw || '').replace(/\r\n?/g, '\n').split('\n').forEach((line0) => {
+      let line = line0.trim();
+      if (!line || /^WEBVTT/i.test(line) || /^(NOTE|STYLE|REGION)(\s|$)/.test(line)) return;
+      if (/^\d+$/.test(line) || /-->/.test(line)) return;                                  // SRT cue numbers and timings
+      if (/^[[(]?\d{1,2}:\d{2}(?::\d{2})?(?:[.,]\d+)?[\])]?$/.test(line)) return;           // a bare timestamp
+      if (/^.{1,40}?\s{2,}\d{1,2}:\d{2}(?::\d{2})?$/.test(line)) return;                    // "Speaker 1  0:03" (Otter)
+      line = line.replace(/<v\s+([^>]+)>/gi, '$1: ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+      if (line && out[out.length - 1] !== line) out.push(line);                             // captions repeat lines
     });
+    return out.join('\n');
+  }
+  /** Numbered pieces of about 45 words, so notes can point at where in the lesson they came from. Works without punctuation (Chrome's speech recognition adds none). */
+  function lessonSegments(text, maxWords) {
+    const max = maxWords || 45;
+    const sents = [];
+    String(text || '').split(/\n+|(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean).forEach((s) => {
+      const w = s.split(/\s+/);
+      for (let i = 0; i < w.length; i += max) sents.push(w.slice(i, i + max).join(' '));
+    });
+    const segs = [];
+    let cur = [];
+    let n = 0;
+    sents.forEach((s) => {
+      const c = wordsIn(s);
+      if (cur.length && n + c > max) { segs.push(cur.join(' ')); cur = []; n = 0; }
+      cur.push(s); n += c;
+    });
+    if (cur.length) segs.push(cur.join(' '));
+    return segs.map((t, i) => ({ n: i + 1, text: t }));
+  }
+  function lessonChunks(segs, maxChars) {
+    const max = maxChars || 6000;
+    const out = [];
+    let cur = [];
+    let len = 0;
+    segs.forEach((s) => {
+      if (cur.length && len + s.text.length > max) { out.push(cur); cur = []; len = 0; }
+      cur.push(s); len += s.text.length + 6;
+    });
+    if (cur.length) out.push(cur);
+    return out;
+  }
+  const LESSON_SYSTEM = [
+    'You turn part of a class transcript into clear study notes for an IB student.',
+    'The transcript comes from speech recognition: it may have no punctuation and some misheard words. Fix a misheard word only when the meaning is certain; otherwise leave the point out.',
+    'Use only what was said in this part. Never add facts that were not said. Leave out small talk, jokes and classroom management.',
+    'Reply ONLY with JSON: {"title":"the topic of this part, under 8 words","points":[{"text":"one clear note in your own words","s":[3,4]}],"terms":[{"term":"…","def":"the definition as taught","s":[5]}],"exam":[{"text":"what the teacher said about tests, exams or what to learn","s":[7]}],"tasks":[{"text":"homework, deadlines or things to bring","s":[9]}]}',
+    'Every item gives in "s" the numbers of the transcript lines it comes from. At most 10 points, 8 terms, 4 exam items and 4 tasks.',
+  ].join('\n');
+  function citeList(v, lo, hi) {
+    return Array.from(new Set(list(v).map(Number).filter((n) => Number.isInteger(n) && n >= lo && n <= hi))).slice(0, 6);
+  }
+  /** One part's notes. Items that cite no line of this part are dropped: they were not said here. */
+  function parseLessonPart(text, lo, hi) {
+    const j = parseJson(text);
+    if (!plainObject(j)) return null;
+    const items = (v, max) => list(v).filter(plainObject).map((x) => ({ text: str(x.text, 400).trim(), s: citeList(x.s, lo, hi) })).filter((x) => x.text && x.s.length).slice(0, max);
+    return {
+      title: str(j.title, 100).trim(),
+      points: items(j.points, 10),
+      terms: list(j.terms).filter(plainObject).map((x) => ({ term: str(x.term, 100).trim(), def: str(x.def, 400).trim(), s: citeList(x.s, lo, hi) })).filter((x) => x.term && x.def && x.s.length).slice(0, 8),
+      exam: items(j.exam, 4),
+      tasks: items(j.tasks, 4),
+    };
+  }
+  function lessonPrompt(chunk, i, n, subject) {
+    return (subject ? 'Subject: ' + subject + '\n' : '') + 'Part ' + (i + 1) + ' of ' + n + ' of the lesson transcript:\n'
+      + chunk.map((s) => '[' + s.n + '] ' + s.text).join('\n');
+  }
+  async function lessonNotes(raw, opts) {
+    const o = opts || {};
+    const segments = lessonSegments(cleanTranscript(raw));
+    if (wordsIn(segments.map((s) => s.text).join(' ')) < 30) return { failed: true, message: 'There is not enough in the transcript yet to make notes from.' };
+    const chunks = lessonChunks(segments, 6000);
+    const parts = [];
+    let missed = 0;
+    for (let i = 0; i < chunks.length; i++) {
+      const c = chunks[i];
+      const lo = c[0].n;
+      const hi = c[c.length - 1].n;
+      if (typeof o.onProgress === 'function') o.onProgress('Making notes from part ' + (i + 1) + ' of ' + chunks.length + '…');
+      const got = await patiently(() => cached('lesson', { s: o.subject || '', t: c.map((x) => x.text), lo }, async () => {
+        const text = await call({ system: LESSON_SYSTEM, json: true, messages: [{ role: 'user', content: lessonPrompt(c, i, chunks.length, o.subject) }] });
+        return parseLessonPart(text, lo, hi) || { failed: true };
+      }), () => { if (typeof o.onProgress === 'function') o.onProgress('Flux AI is busy. Waiting a moment, then carrying on…'); });
+      if (got && !got.failed) parts.push(Object.assign({ lo, hi }, got)); else missed++;
+    }
+    if (!parts.length) return { failed: true, message: 'Flux AI could not turn this transcript into notes. Try again.' };
+    return { segments, parts, missed };
+  }
+  /** The notes as text for a study set: "Term: definition" lines become flashcards there. */
+  function lessonNotesText(notes, title) {
+    const lines = [];
+    if (title) lines.push(title, '');
+    list(notes && notes.parts).forEach((p) => {
+      if (p.title) lines.push(p.title);
+      p.points.forEach((x) => lines.push(x.text));
+      p.terms.forEach((x) => lines.push(x.term + ': ' + x.def));
+      p.exam.forEach((x) => lines.push('For the test: ' + x.text));
+      p.tasks.forEach((x) => lines.push('To do: ' + x.text));
+      lines.push('');
+    });
+    return lines.join('\n').trim();
   }
 
   /* ── 7. Mock orals ──────────────────────────────────────────────────── */
@@ -733,6 +1154,8 @@
     parseTeach, teachBack,
     parseBlurt, checkBlurt,
     customCriteria, criteriaFor, coursePrompt, parseCourse, courseChecks, courseFeedback,
+    levelRange, splitDraft, headingsOf, parsePart, criterionPrompt, parseCriterion, courseSummary,
     oralNext, oralMark,
+    cleanTranscript, lessonSegments, lessonChunks, parseLessonPart, lessonNotes, lessonNotesText,
   };
 })();

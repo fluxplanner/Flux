@@ -129,18 +129,93 @@ test.describe('Flux Tutor hub', () => {
     await expect(page.locator('.ft-msg--me')).toContainText('What do ribosomes do?');
   });
 
-  test('coursework feedback: per criterion, quotes checked against the draft, never rewritten', async ({ page }) => {
+  test('coursework feedback: one criterion at a time, held to its level, quotes checked against the draft', async ({ page }) => {
     await signIn(page);
+    const marks: Record<string, any> = {
+      RD: { level: '3-4', mark: 6, met: ['A focused question.'], missing: ['No context for the question.'], evidence: ['temperature affects catalase'], fixes: [{ quote: 'temperature affects catalase', advice: 'Give the range of temperatures.' }] },
+      DA: { level: '3-4', mark: 3 }, CO: { level: '1-2', mark: 2 }, EV: { level: '1-2', mark: 1 },
+    };
+    let calls = 0;
     await page.route('**/functions/v1/ai-proxy', async (route) => {
-      await route.fulfill({ json: { content: [{ type: 'text', text: JSON.stringify({ criteria: [{ id: 'RD', mark: 4, working: ['A focused question.'], fixes: [{ quote: 'temperature affects catalase', advice: 'Give the range of temperatures.' }] }, { id: 'DA', mark: 3 }, { id: 'CO', mark: 2 }, { id: 'EV', mark: 1 }], priorities: ['Add uncertainties.'], summary: 'A solid start.' }) }] } });
+      calls++;
+      const user = String(JSON.parse(route.request().postData() || '{}').messages[1].content);
+      const id = (user.match(/Criterion (\w+)\./) || [])[1];
+      await route.fulfill({ json: { content: [{ type: 'text', text: JSON.stringify(marks[id]) }] } });
     });
     await setUp(page);
     await page.getByRole('navigation', { name: 'Flux Tutor' }).getByRole('link', { name: 'IA', exact: true }).click();
     await page.locator('#ftCDraft').fill(('My research question is how temperature affects catalase activity. ').repeat(20));
     await page.getByRole('button', { name: 'Get feedback' }).click();
+    // RD said 6 but chose the 3-4 level, so it is held at 4: 4 + 3 + 2 + 1.
     await expect(page.getByRole('heading', { name: 'Predicted 10 / 24' })).toBeVisible();
-    await expect(page.locator('.ft-fixes q')).toContainText('temperature affects catalase');
+    expect(calls).toBe(4);
+    await expect(page.locator('.ft-crit').first()).toContainText('Level 3–4');
+    await expect(page.locator('.ft-crit').first()).toContainText('To reach level 5–6');
+    await expect(page.locator('.ft-fixes q').first()).toContainText('temperature affects catalase');
     await expect(page.getByText('not an IB mark')).toBeVisible();
+  });
+
+  test('record a lesson: the transcript builds up, Flux AI makes notes that cite it, and they become a study set', async ({ page }) => {
+    await signIn(page);
+    await page.addInitScript(() => {
+      const w = window as any;
+      w.__mic = { current: null, runs: 0 };
+      class FakeRec {
+        lang = ''; continuous = false; interimResults = false; maxAlternatives = 1;
+        onresult: any = null; onerror: any = null; onend: any = null; results: any[] = [];
+        start() { w.__mic.runs++; w.__mic.current = this; }
+        stop() { setTimeout(() => this.onend && this.onend(), 20); }
+        abort() { this.stop(); }
+      }
+      w.SpeechRecognition = FakeRec;
+      w.__mic.say = (text: string) => { const r = w.__mic.current; const res: any = [{ transcript: text }]; res.isFinal = true; r.results.push(res); r.onresult({ resultIndex: r.results.length - 1, results: r.results }); };
+      w.__mic.end = () => { const r = w.__mic.current; r.onend(); };
+    });
+    await page.route('**/functions/v1/ai-proxy', (route) => route.fulfill({ json: { content: [{ type: 'text', text: JSON.stringify({
+      title: 'Photosynthesis', points: [{ text: 'Photosynthesis happens in the chloroplast.', s: [1] }],
+      terms: [{ term: 'Chlorophyll', def: 'The green pigment that absorbs light.', s: [1] }], exam: [{ text: 'Learn the equation.', s: [1] }], tasks: [],
+    }) }] } }));
+    await setUp(page);
+    await page.getByRole('navigation', { name: 'Flux Tutor' }).getByRole('link', { name: 'Record a lesson' }).click();
+    await expect(page.getByRole('heading', { name: 'Record a lesson' })).toBeVisible();
+    await page.getByRole('button', { name: 'Start recording' }).click();
+    await expect(page.getByRole('button', { name: 'Pause' })).toHaveAttribute('aria-pressed', 'true');
+    await page.evaluate(() => {
+      const m = (window as any).__mic;
+      m.say('today we are looking at photosynthesis which happens in the chloroplast');
+      m.say('chlorophyll is the green pigment that absorbs light and you need to learn the equation for the test');
+    });
+    // The browser ends a run after a pause: listening starts again by itself.
+    const runs = await page.evaluate(() => (window as any).__mic.runs);
+    await page.evaluate(() => (window as any).__mic.end());
+    await expect.poll(() => page.evaluate(() => (window as any).__mic.runs)).toBe(runs + 1);
+    await page.evaluate(() => (window as any).__mic.say('so remember light energy is converted into chemical energy in glucose'));
+    await expect(page.locator('#ftLText')).toHaveValue(/chloroplast\nchlorophyll[\s\S]*glucose$/);
+    await page.getByRole('button', { name: 'Pause' }).click();
+    await expect(page.getByRole('button', { name: 'Carry on recording' })).toBeVisible();
+    // Saved as it grows: a reload keeps it.
+    await page.waitForTimeout(800);
+    await page.reload();
+    await expect(page.locator('#ftLText')).toHaveValue(/glucose$/);
+
+    await page.getByRole('button', { name: 'Make notes with Flux AI' }).click();
+    const notes = page.locator('.ft-lesson-notes');
+    await expect(notes).toContainText('Photosynthesis happens in the chloroplast.');
+    await expect(notes.locator('dt')).toContainText('Chlorophyll');
+    await notes.locator('.ft-cite-num').first().click();
+    await expect(page.locator('#ftSeg-1')).toBeFocused();
+    await expect(page).toHaveURL(/#lesson$/);
+    await page.getByRole('button', { name: 'Save as a study set' }).click();
+    await expect(page).toHaveURL(/#set\/[^/]+\/guide$/);
+  });
+
+  test('a transcript file from another app (WebVTT) can be opened instead of recording', async ({ page }) => {
+    await setUp(page);
+    await page.goto('/teacher.html#lesson');
+    const vtt = 'WEBVTT\n\n1\n00:00:01.000 --> 00:00:04.000\nMitosis has four stages.\n\n2\n00:00:04.000 --> 00:00:08.000\nProphase is when the chromosomes condense and become visible.';
+    await page.locator('input[type=file][data-hub-change="lesson-file"]').setInputFiles({ name: 'Biology lesson.vtt', mimeType: 'text/vtt', buffer: Buffer.from(vtt) });
+    await expect(page.locator('#ftLText')).toHaveValue('Mitosis has four stages.\nProphase is when the chromosomes condense and become visible.');
+    await expect(page.locator('#ftLTitle')).toHaveValue('Biology lesson');
   });
 
   test('mock oral microphone: words fill the box, late words never come back after sending, errors are explained', async ({ page }) => {
