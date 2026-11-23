@@ -373,7 +373,7 @@
   function render(view, params) {
     const changed = current.view !== view || JSON.stringify(current.params) !== JSON.stringify(params || {});
     current = { view, params: params || {} };
-    if (changed) { if (view !== 'daily') ui.daily = null; if (view !== 'mistakes') ui.mist = null; }
+    if (changed) { if (view !== 'daily') ui.daily = null; if (view !== 'mistakes') ui.mist = null; if (view !== 'oral') leaveOral(); }
     const p = profile();
     let html = '';
     let active = view;
@@ -969,12 +969,26 @@
 
   /* ── Mock orals ─────────────────────────────────────────────────────── */
 
-  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  const Rec = window.isSecureContext === false ? null : (window.SpeechRecognition || window.webkitSpeechRecognition || null);
   const VOICE = { French: 'fr-FR', Spanish: 'es-ES', German: 'de-DE', Mandarin: 'zh-CN' };
-  let recog = null;
+  // Android Chrome repeats earlier words in "continuous" mode, so there it
+  // listens one sentence at a time and starts again by itself.
+  const ONE_AT_A_TIME = /Android/i.test(navigator.userAgent || '');
+  const MIC_ERR = {
+    'not-allowed': 'Flux Tutor is not allowed to use your microphone. Allow it in your browser’s settings for this site, then press Speak again. You can also type.',
+    'service-not-allowed': 'This browser does not let Flux Tutor listen here. Type your answer instead, or open Flux Tutor in Chrome or Safari.',
+    'audio-capture': 'No microphone was found. Check that one is connected and not in use by another app.',
+    'network': 'Listening needs an internet connection. Check your connection, or type your answer.',
+    'language-not-supported': 'This browser cannot listen in that language. Type your answer instead.',
+  };
+  /* One listening run at a time. Every event checks it still belongs to the
+     current run, so words heard after Stop, after sending, or after leaving
+     the screen are thrown away instead of coming back into the box. */
+  let mic = null;
+  let utter = null;   // kept so Chrome does not drop the examiner's voice mid-sentence
   function oralView() {
     const comps = AI ? AI.COMPONENTS.filter((c) => c.kind === 'oral') : [];
-    if (!ui.oral) ui.oral = { comp: comps[0] ? comps[0].id : '', lang: '', turns: [], busy: false, result: null, err: null, listening: false, draft: '', live: '' };
+    if (!ui.oral) ui.oral = { comp: comps[0] ? comps[0].id : '', lang: '', turns: [], busy: false, result: null, err: null, micErr: '', draft: '', live: '' };
     const st = ui.oral;
     const comp = comps.find((c) => c.id === st.comp) || comps[0];
     const head = '<header><h1 class="ft-h1" id="ftScreenTitle" tabindex="-1">Mock orals</h1><p class="ft-lead">Practise an individual oral with a Flux AI examiner who listens and asks follow-up questions you have not prepared for. ' + (Rec ? 'Speak or type' : 'Type (this browser cannot listen)') + ' each answer, then get a mark for each criterion.</p></header>';
@@ -991,8 +1005,9 @@
     return head + '<div class="ft-chat"><div class="ft-chat-log" id="ftChatLog">' + log + '</div>'
       + (st.result ? courseResultHtml(st.result) : '<form class="ft-chat-form" data-hub-form="oral" novalidate><label class="ft-visually-hidden" for="ftOralIn">Your answer</label>'
         + '<textarea class="ft-textarea" id="ftOralIn" name="a" rows="3" data-hub-input="oral" placeholder="' + (Rec ? 'Press Speak, or type' : 'Type your answer') + '">' + esc(st.draft) + '</textarea>'
-        + (Rec ? '<button type="button" class="ft-btn ft-btn--quiet" data-hub="oral-mic" aria-pressed="' + st.listening + '">' + ic(st.listening ? 'stop' : 'mic', 18) + '<span>' + (st.listening ? 'Stop' : 'Speak') + '</span></button>' : '')
-        + '<button type="submit" class="ft-btn ft-btn--icon" aria-label="Answer"' + (st.busy ? ' disabled' : '') + '>' + ic('send', 18) + '</button></form>')
+        + (Rec ? '<button type="button" class="ft-btn ft-btn--quiet" data-hub="oral-mic" aria-pressed="' + !!mic + '">' + micButtonHtml() + '</button>' : '')
+        + '<button type="submit" class="ft-btn ft-btn--icon" aria-label="Answer"' + (st.busy ? ' disabled' : '') + '>' + ic('send', 18) + '</button></form>'
+        + (Rec ? '<p class="ft-help ft-mic-msg" id="ftMicMsg" role="status">' + esc(micMessage()) + '</p>' : ''))
       + (st.err ? aiErrorHtml(st.err) : '')
       + '<div class="ft-row">' + (!st.result && said >= 2 ? '<button type="button" class="ft-btn" data-hub="oral-mark"' + (st.busy ? ' disabled' : '') + '>' + ic('sparkle', 17) + 'Finish and mark my oral</button>' : '')
       + '<button type="button" class="ft-btn ft-btn--quiet" data-hub="oral-reset">Start again</button></div></div>';
@@ -1015,36 +1030,112 @@
     const log = document.getElementById('ftChatLog');
     if (log) log.scrollTop = log.scrollHeight;
   }
+  function canTalk() { return !!window.speechSynthesis && typeof SpeechSynthesisUtterance === 'function'; }
+  function stopVoice() {
+    utter = null;
+    try { if (canTalk()) speechSynthesis.cancel(); } catch (_) { /* no voice */ }
+  }
   function speak(text, lang) {
+    if (!canTalk() || !text) return;
+    stopVoice();
+    const u = new SpeechSynthesisUtterance(text);
+    const code = VOICE[lang] || 'en-GB';
+    u.lang = code;
     try {
-      if (!window.speechSynthesis || typeof SpeechSynthesisUtterance !== 'function') return;
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = VOICE[lang] || 'en-GB';
-      speechSynthesis.speak(u);
-    } catch (_) { /* no voice */ }
+      const voices = speechSynthesis.getVoices() || [];
+      const norm = (v) => String(v.lang || '').replace('_', '-').toLowerCase();
+      u.voice = voices.find((v) => norm(v) === code.toLowerCase()) || voices.find((v) => norm(v).startsWith(code.slice(0, 2).toLowerCase())) || null;
+    } catch (_) { /* the browser picks */ }
+    u.onend = u.onerror = () => { if (utter === u) utter = null; };
+    utter = u;
+    // Chrome drops a speak() that comes straight after cancel().
+    setTimeout(() => { if (utter === u && current.view === 'oral') { try { speechSynthesis.speak(u); } catch (_) { /* no voice */ } } }, 60);
   }
-  function toggleMic() {
+
+  function micButtonHtml() { return ic(mic ? 'stop' : 'mic', 18) + '<span>' + (mic ? 'Stop' : 'Speak') + '</span>'; }
+  function micMessage() {
     const st = ui.oral;
-    if (st.listening && recog) { try { recog.stop(); } catch (_) { /* stopped */ } return; }
-    recog = new Rec();
-    recog.lang = VOICE[st.lang] || 'en-GB';
-    recog.continuous = true;
-    recog.interimResults = true;
-    const base = st.draft ? st.draft.replace(/\s+$/, '') + ' ' : '';
-    recog.onresult = (e) => {
-      let text = '';
-      for (let i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
-      st.draft = base + text;
-      const inp = document.getElementById('ftOralIn');
-      if (inp) inp.value = st.draft;
-    };
-    recog.onend = () => { st.listening = false; if (current.view === 'oral') rerender(); };
-    recog.onerror = () => { st.listening = false; };
-    st.listening = true;
-    try { recog.start(); } catch (_) { st.listening = false; }
-    rerender();
+    if (st && st.micErr) return st.micErr;
+    return mic ? 'Listening. Press Stop when you have finished, then check the words and send.' : '';
   }
+  /** The Speak button and its message, changed in place so focus stays put. */
+  function paintMic() {
+    const b = root() && root().querySelector('[data-hub="oral-mic"]');
+    if (b) { b.setAttribute('aria-pressed', String(!!mic)); b.innerHTML = micButtonHtml(); }
+    const m = document.getElementById('ftMicMsg');
+    if (m) m.textContent = micMessage();
+    const inp = document.getElementById('ftOralIn');
+    if (inp) inp.placeholder = mic ? 'Listening… speak now' : 'Press Speak, or type';
+  }
+  function heardText(results) {
+    const parts = [];
+    for (let i = 0; i < results.length; i++) {
+      const r = results[i] && results[i][0];
+      const t = r ? String(r.transcript || '').trim() : '';
+      if (t) parts.push(t);
+    }
+    return parts.join(' ');
+  }
+  function startMic() {
+    const st = ui.oral;
+    if (!Rec || !st) return;
+    stopVoice();   // the examiner stops talking, so the microphone does not write their words down
+    let rec;
+    try { rec = new Rec(); } catch (_) { st.micErr = MIC_ERR['service-not-allowed']; paintMic(); return; }
+    rec.lang = VOICE[st.lang] || 'en-GB';
+    rec.continuous = !ONE_AT_A_TIME;
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+    const m = { rec, base: String(st.draft || '').replace(/\s+$/, ''), heard: false, stopped: false, failed: false };
+    rec.onresult = (e) => {
+      if (mic !== m) return;
+      const text = heardText(e.results);
+      if (!text) return;
+      m.heard = true;
+      st.draft = m.base + (m.base ? ' ' : '') + text;
+      const inp = document.getElementById('ftOralIn');
+      if (inp) { inp.value = st.draft; inp.scrollTop = inp.scrollHeight; }
+    };
+    rec.onerror = (e) => {
+      if (mic !== m) return;
+      // "no-speech" and "aborted" only mean listening ended.
+      const msg = MIC_ERR[e && e.error];
+      if (msg) { m.failed = true; st.micErr = msg; }
+    };
+    rec.onend = () => {
+      if (mic !== m) return;
+      mic = null;
+      // Browsers stop by themselves after a pause (Android after each
+      // sentence). Keep listening until Stop, unless the pause was silence.
+      if (!m.stopped && !m.failed && m.heard && current.view === 'oral' && ui.oral === st && document.visibilityState === 'visible') { startMic(); return; }
+      paintMic();
+    };
+    mic = m;
+    st.micErr = '';
+    try { rec.start(); } catch (_) {
+      mic = null;
+      st.micErr = 'Could not start listening. Press Speak again, or type your answer.';
+    }
+    paintMic();
+  }
+  /** Stop listening. `discard` throws away words still on their way (after sending or leaving). */
+  function stopMic(discard) {
+    const m = mic;
+    if (!m) return;
+    m.stopped = true;
+    if (discard) {
+      mic = null;
+      try { m.rec.abort(); } catch (_) { /* stopped */ }
+      paintMic();
+    } else {
+      try { m.rec.stop(); } catch (_) { mic = null; paintMic(); }   // the last words arrive, then onend
+    }
+  }
+  function toggleMic() { if (mic) stopMic(false); else startMic(); }
+  function leaveOral() { stopMic(true); stopVoice(); }
+  window.addEventListener('hashchange', () => { if (!/^#oral\b/.test(location.hash)) leaveOral(); });
+  window.addEventListener('pagehide', leaveOral);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') leaveOral(); });
 
   /* ── Progress ───────────────────────────────────────────────────────── */
 
@@ -1135,7 +1226,7 @@
         break;
       }
       case 'oral-mic': toggleMic(); break;
-      case 'oral-reset': if (recog) { try { recog.stop(); } catch (_) { /* stopped */ } } ui.oral = null; rerender(); break;
+      case 'oral-reset': leaveOral(); ui.oral = null; rerender(); break;
       case 'oral-mark': (async () => {
         const st = ui.oral;
         st.busy = true; rerender();
@@ -1161,7 +1252,7 @@
       case 'oral': {
         const v = String(f.elements.a.value || '').trim();
         if (!v) { api.announce('Say or type your answer first.'); break; }
-        if (recog && ui.oral.listening) { try { recog.stop(); } catch (_) { /* stopped */ } }
+        stopMic(true);   // late words must not refill the box after sending
         ui.oral.turns.push({ role: 'student', text: v.slice(0, 3000) });
         ui.oral.draft = '';
         oralAsk();
@@ -1190,7 +1281,11 @@
       const comp = AI.COMPONENTS.find((x) => x.id === ui.course.comp);
       if (c) c.textContent = AI.wordsIn(t.value) + ' words' + (comp && comp.words ? ' of ' + comp.words : '');
     }
-    if (k === 'oral' && ui.oral) ui.oral.draft = t.value;
+    if (k === 'oral' && ui.oral) {
+      // Typing takes over from the microphone, so it cannot overwrite the edit.
+      if (mic) stopMic(true);
+      ui.oral.draft = t.value;
+    }
     return true;
   }
 

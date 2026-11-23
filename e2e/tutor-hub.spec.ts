@@ -143,6 +143,64 @@ test.describe('Flux Tutor hub', () => {
     await expect(page.getByText('not an IB mark')).toBeVisible();
   });
 
+  test('mock oral microphone: words fill the box, late words never come back after sending, errors are explained', async ({ page }) => {
+    await signIn(page);
+    // A fake microphone the test drives: window.__mic.say(text) / .fail(code).
+    await page.addInitScript(() => {
+      const w = window as any;
+      w.__mic = { runs: 0, aborted: 0, current: null };
+      class FakeRec {
+        lang = ''; continuous = false; interimResults = false; maxAlternatives = 1;
+        onresult: any = null; onerror: any = null; onend: any = null;
+        results: any[] = [];
+        start() { w.__mic.runs++; w.__mic.current = this; }
+        stop() { setTimeout(() => this.onend && this.onend(), 30); }
+        abort() { w.__mic.aborted++; setTimeout(() => { this.onerror && this.onerror({ error: 'aborted' }); this.onend && this.onend(); }, 30); }
+      }
+      w.SpeechRecognition = FakeRec;
+      w.__mic.say = (text: string) => { const r = w.__mic.current; r.results.push([{ transcript: text }]); r.onresult({ results: r.results }); };
+      w.__mic.fail = (code: string) => { const r = w.__mic.current; r.onerror({ error: code }); r.onend(); };
+    });
+    await page.route('**/functions/v1/ai-proxy', (route) => route.fulfill({ json: { content: [{ type: 'text', text: 'Why did you choose that work?' }] } }));
+    await setUp(page);
+    await page.getByRole('navigation', { name: 'Flux Tutor' }).getByRole('link', { name: 'Mock orals' }).click();
+    await page.getByRole('button', { name: 'Start the oral' }).click();
+    const box = page.locator('#ftOralIn');
+    await expect(box).toBeVisible();
+
+    await page.getByRole('button', { name: 'Speak' }).click();
+    await expect(page.getByRole('button', { name: 'Stop' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#ftMicMsg')).toContainText('Listening');
+    await page.evaluate(() => { (window as any).__mic.say('My global issue is'); (window as any).__mic.say('climate change.'); });
+    await expect(box).toHaveValue('My global issue is climate change.');
+
+    // Send while still listening: words the browser hands over late are thrown away.
+    await page.getByRole('button', { name: 'Answer' }).click();
+    await page.evaluate(() => (window as any).__mic.say('stray words'));
+    await expect(page.locator('.ft-msg--me')).toContainText('My global issue is climate change.');
+    await expect(page.locator('.ft-msg--ai').last()).toContainText('Why did you choose that work?');
+    await expect(page.locator('#ftOralIn')).toHaveValue('');
+    await expect(page.getByRole('button', { name: 'Speak' })).toHaveAttribute('aria-pressed', 'false');
+
+    // Microphone blocked: say why, and go back to Speak.
+    await page.getByRole('button', { name: 'Speak' }).click();
+    await page.evaluate(() => (window as any).__mic.fail('not-allowed'));
+    await expect(page.locator('#ftMicMsg')).toContainText('not allowed to use your microphone');
+    await expect(page.getByRole('button', { name: 'Speak' })).toBeVisible();
+
+    // Typing while listening takes over: later words do not overwrite the edit.
+    await page.getByRole('button', { name: 'Speak' }).click();
+    await page.locator('#ftOralIn').fill('I typed this');
+    await page.evaluate(() => (window as any).__mic.say('overwrite'));
+    await expect(page.locator('#ftOralIn')).toHaveValue('I typed this');
+
+    // Leaving the screen stops listening.
+    await page.getByRole('button', { name: 'Speak' }).click();
+    const before = await page.evaluate(() => (window as any).__mic.aborted);
+    await page.getByRole('navigation', { name: 'Flux Tutor' }).getByRole('link', { name: 'Home' }).click();
+    await expect.poll(() => page.evaluate(() => (window as any).__mic.aborted)).toBe(before + 1);
+  });
+
   test('the planner calendar can read Tutor\'s exam dates', async ({ page }) => {
     await setUp(page);
     const agenda = await page.evaluate(() => JSON.parse(localStorage.getItem('flux_tutor_agenda') || 'null'));

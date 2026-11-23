@@ -363,3 +363,7 @@
 .ft-teach-ask { margin: 4px 0 10px; font-weight: 700; }
 .ft-blurt-score { margin: 0 0 8px; }
 .ft-blurt-score strong { font-size: 1.4rem; }
+
+/* Mock orals: the microphone message, hidden while there is nothing to say. */
+.ft-mic-msg { margin: 6px 0 0; }
+.ft-mic-msg:empty { display: none; }
