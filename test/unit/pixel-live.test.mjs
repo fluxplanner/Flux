@@ -74,7 +74,7 @@ test('merge3: both changed the same item, this screen wins', () => {
 });
 
 test('merge3 with no shared history keeps everything from both', () => {
-  const out = L.merge3({}, [it('a', 1), it('x')], [it('a', 2), it('y')]);
+  const out = L.merge3(new Map(), [it('a', 1), it('x')], [it('a', 2), it('y')]);
   assert.deepEqual(ids(out).sort(), ['a', 'x', 'y']);
   assert.equal(out.find((i) => i.id === 'a').x, 1);
 });
@@ -94,6 +94,6 @@ test('a __proto__ id from another browser is dropped and pollutes nothing', () =
   assert.deepEqual(ids(out), ['ok']);
   assert.equal({}.polluted, undefined);
   const idx = L.index(evil);
-  assert.equal(Object.getPrototypeOf(idx), null);
+  assert.ok(idx instanceof Map);
   assert.equal({}.polluted, undefined);
 });
