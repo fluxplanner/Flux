@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0d1117">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://lichess.org https://unpkg.com; worker-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<title>Flux Chess</title>
+<link rel="icon" type="image/png" href="../../public/flux-planner-logo.png">
+<link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="./" aria-label="Flux Chess home"><img src="../../public/flux-planner-logo.png" alt=""><span>Flux <b>Chess</b></span></a>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="play">Bots</button>
+    <button role="tab" data-tab="online">Lichess</button>
+    <button role="tab" data-tab="analyze">Analysis</button>
+    <button role="tab" data-tab="games">Games</button>
+  </nav>
+  <div class="acct" id="acct"></div>
+</header>
+
+<main class="layout">
+  <section class="board-col">
+    <div class="player" id="pTop"></div>
+    <div class="board-wrap">
+      <div class="evalbar" id="evalbar" hidden><div class="fill"></div><span class="num"></span></div>
+      <div id="board"></div>
+    </div>
+    <div class="player" id="pBot"></div>
+    <div class="navbtns">
+      <button data-nav="start" aria-label="First move">⏮</button>
+      <button data-nav="prev" aria-label="Previous move">◀</button>
+      <button data-nav="next" aria-label="Next move">▶</button>
+      <button data-nav="end" aria-label="Last move">⏭</button>
+      <button data-nav="flip" aria-label="Flip board">⇅</button>
+    </div>
+  </section>
+
+  <aside class="side">
+    <div class="panel" data-panel="play">
+      <h2>Play a bot</h2>
+      <p class="muted">Stockfish 19 running on your device, tuned to the strength you pick.</p>
+      <div class="bots" id="bots"></div>
+      <label class="row">Strength <output id="eloOut"></output></label>
+      <input type="range" id="elo" min="400" max="3200" step="50">
+      <div class="row gap">
+        <label>Colour
+          <select id="botColor"><option value="w">White</option><option value="b">Black</option><option value="r" selected>Random</option></select>
+        </label>
+        <label>Clock
+          <select id="botClock">
+            <option value="0">Untimed</option><option value="3+2">3+2</option><option value="5+3">5+3</option>
+            <option value="10+0">10+0</option><option value="15+10">15+10</option><option value="30+0">30+0</option>
+          </select>
+        </label>
+      </div>
+      <button class="primary wide" id="botStart">Play</button>
+    </div>
+
+    <div class="panel" data-panel="online">
+      <div id="liOut">
+        <h2>Play on Lichess</h2>
+        <p class="muted">Connect your Lichess account to play real people and the Lichess AI from here. Your games happen on Lichess and count on your Lichess rating.</p>
+        <button class="primary wide" id="liLogin">Connect Lichess account</button>
+        <p class="muted small">No password goes through Flux — you sign in on lichess.org and it hands back a play-only key.</p>
+      </div>
+      <div id="liIn" hidden>
+        <h3>Quick pairing</h3>
+        <div class="pool" id="pool"></div>
+        <label class="check"><input type="checkbox" id="seekRated" checked> Rated</label>
+        <div id="seekStatus" class="notice" hidden></div>
+        <h3>Challenge a friend</h3>
+        <div class="row gap">
+          <input id="chUser" placeholder="Lichess username" autocomplete="off" spellcheck="false">
+          <select id="chTc"></select>
+        </div>
+        <div class="row gap">
+          <select id="chColor"><option value="random">Random colour</option><option value="white">White</option><option value="black">Black</option></select>
+          <label class="check"><input type="checkbox" id="chRated"> Rated</label>
+          <button id="chSend">Send</button>
+        </div>
+        <h3>Lichess AI</h3>
+        <div class="row gap">
+          <label>Level <output id="aiOut">4</output></label>
+          <input type="range" id="aiLevel" min="1" max="8" value="4">
+          <select id="aiTc"></select>
+          <button id="aiStart">Play</button>
+        </div>
+        <div id="incoming"></div>
+        <h3>Your ongoing games</h3>
+        <div id="playing" class="list"><p class="muted small">None.</p></div>
+      </div>
+    </div>
+
+    <div class="panel" data-panel="analyze">
+      <h2>Analysis board</h2>
+      <p class="muted">Move pieces freely, or paste a PGN or FEN.</p>
+      <textarea id="importText" rows="3" placeholder="Paste PGN or FEN" spellcheck="false"></textarea>
+      <div class="row gap">
+        <button id="importBtn">Load</button>
+        <button id="newBoard">Empty analysis</button>
+        <button id="copyPgn">Copy PGN</button>
+        <button id="copyFen">Copy FEN</button>
+      </div>
+    </div>
+
+    <div class="panel" data-panel="games">
+      <h2>Games</h2>
+      <div class="row gap">
+        <input id="impUser" placeholder="Lichess username" autocomplete="off" spellcheck="false">
+        <button id="impBtn">Load recent games</button>
+      </div>
+      <div id="liGames" class="list"></div>
+      <h3>Played here</h3>
+      <div id="history" class="list"></div>
+    </div>
+
+    <section class="card" id="gameCard" hidden>
+      <div class="status" id="status"></div>
+      <div class="actions" id="actions"></div>
+      <div class="moves" id="moves"></div>
+      <div class="chat" id="chat" hidden>
+        <div class="chatlog" id="chatlog"></div>
+        <input id="chatIn" placeholder="Say something nice" maxlength="140">
+      </div>
+    </section>
+
+    <section class="card" id="engineCard" hidden>
+      <div class="row between">
+        <label class="switch"><input type="checkbox" id="engOn"> <span>Engine</span></label>
+        <span class="muted small" id="engInfo"></span>
+      </div>
+      <div class="row gap small">
+        <label>Engine
+          <select id="engKind"><option value="lite">SF 19 Lite (fast)</option><option value="full">SF 19 Full NNUE (95 MB)</option></select>
+        </label>
+        <label>Depth
+          <select id="engDepth"><option value="16">16</option><option value="20">20</option><option value="24">24</option><option value="30">30</option><option value="40">40</option><option value="inf">∞</option></select>
+        </label>
+        <label>Lines
+          <select id="engLines"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+        </label>
+      </div>
+      <div id="cloud" class="muted small"></div>
+      <div id="lines" class="lines"></div>
+      <div class="review">
+        <div class="row gap">
+          <button class="primary" id="reviewBtn">Full game review</button>
+          <select id="reviewDepth"><option value="12">Quick (12)</option><option value="16">Standard (16)</option><option value="20">Deep (20)</option><option value="24">Deeper (24)</option><option value="28">Max (28)</option></select>
+        </div>
+        <div id="reviewOut"></div>
+      </div>
+    </section>
+  </aside>
+</main>
+
+<footer class="foot muted small">
+  Stockfish 19 (<a href="vendor/stockfish/COPYING.txt">GPLv3</a>, <a href="https://github.com/nmrugg/stockfish.js" rel="noopener">source</a>) ·
+  chess.js (<a href="vendor/chess.js.LICENSE">BSD</a>) · pieces by Colin M.L. Burnett · online play via the <a href="https://lichess.org/api" rel="noopener">Lichess API</a>
+</footer>
+
+<div class="toast" id="toast" hidden></div>
+<script type="module" src="app.js?v=1"></script>
+</body>
+</html>
