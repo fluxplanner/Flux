@@ -336,3 +336,14 @@ select.px-f-in { appearance: auto; }
 .px-editor.is-present .px-top,
 .px-editor.is-present .px-props { display: none; }
 .px-editor.is-present .px-present-exit { display: inline-flex; position: fixed; top: max(12px, env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); z-index: 30; box-shadow: 0 10px 30px -12px #000; }
+
+/* Live: who is drawing with you, beside the Share live button. */
+.px-live { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 4px 10px 4px 8px; border: 1px solid var(--border); border-radius: 999px; background: none; color: var(--muted2); font: inherit; font-size: .78rem; font-weight: 700; white-space: nowrap; cursor: pointer; flex: none; }
+.px-live[hidden] { display: none; }
+.px-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; flex: none; }
+.px-live.is-live .px-live-dot { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.22); }
+.px-live.is-live { color: var(--text); }
+.px-live-face { width: 20px; height: 20px; margin-left: -4px; border-radius: 50%; display: inline-grid; place-items: center; color: #fff; font-size: .68rem; font-weight: 800; border: 2px solid #0d1018; text-transform: uppercase; }
+.px-live-face:first-of-type { margin-left: 0; }
+.px-btn.is-live { border-color: color-mix(in srgb, #22c55e 55%, transparent); }
+@media (max-width: 760px) { .px-live > span:last-child { display: none; } }
