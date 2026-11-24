@@ -37,6 +37,13 @@
   var ADJ = ['Teal', 'Swift', 'Bright', 'Calm', 'Clever', 'Bold', 'Sunny', 'Quiet', 'Lucky', 'Brave'];
   var ANIMALS = ['Otter', 'Fox', 'Owl', 'Panda', 'Koala', 'Hawk', 'Lynx', 'Heron', 'Gecko', 'Badger'];
 
+  // Ids arrive from other people's browsers: only plain short ids are
+  // accepted, and every map keyed by them has no prototype, so a name like
+  // __proto__ is just a key.
+  var ID_RE = /^[A-Za-z0-9_-]{1,40}$/;
+  function okId(id) { return typeof id === 'string' && ID_RE.test(id); }
+  function dict() { return Object.create(null); }
+
   function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
   function randId(n) {
     var abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -69,7 +76,7 @@
   /* ── Item-level changes (pure, unit tested) ─────────────────────────── */
 
   function index(items) {
-    var m = {};
+    var m = dict();
     items.forEach(function (it) { m[it.id] = JSON.stringify(it); });
     return m;
   }
@@ -87,18 +94,18 @@
 
   /** Apply changes to a list of items. Returns a new list. */
   function apply(items, ops) {
-    var byId = {}, gone = {};
+    var byId = dict(), gone = dict();
     (ops.del || []).forEach(function (id) { gone[id] = true; });
     var out = items.filter(function (it) { return !gone[it.id]; });
     out.forEach(function (it, i) { byId[it.id] = i; });
     (ops.up || []).forEach(function (it) {
-      if (!it || typeof it.id !== 'string' || gone[it.id]) return;
+      if (!it || !okId(it.id) || gone[it.id]) return;
       var copy = JSON.parse(JSON.stringify(it));
       if (it.id in byId) out[byId[it.id]] = copy;
       else { byId[it.id] = out.length; out.push(copy); }
     });
     if (ops.order) {
-      var rank = {};
+      var rank = dict();
       ops.order.forEach(function (id, i) { rank[id] = i; });
       // Items the sender had not seen yet keep their place, after the rest.
       out = out.map(function (it, i) { return [it, it.id in rank ? rank[it.id] : ops.order.length + i]; })
@@ -114,7 +121,7 @@
    * wins, since that is the person in front of this screen.
    */
   function merge3(base, local, server) {
-    var L = index(local), S = index(server), seen = {}, out = [];
+    var L = index(local), S = index(server), seen = dict(), out = [];
     function decide(id) {
       var l = L[id], s = S[id], b = base[id];
       if (l === s) return l;
@@ -146,7 +153,11 @@
     return rpc('pixel_room_get', { p_id: room }).then(function (r) {
       if (!r.ok) throw new Error('Could not reach Flux. Check your connection.');
       return r.json();
-    }).then(function (d) { return d && Array.isArray(d.items) ? d : null; });
+    }).then(function (d) {
+      if (!d || !Array.isArray(d.items)) return null;
+      d.items = d.items.filter(function (it) { return it && typeof it === 'object' && okId(it.id); });
+      return d;
+    });
   }
   function shareable(doc) { return { title: doc.title, bg: doc.bg, items: doc.items, updated: Date.now() }; }
   function putRoom(room, doc, keepalive) {
@@ -212,7 +223,7 @@
    */
   function session(ctx) {
     var self = me();
-    var base = {}, baseOrder = [], baseMeta = {}, putTimer = null, peers = {}, status = 'connecting';
+    var base = dict(), baseOrder = [], baseMeta = {}, putTimer = null, peers = dict(), status = 'connecting';
     var curT = 0, curPending = null, curTimer = null, ready = false;
 
     function remember(items, meta) {
@@ -257,21 +268,24 @@
     }
 
     var conn = socket(ctx.room, function (ev, p) {
-      if (!p || p.from === self.id) return;
+      if (!p || !okId(p.from) || p.from === self.id) return;
       if (ev === 'ops') {
         if (!Array.isArray(p.up) || !Array.isArray(p.del)) return;
-        ctx.onRemote({ up: p.up, del: p.del, order: Array.isArray(p.order) ? p.order : null, meta: p.meta || null });
+        var up = p.up.filter(function (it) { return it && typeof it === 'object' && okId(it.id); });
+        var del = p.del.filter(okId);
+        var order = Array.isArray(p.order) ? p.order.filter(okId) : null;
+        ctx.onRemote({ up: up, del: del, order: order, meta: p.meta || null });
         // Only what they sent becomes agreed: a drag still under way here
         // must still count as a change of mine when it is let go.
-        p.up.forEach(function (it) { if (it && typeof it.id === 'string') base[it.id] = JSON.stringify(it); });
-        p.del.forEach(function (id) { delete base[id]; });
+        up.forEach(function (it) { base[it.id] = JSON.stringify(it); });
+        del.forEach(function (id) { delete base[id]; });
         baseOrder = ctx.doc().items.map(function (it) { return it.id; });
         if (p.meta) baseMeta = { title: ctx.doc().title, bg: ctx.doc().bg };
       } else if (ev === 'refetch') {
         sync(base);
       } else if (ev === 'here' || ev === 'cur') {
         var known = peers[p.from];
-        var peer = known || { id: String(p.from).slice(0, 20) };
+        var peer = known || { id: p.from };
         if (p.name) peer.name = String(p.name).slice(0, 30);
         if (p.color && /^#[0-9a-f]{6}$/i.test(p.color)) peer.color = p.color;
         if (ev === 'cur' && isFinite(p.x) && isFinite(p.y)) { peer.x = +p.x; peer.y = +p.y; peer.moved = Date.now(); }
@@ -331,7 +345,7 @@
 
     // What the room holds decides, except for changes made here while apart.
     var d0 = ctx.doc();
-    var startBase = d0.liveDirty ? {} : index(d0.items);
+    var startBase = d0.liveDirty ? dict() : index(d0.items);
     sync(startBase);
 
     return {

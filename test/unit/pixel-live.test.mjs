@@ -87,3 +87,13 @@ test('room ids are long, random and pass the server check', () => {
   assert.ok(!L.isRoom('short'));
   assert.ok(!L.isRoom('../../etc/passwd/aaaaaaaaaaaaaa'));
 });
+
+test('a __proto__ id from another browser is dropped and pollutes nothing', () => {
+  const evil = JSON.parse('[{"id":"__proto__","polluted":true},{"id":"ok"}]');
+  const out = L.apply([], { up: evil, del: ['__proto__'], order: ['__proto__', 'ok'] });
+  assert.deepEqual(ids(out), ['ok']);
+  assert.equal({}.polluted, undefined);
+  const idx = L.index(evil);
+  assert.equal(Object.getPrototypeOf(idx), null);
+  assert.equal({}.polluted, undefined);
+});
