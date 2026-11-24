@@ -1,8 +1,9 @@
 // Flux Chess — bots, Lichess play and Stockfish analysis in one page.
-import { Chess, DEFAULT_POSITION } from './vendor/chess.js?v=1';
-import { Board } from './board.js?v=1';
-import { Engine } from './engine.js?v=1';
-import * as li from './lichess.js?v=1';
+import { Chess, DEFAULT_POSITION } from './vendor/chess.js?v=2';
+import { Board } from './board.js?v=2';
+import { Engine } from './engine.js?v=2';
+import * as li from './lichess.js?v=2';
+import * as flux from './flux-sync.js?v=2';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -859,16 +860,82 @@ function tcForm(val) {
   return { 'clock.limit': tc.t * 60, 'clock.increment': tc.i };
 }
 
+// The saved key (fxc.token) is the connection; the profile is cached in
+// fxc.account so the page shows you connected instantly on every visit.
+// Only a 401 on /api/account — Lichess saying the key itself is dead —
+// disconnects. Offline, rate limits and outages keep you connected and retry.
+let accountRetry = null;
+let fluxUser = null; // signed-in Flux user on this device, if any
+let cloudToken; // key saved in the Flux account; undefined = not checked
+let freshLogin = false; // this device just finished connecting: its key wins
+
+// Another device connected (or switched) Lichess: adopt the key saved in the
+// Flux account. The account is the source of truth whenever it has one.
+async function syncFromFlux() {
+  fluxUser = await flux.user().catch(() => null);
+  renderSyncNote();
+  if (!fluxUser) return;
+  let row;
+  try { row = await flux.pull(); } catch (e) { console.warn('[flux-chess] sync', e); return; }
+  cloudToken = row?.lichess_token || null;
+  if (cloudToken && cloudToken !== li.token && !freshLogin) {
+    li.setToken(cloudToken);
+    account = null;
+    save('fxc.account', null);
+  }
+}
+
+// After this device connects or confirms a key, save it to the Flux account.
+function pushToFlux() {
+  if (!fluxUser || !li.token || !account || cloudToken === li.token) return;
+  const t = li.token;
+  flux.push(t, account.username).then(() => { cloudToken = t; renderSyncNote(); }, (e) => console.warn('[flux-chess] sync', e));
+}
+
+function renderSyncNote() {
+  const el = $('#syncNote');
+  if (!el) return;
+  if (fluxUser) {
+    el.textContent = account
+      ? 'Saved to your Flux account — connected on every device where you\'re signed in to Flux.'
+      : 'Connect once and it follows your Flux account to your other devices.';
+  } else {
+    el.innerHTML = 'Tip: <a href="../../" target="_blank" rel="noopener">sign in to Flux</a> on this device and your Lichess connection follows you to your phone and iPad.';
+  }
+}
+
 async function refreshAccount() {
-  if (!li.token) { account = null; renderAccount(); return; }
+  clearTimeout(accountRetry);
+  await syncFromFlux();
+  if (!li.token) { account = null; save('fxc.account', null); renderAccount(); return; }
+  if (!account) account = load('fxc.account', null);
+  renderAccount();
+  if (account) startEvents();
   try {
     account = await li.api('/api/account');
-  } catch {
-    account = null;
-    if (!li.token) toast('Lichess session expired — connect again.');
+    save('fxc.account', account);
+  } catch (e) {
+    if (e.status === 401) {
+      const dead = li.token;
+      li.forget();
+      if (fluxUser) flux.drop(dead).catch(() => {});
+      cloudToken = undefined;
+      account = null;
+      save('fxc.account', null);
+      eventsAbort?.abort();
+      eventsAbort = null;
+      renderAccount();
+      toast('Lichess ended this connection (expired or revoked) — connect again.', 6000);
+      return;
+    }
+    accountRetry = setTimeout(refreshAccount, 15000);
+    if (!account) $('#acct').innerHTML = '<span class="muted small">Reconnecting to Lichess…</span>';
+    return;
   }
   renderAccount();
-  if (account) { startEvents(); refreshPlaying(); }
+  pushToFlux();
+  startEvents();
+  refreshPlaying();
 }
 
 function renderAccount() {
@@ -880,6 +947,7 @@ function renderAccount() {
     ? `<a href="${li.HOST}/@/${esc(account.username)}" target="_blank" rel="noopener" title="Blitz ${esc(p.blitz?.rating ?? '?')} · Rapid ${esc(p.rapid?.rating ?? '?')} · Classical ${esc(p.classical?.rating ?? '?')}">${esc(account.username)} <span class="muted">${esc(p.rapid?.rating ?? '')}</span></a><button class="link" id="liLogout">Log out</button>`
     : '<button class="link" id="liLogin2">Connect Lichess</button>';
   if (on && !$('#impUser').value) $('#impUser').value = account.username;
+  renderSyncNote();
 }
 
 async function startEvents() {
@@ -1108,12 +1176,17 @@ $('#liLogin').addEventListener('click', startLogin);
 $('#acct').addEventListener('click', (e) => {
   if (e.target.id === 'liLogin2') return startLogin();
   if (e.target.id !== 'liLogout') return;
+  if (!confirm(fluxUser ? 'Disconnect Lichess from Flux Chess on all your devices?' : 'Disconnect your Lichess account from Flux Chess?')) return;
+  if (fluxUser) flux.drop().catch(() => {});
+  cloudToken = undefined;
   eventsAbort?.abort();
   eventsAbort = null;
   stopSeek();
   leaveOnline();
+  clearTimeout(accountRetry);
   li.logout();
   account = null;
+  save('fxc.account', null);
   challenges.clear();
   renderChallenges();
   renderAccount();
@@ -1283,7 +1356,9 @@ document.querySelector('.tabs').addEventListener('click', (e) => {
 (async function boot() {
   renderBots();
   renderHistory();
+  const before = li.token;
   const err = await li.handleRedirect().catch((e) => e.message);
+  freshLogin = !!li.token && li.token !== before;
   if (err) toast(`Lichess login failed: ${err}`, 6000);
   const after = sessionStorage.getItem('fxc.afterLogin');
   sessionStorage.removeItem('fxc.afterLogin');
