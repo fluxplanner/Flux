@@ -3304,7 +3304,7 @@ class Chess {
         return this._comments[this.fen()];
     }
     setComment(comment) {
-        this._comments[this.fen()] = comment.replace('{', '[').replace('}', ']');
+        this._comments[this.fen()] = comment.replace(/{/g, '[').replace(/}/g, ']'); // Flux: global replace (upstream replaced only the first brace)
     }
     /**
      * @deprecated Renamed to `removeComment` for consistency
