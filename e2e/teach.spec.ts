@@ -6,7 +6,7 @@ test.describe('Flux Tutor · Learn', () => {
   test('library → subject → skill: method, worked example step by step, then a problem marked with its working', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
-    await page.goto('/teacher.html');
+    await page.goto('/teacher.html#library');
     await page.getByRole('link', { name: 'Step-by-step lessons' }).click();
     await expect(page.locator('#ftScreenTitle')).toHaveText('Learn');
     await expect(page.locator('.ft-learn-subject')).toHaveCount(32);
@@ -58,7 +58,7 @@ test.describe('Flux Tutor · Learn', () => {
     await page.locator('.ft-learn-opt', { hasText: right }).first().click();
     await expect(page.locator('.ft-learn-fb')).toContainText('Right');
 
-    await page.goto('/teacher.html');
+    await page.goto('/teacher.html#library');
     await page.locator('#ftSylSubject').selectOption('physics');
     await page.getByRole('link', { name: 'Lessons for Kinematics' }).click();
     await expect(page.locator('#ftScreenTitle')).toHaveText('Physics');
