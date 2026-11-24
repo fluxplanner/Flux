@@ -6,10 +6,10 @@
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#0d1117">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://lichess.org https://unpkg.com; worker-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://lichess.org https://unpkg.com https://lfigdijuqmbensebnevo.supabase.co; worker-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <title>Flux Chess</title>
 <link rel="icon" type="image/png" href="../../public/flux-planner-logo.png">
-<link rel="stylesheet" href="style.css?v=1">
+<link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
 <header class="top">
@@ -62,6 +62,7 @@
     </div>
 
     <div class="panel" data-panel="online">
+      <p class="muted small sync" id="syncNote"></p>
       <div id="liOut">
         <h2>Play on Lichess</h2>
         <p class="muted">Connect your Lichess account to play real people and the Lichess AI from here. Your games happen on Lichess and count on your Lichess rating.</p>
@@ -164,6 +165,8 @@
 </footer>
 
 <div class="toast" id="toast" hidden></div>
-<script type="module" src="app.js?v=1"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.1/dist/umd/supabase.js" integrity="sha384-cP+QrKcaFzs7aIG1IzHGLKC5cjjlA05fYF2E7C0hqeDvsLKzwgYAS1cYhsDQB+L1" crossorigin="anonymous"></script>
+<script src="../../public/js/flux-sb-config.js"></script>
+<script type="module" src="app.js?v=2"></script>
 </body>
 </html>

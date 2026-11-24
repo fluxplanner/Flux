@@ -65,13 +65,27 @@ export async function handleRedirect() {
   if (!res.ok || !data.access_token) return data.error_description || data.error || 'Lichess refused the login.';
   token = data.access_token;
   store.set(TOKEN_KEY, token);
+  // Ask the browser not to evict this site's storage, so the key survives.
+  navigator.storage?.persist?.().catch(() => {});
   return null;
+}
+
+// Adopts a key saved on another device (see flux-sync.js).
+export function setToken(t) {
+  token = t;
+  store.set(TOKEN_KEY, t);
+}
+
+// Drops the saved key locally. Only for a key Lichess itself rejected —
+// a network error or a 401 from some other call must not sign you out.
+export function forget() {
+  token = null;
+  store.set(TOKEN_KEY, null);
 }
 
 export async function logout() {
   if (token) fetch(`${HOST}/api/token`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
-  token = null;
-  store.set(TOKEN_KEY, null);
+  forget();
 }
 
 function headers(extra) {
@@ -89,13 +103,14 @@ export async function api(path, { method = 'GET', form, signal } = {}) {
     init.headers['Content-Type'] = 'application/x-www-form-urlencoded';
   }
   const res = await fetch(HOST + path, init);
-  if (res.status === 401) { token = null; store.set(TOKEN_KEY, null); }
   const text = await res.text();
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch { data = text; }
   if (!res.ok) {
     const msg = (data && (data.error || data.message)) || `${res.status} ${res.statusText}`;
-    throw new LichessError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    const err = new LichessError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    err.status = res.status;
+    throw err;
   }
   return data;
 }
