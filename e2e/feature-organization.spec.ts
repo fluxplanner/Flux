@@ -9,14 +9,14 @@ import { gotoScenario, openSidebarTab } from './helpers';
 test.describe('feature organization', () => {
   test('Flux Suite: the planner as a bar on top, then Study apps and Partners tabs', async ({ page }) => {
     await page.goto('/suite.html');
-    await expect(page.locator('#apps .app')).toHaveCount(11);
+    await expect(page.locator('#apps .app')).toHaveCount(12);
     // The planner is the wide bar above the tabs.
     const bar = page.locator('#apps > a.app--feature');
     await expect(bar).toHaveAttribute('href', 'index.html');
     await expect(bar).toContainText('Open the planner');
     const tabs = page.getByRole('tab');
     // The free tool pages open inside other apps, not as Suite tabs (2026-11-18).
-    await expect(tabs).toHaveText(['Study apps8', 'Partners2']);
+    await expect(tabs).toHaveText(['Study apps8', 'Partners3']);
     await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
 
     const study = page.getByRole('tabpanel', { name: /Study apps/ });
@@ -28,7 +28,7 @@ test.describe('feature organization', () => {
     await expect(page.locator('#apps a.app--pixel')).toContainText('maths figures');
     await expect(page.locator('#apps a.app--calculator')).toContainText('Evo');
 
-    // Partners holds Synara, the Aorta Project and the Flux Partners note, and the address remembers it.
+    // Partners holds Synara, the Aorta Project, Project Lumen and the Flux Partners note, and the address remembers it.
     await page.getByRole('tab', { name: /Partners/ }).click();
     const partners = page.getByRole('tabpanel', { name: /Partners/ });
     await expect(partners.locator('a.app--synara')).toBeVisible();

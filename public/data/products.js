@@ -138,6 +138,18 @@ window.FluxProducts = {
       "logo": "<img src=\"public/partners/aorta/logo.png\" alt=\"\" width=\"54\" height=\"54\">"
     },
     {
+      "id": "lumen",
+      "group": "partner",
+      "name": "Project Lumen",
+      "tagline": "Bringing light to cancer awareness",
+      "blurb": "From Project Lumen, a student-led initiative: cancer awareness, education and the untold stories of people battling cancer.",
+      "href": "lumen.html",
+      "free": true,
+      "partner": true,
+      "mark": "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 21 L15 10 C17 6 15 2 12 2 C9 2 7 6 9 10 L15 21\"/></svg>",
+      "logo": "<img src=\"public/partners/lumen/logo.svg\" alt=\"\" width=\"54\" height=\"54\">"
+    },
+    {
       "id": "owner",
       "group": "owner",
       "name": "Flux Owner Controls",

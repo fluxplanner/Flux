@@ -47,7 +47,7 @@ test('hiding a partner keeps the partners strip and its link', async ({ page }) 
   await expect(page.locator('.app--aorta')).toBeVisible();
   await expect(page.locator('#partnersStrip')).toBeVisible();
   // partners.html is about Synara, so its link goes with it; the strip stays.
-  await hide(page, ['synara', 'aorta']);
+  await hide(page, ['synara', 'aorta', 'lumen']);
   await page.goto('/suite.html');
   await expect(page.locator('#tab-partner')).toHaveCount(0);
   await expect(page.locator('#partnersStrip')).toHaveCount(1);

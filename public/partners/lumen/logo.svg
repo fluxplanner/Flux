@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Placeholder mark for Project Lumen until they send their own logo:
+       a gold awareness ribbon resting on an open hand, drawn as neon. -->
+  <defs>
+    <filter id="g" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#0b0906"/>
+  <g fill="none" stroke="#ffc93c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" filter="url(#g)">
+    <path d="M27 39 L37 23 C41 15 38 8 32 8 C26 8 23 15 27 23 L37 39"/>
+    <path d="M8 45 C14 43 21 43 27 47 L38 47 C41 47 41 51 38 51 L29 51"/>
+    <path d="M38 47 L50 39 C53 37 56 41 53 43 L43 52 C39 55 33 56 27 55 L8 55"/>
+  </g>
+</svg>

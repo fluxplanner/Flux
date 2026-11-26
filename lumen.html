@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<!--
+  GitHub Pages can't send headers, so the CSP rides in a meta tag. A meta CSP
+  ignores frame-ancestors; flux-frame-guard.js stays the clickjacking control.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob: https://fluxplanner.github.io; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self'; form-action 'self'">
+<script src="public/js/flux-frame-guard.js?v=9afa87b3"></script>
+<!-- While the owner has it hidden (Owner Controls → Hide apps), anyone else
+     who opens this URL is sent to Flux Suite instead. -->
+<script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
+<script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="lumen"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Project Lumen</title>
+<meta name="description" content="Project Lumen is a student-led initiative bringing light to cancer awareness: turning awareness into action, so every voice is heard and every story is told.">
+<!-- Kept out of search engines while the owner has it hidden. Remove this
+     line when Project Lumen launches. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0b0906">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Project Lumen">
+<meta property="og:title" content="Project Lumen">
+<meta property="og:url" content="https://fluxplanner.github.io/Flux/lumen.html">
+<link rel="icon" type="image/svg+xml" href="public/partners/lumen/logo.svg">
+
+<!--
+  Project Lumen: a Flux partner site. A PROP for now, built from their first
+  Instagram post (@project.lumen, National Cancer Awareness Day 2026) before
+  they sent anything else. Everything marked .ph ("Placeholder" pill) or
+  "Coming soon" is waiting on them:
+    - Logo: public/partners/lumen/logo.svg is our own stand-in in the spirit
+      of theirs (a gold ribbon on an open hand). Swap in their real file.
+    - Founder(s), stories, events, the join form and any donate link.
+    - The ribbon colours section uses the commonly used awareness colours;
+      ask them to confirm the list they want to show.
+  Their own words, used as written: the "What is Project Lumen?" text, the
+  mission sentence and the bio line ("turn awareness into action…").
+
+  How the motion works (same as aorta.html): each [data-scroll] section is
+  taller than the screen and its inner .stage is sticky. On scroll the script
+  sets --p (0 → 1) on the section and CSS reads it. The hero's drifting light
+  is a small canvas that stops when off screen or with reduced motion.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Nunito:wght@400;600;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --night: #0b0906;
+    --night2: #15110a;
+    --night3: #1f1a10;
+    --gold: #ffc93c;     /* the neon of their ribbon */
+    --gold2: #f5b417;
+    --amber: #ff9f1c;
+    --cream: #fff3d6;
+    --text: #f6efe0;
+    --muted: #b9ad94;
+    --line: rgba(255, 201, 60, .18);
+    --glow: 0 0 6px rgba(255,201,60,.9), 0 0 22px rgba(255,170,30,.55), 0 0 60px rgba(255,150,20,.3);
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 72px; color-scheme: dark; }
+  html, body { margin: 0; background: var(--night); color: var(--text); }
+  body { font-family: var(--sans); line-height: 1.6; overflow-x: clip; }
+  img, svg { display: block; max-width: 100%; }
+  a { color: var(--gold); }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+  ::selection { background: var(--gold); color: var(--night); }
+
+  /* The pill that marks anything still waiting on Project Lumen. */
+  .ph {
+    display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+    font-size: .68rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--gold); background: rgba(255,201,60,.08); border: 1px dashed rgba(255,201,60,.45);
+  }
+
+  /* ---- top bar ---- */
+  .bar {
+    position: fixed; inset: 0 0 auto; z-index: 10;
+    display: flex; align-items: center; gap: 14px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+    background: rgba(11,9,6,.72);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .brand img { width: 36px; height: 36px; border-radius: 10px; }
+  .brand strong { font-family: var(--serif); font-weight: 600; font-size: 1.4rem; color: var(--cream); white-space: nowrap; letter-spacing: .01em; }
+  .bar nav { flex: 1; display: flex; justify-content: center; gap: 4px; }
+  .bar nav a { padding: 8px 12px; border-radius: 999px; font-size: .88rem; font-weight: 600; color: var(--muted); text-decoration: none; }
+  .bar nav a:hover { color: var(--gold); background: rgba(255,201,60,.08); }
+  @media (max-width: 860px) { .bar nav { display: none; } .bar .brand { margin-right: auto; } }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 22px;
+    border-radius: 999px; font: inherit; font-weight: 800; font-size: .95rem; text-decoration: none; cursor: pointer;
+    border: 1.5px solid var(--gold); color: var(--gold); background: transparent;
+    transition: box-shadow .2s, background .2s, transform .2s;
+  }
+  .btn:hover { background: rgba(255,201,60,.1); box-shadow: 0 0 24px -4px rgba(255,190,40,.6); }
+  .btn-solid { color: var(--night); background: var(--gold); }
+  .btn-solid:hover { background: #ffd65e; box-shadow: var(--glow); }
+  .bar .btn { min-height: 38px; padding: 0 16px; }
+  @media (max-width: 420px) { .bar .btn { padding: 0 12px; font-size: .86rem; } .brand strong { font-size: 1.2rem; } }
+
+  /* ---- scroll sections ---- */
+  [data-scroll] { position: relative; --p: 0; }
+  .stage { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; display: grid; place-items: center; }
+
+  /* 1. Hero: one spark grows into a glow, the ribbon draws itself in neon,
+        then their name rises out of the light. */
+  .hero { height: 300vh; }
+  .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .hero .halo {
+    position: absolute; width: 120vmax; aspect-ratio: 1; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(255,190,50,.34), rgba(255,140,20,.1) 45%, transparent 70%);
+    transform: scale(calc(.04 + var(--p) * 1.1)); opacity: calc(.5 + var(--p) * .5);
+  }
+  .hero .mark { position: relative; width: min(62vw, 330px); overflow: visible;
+    transform: translateY(calc(clamp(0, calc((var(--p) - .55) * 3), 1) * -15svh)) scale(calc(1 - clamp(0, calc((var(--p) - .55) * 3), 1) * .35));
+    filter: drop-shadow(0 0 4px rgba(255,201,60,.95)) drop-shadow(0 0 18px rgba(255,160,30,.7)) drop-shadow(0 0 50px rgba(255,140,20,.45));
+  }
+  .hero .mark path {
+    fill: none; stroke: var(--gold); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round;
+    stroke-dasharray: 1; stroke-dashoffset: clamp(0, calc(1 - var(--p) * 2.1), 1);
+  }
+  .hero .mark path.hand { stroke-dashoffset: clamp(0, calc(1.2 - var(--p) * 2.4), 1); }
+  .hero .title {
+    position: absolute; left: 16px; right: 16px; top: 52%; text-align: center;
+    opacity: clamp(0, calc((var(--p) - .62) * 5), 1);
+    transform: translateY(calc((1 - clamp(0, calc((var(--p) - .62) * 5), 1)) * 30px));
+  }
+  .hero h1 {
+    margin: 0; font-family: var(--serif); font-weight: 500; font-size: clamp(3.2rem, 11vw, 7rem); line-height: .95;
+    color: var(--cream); text-shadow: 0 0 30px rgba(255,180,40,.45);
+  }
+  .hero h1 em { font-style: italic; color: var(--gold); text-shadow: var(--glow); }
+  .hero .title p { margin: 14px auto 22px; max-width: 560px; font-size: clamp(1.05rem, 2.4vw, 1.3rem); color: var(--muted); }
+  .hero .ctas { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .hero .hint {
+    position: absolute; bottom: calc(28px + env(safe-area-inset-bottom, 0px)); left: 0; right: 0; text-align: center;
+    font-size: .76rem; font-weight: 800; letter-spacing: .3em; text-transform: uppercase; color: var(--muted);
+    opacity: clamp(0, calc(1 - var(--p) * 6), 1);
+  }
+
+  /* ---- plain sections ---- */
+  .sec { position: relative; padding: clamp(72px, 12vw, 130px) 16px; }
+  .wrap { max-width: 1060px; margin: 0 auto; }
+  .eyebrow { display: inline-block; margin-bottom: 12px; font-size: .74rem; font-weight: 900; letter-spacing: .22em; text-transform: uppercase; color: var(--amber); }
+  h2 { margin: 0 0 16px; font-family: var(--serif); font-weight: 500; font-size: clamp(2.4rem, 6.4vw, 4rem); line-height: 1.02; color: var(--cream); }
+  h2 em { color: var(--gold); text-shadow: 0 0 24px rgba(255,180,40,.5); }
+  .lede { max-width: 720px; font-size: clamp(1.05rem, 2.1vw, 1.25rem); color: var(--muted); margin: 0; }
+
+  /* 2. What is Project Lumen: their slide, set big in gold. */
+  .what { background: radial-gradient(60% 70% at 85% 40%, rgba(255,170,30,.12), transparent 70%), var(--night); }
+  .what-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: clamp(24px, 6vw, 64px); align-items: center; }
+  @media (max-width: 760px) { .what-grid { grid-template-columns: 1fr; } }
+  .what .big { margin: 0; font-weight: 900; font-size: clamp(1.6rem, 4vw, 2.5rem); line-height: 1.22; color: var(--gold); text-shadow: 0 0 28px rgba(255,170,30,.25); }
+  .what .glowcard {
+    position: relative; aspect-ratio: 1; border-radius: 32px; display: grid; place-items: center;
+    background: radial-gradient(circle at 50% 45%, rgba(255,190,50,.22), transparent 60%), var(--night2);
+    border: 1px solid var(--line); overflow: hidden;
+  }
+  .what .glowcard img { width: 62%; filter: drop-shadow(0 0 20px rgba(255,170,30,.55)); animation: breathe 5s ease-in-out infinite; }
+  @keyframes breathe { 50% { transform: scale(1.04); filter: drop-shadow(0 0 34px rgba(255,170,30,.8)); } }
+
+  /* 3. The mission: each word lights up as you scroll. */
+  .words { height: 260vh; background: var(--night2); }
+  .words .stage { padding: 0 16px; }
+  .words .eyebrow { position: absolute; top: 18svh; left: 0; right: 0; text-align: center; }
+  .words p { max-width: 940px; margin: 0; text-align: center; font-family: var(--serif); font-size: clamp(1.8rem, 5.2vw, 3.7rem); line-height: 1.14; color: var(--cream); }
+  .words .w { opacity: .12; transition: opacity .3s, text-shadow .3s, color .3s; }
+  .words .w.on { opacity: 1; }
+  .words .w.accent.on { font-style: italic; color: var(--gold); text-shadow: var(--glow); }
+
+  /* 4. Three things they do: cards that stack. */
+  .cards { height: 340vh; background: var(--night); }
+  .cards .stage { padding: 80px 16px 16px; grid-template-rows: auto 1fr; gap: 18px; place-items: start center; }
+  .cards .head { text-align: center; }
+  .cards .head h2 { margin-bottom: 4px; }
+  .cards .head p { margin: 0; color: var(--muted); }
+  .deck { position: relative; width: min(100%, 580px); height: min(56svh, 420px); align-self: center; }
+  .card {
+    position: absolute; inset: 0; border-radius: 30px; padding: clamp(24px, 5vw, 40px);
+    display: flex; flex-direction: column; justify-content: flex-end; gap: 10px;
+    background: var(--night3); border: 1px solid var(--line);
+    box-shadow: 0 30px 70px -30px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,220,140,.08);
+    --k: clamp(0, calc((var(--p) - var(--at)) * 4), 1);
+    transform: translateY(calc((1 - var(--k)) * 110svh)) rotate(calc((1 - var(--k)) * -6deg));
+  }
+  .card:nth-child(1) { --at: 0; transform: none; }
+  .card:nth-child(2) { --at: .2; background: linear-gradient(160deg, #2b220f, #18130a); }
+  .card:nth-child(3) { --at: .5; background: linear-gradient(160deg, var(--gold), var(--amber)); color: var(--night); border-color: transparent; }
+  .card .icon { width: 64px; height: 64px; margin-bottom: auto; color: var(--gold); filter: drop-shadow(0 0 10px rgba(255,180,40,.7)); }
+  .card:nth-child(3) .icon { color: var(--night); filter: none; }
+  .card h3 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: clamp(2.2rem, 6vw, 3rem); line-height: 1.05; }
+  .card p { margin: 0; opacity: .88; max-width: 46ch; }
+
+  /* 5. Ribbons: every colour is a cancer someone is fighting. */
+  .ribbons { background: var(--night2); }
+  .ribbon-grid { list-style: none; margin: 30px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: 12px; }
+  .ribbon-grid li {
+    --c: var(--gold); position: relative; padding: 22px 14px 18px; border-radius: 22px; text-align: center;
+    background: var(--night); border: 1px solid rgba(255,255,255,.06); cursor: default;
+    transition: border-color .25s, box-shadow .25s, transform .25s;
+  }
+  .ribbon-grid li:hover, .ribbon-grid li:focus-within, .ribbon-grid li.lit {
+    border-color: color-mix(in srgb, var(--c) 60%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 30%, transparent), 0 18px 50px -20px var(--c);
+    transform: translateY(-3px);
+  }
+  .ribbon-grid svg { width: 46px; height: 60px; margin: 0 auto 10px; color: var(--c); opacity: .45; transition: opacity .25s, filter .25s; }
+  .ribbon-grid li:hover svg, .ribbon-grid li.lit svg { opacity: 1; filter: drop-shadow(0 0 8px var(--c)); }
+  .ribbon-grid b { display: block; font-size: .98rem; color: var(--cream); }
+  .ribbon-grid span { font-size: .82rem; color: var(--muted); }
+
+  /* 6. Stories: every story is a light. Lanterns stay dim until it's told. */
+  .stories { background: radial-gradient(50% 60% at 50% 0%, rgba(255,170,30,.1), transparent 70%), var(--night); }
+  .story-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; margin-top: 30px; }
+  .story {
+    position: relative; padding: 24px; border-radius: 24px; min-height: 210px; display: flex; flex-direction: column; gap: 10px;
+    background: var(--night2); border: 1px solid var(--line); overflow: hidden;
+  }
+  .story::before {
+    content: ''; position: absolute; width: 220px; height: 220px; right: -70px; top: -90px; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(255,190,50,.28), transparent); opacity: .35; transition: opacity .5s;
+  }
+  .story:hover::before { opacity: 1; }
+  .story .ph { align-self: flex-start; }
+  .story q { font-family: var(--serif); font-size: 1.4rem; line-height: 1.25; color: var(--cream); quotes: '“' '”'; }
+  .story small { margin-top: auto; color: var(--muted); }
+
+  /* 7. Add your light: a night sky the visitor fills in. */
+  .sky { background: #070604; text-align: center; overflow: hidden; }
+  .sky .lede { margin: 0 auto; }
+  .sky-field { position: relative; height: min(52svh, 420px); margin: 30px auto 20px; max-width: 1060px; border-radius: 30px; border: 1px solid var(--line);
+    background: radial-gradient(80% 70% at 50% 100%, rgba(255,150,20,.12), transparent 70%), #0a0805; overflow: hidden; cursor: crosshair; }
+  .sky-field .dot {
+    position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: #fff6d8;
+    box-shadow: 0 0 6px 2px rgba(255,210,90,.95), 0 0 26px 8px rgba(255,170,30,.45);
+    animation: twinkle 3.2s ease-in-out infinite, rise .9s cubic-bezier(.2,.8,.3,1) both;
+  }
+  @keyframes twinkle { 50% { opacity: .55; transform: scale(.8); } }
+  @keyframes rise { from { opacity: 0; transform: translateY(30px) scale(.2); } }
+  .sky-field .msg { position: absolute; inset: auto 0 22px; color: var(--muted); font-size: .92rem; pointer-events: none; transition: opacity .4s; }
+  .sky-count { min-height: 1.6em; margin: 0 0 16px; font-weight: 800; color: var(--gold); }
+
+  /* 8. Team, events, get involved */
+  .team { background: var(--night2); }
+  .team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px; margin-top: 30px; }
+  .person { padding: 22px; border-radius: 24px; background: var(--night); border: 1px solid var(--line); }
+  .person .photo { aspect-ratio: 1; border-radius: 18px; margin-bottom: 16px; display: grid; place-items: center;
+    background: radial-gradient(circle at 50% 40%, rgba(255,190,50,.2), transparent 60%), var(--night3); color: rgba(255,201,60,.5); }
+  .person .photo svg { width: 38%; }
+  .person h3 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: 1.7rem; color: var(--cream); }
+  .person .role { margin: 0 0 8px; font-size: .86rem; font-weight: 800; color: var(--amber); }
+  .person p { margin: 0; color: var(--muted); font-size: .95rem; }
+
+  .events { background: var(--night); }
+  .event-list { list-style: none; margin: 30px 0 0; padding: 0; display: grid; gap: 12px; }
+  .event { display: grid; grid-template-columns: 92px 1fr; gap: 18px; align-items: center; padding: 18px; border-radius: 22px; background: var(--night2); border: 1px solid var(--line); }
+  .event .when { text-align: center; padding: 12px 6px; border-radius: 14px; background: var(--gold); color: var(--night); font-weight: 900; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; line-height: 1.3; }
+  .event h3 { margin: 0 0 2px; font-size: 1.08rem; color: var(--cream); }
+  .event p { margin: 0; color: var(--muted); font-size: .94rem; }
+  .event.past .when { background: transparent; color: var(--gold); border: 1.5px solid var(--gold); }
+
+  .join { text-align: center; background: radial-gradient(60% 90% at 50% 100%, rgba(255,160,25,.22), transparent 70%), var(--night2); }
+  .join .lede { margin: 0 auto 26px; }
+  .ways { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; margin: 0 0 30px; text-align: left; }
+  .ways div { padding: 20px; border-radius: 20px; background: rgba(255,201,60,.05); border: 1px solid var(--line); }
+  .ways b { display: block; margin-bottom: 4px; color: var(--gold); }
+  .ways span { font-size: .94rem; color: var(--muted); }
+  .ctas-row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .tags { margin: 22px 0 0; color: var(--muted); font-size: .9rem; }
+  .tags span { color: var(--gold); }
+
+  /* 9. Their name, sliding sideways with the scroll. */
+  .slide { height: 180vh; background: var(--night); }
+  .slide .line {
+    white-space: nowrap; font-family: var(--serif); color: var(--cream);
+    font-size: clamp(5rem, 18vw, 14rem); line-height: 1;
+    transform: translateX(calc(30vw - var(--p) * 170vw));
+  }
+  .slide .line em { color: var(--gold); text-shadow: var(--glow); }
+
+  footer { padding: 56px 16px calc(44px + env(safe-area-inset-bottom, 0px)); text-align: center; color: var(--muted); font-size: .9rem; background: #060503; border-top: 1px solid var(--line); }
+  footer a { color: var(--cream); }
+  footer .social { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1rem; text-decoration: none; }
+  footer .social svg { width: 22px; height: 22px; }
+  footer p { margin: 8px 0; }
+  footer .powered { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 6px 14px 6px 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.04); font-weight: 800; text-decoration: none; }
+  footer .powered:hover { background: rgba(255,255,255,.1); }
+  footer .powered img { width: 26px; height: 26px; object-fit: contain; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    [data-scroll] { --p: 1 !important; height: auto !important; }
+    .stage { position: relative; height: auto; min-height: 0; padding: 110px 16px; }
+    .hero canvas, .hero .halo { display: none; }
+    .hero .stage { display: flex; flex-direction: column; align-items: center; gap: 28px; background: radial-gradient(closest-side, rgba(255,190,50,.2), transparent); }
+    .hero .mark, .hero .title { position: relative; top: auto; transform: none; }
+    .hero .hint { display: none; }
+    .words .eyebrow { position: static; }
+    .words .stage { display: flex; flex-direction: column; gap: 12px; }
+    .words .w { opacity: 1; }
+    .words .w.accent { font-style: italic; color: var(--gold); }
+    .deck { height: auto; display: grid; gap: 16px; }
+    .card { position: relative; min-height: 260px; transform: none !important; }
+    .what .glowcard img, .sky-field .dot { animation: none; }
+    .slide .line { transform: none; font-size: clamp(3rem, 12vw, 8rem); white-space: normal; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <a class="brand" href="#top" aria-label="Project Lumen, back to top">
+    <img src="public/partners/lumen/logo.svg" alt="" width="36" height="36">
+    <strong>Project Lumen</strong>
+  </a>
+  <nav aria-label="Sections">
+    <a href="#about">About</a>
+    <a href="#mission">Mission</a>
+    <a href="#ribbons">Ribbons</a>
+    <a href="#stories">Stories</a>
+    <a href="#events">Events</a>
+  </nav>
+  <a class="btn btn-solid" href="#join">Join us</a>
+</header>
+
+<main id="top">
+  <section class="hero" data-scroll aria-label="Project Lumen">
+    <div class="stage">
+      <canvas id="embers" aria-hidden="true"></canvas>
+      <div class="halo" aria-hidden="true"></div>
+      <!-- Their mark, redrawn as one neon line: a ribbon held in an open hand. -->
+      <svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
+        <path pathLength="1" d="M27 39 L37 23 C41 15 38 8 32 8 C26 8 23 15 27 23 L37 39"/>
+        <path class="hand" pathLength="1" d="M8 45 C14 43 21 43 27 47 L38 47 C41 47 41 51 38 51 L29 51"/>
+        <path class="hand" pathLength="1" d="M38 47 L50 39 C53 37 56 41 53 43 L43 52 C39 55 33 56 27 55 L8 55"/>
+      </svg>
+      <div class="title">
+        <h1>Project <em>Lumen</em></h1>
+        <p>A student-led initiative dedicated to bringing light to cancer awareness.</p>
+        <div class="ctas">
+          <a class="btn btn-solid" href="#mission">Our mission</a>
+          <a class="btn" href="#stories">Read the stories</a>
+        </div>
+      </div>
+      <div class="hint">Scroll to light it up</div>
+    </div>
+  </section>
+
+  <section class="sec what" id="about" aria-labelledby="about-h">
+    <div class="wrap what-grid">
+      <div>
+        <span class="eyebrow">About</span>
+        <h2 id="about-h">What is Project <em>Lumen?</em></h2>
+        <p class="big">Project Lumen is a student led initiative aiming to spread cancer awareness, and bring light to the untold stories of the many people battling cancer today.</p>
+      </div>
+      <div class="glowcard"><img src="public/partners/lumen/logo.svg" alt="Project Lumen’s gold ribbon"></div>
+    </div>
+  </section>
+
+  <section class="words" id="mission" data-scroll aria-labelledby="mission-h">
+    <div class="stage">
+      <span class="eyebrow" id="mission-h">My mission</span>
+      <p data-words>Project Lumen was created with one mission: bring *awareness,* *education* and spark meaningful *conversations* about cancer, bringing the *light* needed to make a *difference.*</p>
+    </div>
+  </section>
+
+  <section class="cards" id="pillars" data-scroll aria-labelledby="pillars-h">
+    <div class="stage">
+      <div class="head">
+        <span class="eyebrow">Awareness into action</span>
+        <h2 id="pillars-h">Three ways we bring light</h2>
+      </div>
+      <div class="deck">
+        <article class="card">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2Z"/></svg>
+          <h3>Awareness</h3><p>Making sure cancer is something people see and talk about, all year and not only on awareness days.</p>
+        </article>
+        <article class="card">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 6s2-2 5-2 5 2 5 2v14s-2-1.5-5-1.5S2 20 2 20Z"/><path d="M22 6s-2-2-5-2-5 2-5 2v14s2-1.5 5-1.5 5 1.5 5 1.5Z"/></svg>
+          <h3>Education</h3><p>Clear, honest information about cancer, its signs and how to support the people living with it. <span class="ph">Details soon</span></p>
+        </article>
+        <article class="card">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/></svg>
+          <h3>Conversation</h3><p>Every voice heard and every story told: space for patients, survivors and families to share what they have been through.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec ribbons" id="ribbons" aria-labelledby="ribbons-h">
+    <div class="wrap">
+      <span class="eyebrow">Every colour, a fight</span>
+      <h2 id="ribbons-h">Know the <em>ribbons</em></h2>
+      <p class="lede">Each awareness ribbon stands for people living with a different cancer. Hover or tap one to light it.</p>
+      <ul class="ribbon-grid" id="ribbonGrid"></ul>
+    </div>
+  </section>
+
+  <section class="sec stories" id="stories" aria-labelledby="stories-h">
+    <div class="wrap">
+      <span class="eyebrow">Untold stories</span>
+      <h2 id="stories-h">Every story is a <em>light</em></h2>
+      <p class="lede">Real stories from people battling cancer, survivors and the families beside them, shared with their permission. <span class="ph">Stories coming soon</span></p>
+      <div class="story-grid">
+        <article class="story"><span class="ph">Placeholder</span><q>A story from someone in our community will go here.</q><small>Name, and how cancer touched their life</small></article>
+        <article class="story"><span class="ph">Placeholder</span><q>Short, honest, in their own words. A few lines is enough.</q><small>Name, survivor</small></article>
+        <article class="story"><span class="ph">Placeholder</span><q>Have a story you want told? Project Lumen wants to hear it.</q><small>Share yours below</small></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec sky" aria-labelledby="sky-h">
+    <div class="wrap">
+      <span class="eyebrow">Every light shines</span>
+      <h2 id="sky-h">Add your <em>light</em></h2>
+      <p class="lede">For someone you love, someone you lost, or someone still fighting. Tap the sky.</p>
+      <div class="sky-field" id="sky" role="button" tabindex="0" aria-label="Add a light to the sky">
+        <span class="msg" id="skyMsg">Tap anywhere to add a light</span>
+      </div>
+      <p class="sky-count" id="skyCount" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <section class="sec team" id="team" aria-labelledby="team-h">
+    <div class="wrap">
+      <span class="eyebrow">The people behind it</span>
+      <h2 id="team-h">Our team</h2>
+      <p class="lede">Project Lumen is run by students. <span class="ph">Team details coming soon</span></p>
+      <div class="team-grid">
+        <div class="person">
+          <div class="photo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
+          <h3>Founder name</h3><p class="role">Founder</p><p>A few lines about why they started Project Lumen.</p>
+        </div>
+        <div class="person">
+          <div class="photo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
+          <h3>Team member</h3><p class="role">Role</p><p>Room for more of the team as it grows.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec events" id="events" aria-labelledby="events-h">
+    <div class="wrap">
+      <span class="eyebrow">What’s happening</span>
+      <h2 id="events-h">Events</h2>
+      <ul class="event-list">
+        <li class="event past"><div class="when">Nov<br>7</div><div><h3>National Cancer Awareness Day</h3><p>Project Lumen’s launch on Instagram.</p></div></li>
+        <li class="event"><div class="when">TBA</div><div><h3>Next event <span class="ph">Placeholder</span></h3><p>Date, place and what to bring will go here.</p></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="sec join" id="join" aria-labelledby="join-h">
+    <div class="wrap">
+      <span class="eyebrow">Join the journey</span>
+      <h2 id="join-h">Turn awareness into <em>action</em></h2>
+      <p class="lede">Join us on the journey to make sure every voice is heard, every story is told, and every light shines to make a difference.</p>
+      <div class="ways">
+        <div><b>Spread awareness</b><span>Follow @project.lumen and share our posts.</span></div>
+        <div><b>Share a story</b><span>Tell us your story or someone else’s, with their blessing. <span class="ph">Form soon</span></span></div>
+        <div><b>Volunteer</b><span>Help run events and make posts. <span class="ph">Sign-up soon</span></span></div>
+      </div>
+      <div class="ctas-row">
+        <a class="btn btn-solid" href="https://www.instagram.com/project.lumen/" rel="noopener">Follow on Instagram</a>
+      </div>
+      <p class="tags"><span>#ProjectLumen</span> · <span>#cancerawareness</span> · <span>#spreadawareness</span></p>
+    </div>
+  </section>
+
+  <section class="slide" data-scroll aria-hidden="true">
+    <div class="stage">
+      <div class="line">Project <em>Lumen</em> · Project <em>Lumen</em></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p><a class="social" href="https://www.instagram.com/project.lumen/" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg>@project.lumen</a></p>
+  <p>Project Lumen · a student-led initiative</p>
+  <p><a class="powered" href="https://fluxplanner.github.io/Flux/"><img src="icons/icon-192.png" alt="" width="26" height="26">Powered by Flux</a></p>
+</footer>
+
+<script>
+  (function () {
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // The mission: split into words; *word* marks a word that glows gold.
+    document.querySelectorAll('[data-words]').forEach(function (p) {
+      p.innerHTML = p.textContent.trim().split(/\s+/).map(function (w) {
+        var accent = /^\*.*\*[^\w]*$/.test(w);
+        return '<span class="w' + (accent ? ' accent' : '') + '">' + w.replace(/\*/g, '') + '</span>';
+      }).join(' ');
+    });
+
+    // Ribbon colours. The usual awareness colours; Project Lumen to confirm.
+    var RIBBONS = [
+      ['#c9a2ff', 'Lavender', 'All cancers'],
+      ['#ffc93c', 'Gold', 'Childhood cancer'],
+      ['#ff8fc4', 'Pink', 'Breast cancer'],
+      ['#f5f1e6', 'White', 'Lung cancer'],
+      ['#7fc8ff', 'Light blue', 'Prostate cancer'],
+      ['#2f5bd3', 'Dark blue', 'Colorectal cancer'],
+      ['#2ec4b6', 'Teal', 'Ovarian cancer'],
+      ['#ff8a2b', 'Orange', 'Leukemia'],
+      ['#9aa0a6', 'Grey', 'Brain cancer'],
+      ['#4ad66d', 'Lime green', 'Lymphoma'],
+    ];
+    var ribbonSvg = '<svg viewBox="0 0 24 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 30 L15 14 C18 8 16 2 12 2 C8 2 6 8 9 14 L17 30"/></svg>';
+    var grid = document.getElementById('ribbonGrid');
+    grid.innerHTML = RIBBONS.map(function (r) {
+      return '<li tabindex="0" style="--c:' + r[0] + '">' + ribbonSvg + '<b>' + r[1] + '</b><span>' + r[2] + '</span></li>';
+    }).join('');
+    grid.addEventListener('click', function (e) {
+      var li = e.target.closest('li');
+      if (li) li.classList.toggle('lit');
+    });
+
+    // Add your light: a dot where they tap. Only on this screen; nothing is saved.
+    var sky = document.getElementById('sky');
+    var skyMsg = document.getElementById('skyMsg');
+    var skyCount = document.getElementById('skyCount');
+    var lights = 0;
+    function addLight(x, y) {
+      var d = document.createElement('span');
+      d.className = 'dot';
+      d.style.left = (x * 100).toFixed(2) + '%';
+      d.style.top = (y * 100).toFixed(2) + '%';
+      d.style.animationDuration = (2.4 + Math.random() * 2).toFixed(2) + 's, .9s';
+      sky.appendChild(d);
+      lights++;
+      skyMsg.style.opacity = '0';
+      skyCount.textContent = lights === 1 ? 'Your light is shining.' : lights + ' lights shining.';
+    }
+    sky.addEventListener('click', function (e) {
+      var r = sky.getBoundingClientRect();
+      addLight((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+    });
+    sky.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      addLight(.08 + Math.random() * .84, .1 + Math.random() * .7);
+    });
+
+    // Scroll-driven sections (see the note at the top).
+    var sections = Array.prototype.slice.call(document.querySelectorAll('[data-scroll]'));
+    function update() {
+      var vh = window.innerHeight;
+      sections.forEach(function (s) {
+        var r = s.getBoundingClientRect();
+        var span = r.height - vh;
+        var p = span > 0 ? Math.min(1, Math.max(0, -r.top / span)) : 1;
+        s.style.setProperty('--p', p.toFixed(4));
+        var words = s.querySelectorAll('.w');
+        if (words.length) {
+          var lit = Math.round(p * 1.15 * words.length);
+          for (var i = 0; i < words.length; i++) words[i].classList.toggle('on', i < lit);
+        }
+      });
+    }
+    // Straight from the scroll event, not requestAnimationFrame: the work is
+    // tiny, and rAF is paused in background tabs.
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+
+    // Embers drifting up behind the hero. Stops when the hero is off screen.
+    var canvas = document.getElementById('embers');
+    if (reduce || !canvas.getContext) return;
+    var ctx = canvas.getContext('2d');
+    var w = 0, h = 0, running = false, motes = [];
+    function size() {
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = canvas.clientWidth; h = canvas.clientHeight;
+      canvas.width = w * dpr; canvas.height = h * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    function mote(fresh) {
+      return { x: Math.random() * w, y: fresh ? h + 10 : Math.random() * h, r: .6 + Math.random() * 2.2,
+        vy: .15 + Math.random() * .55, sway: Math.random() * 6.28, a: .25 + Math.random() * .6 };
+    }
+    function frame() {
+      if (!running) return;
+      ctx.clearRect(0, 0, w, h);
+      ctx.globalCompositeOperation = 'lighter';
+      for (var i = 0; i < motes.length; i++) {
+        var m = motes[i];
+        m.y -= m.vy; m.sway += .012; m.x += Math.sin(m.sway) * .25;
+        if (m.y < -10) motes[i] = m = mote(true);
+        var g = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, m.r * 5);
+        g.addColorStop(0, 'rgba(255,214,110,' + m.a + ')');
+        g.addColorStop(1, 'rgba(255,150,20,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(m.x, m.y, m.r * 5, 0, 6.283); ctx.fill();
+      }
+      requestAnimationFrame(frame);
+    }
+    size();
+    for (var i = 0; i < 70; i++) motes.push(mote(false));
+    window.addEventListener('resize', size);
+    new IntersectionObserver(function (es) {
+      var on = es[0].isIntersecting;
+      if (on && !running) { running = true; requestAnimationFrame(frame); }
+      running = on;
+    }).observe(canvas);
+  })();
+</script>
+</body>
+</html>
