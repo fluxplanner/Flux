@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<!--
+  GitHub Pages can't send headers, so the CSP rides in a meta tag. A meta CSP
+  ignores frame-ancestors; flux-frame-guard.js stays the clickjacking control.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob: https://fluxplanner.github.io; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self'; form-action 'self'">
+<script src="public/js/flux-frame-guard.js?v=9afa87b3"></script>
+<!-- While the owner has it hidden (Owner Controls → Hide apps), anyone else
+     who opens this URL is sent to Flux Suite instead. -->
+<script src="public/js/flux-sb-config.js?v=0e98cf61"></script>
+<script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="lumen"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Project Lumen</title>
+<meta name="description" content="Project Lumen is a student-led initiative bringing light to cancer awareness: learn about every kind of cancer, find ways to support the people fighting it, and keep track of your own journey.">
+<!-- Kept out of search engines while the owner has it hidden. Remove this
+     line when Project Lumen launches. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#08070a">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Project Lumen">
+<meta property="og:title" content="Project Lumen">
+<meta property="og:url" content="https://fluxplanner.github.io/Flux/lumen.html">
+<link rel="icon" type="image/svg+xml" href="public/partners/lumen/logo.svg">
+
+<!--
+  Project Lumen: a Flux partner site. A PROP for now, built from their first
+  Instagram post (@project.lumen) and their first message to Flux, which asked
+  for two things:
+    1. A website covering all the different cancers, where people can learn
+       more and find ways to support → the Cancer Library (#library).
+    2. An app for patients to keep track of medications, appointments and
+       their journey, like Synara → previewed as "Lumen Companion" (#companion).
+       It is a mock-up only: nothing is saved yet.
+  Anything marked .ph (a dashed "Placeholder"/"Draft" pill) waits on them:
+    - Logo: public/partners/lumen/logo.svg is our own stand-in. Swap theirs in.
+    - Every library entry is a short draft with a link to the National Cancer
+      Institute page for that cancer. Project Lumen should review the wording
+      and the ribbon colours before launch.
+    - Stories, team, events, the join form.
+  Their own words, used as written: "What is Project Lumen?", the mission
+  sentence and the bio line ("turn awareness into action…").
+
+  The look is deliberately unlike aorta.html: no sticky scroll scenes. The
+  hero is dark and a flashlight (the pointer, or a slow wander on touch
+  screens) reveals words hidden in it. Below that, sections ignite as they
+  enter the screen (IntersectionObserver), the library is a "lights on"
+  cream room, the companion phone tilts with the pointer, and lanterns rise.
+  With reduced motion everything is shown still.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  @property --lx { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
+  @property --ly { syntax: '<percentage>'; inherits: true; initial-value: 45%; }
+
+  :root {
+    --ink: #08070a;
+    --ink2: #121016;
+    --ink3: #1c1920;
+    --gold: #ffc93c;
+    --honey: #ffb21a;
+    --flame: #ff7a1a;
+    --ivory: #fbf6ea;
+    --paper: #f3ead4;
+    --cocoa: #2a1f12;
+    --text: #f4efe6;
+    --muted: #a49d92;
+    --hair: rgba(255,255,255,.09);
+    --display: 'Bricolage Grotesque', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --serif: 'Instrument Serif', Georgia, serif;
+    --ease: cubic-bezier(.2,.8,.2,1);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 90px; color-scheme: dark; }
+  html, body { margin: 0; background: var(--ink); color: var(--text); }
+  body { font-family: var(--display); font-size: 1.02rem; line-height: 1.55; overflow-x: clip; }
+  img, svg { display: block; max-width: 100%; }
+  a { color: inherit; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 6px; }
+  ::selection { background: var(--gold); color: var(--ink); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  em, .it { font-family: var(--serif); font-style: italic; font-weight: 400; letter-spacing: 0; }
+
+  /* Anything still waiting on Project Lumen. */
+  .ph {
+    display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 6px; vertical-align: middle;
+    font-size: .66rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--gold); border: 1px dashed currentColor; opacity: .85;
+  }
+  .light .ph { color: #9a6a00; }
+
+  /* ---- floating pill nav ---- */
+  .nav {
+    position: fixed; z-index: 20; left: 50%; top: calc(14px + env(safe-area-inset-top, 0px)); transform: translateX(-50%);
+    display: flex; align-items: center; gap: 4px; padding: 6px; width: max-content; max-width: calc(100% - 24px);
+    border-radius: 999px; background: rgba(18,16,22,.7); border: 1px solid var(--hair);
+    backdrop-filter: blur(16px) saturate(1.4); -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    box-shadow: 0 12px 40px -16px rgba(0,0,0,.8);
+  }
+  .nav .brand { display: flex; align-items: center; gap: 8px; padding: 0 10px 0 4px; text-decoration: none; font-weight: 800; letter-spacing: -.01em; white-space: nowrap; }
+  .nav .brand img { width: 30px; height: 30px; border-radius: 50%; }
+  .nav a.l { padding: 8px 12px; border-radius: 999px; font-size: .86rem; font-weight: 600; color: var(--muted); text-decoration: none; transition: color .2s, background .2s; }
+  .nav a.l:hover { color: var(--text); background: rgba(255,255,255,.06); }
+  .nav .go { padding: 9px 16px; border-radius: 999px; font-size: .86rem; font-weight: 800; color: var(--ink); background: var(--gold); text-decoration: none; white-space: nowrap; }
+  @media (max-width: 720px) { .nav a.l { display: none; } }
+
+  .btn {
+    position: relative; display: inline-flex; align-items: center; gap: 10px; min-height: 50px; padding: 0 24px;
+    border-radius: 14px; font-weight: 800; font-size: 1rem; text-decoration: none; cursor: pointer; border: 0;
+    color: var(--ink); background: var(--gold); overflow: hidden; isolation: isolate;
+    transition: transform .3s var(--ease), box-shadow .3s;
+  }
+  .btn::after { /* a sheen that sweeps across on hover */
+    content: ''; position: absolute; inset: 0; z-index: -1;
+    background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.65) 50%, transparent 65%);
+    transform: translateX(-110%); transition: transform .7s var(--ease);
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 14px 40px -12px rgba(255,180,30,.8); }
+  .btn:hover::after { transform: translateX(110%); }
+  .btn.ghost { color: var(--text); background: rgba(255,255,255,.06); box-shadow: inset 0 0 0 1px var(--hair); }
+  .btn.ghost:hover { box-shadow: inset 0 0 0 1px rgba(255,201,60,.5); }
+  .btn svg { width: 18px; height: 18px; }
+
+  /* ---- 1. Hero: a dark room and a flashlight ---- */
+  .hero { position: relative; min-height: 100svh; display: grid; place-items: center; padding: 120px 16px 80px; overflow: hidden; isolation: isolate;
+    --lx: 50%; --ly: 45%; animation: wander 16s ease-in-out infinite alternate; }
+  .hero.manual { animation: none; }
+  @keyframes wander {
+    0% { --lx: 22%; --ly: 30%; } 25% { --lx: 70%; --ly: 22%; } 50% { --lx: 80%; --ly: 68%; } 75% { --lx: 30%; --ly: 75%; } 100% { --lx: 50%; --ly: 40%; }
+  }
+  .field { position: absolute; inset: -4%; z-index: -1; display: flex; flex-direction: column; justify-content: center; gap: .1em;
+    font-weight: 800; font-size: clamp(3.2rem, 11vw, 9.5rem); line-height: .92; letter-spacing: -.04em; text-transform: uppercase; white-space: nowrap; user-select: none; }
+  .field span { display: block; }
+  .field span:nth-child(even) { padding-left: 18vw; }
+  .field.dim { color: transparent; -webkit-text-stroke: 1px rgba(255,255,255,.06); }
+  .field.lit {
+    color: var(--gold); -webkit-text-stroke: 0; text-shadow: 0 0 40px rgba(255,170,30,.6);
+    -webkit-mask-image: radial-gradient(circle min(34vmax, 300px) at var(--lx) var(--ly), #000 0%, rgba(0,0,0,.55) 40%, transparent 72%);
+            mask-image: radial-gradient(circle min(34vmax, 300px) at var(--lx) var(--ly), #000 0%, rgba(0,0,0,.55) 40%, transparent 72%);
+  }
+  .field.lit span:nth-child(3n+2) { color: transparent; -webkit-text-stroke: 1.5px var(--gold); }
+  .beam { position: absolute; inset: 0; z-index: -2; background: radial-gradient(circle min(40vmax, 380px) at var(--lx) var(--ly), rgba(255,180,40,.16), transparent 70%); }
+  .hero-copy { position: relative; max-width: 900px; text-align: center; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 6px; border-radius: 999px; font-size: .84rem; font-weight: 600; color: var(--muted);
+    background: rgba(8,7,10,.72); border: 1px solid var(--hair); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  .chip img { width: 24px; height: 24px; border-radius: 50%; }
+  .hero h1 { margin: 22px 0 18px; font-weight: 800; font-size: clamp(2.9rem, 9vw, 7.2rem); line-height: .9; letter-spacing: -.045em; text-wrap: balance; }
+  .hero h1 em { display: inline-block; padding: 0 .06em; color: var(--gold); font-size: 1.08em; text-shadow: 0 0 28px rgba(255,170,30,.7); }
+  .hero p.sub { max-width: 600px; margin: 0 auto 28px; font-size: clamp(1.05rem, 2.2vw, 1.28rem); color: #cfc7ba; background: rgba(8,7,10,.55); border-radius: 12px; }
+  .hero .row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .hero .tip { position: absolute; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); left: 0; right: 0; text-align: center; font-size: .8rem; color: var(--muted); }
+  .hero .tip b { color: var(--gold); font-weight: 600; }
+
+  /* ---- 2. Marquee of every cancer, in its own ribbon colour ---- */
+  .marquee { overflow: hidden; border-block: 1px solid var(--hair); background: var(--ink2); padding: 16px 0;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+  .marquee .track { display: flex; gap: 34px; width: max-content; animation: slide 48s linear infinite; }
+  .marquee:hover .track { animation-play-state: paused; }
+  .marquee span { display: inline-flex; align-items: center; gap: 12px; font-size: 1.25rem; font-weight: 600; white-space: nowrap; color: #d8d1c5; }
+  .marquee i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: 0 0 12px var(--c); }
+  @keyframes slide { to { transform: translateX(-50%); } }
+
+  /* ---- shared section bits ---- */
+  section { position: relative; }
+  .sec { padding: clamp(80px, 12vw, 140px) 16px; }
+  .wrap { max-width: 1140px; margin: 0 auto; }
+  .kicker { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 18px; font-size: .78rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); }
+  .kicker::before { content: ''; width: 28px; height: 2px; border-radius: 2px; background: currentColor; box-shadow: 0 0 10px currentColor; }
+  h2 { margin: 0 0 18px; font-weight: 800; font-size: clamp(2.3rem, 6vw, 4.4rem); line-height: .95; letter-spacing: -.04em; text-wrap: balance; }
+  h2 em { color: var(--gold); font-size: 1.06em; }
+  .lede { max-width: 640px; margin: 0; font-size: clamp(1.05rem, 2vw, 1.22rem); color: var(--muted); }
+
+  /* Entrance animations, set off once by IntersectionObserver (.in). */
+  .rise { opacity: 0; transform: translateY(26px); filter: blur(8px); transition: opacity .9s var(--ease), transform .9s var(--ease), filter .9s var(--ease); transition-delay: var(--d, 0s); }
+  .rise.in { opacity: 1; transform: none; filter: none; }
+  .wipe { clip-path: inset(0 100% 0 0 round 28px); transition: clip-path 1.1s var(--ease); transition-delay: var(--d, 0s); }
+  .wipe.in { clip-path: inset(0 0 0 0 round 28px); }
+  /* Letters that ignite one by one, like a filament warming up. */
+  .ignite .ch { display: inline-block; color: rgba(255,255,255,.14); transition: color .5s, text-shadow .8s; transition-delay: calc(var(--i) * 18ms); }
+  .ignite.in .ch { color: inherit; }
+  .ignite.in .glow .ch { color: var(--gold); text-shadow: 0 0 18px rgba(255,170,30,.75); }
+
+  /* ---- 3. About: a bento of glowing tiles ---- */
+  .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-top: 40px; }
+  .tile { position: relative; padding: clamp(22px, 3.5vw, 34px); border-radius: 28px; background: var(--ink2); border: 1px solid var(--hair); overflow: hidden; isolation: isolate; }
+  .tile::before { /* the spotlight that follows the pointer across a tile */
+    content: ''; position: absolute; inset: 0; z-index: -1; opacity: 0; transition: opacity .4s;
+    background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(255,190,50,.14), transparent 60%);
+  }
+  .tile:hover::before { opacity: 1; }
+  .t-what { grid-column: span 4; grid-row: span 2; display: flex; flex-direction: column; justify-content: space-between; gap: 30px;
+    background: radial-gradient(120% 90% at 100% 0%, rgba(255,160,25,.2), transparent 55%), var(--ink2); }
+  .t-what p { margin: 0; font-weight: 800; font-size: clamp(1.55rem, 3.4vw, 2.55rem); line-height: 1.12; letter-spacing: -.02em; }
+  .t-logo { grid-column: span 2; display: grid; place-items: center; min-height: 220px; background: radial-gradient(circle, rgba(255,190,50,.22), transparent 65%), var(--ink2); }
+  .t-logo img { width: 58%; border-radius: 26%; animation: pulse 4.5s ease-in-out infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 14px rgba(255,201,60,.06), 0 0 70px rgba(255,170,30,.5); } }
+  .t-tag { grid-column: span 2; display: flex; flex-direction: column; justify-content: flex-end; min-height: 200px; background: var(--gold); color: var(--ink); border: 0; }
+  .t-tag b { font-size: 2.6rem; line-height: 1; letter-spacing: -.04em; }
+  .t-tag span { font-weight: 600; }
+  .t-mission { grid-column: span 6; padding-block: clamp(34px, 6vw, 70px); }
+  .t-mission .q { margin: 0; font-weight: 600; font-size: clamp(1.5rem, 3.8vw, 2.9rem); line-height: 1.12; letter-spacing: -.025em; }
+  .t-mission small { display: block; margin-top: 18px; color: var(--muted); font-size: .9rem; }
+  .three { grid-column: span 2; display: flex; flex-direction: column; gap: 10px; min-height: 230px; }
+  .three .n { font-family: var(--serif); font-style: italic; font-size: 3.4rem; line-height: .8; color: var(--gold); }
+  .three h3 { margin: auto 0 0; font-size: 1.6rem; letter-spacing: -.02em; }
+  .three p { margin: 0; color: var(--muted); }
+  .three a { color: var(--gold); font-weight: 800; text-decoration: none; }
+  @media (max-width: 900px) {
+    .bento { grid-template-columns: repeat(2, 1fr); }
+    .t-what, .t-mission { grid-column: span 2; }
+    .t-logo, .t-tag { grid-column: span 1; min-height: 170px; }
+    .three { grid-column: span 2; min-height: 0; }
+    .three h3 { margin-top: 18px; }
+  }
+
+  /* ---- 4. The Cancer Library: the lights come on ---- */
+  .light { background: var(--ivory); color: var(--cocoa); color-scheme: light; }
+  .light h2 { color: var(--cocoa); }
+  .light h2 em { color: #c57b00; }
+  .light .kicker { color: #c57b00; }
+  .light .lede { color: #6d5f4b; }
+  .library { border-radius: 40px 40px 0 0; margin-top: -40px; z-index: 1; }
+  .lib-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px; }
+  .search { position: relative; flex: 1 1 280px; max-width: 420px; }
+  .search svg { position: absolute; left: 16px; top: 50%; width: 20px; height: 20px; transform: translateY(-50%); color: #8a7a62; pointer-events: none; }
+  .search input { width: 100%; min-height: 54px; padding: 0 18px 0 46px; border-radius: 16px; border: 1.5px solid #e2d6bc; background: #fff; font: inherit; color: var(--cocoa); }
+  .search input:focus { outline: none; border-color: var(--honey); box-shadow: 0 0 0 5px rgba(255,178,26,.2); }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 26px 0 22px; }
+  .filters button { min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #e2d6bc; background: transparent; font-weight: 600; font-size: .9rem; color: #6d5f4b; cursor: pointer; transition: all .2s; }
+  .filters button[aria-pressed="true"] { background: var(--cocoa); border-color: var(--cocoa); color: var(--ivory); }
+  .lib-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+  .lib-grid li { animation: pop .5s var(--ease) both; animation-delay: calc(var(--i) * 30ms); }
+  @keyframes pop { from { opacity: 0; transform: scale(.94) translateY(10px); } }
+  .cancer {
+    position: relative; width: 100%; height: 100%; min-height: 150px; padding: 20px; border-radius: 22px; text-align: left; cursor: pointer;
+    display: flex; flex-direction: column; gap: 6px; background: #fff; border: 1.5px solid #ece2cc; overflow: hidden; isolation: isolate;
+    transition: transform .35s var(--ease), box-shadow .35s, border-color .35s;
+  }
+  .cancer::before { content: ''; position: absolute; z-index: -1; width: 180px; height: 180px; right: -60px; top: -60px; border-radius: 50%; background: var(--c); opacity: .14; transition: transform .6s var(--ease), opacity .4s; }
+  .cancer:hover { transform: translateY(-4px); border-color: transparent; box-shadow: 0 22px 44px -22px color-mix(in srgb, var(--c) 70%, #3a2a10); }
+  .cancer:hover::before { transform: scale(3.2); opacity: .2; }
+  .cancer svg { width: 26px; height: 34px; color: var(--c); filter: drop-shadow(0 1px 0 rgba(0,0,0,.25)); }
+  .cancer b { margin-top: auto; font-size: 1.2rem; letter-spacing: -.01em; color: var(--cocoa); }
+  .cancer span { font-size: .84rem; color: #7c6d57; }
+  .cancer .arrow { position: absolute; right: 16px; bottom: 16px; font-weight: 800; color: #b38a3c; transition: transform .3s var(--ease); }
+  .cancer:hover .arrow { transform: translateX(4px); }
+  .lib-empty { margin: 20px 0 0; color: #6d5f4b; }
+  .lib-note { margin: 26px 0 0; font-size: .86rem; color: #7c6d57; }
+
+  /* The entry for one cancer opens in a panel from the side. */
+  dialog.entry { margin: 0 0 0 auto; height: 100%; max-height: none; width: min(560px, 100%); padding: 0; border: 0; background: var(--ivory); color: var(--cocoa); }
+  dialog.entry::backdrop { background: rgba(8,7,10,.55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+  dialog.entry[open] { animation: drawer .5s var(--ease); }
+  @keyframes drawer { from { transform: translateX(100%); } }
+  .entry-top { position: relative; padding: calc(28px + env(safe-area-inset-top, 0px)) 28px 30px; background: var(--c); color: #fff; overflow: hidden; }
+  .entry-top.dark-text { color: var(--cocoa); }
+  .entry-top svg.big { position: absolute; right: -10px; bottom: -30px; width: 160px; height: 210px; opacity: .28; }
+  .entry-top h3 { margin: 40px 0 4px; font-size: clamp(2rem, 6vw, 2.8rem); line-height: 1; letter-spacing: -.03em; }
+  .entry-top p { margin: 0; font-weight: 600; opacity: .9; }
+  .close { position: absolute; top: calc(18px + env(safe-area-inset-top, 0px)); right: 18px; width: 44px; height: 44px; border-radius: 50%; border: 0; cursor: pointer; background: rgba(0,0,0,.2); color: inherit; font-size: 1.4rem; line-height: 1; }
+  .entry-body { padding: 26px 28px 40px; }
+  .entry-body h4 { margin: 24px 0 6px; font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: #a06a00; }
+  .entry-body p, .entry-body li { color: #4d4130; }
+  .entry-body ul { padding-left: 1.2em; margin: 0; }
+  .entry-body li { margin: 6px 0; }
+  .entry-body .src { display: inline-flex; margin-top: 22px; padding: 12px 16px; border-radius: 14px; background: #fff; border: 1.5px solid #e2d6bc; font-weight: 800; text-decoration: none; }
+
+  /* ---- 5. Lumen Companion: the app, on a phone that tilts ---- */
+  .companion { background: radial-gradient(70% 60% at 80% 50%, rgba(255,140,20,.14), transparent 70%), var(--ink); }
+  .comp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(30px, 6vw, 80px); align-items: center; }
+  @media (max-width: 860px) { .comp-grid { grid-template-columns: 1fr; } }
+  .feat { list-style: none; margin: 30px 0 0; padding: 0; display: grid; gap: 10px; }
+  .feat button {
+    width: 100%; display: grid; grid-template-columns: 46px 1fr; gap: 14px; align-items: center; padding: 16px; border-radius: 20px; text-align: left; cursor: pointer;
+    background: transparent; border: 1px solid var(--hair); transition: background .3s, border-color .3s;
+  }
+  .feat button[aria-selected="true"] { background: var(--ink3); border-color: rgba(255,201,60,.4); }
+  .feat .ic { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: rgba(255,201,60,.1); color: var(--gold); }
+  .feat .ic svg { width: 22px; height: 22px; }
+  .feat b { display: block; font-size: 1.1rem; }
+  .feat span { color: var(--muted); font-size: .92rem; }
+  .feat .bar { grid-column: 1 / -1; height: 2px; border-radius: 2px; background: var(--hair); overflow: hidden; }
+  .feat .bar i { display: block; height: 100%; width: 0; background: var(--gold); }
+  .feat button[aria-selected="true"] .bar i { animation: fill var(--dur, 5s) linear forwards; }
+  .comp-grid.paused .bar i { animation-play-state: paused !important; }
+  @keyframes fill { to { width: 100%; } }
+
+  .phone-stage { perspective: 1200px; display: grid; place-items: center; padding: 20px 0; }
+  .phone {
+    position: relative; width: min(300px, 78vw); aspect-ratio: 9 / 19; border-radius: 46px; padding: 12px;
+    background: linear-gradient(145deg, #2c2833, #0d0c10); box-shadow: 0 0 0 1.5px #3a3542, 0 50px 100px -30px rgba(0,0,0,.9), 0 0 80px -20px rgba(255,170,30,.35);
+    transform: rotateY(var(--ry, -14deg)) rotateX(var(--rx, 6deg)); transform-style: preserve-3d; transition: transform .6s var(--ease);
+  }
+  .screen { position: relative; height: 100%; border-radius: 36px; overflow: hidden; background: #0f0d12; }
+  .notch { position: absolute; z-index: 3; top: 10px; left: 50%; width: 90px; height: 24px; transform: translateX(-50%); border-radius: 20px; background: #000; }
+  .view { position: absolute; inset: 0; padding: 50px 16px 16px; display: flex; flex-direction: column; gap: 10px;
+    clip-path: circle(0% at 50% 100%); transition: clip-path .8s var(--ease); font-size: .82rem; }
+  .view.on { clip-path: circle(150% at 50% 100%); z-index: 2; }
+  .view h5 { margin: 0 0 4px; font-size: 1.3rem; letter-spacing: -.02em; }
+  .view .hint { margin: -8px 0 4px; color: var(--muted); font-size: .76rem; }
+  .card { padding: 12px; border-radius: 16px; background: #1b1820; border: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 10px; }
+  .card .dot { flex: none; width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: rgba(255,201,60,.12); color: var(--gold); font-weight: 800; }
+  .card div { flex: 1; min-width: 0; }
+  .card b { display: block; }
+  .card small { color: var(--muted); }
+  .card .tick { flex: none; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #4a4452; }
+  .card.done .tick { border-color: var(--gold); background: var(--gold) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2308070a' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12l4 4 8-8'/%3E%3C/svg%3E") center/14px no-repeat; }
+  .card.done b { text-decoration: line-through; opacity: .55; }
+  .ring { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 16px; background: linear-gradient(135deg, rgba(255,201,60,.16), rgba(255,122,26,.08)); }
+  .ring svg { width: 54px; height: 54px; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 6; }
+  .ring b { font-size: 1.05rem; }
+  .appt { padding: 14px; border-radius: 16px; background: var(--gold); color: var(--ink); }
+  .appt b { display: block; font-size: 1.05rem; }
+  .journey { position: relative; display: grid; gap: 12px; padding-left: 22px; }
+  .journey::before { content: ''; position: absolute; left: 7px; top: 6px; bottom: 6px; width: 2px; background: linear-gradient(var(--gold), rgba(255,201,60,.1)); }
+  .journey div { position: relative; }
+  .journey div::before { content: ''; position: absolute; left: -20px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--ink); border: 2px solid var(--gold); box-shadow: 0 0 10px rgba(255,201,60,.6); }
+  .journey div:first-child::before { background: var(--gold); }
+  .journey b { display: block; }
+  .journey small { color: var(--muted); }
+  .mood { display: flex; justify-content: space-between; padding: 10px 12px; border-radius: 16px; background: #1b1820; font-size: 1.2rem; }
+  .comp-note { margin: 22px 0 0; color: var(--muted); font-size: .9rem; }
+
+  /* ---- 6. Stories: a strip you can swipe ---- */
+  .stories { background: var(--ink2); overflow: hidden; }
+  .strip { display: grid; grid-auto-flow: column; grid-auto-columns: min(360px, 82vw); gap: 16px; margin-top: 36px; padding: 6px 16px 20px;
+    overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .strip::-webkit-scrollbar { display: none; }
+  .story { scroll-snap-align: center; position: relative; min-height: 300px; padding: 26px; border-radius: 28px; display: flex; flex-direction: column; gap: 12px;
+    background: var(--ink3); border: 1px solid var(--hair); transform: rotate(var(--r, 0deg)); transition: transform .5s var(--ease); }
+  .story:hover { transform: rotate(0) translateY(-6px); }
+  .story:nth-child(3n+1) { --r: -1.5deg; }
+  .story:nth-child(3n+2) { --r: 1.2deg; background: linear-gradient(160deg, #2b2210, var(--ink3)); }
+  .story:nth-child(3n) { --r: -.6deg; }
+  .story .ph { align-self: flex-start; }
+  .story q { font-family: var(--serif); font-size: 1.75rem; line-height: 1.12; quotes: '“' '”'; }
+  .story small { margin-top: auto; color: var(--muted); }
+  .story.share { background: var(--gold); color: var(--ink); border: 0; }
+  .story.share .ph, .story.share small { color: var(--ink); }
+
+  /* ---- 7. Lanterns ---- */
+  .lanterns { min-height: 90svh; display: grid; place-items: center; text-align: center; overflow: hidden; background: linear-gradient(#08070a, #120c06 70%, #1d1206); }
+  .lanterns .wrap { position: relative; z-index: 2; }
+  .lanterns .lede { margin: 0 auto 26px; }
+  .launch { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .launch input { min-height: 50px; width: min(300px, 100%); padding: 0 16px; border-radius: 14px; border: 1px solid var(--hair); background: rgba(255,255,255,.05); font: inherit; color: var(--text); }
+  .launch input:focus { outline: none; border-color: rgba(255,201,60,.6); }
+  .sky { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+  .lantern { position: absolute; bottom: -120px; left: var(--x); display: flex; flex-direction: column; align-items: center; gap: 8px; animation: float var(--t, 12s) cubic-bezier(.3,.1,.5,1) forwards; }
+  .lantern .body { width: 44px; height: 56px; border-radius: 14px 14px 20px 20px; background: radial-gradient(circle at 50% 70%, #fff3c4, #ffb21a 45%, #e0560c);
+    box-shadow: 0 0 30px 8px rgba(255,150,30,.55), 0 0 90px 20px rgba(255,120,20,.25); animation: flicker 1.8s ease-in-out infinite alternate; }
+  .lantern .name { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--serif); font-style: italic; font-size: 1.05rem; color: #ffe2a0; text-shadow: 0 0 10px rgba(255,160,30,.8); }
+  @keyframes float {
+    0% { transform: translate(0, 0) scale(1); opacity: 0; }
+    8% { opacity: 1; }
+    50% { transform: translate(calc(var(--sway) * 1px), -55svh) scale(.8); }
+    100% { transform: translate(calc(var(--sway) * -1px), -125svh) scale(.45); opacity: 0; }
+  }
+  @keyframes flicker { to { filter: brightness(1.15); } }
+  .count { min-height: 1.5em; margin: 18px 0 0; color: var(--gold); font-weight: 600; }
+
+  /* ---- 8. Team, events, join ---- */
+  .people { background: var(--ink); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 36px; }
+  @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
+  .panel { padding: 26px; border-radius: 28px; background: var(--ink2); border: 1px solid var(--hair); }
+  .panel h3 { margin: 0 0 16px; font-size: 1.5rem; letter-spacing: -.02em; }
+  .who { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid var(--hair); }
+  .who:first-of-type { border-top: 0; }
+  .who .av { flex: none; width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: var(--ink); background: linear-gradient(135deg, var(--gold), var(--flame)); }
+  .who b { display: block; }
+  .who span { color: var(--muted); font-size: .9rem; }
+  .ev { display: grid; grid-template-columns: 64px 1fr; gap: 14px; align-items: center; padding: 12px 0; border-top: 1px solid var(--hair); }
+  .ev:first-of-type { border-top: 0; }
+  .ev .d { text-align: center; line-height: 1; padding: 10px 0; border-radius: 14px; border: 1px solid rgba(255,201,60,.4); color: var(--gold); font-weight: 800; }
+  .ev .d small { display: block; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 4px; }
+  .ev b { display: block; }
+  .ev span { color: var(--muted); font-size: .9rem; }
+
+  .join { text-align: center; padding-bottom: clamp(90px, 14vw, 160px); background: radial-gradient(50% 70% at 50% 100%, rgba(255,150,20,.25), transparent 70%), var(--ink); }
+  .join h2 { font-size: clamp(2.6rem, 8vw, 6rem); }
+  .join .lede { margin: 0 auto 30px; }
+  .tags { margin: 26px 0 0; font-family: var(--serif); font-style: italic; font-size: 1.2rem; color: var(--muted); }
+
+  footer { padding: 34px 16px calc(34px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--hair); background: #050406; }
+  footer .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; color: var(--muted); font-size: .9rem; }
+  footer a { text-decoration: none; font-weight: 600; color: var(--text); }
+  footer .ig { display: inline-flex; align-items: center; gap: 8px; }
+  footer .ig svg { width: 20px; height: 20px; }
+  footer .powered { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 8px; border-radius: 999px; border: 1px solid var(--hair); }
+  footer .powered:hover { background: rgba(255,255,255,.06); }
+  footer .powered img { width: 24px; height: 24px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .rise, .wipe { opacity: 1; transform: none; filter: none; clip-path: none; }
+    .ignite .ch { color: inherit; }
+    .ignite .glow .ch { color: var(--gold); }
+    .hero { --lx: 50%; --ly: 42%; }
+    .view { clip-path: none; opacity: 0; }
+    .view.on { opacity: 1; }
+    .lantern { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav" aria-label="Project Lumen">
+  <a class="brand" href="#top"><img src="public/partners/lumen/logo.svg" alt="" width="30" height="30">Lumen</a>
+  <a class="l" href="#about">About</a>
+  <a class="l" href="#library">Library</a>
+  <a class="l" href="#companion">App</a>
+  <a class="l" href="#stories">Stories</a>
+  <a class="go" href="#join">Get involved</a>
+</nav>
+
+<main id="top">
+  <!-- 1. A dark room. The light (your pointer) finds what's written in it. -->
+  <section class="hero" id="hero" aria-labelledby="hero-h">
+    <div class="beam" aria-hidden="true"></div>
+    <div class="field dim" aria-hidden="true"><span>Every voice heard</span><span>Every story told</span><span>Every light shines</span><span>Awareness into action</span><span>You are not alone</span></div>
+    <div class="field lit" aria-hidden="true"><span>Every voice heard</span><span>Every story told</span><span>Every light shines</span><span>Awareness into action</span><span>You are not alone</span></div>
+    <div class="hero-copy">
+      <span class="chip"><img src="public/partners/lumen/logo.svg" alt="">A student-led initiative · @project.lumen</span>
+      <h1 id="hero-h">Bring cancer into the <em>light.</em></h1>
+      <p class="sub">Learn about every kind of cancer, find real ways to support the people fighting it, and keep track of your own journey.</p>
+      <div class="row">
+        <a class="btn" href="#library">Explore the library <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <a class="btn ghost" href="#companion">See the companion app</a>
+      </div>
+    </div>
+    <p class="tip" aria-hidden="true"><b>Move your light</b> around the dark</p>
+  </section>
+
+  <div class="marquee" aria-hidden="true"><div class="track" id="marquee"></div></div>
+
+  <!-- 2. About -->
+  <section class="sec" id="about" aria-labelledby="about-h">
+    <div class="wrap">
+      <span class="kicker rise">About</span>
+      <h2 id="about-h" class="rise" style="--d:.08s">What is Project <em>Lumen?</em></h2>
+      <div class="bento" data-glow>
+        <article class="tile t-what wipe">
+          <span class="kicker">In their words</span>
+          <p>Project Lumen is a student led initiative aiming to spread cancer awareness, and bring light to the untold stories of the many people battling cancer today.</p>
+        </article>
+        <div class="tile t-logo wipe" style="--d:.12s"><img src="public/partners/lumen/logo.svg" alt="Project Lumen’s gold ribbon"></div>
+        <div class="tile t-tag wipe" style="--d:.2s"><b>Student&#8209;led.</b><span>From awareness to action.</span></div>
+        <article class="tile t-mission">
+          <span class="kicker">Our mission</span>
+          <p class="q ignite" data-ignite>Project Lumen was created with one mission: bring [awareness, education] and spark meaningful [conversations] about cancer, bringing the [light] needed to make a [difference.]</p>
+          <small>— Project Lumen</small>
+        </article>
+        <article class="tile three rise"><span class="n">01</span><h3>Learn</h3><p>A plain-language library of every kind of cancer: what it is, its ribbon, and where to read more.</p><a href="#library">Open the library →</a></article>
+        <article class="tile three rise" style="--d:.1s"><span class="n">02</span><h3>Support</h3><p>Real ways to help someone who is fighting, for each cancer: what to say, what to do, where to give.</p><a href="#library">Find a way to help →</a></article>
+        <article class="tile three rise" style="--d:.2s"><span class="n">03</span><h3>Track</h3><p>Lumen Companion: medicines, appointments and your journey, in one gentle place.</p><a href="#companion">Preview the app →</a></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. The Cancer Library -->
+  <section class="sec light library" id="library" aria-labelledby="lib-h">
+    <div class="wrap">
+      <div class="lib-head">
+        <div>
+          <span class="kicker rise">The Lumen Library</span>
+          <h2 id="lib-h" class="rise" style="--d:.08s">Every cancer, in <em>plain words.</em></h2>
+          <p class="lede rise" style="--d:.16s">Pick a cancer to learn what it is and how to support the people living with it. <span class="ph">Draft: to be reviewed by Project Lumen</span></p>
+        </div>
+        <label class="search rise" style="--d:.2s">
+          <span class="sr">Search the library</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="libSearch" type="search" placeholder="Search, e.g. leukemia or pink" autocomplete="off">
+        </label>
+      </div>
+      <div class="filters" role="group" aria-label="Filter the library" id="libFilters">
+        <button type="button" data-f="all" aria-pressed="true">All</button>
+        <button type="button" data-f="common" aria-pressed="false">Most common</button>
+        <button type="button" data-f="blood" aria-pressed="false">Blood cancers</button>
+        <button type="button" data-f="young" aria-pressed="false">Children &amp; teens</button>
+        <button type="button" data-f="women" aria-pressed="false">Women’s cancers</button>
+      </div>
+      <ul class="lib-grid" id="libGrid"></ul>
+      <p class="lib-empty" id="libEmpty" hidden>Nothing matches that yet. Try a shorter word.</p>
+      <p class="lib-note">Each entry links to the U.S. National Cancer Institute for full, up-to-date medical information. This library is for learning, not medical advice.</p>
+    </div>
+  </section>
+
+  <dialog class="entry" id="entry" aria-labelledby="entryName">
+    <div class="entry-top" id="entryTop">
+      <button class="close" type="button" id="entryClose" aria-label="Close">×</button>
+      <svg class="big" viewBox="0 0 24 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 30 L15 14 C18 8 16 2 12 2 C8 2 6 8 9 14 L17 30"/></svg>
+      <h3 id="entryName"></h3>
+      <p id="entryRibbon"></p>
+    </div>
+    <div class="entry-body">
+      <span class="ph">Draft</span>
+      <h4>What it is</h4>
+      <p id="entryWhat"></p>
+      <h4>How you can support</h4>
+      <ul>
+        <li>Ask what would help this week, then do that one thing: a meal, a ride, a walk.</li>
+        <li>Keep inviting them. Treatment can be lonely, and a message that needs no reply means a lot.</li>
+        <li>Learn the basics here so they don’t have to explain everything.</li>
+        <li id="entryMonth"></li>
+      </ul>
+      <h4>Stories <span class="ph">Coming soon</span></h4>
+      <p>Stories from people who have lived with it, shared through Project Lumen.</p>
+      <a class="src" id="entryLink" href="https://www.cancer.gov/types" target="_blank" rel="noopener">Read more at the National Cancer Institute ↗</a>
+    </div>
+  </dialog>
+
+  <!-- 4. Lumen Companion: the tracker their message asked for -->
+  <section class="sec companion" id="companion" aria-labelledby="comp-h">
+    <div class="wrap comp-grid" id="compGrid">
+      <div>
+        <span class="kicker rise">Coming with Flux</span>
+        <h2 id="comp-h" class="rise" style="--d:.08s">Lumen <em>Companion</em></h2>
+        <p class="lede rise" style="--d:.16s">A gentle app for people going through cancer treatment: medicines, appointments and the journey, all in one place. Built and hosted by Flux, like Synara.</p>
+        <ul class="feat" role="tablist" aria-label="What Lumen Companion does">
+          <li><button type="button" role="tab" aria-selected="true" aria-controls="v0" data-v="0"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg></span><span><b>Medications</b><span>Reminders for every dose, and a tick when it’s taken.</span></span><span class="bar"><i></i></span></button></li>
+          <li><button type="button" role="tab" aria-selected="false" aria-controls="v1" data-v="1"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><span><b>Appointments</b><span>Scans, treatments and check-ups, with questions to ask.</span></span><span class="bar"><i></i></span></button></li>
+          <li><button type="button" role="tab" aria-selected="false" aria-controls="v2" data-v="2"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3"/></svg></span><span><b>My journey</b><span>Milestones, how you’re feeling, and notes to look back on.</span></span><span class="bar"><i></i></span></button></li>
+        </ul>
+        <p class="comp-note"><span class="ph">Preview</span> A picture of the plan, not the app yet. Nothing here is saved.</p>
+      </div>
+      <div class="phone-stage" id="phoneStage">
+        <div class="phone" id="phone" aria-hidden="true">
+          <div class="screen">
+            <span class="notch"></span>
+            <div class="view on" id="v0" role="tabpanel">
+              <h5>Today</h5><p class="hint">Thursday · 3 of 4 taken</p>
+              <div class="ring"><svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="24" stroke="rgba(255,255,255,.1)"/><circle cx="30" cy="30" r="24" stroke="#ffc93c" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="37.7"/></svg><div><b>Nearly there</b><br><small>One dose left tonight</small></div></div>
+              <div class="card done"><span class="dot">8</span><div><b>Anti-nausea</b><small>8:00 am · with breakfast</small></div><span class="tick"></span></div>
+              <div class="card done"><span class="dot">12</span><div><b>Vitamin D</b><small>12:30 pm</small></div><span class="tick"></span></div>
+              <div class="card done"><span class="dot">3</span><div><b>Pain relief</b><small>3:00 pm · as needed</small></div><span class="tick"></span></div>
+              <div class="card"><span class="dot">9</span><div><b>Evening dose</b><small>9:00 pm</small></div><span class="tick"></span></div>
+            </div>
+            <div class="view" id="v1" role="tabpanel">
+              <h5>Appointments</h5><p class="hint">Next 2 weeks</p>
+              <div class="appt"><small>Tomorrow · 10:30 am</small><b>Treatment session</b><small>Bring: water, a book, a warm layer</small></div>
+              <div class="card"><span class="dot">M</span><div><b>Blood test</b><small>Mon · 9:00 am</small></div></div>
+              <div class="card"><span class="dot">W</span><div><b>Check-up with doctor</b><small>Wed · 2:15 pm</small></div></div>
+              <div class="card"><span class="dot">?</span><div><b>Questions to ask</b><small>3 saved for Wednesday</small></div></div>
+            </div>
+            <div class="view" id="v2" role="tabpanel">
+              <h5>My journey</h5><p class="hint">How are you feeling today?</p>
+              <div class="mood"><span>😔</span><span>😐</span><span>🙂</span><span>😊</span><span>🌟</span></div>
+              <div class="journey">
+                <div><b>Halfway through treatment</b><small>Today · you lit a milestone</small></div>
+                <div><b>First good night’s sleep in a while</b><small>Last week</small></div>
+                <div><b>Started treatment</b><small>October</small></div>
+                <div><b>Diagnosis day</b><small>September</small></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Stories -->
+  <section class="sec stories" id="stories" aria-labelledby="stories-h">
+    <div class="wrap">
+      <span class="kicker rise">Untold stories</span>
+      <h2 id="stories-h" class="rise" style="--d:.08s">Every story is a <em>light.</em></h2>
+      <p class="lede rise" style="--d:.16s">Patients, survivors and the families beside them, in their own words. Swipe through.</p>
+    </div>
+    <div class="strip" tabindex="0" aria-label="Stories">
+      <article class="story"><span class="ph">Placeholder</span><q>A story from someone in our community will go here.</q><small>Name · how cancer touched their life</small></article>
+      <article class="story"><span class="ph">Placeholder</span><q>Short, honest, in their own words. A few lines is enough.</q><small>Name · survivor</small></article>
+      <article class="story"><span class="ph">Placeholder</span><q>What helped most, and what they wish people knew.</q><small>Name · caregiver</small></article>
+      <article class="story share"><span class="ph">Form soon</span><q>Have a story you want told?</q><small>Project Lumen would love to hear it.</small></article>
+    </div>
+  </section>
+
+  <!-- 6. Lanterns -->
+  <section class="lanterns" aria-labelledby="lan-h">
+    <div class="sky" id="sky" aria-hidden="true"></div>
+    <div class="wrap">
+      <span class="kicker rise">Every light shines</span>
+      <h2 id="lan-h" class="rise" style="--d:.08s">Release a <em>lantern.</em></h2>
+      <p class="lede rise" style="--d:.16s">For someone you love, someone you lost, or someone still fighting.</p>
+      <form class="launch rise" id="launch" style="--d:.24s">
+        <label class="sr" for="lanName">A name, if you like</label>
+        <input id="lanName" maxlength="40" placeholder="A name, if you like" autocomplete="off">
+        <button class="btn" type="submit">Release</button>
+      </form>
+      <p class="count" id="lanCount" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <!-- 7. Team and events -->
+  <section class="sec people" aria-labelledby="people-h">
+    <div class="wrap">
+      <span class="kicker rise">Behind the light</span>
+      <h2 id="people-h" class="rise" style="--d:.08s">Team &amp; <em>events</em></h2>
+      <div class="two">
+        <div class="panel rise">
+          <h3>Our team <span class="ph">Placeholder</span></h3>
+          <div class="who"><span class="av">F</span><div><b>Founder name</b><span>Founder · why they started Project Lumen</span></div></div>
+          <div class="who"><span class="av">T</span><div><b>Team member</b><span>Role</span></div></div>
+          <div class="who"><span class="av">+</span><div><b>You?</b><span>Project Lumen is looking for students to help.</span></div></div>
+        </div>
+        <div class="panel rise" style="--d:.1s" id="events">
+          <h3>Events</h3>
+          <div class="ev"><span class="d"><small>Nov</small>7</span><div><b>National Cancer Awareness Day</b><span>Project Lumen launched on Instagram.</span></div></div>
+          <div class="ev"><span class="d"><small>TBA</small>—</span><div><b>Next event <span class="ph">Placeholder</span></b><span>Date, place and what to bring.</span></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. Join -->
+  <section class="sec join" id="join" aria-labelledby="join-h">
+    <div class="wrap">
+      <span class="kicker rise">Join the journey</span>
+      <h2 id="join-h" class="rise" style="--d:.08s">Turn awareness into <em>action.</em></h2>
+      <p class="lede rise" style="--d:.16s">Join us on the journey to make sure every voice is heard, every story is told, and every light shines to make a difference.</p>
+      <div class="row rise" style="--d:.24s; display:flex; flex-wrap:wrap; gap:10px; justify-content:center">
+        <a class="btn" href="https://www.instagram.com/project.lumen/" rel="noopener">Follow @project.lumen</a>
+        <a class="btn ghost" href="#stories">Share a story</a>
+      </div>
+      <p class="tags">#ProjectLumen · #cancerawareness · #spreadawareness</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="ig" href="https://www.instagram.com/project.lumen/" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg>@project.lumen</a>
+    <span>Project Lumen · a student-led initiative</span>
+    <a class="powered" href="https://fluxplanner.github.io/Flux/"><img src="icons/icon-192.png" alt="" width="24" height="24">Powered by Flux</a>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+    /* The library. Short drafts for Project Lumen to review; each links to the
+       NCI page (cancer.gov/types/<slug>). tags: common, blood, young, women.
+       month: the usual awareness month, where there is a well-known one. */
+    var CANCERS = [
+      { n: 'All cancers', c: '#b48cff', r: 'Lavender', slug: '', t: [], m: 'World Cancer Day is February 4.',
+        w: 'Cancer is when cells in the body grow out of control and can spread. There are more than 100 kinds, named after where they start. Lavender stands for all of them.' },
+      { n: 'Breast cancer', c: '#ff7eb6', r: 'Pink', slug: 'breast', t: ['common', 'women'], m: 'Breast Cancer Awareness Month is October.',
+        w: 'Cancer that starts in the cells of the breast. It is one of the most common cancers, and it can affect men too. Regular screening helps find it early.' },
+      { n: 'Lung cancer', c: '#e9e4d6', r: 'White', slug: 'lung', t: ['common'], m: 'Lung Cancer Awareness Month is November.', dark: true,
+        w: 'Cancer that starts in the lungs. Smoking is the biggest risk, but people who have never smoked can get it too.' },
+      { n: 'Colorectal cancer', c: '#2d4fbf', r: 'Dark blue', slug: 'colorectal', t: ['common'], m: 'Colorectal Cancer Awareness Month is March.',
+        w: 'Cancer of the colon or rectum, parts of the large intestine. Screening can find growths early, often before they turn into cancer.' },
+      { n: 'Prostate cancer', c: '#69b7ff', r: 'Light blue', slug: 'prostate', t: ['common'], m: 'Prostate Cancer Awareness Month is September.',
+        w: 'Cancer of the prostate, a small gland in men. Many prostate cancers grow slowly; doctors help decide when to treat and when to watch.' },
+      { n: 'Skin cancer', c: '#2b2b2b', r: 'Black (melanoma)', slug: 'skin', t: ['common'], m: 'Skin Cancer Awareness Month is May.',
+        w: 'Cancer of the skin, often linked to sun and tanning-bed exposure. Melanoma is the most serious kind. Sunscreen and shade lower the risk.' },
+      { n: 'Leukemia', c: '#ff8a2b', r: 'Orange', slug: 'leukemia', t: ['blood', 'young'], m: 'Blood Cancer Awareness Month is September.',
+        w: 'Cancer of the blood-forming tissue, like bone marrow. It is the most common cancer in children and teens, and adults get it too.' },
+      { n: 'Lymphoma', c: '#7ed321', r: 'Lime green', slug: 'lymphoma', t: ['blood', 'young'], m: 'Lymphoma Awareness Day is September 15.', dark: true,
+        w: 'Cancer of the lymphatic system, part of the body’s defence against infection. The two main kinds are Hodgkin and non-Hodgkin lymphoma.' },
+      { n: 'Childhood cancers', c: '#ffc93c', r: 'Gold', slug: 'childhood-cancers', t: ['young'], m: 'Childhood Cancer Awareness Month is September.', dark: true,
+        w: 'Cancers in children and teens, such as leukemia, brain tumors and bone cancers. They are rarer than adult cancers and often treated in special children’s hospitals.' },
+      { n: 'Brain tumors', c: '#9aa0a6', r: 'Grey', slug: 'brain', t: ['young'], m: 'Brain Tumor Awareness Month is May.',
+        w: 'Tumors that start in the brain or spinal cord. They are among the most common cancers in children.' },
+      { n: 'Ovarian cancer', c: '#1fb5a8', r: 'Teal', slug: 'ovarian', t: ['women'], m: 'Ovarian Cancer Awareness Month is September.',
+        w: 'Cancer that starts in the ovaries or nearby tissue. Its early signs are easy to miss, so knowing them matters.' },
+      { n: 'Cervical cancer', c: '#3cc7b5', r: 'Teal & white', slug: 'cervical', t: ['women'], m: 'Cervical Health Awareness Month is January.',
+        w: 'Cancer of the cervix, most often caused by HPV. The HPV vaccine and regular screening prevent many cases.' },
+      { n: 'Pancreatic cancer', c: '#7b3fd1', r: 'Purple', slug: 'pancreatic', t: [], m: 'Pancreatic Cancer Awareness Month is November.',
+        w: 'Cancer of the pancreas, which helps digest food and control blood sugar. It is often found late, which makes awareness important.' },
+      { n: 'Kidney cancer', c: '#f08a24', r: 'Orange', slug: 'kidney', t: [], m: 'Kidney Cancer Awareness Month is March.',
+        w: 'Cancer that starts in the kidneys. In children, the most common kind is called Wilms tumor.' },
+      { n: 'Liver cancer', c: '#1e9e5a', r: 'Emerald green', slug: 'liver', t: [], m: 'Liver Cancer Awareness Month is October.',
+        w: 'Cancer that starts in the liver. Long-term hepatitis B or C infection is a major risk, and there is a vaccine for hepatitis B.' },
+      { n: 'Thyroid cancer', c: '#3fb9c9', r: 'Teal, pink & blue', slug: 'thyroid', t: [], m: 'Thyroid Cancer Awareness Month is September.',
+        w: 'Cancer of the thyroid, a gland in the neck that controls how the body uses energy. Most thyroid cancers can be treated well.' },
+    ];
+    var ribbon = '<svg viewBox="0 0 24 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 30 L15 14 C18 8 16 2 12 2 C8 2 6 8 9 14 L17 30"/></svg>';
+
+    // Marquee: the list twice, so the loop is seamless.
+    var mq = CANCERS.map(function (x) { return '<span style="--c:' + x.c + '"><i></i>' + esc(x.n) + '</span>'; }).join('');
+    document.getElementById('marquee').innerHTML = mq + mq;
+
+    // Library grid, search and filters.
+    var grid = document.getElementById('libGrid');
+    var search = document.getElementById('libSearch');
+    var empty = document.getElementById('libEmpty');
+    var filter = 'all';
+    function drawLibrary() {
+      var q = search.value.trim().toLowerCase();
+      var hits = CANCERS.filter(function (x) {
+        var inFilter = filter === 'all' || x.t.indexOf(filter) >= 0;
+        return inFilter && (!q || (x.n + ' ' + x.r).toLowerCase().indexOf(q) >= 0);
+      });
+      grid.innerHTML = hits.map(function (x, i) {
+        return '<li style="--i:' + i + '"><button class="cancer" type="button" data-n="' + esc(x.n) + '" style="--c:' + x.c + '">' + ribbon +
+          '<b>' + esc(x.n) + '</b><span>' + esc(x.r) + ' ribbon</span><span class="arrow" aria-hidden="true">→</span></button></li>';
+      }).join('');
+      empty.hidden = hits.length > 0;
+    }
+    search.addEventListener('input', drawLibrary);
+    document.getElementById('libFilters').addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      filter = b.dataset.f;
+      this.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      drawLibrary();
+    });
+    drawLibrary();
+
+    // One entry, in the side panel.
+    var dlg = document.getElementById('entry');
+    grid.addEventListener('click', function (e) {
+      var b = e.target.closest('.cancer');
+      if (!b) return;
+      var x = CANCERS.filter(function (c) { return c.n === b.dataset.n; })[0];
+      var top = document.getElementById('entryTop');
+      top.style.setProperty('--c', x.c);
+      top.classList.toggle('dark-text', !!x.dark);
+      document.getElementById('entryName').textContent = x.n;
+      document.getElementById('entryRibbon').textContent = x.r + ' ribbon';
+      document.getElementById('entryWhat').textContent = x.w;
+      document.getElementById('entryMonth').textContent = 'Wear ' + x.r.toLowerCase() + ' and share what you learned. ' + x.m;
+      var link = document.getElementById('entryLink');
+      link.href = 'https://www.cancer.gov/types' + (x.slug ? '/' + x.slug : '');
+      if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+    });
+    document.getElementById('entryClose').addEventListener('click', function () { dlg.close(); });
+    dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); }); // the backdrop
+
+    // Mission: letters ignite; [words] glow gold.
+    document.querySelectorAll('[data-ignite]').forEach(function (p) {
+      var i = 0;
+      var source = p.textContent;
+      p.setAttribute('aria-label', source.replace(/[\[\]]/g, ''));
+      p.textContent = '';
+      // Built as nodes with textContent, never as an HTML string.
+      source.split(/(\[[^\]]+\])/).forEach(function (part) {
+        var glow = part.charAt(0) === '[';
+        var host = p;
+        if (glow) { host = document.createElement('span'); host.className = 'glow'; p.appendChild(host); }
+        (glow ? part.slice(1, -1) : part).split(/(\s+)/).forEach(function (w) {
+          if (!w) return;
+          if (/^\s+$/.test(w)) { host.appendChild(document.createTextNode(w)); return; }
+          var word = document.createElement('span');
+          word.style.cssText = 'display:inline-block;white-space:nowrap';
+          word.setAttribute('aria-hidden', 'true');
+          w.split('').forEach(function (c) {
+            var ch = document.createElement('span');
+            ch.className = 'ch';
+            ch.style.setProperty('--i', String(i++));
+            ch.textContent = c;
+            word.appendChild(ch);
+          });
+          host.appendChild(word);
+        });
+      });
+    });
+
+    // Entrance animations, once each.
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { threshold: .18, rootMargin: '0px 0px -8% 0px' });
+    document.querySelectorAll('.rise, .wipe, .ignite').forEach(function (el) { io.observe(el); });
+
+    // The flashlight follows the pointer (a mouse or a dragging finger).
+    var hero = document.getElementById('hero');
+    if (!reduce) {
+      hero.addEventListener('pointermove', function (e) {
+        var r = hero.getBoundingClientRect();
+        hero.classList.add('manual');
+        hero.style.setProperty('--lx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
+        hero.style.setProperty('--ly', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
+      });
+    }
+
+    // Tiles light up under the pointer.
+    document.querySelectorAll('[data-glow] .tile').forEach(function (t) {
+      t.addEventListener('pointermove', function (e) {
+        var r = t.getBoundingClientRect();
+        t.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+        t.style.setProperty('--my', (e.clientY - r.top) + 'px');
+      });
+    });
+
+    // Companion: three screens that take turns; a tap picks one.
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('.feat [role=tab]'));
+    var views = [0, 1, 2].map(function (i) { return document.getElementById('v' + i); });
+    var compGrid = document.getElementById('compGrid');
+    var current = 0, timer = 0, DUR = 5200;
+    function show(i) {
+      current = i;
+      tabs.forEach(function (t, k) { t.setAttribute('aria-selected', String(k === i)); });
+      views.forEach(function (v, k) { v.classList.toggle('on', k === i); });
+      // Restart the progress bar on the chosen tab.
+      var bar = tabs[i].querySelector('.bar i'); bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = '';
+      clearTimeout(timer);
+      if (!reduce) timer = setTimeout(function () { show((current + 1) % 3); }, DUR);
+    }
+    document.querySelector('.feat').style.setProperty('--dur', DUR + 'ms');
+    tabs.forEach(function (t, k) { t.addEventListener('click', function () { show(k); }); });
+    show(0);
+
+    // The phone tilts toward the pointer.
+    var stage = document.getElementById('phoneStage');
+    var phone = document.getElementById('phone');
+    if (!reduce) {
+      stage.addEventListener('pointermove', function (e) {
+        var r = stage.getBoundingClientRect();
+        var x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
+        phone.style.setProperty('--ry', (x * 26).toFixed(1) + 'deg');
+        phone.style.setProperty('--rx', (-y * 18).toFixed(1) + 'deg');
+      });
+      stage.addEventListener('pointerleave', function () { phone.style.removeProperty('--ry'); phone.style.removeProperty('--rx'); });
+    }
+
+    // Lanterns: rise and fade. Only on this screen; the name is never sent or saved.
+    var sky = document.getElementById('sky');
+    var input = document.getElementById('lanName');
+    var count = document.getElementById('lanCount');
+    var released = 0;
+    document.getElementById('launch').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var name = input.value.trim();
+      released++;
+      count.textContent = (name ? 'A lantern for ' + name + ' is rising.' : 'Your lantern is rising.') + (released > 1 ? ' ' + released + ' released.' : '');
+      input.value = '';
+      if (reduce) return;
+      var l = document.createElement('div');
+      l.className = 'lantern';
+      l.style.setProperty('--x', (12 + Math.random() * 76).toFixed(1) + '%');
+      l.style.setProperty('--sway', String(Math.round(20 + Math.random() * 50) * (Math.random() < .5 ? -1 : 1)));
+      l.style.setProperty('--t', (11 + Math.random() * 5).toFixed(1) + 's');
+      var body = document.createElement('span'); body.className = 'body';
+      l.appendChild(body);
+      if (name) { var n = document.createElement('span'); n.className = 'name'; n.textContent = name; l.appendChild(n); }
+      l.addEventListener('animationend', function (ev) { if (ev.animationName === 'float') l.remove(); });
+      sky.appendChild(l);
+      while (sky.children.length > 24) sky.firstChild.remove();
+    });
+  })();
+</script>
+</body>
+</html>
