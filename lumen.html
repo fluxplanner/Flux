@@ -15,11 +15,11 @@
 <script src="public/js/flux-app-visibility.js?v=ade4d827" data-app="lumen"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Project Lumen</title>
-<meta name="description" content="Project Lumen is a student-led initiative bringing light to cancer awareness: turning awareness into action, so every voice is heard and every story is told.">
+<meta name="description" content="Project Lumen is a student-led initiative bringing light to cancer awareness: learn about every kind of cancer, find ways to support the people fighting it, and keep track of your own journey.">
 <!-- Kept out of search engines while the owner has it hidden. Remove this
      line when Project Lumen launches. -->
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#0b0906">
+<meta name="theme-color" content="#08070a">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Project Lumen">
 <meta property="og:title" content="Project Lumen">
@@ -28,590 +28,813 @@
 
 <!--
   Project Lumen: a Flux partner site. A PROP for now, built from their first
-  Instagram post (@project.lumen, National Cancer Awareness Day 2026) before
-  they sent anything else. Everything marked .ph ("Placeholder" pill) or
-  "Coming soon" is waiting on them:
-    - Logo: public/partners/lumen/logo.svg is our own stand-in in the spirit
-      of theirs (a gold ribbon on an open hand). Swap in their real file.
-    - Founder(s), stories, events, the join form and any donate link.
-    - The ribbon colours section uses the commonly used awareness colours;
-      ask them to confirm the list they want to show.
-  Their own words, used as written: the "What is Project Lumen?" text, the
-  mission sentence and the bio line ("turn awareness into action…").
+  Instagram post (@project.lumen) and their first message to Flux, which asked
+  for two things:
+    1. A website covering all the different cancers, where people can learn
+       more and find ways to support → the Cancer Library (#library).
+    2. An app for patients to keep track of medications, appointments and
+       their journey, like Synara → previewed as "Lumen Companion" (#companion).
+       It is a mock-up only: nothing is saved yet.
+  Anything marked .ph (a dashed "Placeholder"/"Draft" pill) waits on them:
+    - Logo: public/partners/lumen/logo.svg is our own stand-in. Swap theirs in.
+    - Every library entry is a short draft with a link to the National Cancer
+      Institute page for that cancer. Project Lumen should review the wording
+      and the ribbon colours before launch.
+    - Stories, team, events, the join form.
+  Their own words, used as written: "What is Project Lumen?", the mission
+  sentence and the bio line ("turn awareness into action…").
 
-  How the motion works (same as aorta.html): each [data-scroll] section is
-  taller than the screen and its inner .stage is sticky. On scroll the script
-  sets --p (0 → 1) on the section and CSS reads it. The hero's drifting light
-  is a small canvas that stops when off screen or with reduced motion.
+  The look is deliberately unlike aorta.html: no sticky scroll scenes. The
+  hero is dark and a flashlight (the pointer, or a slow wander on touch
+  screens) reveals words hidden in it. Below that, sections ignite as they
+  enter the screen (IntersectionObserver), the library is a "lights on"
+  cream room, the companion phone tilts with the pointer, and lanterns rise.
+  With reduced motion everything is shown still.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Nunito:wght@400;600;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <style>
+  @property --lx { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
+  @property --ly { syntax: '<percentage>'; inherits: true; initial-value: 45%; }
+
   :root {
-    --night: #0b0906;
-    --night2: #15110a;
-    --night3: #1f1a10;
-    --gold: #ffc93c;     /* the neon of their ribbon */
-    --gold2: #f5b417;
-    --amber: #ff9f1c;
-    --cream: #fff3d6;
-    --text: #f6efe0;
-    --muted: #b9ad94;
-    --line: rgba(255, 201, 60, .18);
-    --glow: 0 0 6px rgba(255,201,60,.9), 0 0 22px rgba(255,170,30,.55), 0 0 60px rgba(255,150,20,.3);
-    --serif: 'Cormorant Garamond', Georgia, serif;
-    --sans: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --ink: #08070a;
+    --ink2: #121016;
+    --ink3: #1c1920;
+    --gold: #ffc93c;
+    --honey: #ffb21a;
+    --flame: #ff7a1a;
+    --ivory: #fbf6ea;
+    --paper: #f3ead4;
+    --cocoa: #2a1f12;
+    --text: #f4efe6;
+    --muted: #a49d92;
+    --hair: rgba(255,255,255,.09);
+    --display: 'Bricolage Grotesque', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --serif: 'Instrument Serif', Georgia, serif;
+    --ease: cubic-bezier(.2,.8,.2,1);
   }
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; scroll-padding-top: 72px; color-scheme: dark; }
-  html, body { margin: 0; background: var(--night); color: var(--text); }
-  body { font-family: var(--sans); line-height: 1.6; overflow-x: clip; }
+  html { scroll-behavior: smooth; scroll-padding-top: 90px; color-scheme: dark; }
+  html, body { margin: 0; background: var(--ink); color: var(--text); }
+  body { font-family: var(--display); font-size: 1.02rem; line-height: 1.55; overflow-x: clip; }
   img, svg { display: block; max-width: 100%; }
-  a { color: var(--gold); }
-  :focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
-  ::selection { background: var(--gold); color: var(--night); }
+  a { color: inherit; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 6px; }
+  ::selection { background: var(--gold); color: var(--ink); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  em, .it { font-family: var(--serif); font-style: italic; font-weight: 400; letter-spacing: 0; }
 
-  /* The pill that marks anything still waiting on Project Lumen. */
+  /* Anything still waiting on Project Lumen. */
   .ph {
-    display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
-    font-size: .68rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
-    color: var(--gold); background: rgba(255,201,60,.08); border: 1px dashed rgba(255,201,60,.45);
+    display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 6px; vertical-align: middle;
+    font-size: .66rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--gold); border: 1px dashed currentColor; opacity: .85;
   }
+  .light .ph { color: #9a6a00; }
 
-  /* ---- top bar ---- */
-  .bar {
-    position: fixed; inset: 0 0 auto; z-index: 10;
-    display: flex; align-items: center; gap: 14px;
-    padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
-    background: rgba(11,9,6,.72);
-    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    border-bottom: 1px solid var(--line);
+  /* ---- floating pill nav ---- */
+  .nav {
+    position: fixed; z-index: 20; left: 50%; top: calc(14px + env(safe-area-inset-top, 0px)); transform: translateX(-50%);
+    display: flex; align-items: center; gap: 4px; padding: 6px; width: max-content; max-width: calc(100% - 24px);
+    border-radius: 999px; background: rgba(18,16,22,.7); border: 1px solid var(--hair);
+    backdrop-filter: blur(16px) saturate(1.4); -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    box-shadow: 0 12px 40px -16px rgba(0,0,0,.8);
   }
-  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-  .brand img { width: 36px; height: 36px; border-radius: 10px; }
-  .brand strong { font-family: var(--serif); font-weight: 600; font-size: 1.4rem; color: var(--cream); white-space: nowrap; letter-spacing: .01em; }
-  .bar nav { flex: 1; display: flex; justify-content: center; gap: 4px; }
-  .bar nav a { padding: 8px 12px; border-radius: 999px; font-size: .88rem; font-weight: 600; color: var(--muted); text-decoration: none; }
-  .bar nav a:hover { color: var(--gold); background: rgba(255,201,60,.08); }
-  @media (max-width: 860px) { .bar nav { display: none; } .bar .brand { margin-right: auto; } }
+  .nav .brand { display: flex; align-items: center; gap: 8px; padding: 0 10px 0 4px; text-decoration: none; font-weight: 800; letter-spacing: -.01em; white-space: nowrap; }
+  .nav .brand img { width: 30px; height: 30px; border-radius: 50%; }
+  .nav a.l { padding: 8px 12px; border-radius: 999px; font-size: .86rem; font-weight: 600; color: var(--muted); text-decoration: none; transition: color .2s, background .2s; }
+  .nav a.l:hover { color: var(--text); background: rgba(255,255,255,.06); }
+  .nav .go { padding: 9px 16px; border-radius: 999px; font-size: .86rem; font-weight: 800; color: var(--ink); background: var(--gold); text-decoration: none; white-space: nowrap; }
+  @media (max-width: 720px) { .nav a.l { display: none; } }
 
   .btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 22px;
-    border-radius: 999px; font: inherit; font-weight: 800; font-size: .95rem; text-decoration: none; cursor: pointer;
-    border: 1.5px solid var(--gold); color: var(--gold); background: transparent;
-    transition: box-shadow .2s, background .2s, transform .2s;
+    position: relative; display: inline-flex; align-items: center; gap: 10px; min-height: 50px; padding: 0 24px;
+    border-radius: 14px; font-weight: 800; font-size: 1rem; text-decoration: none; cursor: pointer; border: 0;
+    color: var(--ink); background: var(--gold); overflow: hidden; isolation: isolate;
+    transition: transform .3s var(--ease), box-shadow .3s;
   }
-  .btn:hover { background: rgba(255,201,60,.1); box-shadow: 0 0 24px -4px rgba(255,190,40,.6); }
-  .btn-solid { color: var(--night); background: var(--gold); }
-  .btn-solid:hover { background: #ffd65e; box-shadow: var(--glow); }
-  .bar .btn { min-height: 38px; padding: 0 16px; }
-  @media (max-width: 420px) { .bar .btn { padding: 0 12px; font-size: .86rem; } .brand strong { font-size: 1.2rem; } }
+  .btn::after { /* a sheen that sweeps across on hover */
+    content: ''; position: absolute; inset: 0; z-index: -1;
+    background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.65) 50%, transparent 65%);
+    transform: translateX(-110%); transition: transform .7s var(--ease);
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 14px 40px -12px rgba(255,180,30,.8); }
+  .btn:hover::after { transform: translateX(110%); }
+  .btn.ghost { color: var(--text); background: rgba(255,255,255,.06); box-shadow: inset 0 0 0 1px var(--hair); }
+  .btn.ghost:hover { box-shadow: inset 0 0 0 1px rgba(255,201,60,.5); }
+  .btn svg { width: 18px; height: 18px; }
 
-  /* ---- scroll sections ---- */
-  [data-scroll] { position: relative; --p: 0; }
-  .stage { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; display: grid; place-items: center; }
+  /* ---- 1. Hero: a dark room and a flashlight ---- */
+  .hero { position: relative; min-height: 100svh; display: grid; place-items: center; padding: 120px 16px 80px; overflow: hidden; isolation: isolate;
+    --lx: 50%; --ly: 45%; animation: wander 16s ease-in-out infinite alternate; }
+  .hero.manual { animation: none; }
+  @keyframes wander {
+    0% { --lx: 22%; --ly: 30%; } 25% { --lx: 70%; --ly: 22%; } 50% { --lx: 80%; --ly: 68%; } 75% { --lx: 30%; --ly: 75%; } 100% { --lx: 50%; --ly: 40%; }
+  }
+  .field { position: absolute; inset: -4%; z-index: -1; display: flex; flex-direction: column; justify-content: center; gap: .1em;
+    font-weight: 800; font-size: clamp(3.2rem, 11vw, 9.5rem); line-height: .92; letter-spacing: -.04em; text-transform: uppercase; white-space: nowrap; user-select: none; }
+  .field span { display: block; }
+  .field span:nth-child(even) { padding-left: 18vw; }
+  .field.dim { color: transparent; -webkit-text-stroke: 1px rgba(255,255,255,.06); }
+  .field.lit {
+    color: var(--gold); -webkit-text-stroke: 0; text-shadow: 0 0 40px rgba(255,170,30,.6);
+    -webkit-mask-image: radial-gradient(circle min(34vmax, 300px) at var(--lx) var(--ly), #000 0%, rgba(0,0,0,.55) 40%, transparent 72%);
+            mask-image: radial-gradient(circle min(34vmax, 300px) at var(--lx) var(--ly), #000 0%, rgba(0,0,0,.55) 40%, transparent 72%);
+  }
+  .field.lit span:nth-child(3n+2) { color: transparent; -webkit-text-stroke: 1.5px var(--gold); }
+  .beam { position: absolute; inset: 0; z-index: -2; background: radial-gradient(circle min(40vmax, 380px) at var(--lx) var(--ly), rgba(255,180,40,.16), transparent 70%); }
+  .hero-copy { position: relative; max-width: 900px; text-align: center; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 6px; border-radius: 999px; font-size: .84rem; font-weight: 600; color: var(--muted);
+    background: rgba(8,7,10,.72); border: 1px solid var(--hair); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  .chip img { width: 24px; height: 24px; border-radius: 50%; }
+  .hero h1 { margin: 22px 0 18px; font-weight: 800; font-size: clamp(2.9rem, 9vw, 7.2rem); line-height: .9; letter-spacing: -.045em; text-wrap: balance; }
+  .hero h1 em { display: inline-block; padding: 0 .06em; color: var(--gold); font-size: 1.08em; text-shadow: 0 0 28px rgba(255,170,30,.7); }
+  .hero p.sub { max-width: 600px; margin: 0 auto 28px; font-size: clamp(1.05rem, 2.2vw, 1.28rem); color: #cfc7ba; background: rgba(8,7,10,.55); border-radius: 12px; }
+  .hero .row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .hero .tip { position: absolute; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); left: 0; right: 0; text-align: center; font-size: .8rem; color: var(--muted); }
+  .hero .tip b { color: var(--gold); font-weight: 600; }
 
-  /* 1. Hero: one spark grows into a glow, the ribbon draws itself in neon,
-        then their name rises out of the light. */
-  .hero { height: 300vh; }
-  .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .hero .halo {
-    position: absolute; width: 120vmax; aspect-ratio: 1; border-radius: 50%;
-    background: radial-gradient(closest-side, rgba(255,190,50,.34), rgba(255,140,20,.1) 45%, transparent 70%);
-    transform: scale(calc(.04 + var(--p) * 1.1)); opacity: calc(.5 + var(--p) * .5);
+  /* ---- 2. Marquee of every cancer, in its own ribbon colour ---- */
+  .marquee { overflow: hidden; border-block: 1px solid var(--hair); background: var(--ink2); padding: 16px 0;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+  .marquee .track { display: flex; gap: 34px; width: max-content; animation: slide 48s linear infinite; }
+  .marquee:hover .track { animation-play-state: paused; }
+  .marquee span { display: inline-flex; align-items: center; gap: 12px; font-size: 1.25rem; font-weight: 600; white-space: nowrap; color: #d8d1c5; }
+  .marquee i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: 0 0 12px var(--c); }
+  @keyframes slide { to { transform: translateX(-50%); } }
+
+  /* ---- shared section bits ---- */
+  section { position: relative; }
+  .sec { padding: clamp(80px, 12vw, 140px) 16px; }
+  .wrap { max-width: 1140px; margin: 0 auto; }
+  .kicker { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 18px; font-size: .78rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); }
+  .kicker::before { content: ''; width: 28px; height: 2px; border-radius: 2px; background: currentColor; box-shadow: 0 0 10px currentColor; }
+  h2 { margin: 0 0 18px; font-weight: 800; font-size: clamp(2.3rem, 6vw, 4.4rem); line-height: .95; letter-spacing: -.04em; text-wrap: balance; }
+  h2 em { color: var(--gold); font-size: 1.06em; }
+  .lede { max-width: 640px; margin: 0; font-size: clamp(1.05rem, 2vw, 1.22rem); color: var(--muted); }
+
+  /* Entrance animations, set off once by IntersectionObserver (.in). */
+  .rise { opacity: 0; transform: translateY(26px); filter: blur(8px); transition: opacity .9s var(--ease), transform .9s var(--ease), filter .9s var(--ease); transition-delay: var(--d, 0s); }
+  .rise.in { opacity: 1; transform: none; filter: none; }
+  .wipe { clip-path: inset(0 100% 0 0 round 28px); transition: clip-path 1.1s var(--ease); transition-delay: var(--d, 0s); }
+  .wipe.in { clip-path: inset(0 0 0 0 round 28px); }
+  /* Letters that ignite one by one, like a filament warming up. */
+  .ignite .ch { display: inline-block; color: rgba(255,255,255,.14); transition: color .5s, text-shadow .8s; transition-delay: calc(var(--i) * 18ms); }
+  .ignite.in .ch { color: inherit; }
+  .ignite.in .glow .ch { color: var(--gold); text-shadow: 0 0 18px rgba(255,170,30,.75); }
+
+  /* ---- 3. About: a bento of glowing tiles ---- */
+  .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-top: 40px; }
+  .tile { position: relative; padding: clamp(22px, 3.5vw, 34px); border-radius: 28px; background: var(--ink2); border: 1px solid var(--hair); overflow: hidden; isolation: isolate; }
+  .tile::before { /* the spotlight that follows the pointer across a tile */
+    content: ''; position: absolute; inset: 0; z-index: -1; opacity: 0; transition: opacity .4s;
+    background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(255,190,50,.14), transparent 60%);
   }
-  .hero .mark { position: relative; width: min(62vw, 330px); overflow: visible;
-    transform: translateY(calc(clamp(0, calc((var(--p) - .55) * 3), 1) * -15svh)) scale(calc(1 - clamp(0, calc((var(--p) - .55) * 3), 1) * .35));
-    filter: drop-shadow(0 0 4px rgba(255,201,60,.95)) drop-shadow(0 0 18px rgba(255,160,30,.7)) drop-shadow(0 0 50px rgba(255,140,20,.45));
-  }
-  .hero .mark path {
-    fill: none; stroke: var(--gold); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round;
-    stroke-dasharray: 1; stroke-dashoffset: clamp(0, calc(1 - var(--p) * 2.1), 1);
-  }
-  .hero .mark path.hand { stroke-dashoffset: clamp(0, calc(1.2 - var(--p) * 2.4), 1); }
-  .hero .title {
-    position: absolute; left: 16px; right: 16px; top: 52%; text-align: center;
-    opacity: clamp(0, calc((var(--p) - .62) * 5), 1);
-    transform: translateY(calc((1 - clamp(0, calc((var(--p) - .62) * 5), 1)) * 30px));
-  }
-  .hero h1 {
-    margin: 0; font-family: var(--serif); font-weight: 500; font-size: clamp(3.2rem, 11vw, 7rem); line-height: .95;
-    color: var(--cream); text-shadow: 0 0 30px rgba(255,180,40,.45);
-  }
-  .hero h1 em { font-style: italic; color: var(--gold); text-shadow: var(--glow); }
-  .hero .title p { margin: 14px auto 22px; max-width: 560px; font-size: clamp(1.05rem, 2.4vw, 1.3rem); color: var(--muted); }
-  .hero .ctas { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-  .hero .hint {
-    position: absolute; bottom: calc(28px + env(safe-area-inset-bottom, 0px)); left: 0; right: 0; text-align: center;
-    font-size: .76rem; font-weight: 800; letter-spacing: .3em; text-transform: uppercase; color: var(--muted);
-    opacity: clamp(0, calc(1 - var(--p) * 6), 1);
+  .tile:hover::before { opacity: 1; }
+  .t-what { grid-column: span 4; grid-row: span 2; display: flex; flex-direction: column; justify-content: space-between; gap: 30px;
+    background: radial-gradient(120% 90% at 100% 0%, rgba(255,160,25,.2), transparent 55%), var(--ink2); }
+  .t-what p { margin: 0; font-weight: 800; font-size: clamp(1.55rem, 3.4vw, 2.55rem); line-height: 1.12; letter-spacing: -.02em; }
+  .t-logo { grid-column: span 2; display: grid; place-items: center; min-height: 220px; background: radial-gradient(circle, rgba(255,190,50,.22), transparent 65%), var(--ink2); }
+  .t-logo img { width: 58%; border-radius: 26%; animation: pulse 4.5s ease-in-out infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 14px rgba(255,201,60,.06), 0 0 70px rgba(255,170,30,.5); } }
+  .t-tag { grid-column: span 2; display: flex; flex-direction: column; justify-content: flex-end; min-height: 200px; background: var(--gold); color: var(--ink); border: 0; }
+  .t-tag b { font-size: 2.6rem; line-height: 1; letter-spacing: -.04em; }
+  .t-tag span { font-weight: 600; }
+  .t-mission { grid-column: span 6; padding-block: clamp(34px, 6vw, 70px); }
+  .t-mission .q { margin: 0; font-weight: 600; font-size: clamp(1.5rem, 3.8vw, 2.9rem); line-height: 1.12; letter-spacing: -.025em; }
+  .t-mission small { display: block; margin-top: 18px; color: var(--muted); font-size: .9rem; }
+  .three { grid-column: span 2; display: flex; flex-direction: column; gap: 10px; min-height: 230px; }
+  .three .n { font-family: var(--serif); font-style: italic; font-size: 3.4rem; line-height: .8; color: var(--gold); }
+  .three h3 { margin: auto 0 0; font-size: 1.6rem; letter-spacing: -.02em; }
+  .three p { margin: 0; color: var(--muted); }
+  .three a { color: var(--gold); font-weight: 800; text-decoration: none; }
+  @media (max-width: 900px) {
+    .bento { grid-template-columns: repeat(2, 1fr); }
+    .t-what, .t-mission { grid-column: span 2; }
+    .t-logo, .t-tag { grid-column: span 1; min-height: 170px; }
+    .three { grid-column: span 2; min-height: 0; }
+    .three h3 { margin-top: 18px; }
   }
 
-  /* ---- plain sections ---- */
-  .sec { position: relative; padding: clamp(72px, 12vw, 130px) 16px; }
-  .wrap { max-width: 1060px; margin: 0 auto; }
-  .eyebrow { display: inline-block; margin-bottom: 12px; font-size: .74rem; font-weight: 900; letter-spacing: .22em; text-transform: uppercase; color: var(--amber); }
-  h2 { margin: 0 0 16px; font-family: var(--serif); font-weight: 500; font-size: clamp(2.4rem, 6.4vw, 4rem); line-height: 1.02; color: var(--cream); }
-  h2 em { color: var(--gold); text-shadow: 0 0 24px rgba(255,180,40,.5); }
-  .lede { max-width: 720px; font-size: clamp(1.05rem, 2.1vw, 1.25rem); color: var(--muted); margin: 0; }
+  /* ---- 4. The Cancer Library: the lights come on ---- */
+  .light { background: var(--ivory); color: var(--cocoa); color-scheme: light; }
+  .light h2 { color: var(--cocoa); }
+  .light h2 em { color: #c57b00; }
+  .light .kicker { color: #c57b00; }
+  .light .lede { color: #6d5f4b; }
+  .library { border-radius: 40px 40px 0 0; margin-top: -40px; z-index: 1; }
+  .lib-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px; }
+  .search { position: relative; flex: 1 1 280px; max-width: 420px; }
+  .search svg { position: absolute; left: 16px; top: 50%; width: 20px; height: 20px; transform: translateY(-50%); color: #8a7a62; pointer-events: none; }
+  .search input { width: 100%; min-height: 54px; padding: 0 18px 0 46px; border-radius: 16px; border: 1.5px solid #e2d6bc; background: #fff; font: inherit; color: var(--cocoa); }
+  .search input:focus { outline: none; border-color: var(--honey); box-shadow: 0 0 0 5px rgba(255,178,26,.2); }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 26px 0 22px; }
+  .filters button { min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #e2d6bc; background: transparent; font-weight: 600; font-size: .9rem; color: #6d5f4b; cursor: pointer; transition: all .2s; }
+  .filters button[aria-pressed="true"] { background: var(--cocoa); border-color: var(--cocoa); color: var(--ivory); }
+  .lib-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+  .lib-grid li { animation: pop .5s var(--ease) both; animation-delay: calc(var(--i) * 30ms); }
+  @keyframes pop { from { opacity: 0; transform: scale(.94) translateY(10px); } }
+  .cancer {
+    position: relative; width: 100%; height: 100%; min-height: 150px; padding: 20px; border-radius: 22px; text-align: left; cursor: pointer;
+    display: flex; flex-direction: column; gap: 6px; background: #fff; border: 1.5px solid #ece2cc; overflow: hidden; isolation: isolate;
+    transition: transform .35s var(--ease), box-shadow .35s, border-color .35s;
+  }
+  .cancer::before { content: ''; position: absolute; z-index: -1; width: 180px; height: 180px; right: -60px; top: -60px; border-radius: 50%; background: var(--c); opacity: .14; transition: transform .6s var(--ease), opacity .4s; }
+  .cancer:hover { transform: translateY(-4px); border-color: transparent; box-shadow: 0 22px 44px -22px color-mix(in srgb, var(--c) 70%, #3a2a10); }
+  .cancer:hover::before { transform: scale(3.2); opacity: .2; }
+  .cancer svg { width: 26px; height: 34px; color: var(--c); filter: drop-shadow(0 1px 0 rgba(0,0,0,.25)); }
+  .cancer b { margin-top: auto; font-size: 1.2rem; letter-spacing: -.01em; color: var(--cocoa); }
+  .cancer span { font-size: .84rem; color: #7c6d57; }
+  .cancer .arrow { position: absolute; right: 16px; bottom: 16px; font-weight: 800; color: #b38a3c; transition: transform .3s var(--ease); }
+  .cancer:hover .arrow { transform: translateX(4px); }
+  .lib-empty { margin: 20px 0 0; color: #6d5f4b; }
+  .lib-note { margin: 26px 0 0; font-size: .86rem; color: #7c6d57; }
 
-  /* 2. What is Project Lumen: their slide, set big in gold. */
-  .what { background: radial-gradient(60% 70% at 85% 40%, rgba(255,170,30,.12), transparent 70%), var(--night); }
-  .what-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: clamp(24px, 6vw, 64px); align-items: center; }
-  @media (max-width: 760px) { .what-grid { grid-template-columns: 1fr; } }
-  .what .big { margin: 0; font-weight: 900; font-size: clamp(1.6rem, 4vw, 2.5rem); line-height: 1.22; color: var(--gold); text-shadow: 0 0 28px rgba(255,170,30,.25); }
-  .what .glowcard {
-    position: relative; aspect-ratio: 1; border-radius: 32px; display: grid; place-items: center;
-    background: radial-gradient(circle at 50% 45%, rgba(255,190,50,.22), transparent 60%), var(--night2);
-    border: 1px solid var(--line); overflow: hidden;
-  }
-  .what .glowcard img { width: 62%; filter: drop-shadow(0 0 20px rgba(255,170,30,.55)); animation: breathe 5s ease-in-out infinite; }
-  @keyframes breathe { 50% { transform: scale(1.04); filter: drop-shadow(0 0 34px rgba(255,170,30,.8)); } }
+  /* The entry for one cancer opens in a panel from the side. */
+  dialog.entry { margin: 0 0 0 auto; height: 100%; max-height: none; width: min(560px, 100%); padding: 0; border: 0; background: var(--ivory); color: var(--cocoa); }
+  dialog.entry::backdrop { background: rgba(8,7,10,.55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+  dialog.entry[open] { animation: drawer .5s var(--ease); }
+  @keyframes drawer { from { transform: translateX(100%); } }
+  .entry-top { position: relative; padding: calc(28px + env(safe-area-inset-top, 0px)) 28px 30px; background: var(--c); color: #fff; overflow: hidden; }
+  .entry-top.dark-text { color: var(--cocoa); }
+  .entry-top svg.big { position: absolute; right: -10px; bottom: -30px; width: 160px; height: 210px; opacity: .28; }
+  .entry-top h3 { margin: 40px 0 4px; font-size: clamp(2rem, 6vw, 2.8rem); line-height: 1; letter-spacing: -.03em; }
+  .entry-top p { margin: 0; font-weight: 600; opacity: .9; }
+  .close { position: absolute; top: calc(18px + env(safe-area-inset-top, 0px)); right: 18px; width: 44px; height: 44px; border-radius: 50%; border: 0; cursor: pointer; background: rgba(0,0,0,.2); color: inherit; font-size: 1.4rem; line-height: 1; }
+  .entry-body { padding: 26px 28px 40px; }
+  .entry-body h4 { margin: 24px 0 6px; font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: #a06a00; }
+  .entry-body p, .entry-body li { color: #4d4130; }
+  .entry-body ul { padding-left: 1.2em; margin: 0; }
+  .entry-body li { margin: 6px 0; }
+  .entry-body .src { display: inline-flex; margin-top: 22px; padding: 12px 16px; border-radius: 14px; background: #fff; border: 1.5px solid #e2d6bc; font-weight: 800; text-decoration: none; }
 
-  /* 3. The mission: each word lights up as you scroll. */
-  .words { height: 260vh; background: var(--night2); }
-  .words .stage { padding: 0 16px; }
-  .words .eyebrow { position: absolute; top: 18svh; left: 0; right: 0; text-align: center; }
-  .words p { max-width: 940px; margin: 0; text-align: center; font-family: var(--serif); font-size: clamp(1.8rem, 5.2vw, 3.7rem); line-height: 1.14; color: var(--cream); }
-  .words .w { opacity: .12; transition: opacity .3s, text-shadow .3s, color .3s; }
-  .words .w.on { opacity: 1; }
-  .words .w.accent.on { font-style: italic; color: var(--gold); text-shadow: var(--glow); }
+  /* ---- 5. Lumen Companion: the app, on a phone that tilts ---- */
+  .companion { background: radial-gradient(70% 60% at 80% 50%, rgba(255,140,20,.14), transparent 70%), var(--ink); }
+  .comp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(30px, 6vw, 80px); align-items: center; }
+  @media (max-width: 860px) { .comp-grid { grid-template-columns: 1fr; } }
+  .feat { list-style: none; margin: 30px 0 0; padding: 0; display: grid; gap: 10px; }
+  .feat button {
+    width: 100%; display: grid; grid-template-columns: 46px 1fr; gap: 14px; align-items: center; padding: 16px; border-radius: 20px; text-align: left; cursor: pointer;
+    background: transparent; border: 1px solid var(--hair); transition: background .3s, border-color .3s;
+  }
+  .feat button[aria-selected="true"] { background: var(--ink3); border-color: rgba(255,201,60,.4); }
+  .feat .ic { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: rgba(255,201,60,.1); color: var(--gold); }
+  .feat .ic svg { width: 22px; height: 22px; }
+  .feat b { display: block; font-size: 1.1rem; }
+  .feat span { color: var(--muted); font-size: .92rem; }
+  .feat .bar { grid-column: 1 / -1; height: 2px; border-radius: 2px; background: var(--hair); overflow: hidden; }
+  .feat .bar i { display: block; height: 100%; width: 0; background: var(--gold); }
+  .feat button[aria-selected="true"] .bar i { animation: fill var(--dur, 5s) linear forwards; }
+  .comp-grid.paused .bar i { animation-play-state: paused !important; }
+  @keyframes fill { to { width: 100%; } }
 
-  /* 4. Three things they do: cards that stack. */
-  .cards { height: 340vh; background: var(--night); }
-  .cards .stage { padding: 80px 16px 16px; grid-template-rows: auto 1fr; gap: 18px; place-items: start center; }
-  .cards .head { text-align: center; }
-  .cards .head h2 { margin-bottom: 4px; }
-  .cards .head p { margin: 0; color: var(--muted); }
-  .deck { position: relative; width: min(100%, 580px); height: min(56svh, 420px); align-self: center; }
-  .card {
-    position: absolute; inset: 0; border-radius: 30px; padding: clamp(24px, 5vw, 40px);
-    display: flex; flex-direction: column; justify-content: flex-end; gap: 10px;
-    background: var(--night3); border: 1px solid var(--line);
-    box-shadow: 0 30px 70px -30px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,220,140,.08);
-    --k: clamp(0, calc((var(--p) - var(--at)) * 4), 1);
-    transform: translateY(calc((1 - var(--k)) * 110svh)) rotate(calc((1 - var(--k)) * -6deg));
+  .phone-stage { perspective: 1200px; display: grid; place-items: center; padding: 20px 0; }
+  .phone {
+    position: relative; width: min(300px, 78vw); aspect-ratio: 9 / 19; border-radius: 46px; padding: 12px;
+    background: linear-gradient(145deg, #2c2833, #0d0c10); box-shadow: 0 0 0 1.5px #3a3542, 0 50px 100px -30px rgba(0,0,0,.9), 0 0 80px -20px rgba(255,170,30,.35);
+    transform: rotateY(var(--ry, -14deg)) rotateX(var(--rx, 6deg)); transform-style: preserve-3d; transition: transform .6s var(--ease);
   }
-  .card:nth-child(1) { --at: 0; transform: none; }
-  .card:nth-child(2) { --at: .2; background: linear-gradient(160deg, #2b220f, #18130a); }
-  .card:nth-child(3) { --at: .5; background: linear-gradient(160deg, var(--gold), var(--amber)); color: var(--night); border-color: transparent; }
-  .card .icon { width: 64px; height: 64px; margin-bottom: auto; color: var(--gold); filter: drop-shadow(0 0 10px rgba(255,180,40,.7)); }
-  .card:nth-child(3) .icon { color: var(--night); filter: none; }
-  .card h3 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: clamp(2.2rem, 6vw, 3rem); line-height: 1.05; }
-  .card p { margin: 0; opacity: .88; max-width: 46ch; }
+  .screen { position: relative; height: 100%; border-radius: 36px; overflow: hidden; background: #0f0d12; }
+  .notch { position: absolute; z-index: 3; top: 10px; left: 50%; width: 90px; height: 24px; transform: translateX(-50%); border-radius: 20px; background: #000; }
+  .view { position: absolute; inset: 0; padding: 50px 16px 16px; display: flex; flex-direction: column; gap: 10px;
+    clip-path: circle(0% at 50% 100%); transition: clip-path .8s var(--ease); font-size: .82rem; }
+  .view.on { clip-path: circle(150% at 50% 100%); z-index: 2; }
+  .view h5 { margin: 0 0 4px; font-size: 1.3rem; letter-spacing: -.02em; }
+  .view .hint { margin: -8px 0 4px; color: var(--muted); font-size: .76rem; }
+  .card { padding: 12px; border-radius: 16px; background: #1b1820; border: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 10px; }
+  .card .dot { flex: none; width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: rgba(255,201,60,.12); color: var(--gold); font-weight: 800; }
+  .card div { flex: 1; min-width: 0; }
+  .card b { display: block; }
+  .card small { color: var(--muted); }
+  .card .tick { flex: none; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #4a4452; }
+  .card.done .tick { border-color: var(--gold); background: var(--gold) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2308070a' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12l4 4 8-8'/%3E%3C/svg%3E") center/14px no-repeat; }
+  .card.done b { text-decoration: line-through; opacity: .55; }
+  .ring { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 16px; background: linear-gradient(135deg, rgba(255,201,60,.16), rgba(255,122,26,.08)); }
+  .ring svg { width: 54px; height: 54px; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 6; }
+  .ring b { font-size: 1.05rem; }
+  .appt { padding: 14px; border-radius: 16px; background: var(--gold); color: var(--ink); }
+  .appt b { display: block; font-size: 1.05rem; }
+  .journey { position: relative; display: grid; gap: 12px; padding-left: 22px; }
+  .journey::before { content: ''; position: absolute; left: 7px; top: 6px; bottom: 6px; width: 2px; background: linear-gradient(var(--gold), rgba(255,201,60,.1)); }
+  .journey div { position: relative; }
+  .journey div::before { content: ''; position: absolute; left: -20px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--ink); border: 2px solid var(--gold); box-shadow: 0 0 10px rgba(255,201,60,.6); }
+  .journey div:first-child::before { background: var(--gold); }
+  .journey b { display: block; }
+  .journey small { color: var(--muted); }
+  .mood { display: flex; justify-content: space-between; padding: 10px 12px; border-radius: 16px; background: #1b1820; font-size: 1.2rem; }
+  .comp-note { margin: 22px 0 0; color: var(--muted); font-size: .9rem; }
 
-  /* 5. Ribbons: every colour is a cancer someone is fighting. */
-  .ribbons { background: var(--night2); }
-  .ribbon-grid { list-style: none; margin: 30px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: 12px; }
-  .ribbon-grid li {
-    --c: var(--gold); position: relative; padding: 22px 14px 18px; border-radius: 22px; text-align: center;
-    background: var(--night); border: 1px solid rgba(255,255,255,.06); cursor: default;
-    transition: border-color .25s, box-shadow .25s, transform .25s;
-  }
-  .ribbon-grid li:hover, .ribbon-grid li:focus-within, .ribbon-grid li.lit {
-    border-color: color-mix(in srgb, var(--c) 60%, transparent);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 30%, transparent), 0 18px 50px -20px var(--c);
-    transform: translateY(-3px);
-  }
-  .ribbon-grid svg { width: 46px; height: 60px; margin: 0 auto 10px; color: var(--c); opacity: .45; transition: opacity .25s, filter .25s; }
-  .ribbon-grid li:hover svg, .ribbon-grid li.lit svg { opacity: 1; filter: drop-shadow(0 0 8px var(--c)); }
-  .ribbon-grid b { display: block; font-size: .98rem; color: var(--cream); }
-  .ribbon-grid span { font-size: .82rem; color: var(--muted); }
-
-  /* 6. Stories: every story is a light. Lanterns stay dim until it's told. */
-  .stories { background: radial-gradient(50% 60% at 50% 0%, rgba(255,170,30,.1), transparent 70%), var(--night); }
-  .story-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; margin-top: 30px; }
-  .story {
-    position: relative; padding: 24px; border-radius: 24px; min-height: 210px; display: flex; flex-direction: column; gap: 10px;
-    background: var(--night2); border: 1px solid var(--line); overflow: hidden;
-  }
-  .story::before {
-    content: ''; position: absolute; width: 220px; height: 220px; right: -70px; top: -90px; border-radius: 50%;
-    background: radial-gradient(closest-side, rgba(255,190,50,.28), transparent); opacity: .35; transition: opacity .5s;
-  }
-  .story:hover::before { opacity: 1; }
+  /* ---- 6. Stories: a strip you can swipe ---- */
+  .stories { background: var(--ink2); overflow: hidden; }
+  .strip { display: grid; grid-auto-flow: column; grid-auto-columns: min(360px, 82vw); gap: 16px; margin-top: 36px; padding: 6px 16px 20px;
+    overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .strip::-webkit-scrollbar { display: none; }
+  .story { scroll-snap-align: center; position: relative; min-height: 300px; padding: 26px; border-radius: 28px; display: flex; flex-direction: column; gap: 12px;
+    background: var(--ink3); border: 1px solid var(--hair); transform: rotate(var(--r, 0deg)); transition: transform .5s var(--ease); }
+  .story:hover { transform: rotate(0) translateY(-6px); }
+  .story:nth-child(3n+1) { --r: -1.5deg; }
+  .story:nth-child(3n+2) { --r: 1.2deg; background: linear-gradient(160deg, #2b2210, var(--ink3)); }
+  .story:nth-child(3n) { --r: -.6deg; }
   .story .ph { align-self: flex-start; }
-  .story q { font-family: var(--serif); font-size: 1.4rem; line-height: 1.25; color: var(--cream); quotes: '“' '”'; }
+  .story q { font-family: var(--serif); font-size: 1.75rem; line-height: 1.12; quotes: '“' '”'; }
   .story small { margin-top: auto; color: var(--muted); }
+  .story.share { background: var(--gold); color: var(--ink); border: 0; }
+  .story.share .ph, .story.share small { color: var(--ink); }
 
-  /* 7. Add your light: a night sky the visitor fills in. */
-  .sky { background: #070604; text-align: center; overflow: hidden; }
-  .sky .lede { margin: 0 auto; }
-  .sky-field { position: relative; height: min(52svh, 420px); margin: 30px auto 20px; max-width: 1060px; border-radius: 30px; border: 1px solid var(--line);
-    background: radial-gradient(80% 70% at 50% 100%, rgba(255,150,20,.12), transparent 70%), #0a0805; overflow: hidden; cursor: crosshair; }
-  .sky-field .dot {
-    position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: #fff6d8;
-    box-shadow: 0 0 6px 2px rgba(255,210,90,.95), 0 0 26px 8px rgba(255,170,30,.45);
-    animation: twinkle 3.2s ease-in-out infinite, rise .9s cubic-bezier(.2,.8,.3,1) both;
+  /* ---- 7. Lanterns ---- */
+  .lanterns { min-height: 90svh; display: grid; place-items: center; text-align: center; overflow: hidden; background: linear-gradient(#08070a, #120c06 70%, #1d1206); }
+  .lanterns .wrap { position: relative; z-index: 2; }
+  .lanterns .lede { margin: 0 auto 26px; }
+  .launch { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .launch input { min-height: 50px; width: min(300px, 100%); padding: 0 16px; border-radius: 14px; border: 1px solid var(--hair); background: rgba(255,255,255,.05); font: inherit; color: var(--text); }
+  .launch input:focus { outline: none; border-color: rgba(255,201,60,.6); }
+  .sky { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+  .lantern { position: absolute; bottom: -120px; left: var(--x); display: flex; flex-direction: column; align-items: center; gap: 8px; animation: float var(--t, 12s) cubic-bezier(.3,.1,.5,1) forwards; }
+  .lantern .body { width: 44px; height: 56px; border-radius: 14px 14px 20px 20px; background: radial-gradient(circle at 50% 70%, #fff3c4, #ffb21a 45%, #e0560c);
+    box-shadow: 0 0 30px 8px rgba(255,150,30,.55), 0 0 90px 20px rgba(255,120,20,.25); animation: flicker 1.8s ease-in-out infinite alternate; }
+  .lantern .name { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--serif); font-style: italic; font-size: 1.05rem; color: #ffe2a0; text-shadow: 0 0 10px rgba(255,160,30,.8); }
+  @keyframes float {
+    0% { transform: translate(0, 0) scale(1); opacity: 0; }
+    8% { opacity: 1; }
+    50% { transform: translate(calc(var(--sway) * 1px), -55svh) scale(.8); }
+    100% { transform: translate(calc(var(--sway) * -1px), -125svh) scale(.45); opacity: 0; }
   }
-  @keyframes twinkle { 50% { opacity: .55; transform: scale(.8); } }
-  @keyframes rise { from { opacity: 0; transform: translateY(30px) scale(.2); } }
-  .sky-field .msg { position: absolute; inset: auto 0 22px; color: var(--muted); font-size: .92rem; pointer-events: none; transition: opacity .4s; }
-  .sky-count { min-height: 1.6em; margin: 0 0 16px; font-weight: 800; color: var(--gold); }
+  @keyframes flicker { to { filter: brightness(1.15); } }
+  .count { min-height: 1.5em; margin: 18px 0 0; color: var(--gold); font-weight: 600; }
 
-  /* 8. Team, events, get involved */
-  .team { background: var(--night2); }
-  .team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px; margin-top: 30px; }
-  .person { padding: 22px; border-radius: 24px; background: var(--night); border: 1px solid var(--line); }
-  .person .photo { aspect-ratio: 1; border-radius: 18px; margin-bottom: 16px; display: grid; place-items: center;
-    background: radial-gradient(circle at 50% 40%, rgba(255,190,50,.2), transparent 60%), var(--night3); color: rgba(255,201,60,.5); }
-  .person .photo svg { width: 38%; }
-  .person h3 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: 1.7rem; color: var(--cream); }
-  .person .role { margin: 0 0 8px; font-size: .86rem; font-weight: 800; color: var(--amber); }
-  .person p { margin: 0; color: var(--muted); font-size: .95rem; }
+  /* ---- 8. Team, events, join ---- */
+  .people { background: var(--ink); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 36px; }
+  @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
+  .panel { padding: 26px; border-radius: 28px; background: var(--ink2); border: 1px solid var(--hair); }
+  .panel h3 { margin: 0 0 16px; font-size: 1.5rem; letter-spacing: -.02em; }
+  .who { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid var(--hair); }
+  .who:first-of-type { border-top: 0; }
+  .who .av { flex: none; width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: var(--ink); background: linear-gradient(135deg, var(--gold), var(--flame)); }
+  .who b { display: block; }
+  .who span { color: var(--muted); font-size: .9rem; }
+  .ev { display: grid; grid-template-columns: 64px 1fr; gap: 14px; align-items: center; padding: 12px 0; border-top: 1px solid var(--hair); }
+  .ev:first-of-type { border-top: 0; }
+  .ev .d { text-align: center; line-height: 1; padding: 10px 0; border-radius: 14px; border: 1px solid rgba(255,201,60,.4); color: var(--gold); font-weight: 800; }
+  .ev .d small { display: block; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 4px; }
+  .ev b { display: block; }
+  .ev span { color: var(--muted); font-size: .9rem; }
 
-  .events { background: var(--night); }
-  .event-list { list-style: none; margin: 30px 0 0; padding: 0; display: grid; gap: 12px; }
-  .event { display: grid; grid-template-columns: 92px 1fr; gap: 18px; align-items: center; padding: 18px; border-radius: 22px; background: var(--night2); border: 1px solid var(--line); }
-  .event .when { text-align: center; padding: 12px 6px; border-radius: 14px; background: var(--gold); color: var(--night); font-weight: 900; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; line-height: 1.3; }
-  .event h3 { margin: 0 0 2px; font-size: 1.08rem; color: var(--cream); }
-  .event p { margin: 0; color: var(--muted); font-size: .94rem; }
-  .event.past .when { background: transparent; color: var(--gold); border: 1.5px solid var(--gold); }
+  .join { text-align: center; padding-bottom: clamp(90px, 14vw, 160px); background: radial-gradient(50% 70% at 50% 100%, rgba(255,150,20,.25), transparent 70%), var(--ink); }
+  .join h2 { font-size: clamp(2.6rem, 8vw, 6rem); }
+  .join .lede { margin: 0 auto 30px; }
+  .tags { margin: 26px 0 0; font-family: var(--serif); font-style: italic; font-size: 1.2rem; color: var(--muted); }
 
-  .join { text-align: center; background: radial-gradient(60% 90% at 50% 100%, rgba(255,160,25,.22), transparent 70%), var(--night2); }
-  .join .lede { margin: 0 auto 26px; }
-  .ways { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; margin: 0 0 30px; text-align: left; }
-  .ways div { padding: 20px; border-radius: 20px; background: rgba(255,201,60,.05); border: 1px solid var(--line); }
-  .ways b { display: block; margin-bottom: 4px; color: var(--gold); }
-  .ways span { font-size: .94rem; color: var(--muted); }
-  .ctas-row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-  .tags { margin: 22px 0 0; color: var(--muted); font-size: .9rem; }
-  .tags span { color: var(--gold); }
-
-  /* 9. Their name, sliding sideways with the scroll. */
-  .slide { height: 180vh; background: var(--night); }
-  .slide .line {
-    white-space: nowrap; font-family: var(--serif); color: var(--cream);
-    font-size: clamp(5rem, 18vw, 14rem); line-height: 1;
-    transform: translateX(calc(30vw - var(--p) * 170vw));
-  }
-  .slide .line em { color: var(--gold); text-shadow: var(--glow); }
-
-  footer { padding: 56px 16px calc(44px + env(safe-area-inset-bottom, 0px)); text-align: center; color: var(--muted); font-size: .9rem; background: #060503; border-top: 1px solid var(--line); }
-  footer a { color: var(--cream); }
-  footer .social { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1rem; text-decoration: none; }
-  footer .social svg { width: 22px; height: 22px; }
-  footer p { margin: 8px 0; }
-  footer .powered { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 6px 14px 6px 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.04); font-weight: 800; text-decoration: none; }
-  footer .powered:hover { background: rgba(255,255,255,.1); }
-  footer .powered img { width: 26px; height: 26px; object-fit: contain; }
+  footer { padding: 34px 16px calc(34px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--hair); background: #050406; }
+  footer .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; color: var(--muted); font-size: .9rem; }
+  footer a { text-decoration: none; font-weight: 600; color: var(--text); }
+  footer .ig { display: inline-flex; align-items: center; gap: 8px; }
+  footer .ig svg { width: 20px; height: 20px; }
+  footer .powered { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 8px; border-radius: 999px; border: 1px solid var(--hair); }
+  footer .powered:hover { background: rgba(255,255,255,.06); }
+  footer .powered img { width: 24px; height: 24px; }
 
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
-    [data-scroll] { --p: 1 !important; height: auto !important; }
-    .stage { position: relative; height: auto; min-height: 0; padding: 110px 16px; }
-    .hero canvas, .hero .halo { display: none; }
-    .hero .stage { display: flex; flex-direction: column; align-items: center; gap: 28px; background: radial-gradient(closest-side, rgba(255,190,50,.2), transparent); }
-    .hero .mark, .hero .title { position: relative; top: auto; transform: none; }
-    .hero .hint { display: none; }
-    .words .eyebrow { position: static; }
-    .words .stage { display: flex; flex-direction: column; gap: 12px; }
-    .words .w { opacity: 1; }
-    .words .w.accent { font-style: italic; color: var(--gold); }
-    .deck { height: auto; display: grid; gap: 16px; }
-    .card { position: relative; min-height: 260px; transform: none !important; }
-    .what .glowcard img, .sky-field .dot { animation: none; }
-    .slide .line { transform: none; font-size: clamp(3rem, 12vw, 8rem); white-space: normal; text-align: center; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .rise, .wipe { opacity: 1; transform: none; filter: none; clip-path: none; }
+    .ignite .ch { color: inherit; }
+    .ignite .glow .ch { color: var(--gold); }
+    .hero { --lx: 50%; --ly: 42%; }
+    .view { clip-path: none; opacity: 0; }
+    .view.on { opacity: 1; }
+    .lantern { display: none; }
   }
 </style>
 </head>
 <body>
 
-<header class="bar">
-  <a class="brand" href="#top" aria-label="Project Lumen, back to top">
-    <img src="public/partners/lumen/logo.svg" alt="" width="36" height="36">
-    <strong>Project Lumen</strong>
-  </a>
-  <nav aria-label="Sections">
-    <a href="#about">About</a>
-    <a href="#mission">Mission</a>
-    <a href="#ribbons">Ribbons</a>
-    <a href="#stories">Stories</a>
-    <a href="#events">Events</a>
-  </nav>
-  <a class="btn btn-solid" href="#join">Join us</a>
-</header>
+<nav class="nav" aria-label="Project Lumen">
+  <a class="brand" href="#top"><img src="public/partners/lumen/logo.svg" alt="" width="30" height="30">Lumen</a>
+  <a class="l" href="#about">About</a>
+  <a class="l" href="#library">Library</a>
+  <a class="l" href="#companion">App</a>
+  <a class="l" href="#stories">Stories</a>
+  <a class="go" href="#join">Get involved</a>
+</nav>
 
 <main id="top">
-  <section class="hero" data-scroll aria-label="Project Lumen">
-    <div class="stage">
-      <canvas id="embers" aria-hidden="true"></canvas>
-      <div class="halo" aria-hidden="true"></div>
-      <!-- Their mark, redrawn as one neon line: a ribbon held in an open hand. -->
-      <svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
-        <path pathLength="1" d="M27 39 L37 23 C41 15 38 8 32 8 C26 8 23 15 27 23 L37 39"/>
-        <path class="hand" pathLength="1" d="M8 45 C14 43 21 43 27 47 L38 47 C41 47 41 51 38 51 L29 51"/>
-        <path class="hand" pathLength="1" d="M38 47 L50 39 C53 37 56 41 53 43 L43 52 C39 55 33 56 27 55 L8 55"/>
-      </svg>
-      <div class="title">
-        <h1>Project <em>Lumen</em></h1>
-        <p>A student-led initiative dedicated to bringing light to cancer awareness.</p>
-        <div class="ctas">
-          <a class="btn btn-solid" href="#mission">Our mission</a>
-          <a class="btn" href="#stories">Read the stories</a>
+  <!-- 1. A dark room. The light (your pointer) finds what's written in it. -->
+  <section class="hero" id="hero" aria-labelledby="hero-h">
+    <div class="beam" aria-hidden="true"></div>
+    <div class="field dim" aria-hidden="true"><span>Every voice heard</span><span>Every story told</span><span>Every light shines</span><span>Awareness into action</span><span>You are not alone</span></div>
+    <div class="field lit" aria-hidden="true"><span>Every voice heard</span><span>Every story told</span><span>Every light shines</span><span>Awareness into action</span><span>You are not alone</span></div>
+    <div class="hero-copy">
+      <span class="chip"><img src="public/partners/lumen/logo.svg" alt="">A student-led initiative · @project.lumen</span>
+      <h1 id="hero-h">Bring cancer into the <em>light.</em></h1>
+      <p class="sub">Learn about every kind of cancer, find real ways to support the people fighting it, and keep track of your own journey.</p>
+      <div class="row">
+        <a class="btn" href="#library">Explore the library <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <a class="btn ghost" href="#companion">See the companion app</a>
+      </div>
+    </div>
+    <p class="tip" aria-hidden="true"><b>Move your light</b> around the dark</p>
+  </section>
+
+  <div class="marquee" aria-hidden="true"><div class="track" id="marquee"></div></div>
+
+  <!-- 2. About -->
+  <section class="sec" id="about" aria-labelledby="about-h">
+    <div class="wrap">
+      <span class="kicker rise">About</span>
+      <h2 id="about-h" class="rise" style="--d:.08s">What is Project <em>Lumen?</em></h2>
+      <div class="bento" data-glow>
+        <article class="tile t-what wipe">
+          <span class="kicker">In their words</span>
+          <p>Project Lumen is a student led initiative aiming to spread cancer awareness, and bring light to the untold stories of the many people battling cancer today.</p>
+        </article>
+        <div class="tile t-logo wipe" style="--d:.12s"><img src="public/partners/lumen/logo.svg" alt="Project Lumen’s gold ribbon"></div>
+        <div class="tile t-tag wipe" style="--d:.2s"><b>Student&#8209;led.</b><span>From awareness to action.</span></div>
+        <article class="tile t-mission">
+          <span class="kicker">Our mission</span>
+          <p class="q ignite" data-ignite>Project Lumen was created with one mission: bring [awareness, education] and spark meaningful [conversations] about cancer, bringing the [light] needed to make a [difference.]</p>
+          <small>— Project Lumen</small>
+        </article>
+        <article class="tile three rise"><span class="n">01</span><h3>Learn</h3><p>A plain-language library of every kind of cancer: what it is, its ribbon, and where to read more.</p><a href="#library">Open the library →</a></article>
+        <article class="tile three rise" style="--d:.1s"><span class="n">02</span><h3>Support</h3><p>Real ways to help someone who is fighting, for each cancer: what to say, what to do, where to give.</p><a href="#library">Find a way to help →</a></article>
+        <article class="tile three rise" style="--d:.2s"><span class="n">03</span><h3>Track</h3><p>Lumen Companion: medicines, appointments and your journey, in one gentle place.</p><a href="#companion">Preview the app →</a></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. The Cancer Library -->
+  <section class="sec light library" id="library" aria-labelledby="lib-h">
+    <div class="wrap">
+      <div class="lib-head">
+        <div>
+          <span class="kicker rise">The Lumen Library</span>
+          <h2 id="lib-h" class="rise" style="--d:.08s">Every cancer, in <em>plain words.</em></h2>
+          <p class="lede rise" style="--d:.16s">Pick a cancer to learn what it is and how to support the people living with it. <span class="ph">Draft: to be reviewed by Project Lumen</span></p>
+        </div>
+        <label class="search rise" style="--d:.2s">
+          <span class="sr">Search the library</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="libSearch" type="search" placeholder="Search, e.g. leukemia or pink" autocomplete="off">
+        </label>
+      </div>
+      <div class="filters" role="group" aria-label="Filter the library" id="libFilters">
+        <button type="button" data-f="all" aria-pressed="true">All</button>
+        <button type="button" data-f="common" aria-pressed="false">Most common</button>
+        <button type="button" data-f="blood" aria-pressed="false">Blood cancers</button>
+        <button type="button" data-f="young" aria-pressed="false">Children &amp; teens</button>
+        <button type="button" data-f="women" aria-pressed="false">Women’s cancers</button>
+      </div>
+      <ul class="lib-grid" id="libGrid"></ul>
+      <p class="lib-empty" id="libEmpty" hidden>Nothing matches that yet. Try a shorter word.</p>
+      <p class="lib-note">Each entry links to the U.S. National Cancer Institute for full, up-to-date medical information. This library is for learning, not medical advice.</p>
+    </div>
+  </section>
+
+  <dialog class="entry" id="entry" aria-labelledby="entryName">
+    <div class="entry-top" id="entryTop">
+      <button class="close" type="button" id="entryClose" aria-label="Close">×</button>
+      <svg class="big" viewBox="0 0 24 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 30 L15 14 C18 8 16 2 12 2 C8 2 6 8 9 14 L17 30"/></svg>
+      <h3 id="entryName"></h3>
+      <p id="entryRibbon"></p>
+    </div>
+    <div class="entry-body">
+      <span class="ph">Draft</span>
+      <h4>What it is</h4>
+      <p id="entryWhat"></p>
+      <h4>How you can support</h4>
+      <ul>
+        <li>Ask what would help this week, then do that one thing: a meal, a ride, a walk.</li>
+        <li>Keep inviting them. Treatment can be lonely, and a message that needs no reply means a lot.</li>
+        <li>Learn the basics here so they don’t have to explain everything.</li>
+        <li id="entryMonth"></li>
+      </ul>
+      <h4>Stories <span class="ph">Coming soon</span></h4>
+      <p>Stories from people who have lived with it, shared through Project Lumen.</p>
+      <a class="src" id="entryLink" href="https://www.cancer.gov/types" target="_blank" rel="noopener">Read more at the National Cancer Institute ↗</a>
+    </div>
+  </dialog>
+
+  <!-- 4. Lumen Companion: the tracker their message asked for -->
+  <section class="sec companion" id="companion" aria-labelledby="comp-h">
+    <div class="wrap comp-grid" id="compGrid">
+      <div>
+        <span class="kicker rise">Coming with Flux</span>
+        <h2 id="comp-h" class="rise" style="--d:.08s">Lumen <em>Companion</em></h2>
+        <p class="lede rise" style="--d:.16s">A gentle app for people going through cancer treatment: medicines, appointments and the journey, all in one place. Built and hosted by Flux, like Synara.</p>
+        <ul class="feat" role="tablist" aria-label="What Lumen Companion does">
+          <li><button type="button" role="tab" aria-selected="true" aria-controls="v0" data-v="0"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg></span><span><b>Medications</b><span>Reminders for every dose, and a tick when it’s taken.</span></span><span class="bar"><i></i></span></button></li>
+          <li><button type="button" role="tab" aria-selected="false" aria-controls="v1" data-v="1"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><span><b>Appointments</b><span>Scans, treatments and check-ups, with questions to ask.</span></span><span class="bar"><i></i></span></button></li>
+          <li><button type="button" role="tab" aria-selected="false" aria-controls="v2" data-v="2"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3"/></svg></span><span><b>My journey</b><span>Milestones, how you’re feeling, and notes to look back on.</span></span><span class="bar"><i></i></span></button></li>
+        </ul>
+        <p class="comp-note"><span class="ph">Preview</span> A picture of the plan, not the app yet. Nothing here is saved.</p>
+      </div>
+      <div class="phone-stage" id="phoneStage">
+        <div class="phone" id="phone" aria-hidden="true">
+          <div class="screen">
+            <span class="notch"></span>
+            <div class="view on" id="v0" role="tabpanel">
+              <h5>Today</h5><p class="hint">Thursday · 3 of 4 taken</p>
+              <div class="ring"><svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="24" stroke="rgba(255,255,255,.1)"/><circle cx="30" cy="30" r="24" stroke="#ffc93c" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="37.7"/></svg><div><b>Nearly there</b><br><small>One dose left tonight</small></div></div>
+              <div class="card done"><span class="dot">8</span><div><b>Anti-nausea</b><small>8:00 am · with breakfast</small></div><span class="tick"></span></div>
+              <div class="card done"><span class="dot">12</span><div><b>Vitamin D</b><small>12:30 pm</small></div><span class="tick"></span></div>
+              <div class="card done"><span class="dot">3</span><div><b>Pain relief</b><small>3:00 pm · as needed</small></div><span class="tick"></span></div>
+              <div class="card"><span class="dot">9</span><div><b>Evening dose</b><small>9:00 pm</small></div><span class="tick"></span></div>
+            </div>
+            <div class="view" id="v1" role="tabpanel">
+              <h5>Appointments</h5><p class="hint">Next 2 weeks</p>
+              <div class="appt"><small>Tomorrow · 10:30 am</small><b>Treatment session</b><small>Bring: water, a book, a warm layer</small></div>
+              <div class="card"><span class="dot">M</span><div><b>Blood test</b><small>Mon · 9:00 am</small></div></div>
+              <div class="card"><span class="dot">W</span><div><b>Check-up with doctor</b><small>Wed · 2:15 pm</small></div></div>
+              <div class="card"><span class="dot">?</span><div><b>Questions to ask</b><small>3 saved for Wednesday</small></div></div>
+            </div>
+            <div class="view" id="v2" role="tabpanel">
+              <h5>My journey</h5><p class="hint">How are you feeling today?</p>
+              <div class="mood"><span>😔</span><span>😐</span><span>🙂</span><span>😊</span><span>🌟</span></div>
+              <div class="journey">
+                <div><b>Halfway through treatment</b><small>Today · you lit a milestone</small></div>
+                <div><b>First good night’s sleep in a while</b><small>Last week</small></div>
+                <div><b>Started treatment</b><small>October</small></div>
+                <div><b>Diagnosis day</b><small>September</small></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="hint">Scroll to light it up</div>
     </div>
   </section>
 
-  <section class="sec what" id="about" aria-labelledby="about-h">
-    <div class="wrap what-grid">
-      <div>
-        <span class="eyebrow">About</span>
-        <h2 id="about-h">What is Project <em>Lumen?</em></h2>
-        <p class="big">Project Lumen is a student led initiative aiming to spread cancer awareness, and bring light to the untold stories of the many people battling cancer today.</p>
-      </div>
-      <div class="glowcard"><img src="public/partners/lumen/logo.svg" alt="Project Lumen’s gold ribbon"></div>
-    </div>
-  </section>
-
-  <section class="words" id="mission" data-scroll aria-labelledby="mission-h">
-    <div class="stage">
-      <span class="eyebrow" id="mission-h">My mission</span>
-      <p data-words>Project Lumen was created with one mission: bring *awareness,* *education* and spark meaningful *conversations* about cancer, bringing the *light* needed to make a *difference.*</p>
-    </div>
-  </section>
-
-  <section class="cards" id="pillars" data-scroll aria-labelledby="pillars-h">
-    <div class="stage">
-      <div class="head">
-        <span class="eyebrow">Awareness into action</span>
-        <h2 id="pillars-h">Three ways we bring light</h2>
-      </div>
-      <div class="deck">
-        <article class="card">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2Z"/></svg>
-          <h3>Awareness</h3><p>Making sure cancer is something people see and talk about, all year and not only on awareness days.</p>
-        </article>
-        <article class="card">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 6s2-2 5-2 5 2 5 2v14s-2-1.5-5-1.5S2 20 2 20Z"/><path d="M22 6s-2-2-5-2-5 2-5 2v14s2-1.5 5-1.5 5 1.5 5 1.5Z"/></svg>
-          <h3>Education</h3><p>Clear, honest information about cancer, its signs and how to support the people living with it. <span class="ph">Details soon</span></p>
-        </article>
-        <article class="card">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/></svg>
-          <h3>Conversation</h3><p>Every voice heard and every story told: space for patients, survivors and families to share what they have been through.</p>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <section class="sec ribbons" id="ribbons" aria-labelledby="ribbons-h">
-    <div class="wrap">
-      <span class="eyebrow">Every colour, a fight</span>
-      <h2 id="ribbons-h">Know the <em>ribbons</em></h2>
-      <p class="lede">Each awareness ribbon stands for people living with a different cancer. Hover or tap one to light it.</p>
-      <ul class="ribbon-grid" id="ribbonGrid"></ul>
-    </div>
-  </section>
-
+  <!-- 5. Stories -->
   <section class="sec stories" id="stories" aria-labelledby="stories-h">
     <div class="wrap">
-      <span class="eyebrow">Untold stories</span>
-      <h2 id="stories-h">Every story is a <em>light</em></h2>
-      <p class="lede">Real stories from people battling cancer, survivors and the families beside them, shared with their permission. <span class="ph">Stories coming soon</span></p>
-      <div class="story-grid">
-        <article class="story"><span class="ph">Placeholder</span><q>A story from someone in our community will go here.</q><small>Name, and how cancer touched their life</small></article>
-        <article class="story"><span class="ph">Placeholder</span><q>Short, honest, in their own words. A few lines is enough.</q><small>Name, survivor</small></article>
-        <article class="story"><span class="ph">Placeholder</span><q>Have a story you want told? Project Lumen wants to hear it.</q><small>Share yours below</small></article>
-      </div>
+      <span class="kicker rise">Untold stories</span>
+      <h2 id="stories-h" class="rise" style="--d:.08s">Every story is a <em>light.</em></h2>
+      <p class="lede rise" style="--d:.16s">Patients, survivors and the families beside them, in their own words. Swipe through.</p>
+    </div>
+    <div class="strip" tabindex="0" aria-label="Stories">
+      <article class="story"><span class="ph">Placeholder</span><q>A story from someone in our community will go here.</q><small>Name · how cancer touched their life</small></article>
+      <article class="story"><span class="ph">Placeholder</span><q>Short, honest, in their own words. A few lines is enough.</q><small>Name · survivor</small></article>
+      <article class="story"><span class="ph">Placeholder</span><q>What helped most, and what they wish people knew.</q><small>Name · caregiver</small></article>
+      <article class="story share"><span class="ph">Form soon</span><q>Have a story you want told?</q><small>Project Lumen would love to hear it.</small></article>
     </div>
   </section>
 
-  <section class="sec sky" aria-labelledby="sky-h">
+  <!-- 6. Lanterns -->
+  <section class="lanterns" aria-labelledby="lan-h">
+    <div class="sky" id="sky" aria-hidden="true"></div>
     <div class="wrap">
-      <span class="eyebrow">Every light shines</span>
-      <h2 id="sky-h">Add your <em>light</em></h2>
-      <p class="lede">For someone you love, someone you lost, or someone still fighting. Tap the sky.</p>
-      <div class="sky-field" id="sky" role="button" tabindex="0" aria-label="Add a light to the sky">
-        <span class="msg" id="skyMsg">Tap anywhere to add a light</span>
-      </div>
-      <p class="sky-count" id="skyCount" aria-live="polite"></p>
+      <span class="kicker rise">Every light shines</span>
+      <h2 id="lan-h" class="rise" style="--d:.08s">Release a <em>lantern.</em></h2>
+      <p class="lede rise" style="--d:.16s">For someone you love, someone you lost, or someone still fighting.</p>
+      <form class="launch rise" id="launch" style="--d:.24s">
+        <label class="sr" for="lanName">A name, if you like</label>
+        <input id="lanName" maxlength="40" placeholder="A name, if you like" autocomplete="off">
+        <button class="btn" type="submit">Release</button>
+      </form>
+      <p class="count" id="lanCount" aria-live="polite"></p>
     </div>
   </section>
 
-  <section class="sec team" id="team" aria-labelledby="team-h">
+  <!-- 7. Team and events -->
+  <section class="sec people" aria-labelledby="people-h">
     <div class="wrap">
-      <span class="eyebrow">The people behind it</span>
-      <h2 id="team-h">Our team</h2>
-      <p class="lede">Project Lumen is run by students. <span class="ph">Team details coming soon</span></p>
-      <div class="team-grid">
-        <div class="person">
-          <div class="photo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
-          <h3>Founder name</h3><p class="role">Founder</p><p>A few lines about why they started Project Lumen.</p>
+      <span class="kicker rise">Behind the light</span>
+      <h2 id="people-h" class="rise" style="--d:.08s">Team &amp; <em>events</em></h2>
+      <div class="two">
+        <div class="panel rise">
+          <h3>Our team <span class="ph">Placeholder</span></h3>
+          <div class="who"><span class="av">F</span><div><b>Founder name</b><span>Founder · why they started Project Lumen</span></div></div>
+          <div class="who"><span class="av">T</span><div><b>Team member</b><span>Role</span></div></div>
+          <div class="who"><span class="av">+</span><div><b>You?</b><span>Project Lumen is looking for students to help.</span></div></div>
         </div>
-        <div class="person">
-          <div class="photo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
-          <h3>Team member</h3><p class="role">Role</p><p>Room for more of the team as it grows.</p>
+        <div class="panel rise" style="--d:.1s" id="events">
+          <h3>Events</h3>
+          <div class="ev"><span class="d"><small>Nov</small>7</span><div><b>National Cancer Awareness Day</b><span>Project Lumen launched on Instagram.</span></div></div>
+          <div class="ev"><span class="d"><small>TBA</small>—</span><div><b>Next event <span class="ph">Placeholder</span></b><span>Date, place and what to bring.</span></div></div>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="sec events" id="events" aria-labelledby="events-h">
-    <div class="wrap">
-      <span class="eyebrow">What’s happening</span>
-      <h2 id="events-h">Events</h2>
-      <ul class="event-list">
-        <li class="event past"><div class="when">Nov<br>7</div><div><h3>National Cancer Awareness Day</h3><p>Project Lumen’s launch on Instagram.</p></div></li>
-        <li class="event"><div class="when">TBA</div><div><h3>Next event <span class="ph">Placeholder</span></h3><p>Date, place and what to bring will go here.</p></div></li>
-      </ul>
-    </div>
-  </section>
-
+  <!-- 8. Join -->
   <section class="sec join" id="join" aria-labelledby="join-h">
     <div class="wrap">
-      <span class="eyebrow">Join the journey</span>
-      <h2 id="join-h">Turn awareness into <em>action</em></h2>
-      <p class="lede">Join us on the journey to make sure every voice is heard, every story is told, and every light shines to make a difference.</p>
-      <div class="ways">
-        <div><b>Spread awareness</b><span>Follow @project.lumen and share our posts.</span></div>
-        <div><b>Share a story</b><span>Tell us your story or someone else’s, with their blessing. <span class="ph">Form soon</span></span></div>
-        <div><b>Volunteer</b><span>Help run events and make posts. <span class="ph">Sign-up soon</span></span></div>
+      <span class="kicker rise">Join the journey</span>
+      <h2 id="join-h" class="rise" style="--d:.08s">Turn awareness into <em>action.</em></h2>
+      <p class="lede rise" style="--d:.16s">Join us on the journey to make sure every voice is heard, every story is told, and every light shines to make a difference.</p>
+      <div class="row rise" style="--d:.24s; display:flex; flex-wrap:wrap; gap:10px; justify-content:center">
+        <a class="btn" href="https://www.instagram.com/project.lumen/" rel="noopener">Follow @project.lumen</a>
+        <a class="btn ghost" href="#stories">Share a story</a>
       </div>
-      <div class="ctas-row">
-        <a class="btn btn-solid" href="https://www.instagram.com/project.lumen/" rel="noopener">Follow on Instagram</a>
-      </div>
-      <p class="tags"><span>#ProjectLumen</span> · <span>#cancerawareness</span> · <span>#spreadawareness</span></p>
-    </div>
-  </section>
-
-  <section class="slide" data-scroll aria-hidden="true">
-    <div class="stage">
-      <div class="line">Project <em>Lumen</em> · Project <em>Lumen</em></div>
+      <p class="tags">#ProjectLumen · #cancerawareness · #spreadawareness</p>
     </div>
   </section>
 </main>
 
 <footer>
-  <p><a class="social" href="https://www.instagram.com/project.lumen/" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg>@project.lumen</a></p>
-  <p>Project Lumen · a student-led initiative</p>
-  <p><a class="powered" href="https://fluxplanner.github.io/Flux/"><img src="icons/icon-192.png" alt="" width="26" height="26">Powered by Flux</a></p>
+  <div class="wrap">
+    <a class="ig" href="https://www.instagram.com/project.lumen/" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg>@project.lumen</a>
+    <span>Project Lumen · a student-led initiative</span>
+    <a class="powered" href="https://fluxplanner.github.io/Flux/"><img src="icons/icon-192.png" alt="" width="24" height="24">Powered by Flux</a>
+  </div>
 </footer>
 
 <script>
   (function () {
     var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
 
-    // The mission: split into words; *word* marks a word that glows gold.
-    document.querySelectorAll('[data-words]').forEach(function (p) {
-      p.innerHTML = p.textContent.trim().split(/\s+/).map(function (w) {
-        var accent = /^\*.*\*[^\w]*$/.test(w);
-        return '<span class="w' + (accent ? ' accent' : '') + '">' + w.replace(/\*/g, '') + '</span>';
-      }).join(' ');
-    });
-
-    // Ribbon colours. The usual awareness colours; Project Lumen to confirm.
-    var RIBBONS = [
-      ['#c9a2ff', 'Lavender', 'All cancers'],
-      ['#ffc93c', 'Gold', 'Childhood cancer'],
-      ['#ff8fc4', 'Pink', 'Breast cancer'],
-      ['#f5f1e6', 'White', 'Lung cancer'],
-      ['#7fc8ff', 'Light blue', 'Prostate cancer'],
-      ['#2f5bd3', 'Dark blue', 'Colorectal cancer'],
-      ['#2ec4b6', 'Teal', 'Ovarian cancer'],
-      ['#ff8a2b', 'Orange', 'Leukemia'],
-      ['#9aa0a6', 'Grey', 'Brain cancer'],
-      ['#4ad66d', 'Lime green', 'Lymphoma'],
+    /* The library. Short drafts for Project Lumen to review; each links to the
+       NCI page (cancer.gov/types/<slug>). tags: common, blood, young, women.
+       month: the usual awareness month, where there is a well-known one. */
+    var CANCERS = [
+      { n: 'All cancers', c: '#b48cff', r: 'Lavender', slug: '', t: [], m: 'World Cancer Day is February 4.',
+        w: 'Cancer is when cells in the body grow out of control and can spread. There are more than 100 kinds, named after where they start. Lavender stands for all of them.' },
+      { n: 'Breast cancer', c: '#ff7eb6', r: 'Pink', slug: 'breast', t: ['common', 'women'], m: 'Breast Cancer Awareness Month is October.',
+        w: 'Cancer that starts in the cells of the breast. It is one of the most common cancers, and it can affect men too. Regular screening helps find it early.' },
+      { n: 'Lung cancer', c: '#e9e4d6', r: 'White', slug: 'lung', t: ['common'], m: 'Lung Cancer Awareness Month is November.', dark: true,
+        w: 'Cancer that starts in the lungs. Smoking is the biggest risk, but people who have never smoked can get it too.' },
+      { n: 'Colorectal cancer', c: '#2d4fbf', r: 'Dark blue', slug: 'colorectal', t: ['common'], m: 'Colorectal Cancer Awareness Month is March.',
+        w: 'Cancer of the colon or rectum, parts of the large intestine. Screening can find growths early, often before they turn into cancer.' },
+      { n: 'Prostate cancer', c: '#69b7ff', r: 'Light blue', slug: 'prostate', t: ['common'], m: 'Prostate Cancer Awareness Month is September.',
+        w: 'Cancer of the prostate, a small gland in men. Many prostate cancers grow slowly; doctors help decide when to treat and when to watch.' },
+      { n: 'Skin cancer', c: '#2b2b2b', r: 'Black (melanoma)', slug: 'skin', t: ['common'], m: 'Skin Cancer Awareness Month is May.',
+        w: 'Cancer of the skin, often linked to sun and tanning-bed exposure. Melanoma is the most serious kind. Sunscreen and shade lower the risk.' },
+      { n: 'Leukemia', c: '#ff8a2b', r: 'Orange', slug: 'leukemia', t: ['blood', 'young'], m: 'Blood Cancer Awareness Month is September.',
+        w: 'Cancer of the blood-forming tissue, like bone marrow. It is the most common cancer in children and teens, and adults get it too.' },
+      { n: 'Lymphoma', c: '#7ed321', r: 'Lime green', slug: 'lymphoma', t: ['blood', 'young'], m: 'Lymphoma Awareness Day is September 15.', dark: true,
+        w: 'Cancer of the lymphatic system, part of the body’s defence against infection. The two main kinds are Hodgkin and non-Hodgkin lymphoma.' },
+      { n: 'Childhood cancers', c: '#ffc93c', r: 'Gold', slug: 'childhood-cancers', t: ['young'], m: 'Childhood Cancer Awareness Month is September.', dark: true,
+        w: 'Cancers in children and teens, such as leukemia, brain tumors and bone cancers. They are rarer than adult cancers and often treated in special children’s hospitals.' },
+      { n: 'Brain tumors', c: '#9aa0a6', r: 'Grey', slug: 'brain', t: ['young'], m: 'Brain Tumor Awareness Month is May.',
+        w: 'Tumors that start in the brain or spinal cord. They are among the most common cancers in children.' },
+      { n: 'Ovarian cancer', c: '#1fb5a8', r: 'Teal', slug: 'ovarian', t: ['women'], m: 'Ovarian Cancer Awareness Month is September.',
+        w: 'Cancer that starts in the ovaries or nearby tissue. Its early signs are easy to miss, so knowing them matters.' },
+      { n: 'Cervical cancer', c: '#3cc7b5', r: 'Teal & white', slug: 'cervical', t: ['women'], m: 'Cervical Health Awareness Month is January.',
+        w: 'Cancer of the cervix, most often caused by HPV. The HPV vaccine and regular screening prevent many cases.' },
+      { n: 'Pancreatic cancer', c: '#7b3fd1', r: 'Purple', slug: 'pancreatic', t: [], m: 'Pancreatic Cancer Awareness Month is November.',
+        w: 'Cancer of the pancreas, which helps digest food and control blood sugar. It is often found late, which makes awareness important.' },
+      { n: 'Kidney cancer', c: '#f08a24', r: 'Orange', slug: 'kidney', t: [], m: 'Kidney Cancer Awareness Month is March.',
+        w: 'Cancer that starts in the kidneys. In children, the most common kind is called Wilms tumor.' },
+      { n: 'Liver cancer', c: '#1e9e5a', r: 'Emerald green', slug: 'liver', t: [], m: 'Liver Cancer Awareness Month is October.',
+        w: 'Cancer that starts in the liver. Long-term hepatitis B or C infection is a major risk, and there is a vaccine for hepatitis B.' },
+      { n: 'Thyroid cancer', c: '#3fb9c9', r: 'Teal, pink & blue', slug: 'thyroid', t: [], m: 'Thyroid Cancer Awareness Month is September.',
+        w: 'Cancer of the thyroid, a gland in the neck that controls how the body uses energy. Most thyroid cancers can be treated well.' },
     ];
-    var ribbonSvg = '<svg viewBox="0 0 24 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 30 L15 14 C18 8 16 2 12 2 C8 2 6 8 9 14 L17 30"/></svg>';
-    var grid = document.getElementById('ribbonGrid');
-    grid.innerHTML = RIBBONS.map(function (r) {
-      return '<li tabindex="0" style="--c:' + r[0] + '">' + ribbonSvg + '<b>' + r[1] + '</b><span>' + r[2] + '</span></li>';
-    }).join('');
-    grid.addEventListener('click', function (e) {
-      var li = e.target.closest('li');
-      if (li) li.classList.toggle('lit');
-    });
+    var ribbon = '<svg viewBox="0 0 24 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 30 L15 14 C18 8 16 2 12 2 C8 2 6 8 9 14 L17 30"/></svg>';
 
-    // Add your light: a dot where they tap. Only on this screen; nothing is saved.
-    var sky = document.getElementById('sky');
-    var skyMsg = document.getElementById('skyMsg');
-    var skyCount = document.getElementById('skyCount');
-    var lights = 0;
-    function addLight(x, y) {
-      var d = document.createElement('span');
-      d.className = 'dot';
-      d.style.left = (x * 100).toFixed(2) + '%';
-      d.style.top = (y * 100).toFixed(2) + '%';
-      d.style.animationDuration = (2.4 + Math.random() * 2).toFixed(2) + 's, .9s';
-      sky.appendChild(d);
-      lights++;
-      skyMsg.style.opacity = '0';
-      skyCount.textContent = lights === 1 ? 'Your light is shining.' : lights + ' lights shining.';
+    // Marquee: the list twice, so the loop is seamless.
+    var mq = CANCERS.map(function (x) { return '<span style="--c:' + x.c + '"><i></i>' + esc(x.n) + '</span>'; }).join('');
+    document.getElementById('marquee').innerHTML = mq + mq;
+
+    // Library grid, search and filters.
+    var grid = document.getElementById('libGrid');
+    var search = document.getElementById('libSearch');
+    var empty = document.getElementById('libEmpty');
+    var filter = 'all';
+    function drawLibrary() {
+      var q = search.value.trim().toLowerCase();
+      var hits = CANCERS.filter(function (x) {
+        var inFilter = filter === 'all' || x.t.indexOf(filter) >= 0;
+        return inFilter && (!q || (x.n + ' ' + x.r).toLowerCase().indexOf(q) >= 0);
+      });
+      grid.innerHTML = hits.map(function (x, i) {
+        return '<li style="--i:' + i + '"><button class="cancer" type="button" data-n="' + esc(x.n) + '" style="--c:' + x.c + '">' + ribbon +
+          '<b>' + esc(x.n) + '</b><span>' + esc(x.r) + ' ribbon</span><span class="arrow" aria-hidden="true">→</span></button></li>';
+      }).join('');
+      empty.hidden = hits.length > 0;
     }
-    sky.addEventListener('click', function (e) {
-      var r = sky.getBoundingClientRect();
-      addLight((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+    search.addEventListener('input', drawLibrary);
+    document.getElementById('libFilters').addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      filter = b.dataset.f;
+      this.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      drawLibrary();
     });
-    sky.addEventListener('keydown', function (e) {
-      if (e.key !== 'Enter' && e.key !== ' ') return;
-      e.preventDefault();
-      addLight(.08 + Math.random() * .84, .1 + Math.random() * .7);
+    drawLibrary();
+
+    // One entry, in the side panel.
+    var dlg = document.getElementById('entry');
+    grid.addEventListener('click', function (e) {
+      var b = e.target.closest('.cancer');
+      if (!b) return;
+      var x = CANCERS.filter(function (c) { return c.n === b.dataset.n; })[0];
+      var top = document.getElementById('entryTop');
+      top.style.setProperty('--c', x.c);
+      top.classList.toggle('dark-text', !!x.dark);
+      document.getElementById('entryName').textContent = x.n;
+      document.getElementById('entryRibbon').textContent = x.r + ' ribbon';
+      document.getElementById('entryWhat').textContent = x.w;
+      document.getElementById('entryMonth').textContent = 'Wear ' + x.r.toLowerCase() + ' and share what you learned. ' + x.m;
+      var link = document.getElementById('entryLink');
+      link.href = 'https://www.cancer.gov/types' + (x.slug ? '/' + x.slug : '');
+      if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+    });
+    document.getElementById('entryClose').addEventListener('click', function () { dlg.close(); });
+    dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); }); // the backdrop
+
+    // Mission: letters ignite; [words] glow gold.
+    document.querySelectorAll('[data-ignite]').forEach(function (p) {
+      var i = 0;
+      p.setAttribute('aria-label', p.textContent.replace(/[\[\]]/g, ''));
+      p.innerHTML = p.textContent.split(/(\[[^\]]+\])/).map(function (part) {
+        var glow = part.charAt(0) === '[';
+        var text = glow ? part.slice(1, -1) : part;
+        var words = text.split(/(\s+)/).map(function (w) {
+          if (/^\s+$/.test(w) || !w) return w;
+          return '<span style="display:inline-block;white-space:nowrap" aria-hidden="true">' + w.split('').map(function (c) {
+            return '<span class="ch" style="--i:' + (i++) + '">' + esc(c) + '</span>';
+          }).join('') + '</span>';
+        }).join('');
+        return glow ? '<span class="glow">' + words + '</span>' : words;
+      }).join('');
     });
 
-    // Scroll-driven sections (see the note at the top).
-    var sections = Array.prototype.slice.call(document.querySelectorAll('[data-scroll]'));
-    function update() {
-      var vh = window.innerHeight;
-      sections.forEach(function (s) {
-        var r = s.getBoundingClientRect();
-        var span = r.height - vh;
-        var p = span > 0 ? Math.min(1, Math.max(0, -r.top / span)) : 1;
-        s.style.setProperty('--p', p.toFixed(4));
-        var words = s.querySelectorAll('.w');
-        if (words.length) {
-          var lit = Math.round(p * 1.15 * words.length);
-          for (var i = 0; i < words.length; i++) words[i].classList.toggle('on', i < lit);
-        }
+    // Entrance animations, once each.
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { threshold: .18, rootMargin: '0px 0px -8% 0px' });
+    document.querySelectorAll('.rise, .wipe, .ignite').forEach(function (el) { io.observe(el); });
+
+    // The flashlight follows the pointer (a mouse or a dragging finger).
+    var hero = document.getElementById('hero');
+    if (!reduce) {
+      hero.addEventListener('pointermove', function (e) {
+        var r = hero.getBoundingClientRect();
+        hero.classList.add('manual');
+        hero.style.setProperty('--lx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
+        hero.style.setProperty('--ly', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
       });
     }
-    // Straight from the scroll event, not requestAnimationFrame: the work is
-    // tiny, and rAF is paused in background tabs.
-    window.addEventListener('scroll', update, { passive: true });
-    window.addEventListener('resize', update);
-    update();
 
-    // Embers drifting up behind the hero. Stops when the hero is off screen.
-    var canvas = document.getElementById('embers');
-    if (reduce || !canvas.getContext) return;
-    var ctx = canvas.getContext('2d');
-    var w = 0, h = 0, running = false, motes = [];
-    function size() {
-      var dpr = Math.min(window.devicePixelRatio || 1, 2);
-      w = canvas.clientWidth; h = canvas.clientHeight;
-      canvas.width = w * dpr; canvas.height = h * dpr;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // Tiles light up under the pointer.
+    document.querySelectorAll('[data-glow] .tile').forEach(function (t) {
+      t.addEventListener('pointermove', function (e) {
+        var r = t.getBoundingClientRect();
+        t.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+        t.style.setProperty('--my', (e.clientY - r.top) + 'px');
+      });
+    });
+
+    // Companion: three screens that take turns; a tap picks one.
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('.feat [role=tab]'));
+    var views = [0, 1, 2].map(function (i) { return document.getElementById('v' + i); });
+    var compGrid = document.getElementById('compGrid');
+    var current = 0, timer = 0, DUR = 5200;
+    function show(i) {
+      current = i;
+      tabs.forEach(function (t, k) { t.setAttribute('aria-selected', String(k === i)); });
+      views.forEach(function (v, k) { v.classList.toggle('on', k === i); });
+      // Restart the progress bar on the chosen tab.
+      var bar = tabs[i].querySelector('.bar i'); bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = '';
+      clearTimeout(timer);
+      if (!reduce) timer = setTimeout(function () { show((current + 1) % 3); }, DUR);
     }
-    function mote(fresh) {
-      return { x: Math.random() * w, y: fresh ? h + 10 : Math.random() * h, r: .6 + Math.random() * 2.2,
-        vy: .15 + Math.random() * .55, sway: Math.random() * 6.28, a: .25 + Math.random() * .6 };
+    document.querySelector('.feat').style.setProperty('--dur', DUR + 'ms');
+    tabs.forEach(function (t, k) { t.addEventListener('click', function () { show(k); }); });
+    show(0);
+
+    // The phone tilts toward the pointer.
+    var stage = document.getElementById('phoneStage');
+    var phone = document.getElementById('phone');
+    if (!reduce) {
+      stage.addEventListener('pointermove', function (e) {
+        var r = stage.getBoundingClientRect();
+        var x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
+        phone.style.setProperty('--ry', (x * 26).toFixed(1) + 'deg');
+        phone.style.setProperty('--rx', (-y * 18).toFixed(1) + 'deg');
+      });
+      stage.addEventListener('pointerleave', function () { phone.style.removeProperty('--ry'); phone.style.removeProperty('--rx'); });
     }
-    function frame() {
-      if (!running) return;
-      ctx.clearRect(0, 0, w, h);
-      ctx.globalCompositeOperation = 'lighter';
-      for (var i = 0; i < motes.length; i++) {
-        var m = motes[i];
-        m.y -= m.vy; m.sway += .012; m.x += Math.sin(m.sway) * .25;
-        if (m.y < -10) motes[i] = m = mote(true);
-        var g = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, m.r * 5);
-        g.addColorStop(0, 'rgba(255,214,110,' + m.a + ')');
-        g.addColorStop(1, 'rgba(255,150,20,0)');
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(m.x, m.y, m.r * 5, 0, 6.283); ctx.fill();
-      }
-      requestAnimationFrame(frame);
-    }
-    size();
-    for (var i = 0; i < 70; i++) motes.push(mote(false));
-    window.addEventListener('resize', size);
-    new IntersectionObserver(function (es) {
-      var on = es[0].isIntersecting;
-      if (on && !running) { running = true; requestAnimationFrame(frame); }
-      running = on;
-    }).observe(canvas);
+
+    // Lanterns: rise and fade. Only on this screen; the name is never sent or saved.
+    var sky = document.getElementById('sky');
+    var input = document.getElementById('lanName');
+    var count = document.getElementById('lanCount');
+    var released = 0;
+    document.getElementById('launch').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var name = input.value.trim();
+      released++;
+      count.textContent = (name ? 'A lantern for ' + name + ' is rising.' : 'Your lantern is rising.') + (released > 1 ? ' ' + released + ' released.' : '');
+      input.value = '';
+      if (reduce) return;
+      var l = document.createElement('div');
+      l.className = 'lantern';
+      l.style.setProperty('--x', (12 + Math.random() * 76).toFixed(1) + '%');
+      l.style.setProperty('--sway', String(Math.round(20 + Math.random() * 50) * (Math.random() < .5 ? -1 : 1)));
+      l.style.setProperty('--t', (11 + Math.random() * 5).toFixed(1) + 's');
+      var body = document.createElement('span'); body.className = 'body';
+      l.appendChild(body);
+      if (name) { var n = document.createElement('span'); n.className = 'name'; n.textContent = name; l.appendChild(n); }
+      l.addEventListener('animationend', function (ev) { if (ev.animationName === 'float') l.remove(); });
+      sky.appendChild(l);
+      while (sky.children.length > 24) sky.firstChild.remove();
+    });
   })();
 </script>
 </body>
