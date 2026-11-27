@@ -78,6 +78,7 @@
     undo: svgIcon('<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/>'),
     redo: svgIcon('<path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 15-6.7L21 13"/>'),
     trash: svgIcon('<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>'),
+    people: svgIcon('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/>'),
     copy: svgIcon('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>'),
     download: svgIcon('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>'),
     back: svgIcon('<path d="m15 18-6-6 6-6"/>'),
@@ -653,6 +654,8 @@
         figureToNewPage(spec, true);
         return;
       }
+      var lv = (location.hash || '').match(/^#\/live\/([A-Za-z0-9]+)$/);
+      if (lv) return openLive(lv[1]);
       var m = (location.hash || '').match(/^#\/d\/([^/]+)$/);
       if (m) {
         var d = getDoc(decodeURIComponent(m[1]));
@@ -661,6 +664,27 @@
         return;
       }
       gallery();
+    }
+
+    /** A live link: this browser's copy of the room if it has one, else the saved copy. */
+    function openLive(room) {
+      var L = window.FluxPixelLive;
+      var mine = docs().filter(function (d) { return d.live === room; })[0];
+      if (mine) { location.replace('#/d/' + encodeURIComponent(mine.id)); return; }
+      host.innerHTML = '<div class="px-empty"><h2>Opening the shared drawing\u2026</h2></div>';
+      var gone = '<div class="px-empty"><h2>That shared drawing is not here</h2><p>Check the link, or ask for a new one.</p><a class="px-btn px-btn--primary" href="#/">My drawings</a></div>';
+      if (!L || !L.isRoom(room)) { host.innerHTML = gone; return; }
+      var at = location.hash;
+      L.fetchRoom(room).then(function (srv) {
+        if (location.hash !== at) return;
+        if (!srv) { host.innerHTML = gone; return; }
+        var d = newDoc({ title: String(srv.title || 'Shared drawing').slice(0, 80), bg: srv.bg, items: srv.items });
+        d.live = room;
+        putDoc(d);
+        location.replace('#/d/' + encodeURIComponent(d.id));
+      }, function (e) {
+        if (location.hash === at) host.innerHTML = '<div class="px-empty"><h2>Could not open the shared drawing</h2><p>' + esc(e.message) + '</p><a class="px-btn px-btn--primary" href="#/">My drawings</a></div>';
+      });
     }
 
     /** Open the Maths figures panel; Insert puts the figure on a new page. */
@@ -1034,6 +1058,8 @@
         + '<a class="px-icon" href="#/" aria-label="All drawings" title="All drawings">' + ICON.back + '</a>'
         + '<input class="px-title" value="' + esc(doc.title) + '" aria-label="Drawing name" maxlength="80">'
         + '<span class="px-saved" aria-live="polite"></span><span class="px-grow"></span>'
+        + '<button type="button" class="px-live" data-act="livename" hidden></button>'
+        + '<button type="button" class="px-btn px-btn--small" data-act="share" title="Draw on this page together: anyone with the link can edit">' + ICON.people + '<span>Share live</span></button>'
         + '<button type="button" class="px-icon" data-act="undo" aria-label="Undo" title="Undo (Ctrl+Z)">' + ICON.undo + '</button>'
         + '<button type="button" class="px-icon" data-act="redo" aria-label="Redo" title="Redo (Ctrl+Shift+Z)">' + ICON.redo + '</button>'
         + '<span class="px-zoom"><button type="button" class="px-icon" data-act="zoomout" aria-label="Zoom out">−</button><button type="button" class="px-zoom-v" data-act="zoomfit" title="Fit to screen">100%</button><button type="button" class="px-icon" data-act="zoomin" aria-label="Zoom in">+</button></span>'
@@ -1052,7 +1078,7 @@
         + '<div class="px-stage" id="pxStage"><div class="px-wrap" id="pxWrap">'
         + '<svg class="px-svg" id="pxSvg" viewBox="0 0 ' + W + ' ' + H + '" xmlns="' + NS + '"><defs id="pxDefs"></defs>'
         + '<rect width="' + W + '" height="' + H + '" fill="#fff"/><rect id="pxBgRect" width="' + W + '" height="' + H + '" fill="none"/>'
-        + '<g id="pxItems"></g><g id="pxInst"></g><g id="pxDraft"></g><g id="pxSel"></g><g id="pxLaser"></g></svg>'
+        + '<g id="pxItems"></g><g id="pxInst"></g><g id="pxDraft"></g><g id="pxSel"></g><g id="pxLaser"></g><g id="pxPeers" pointer-events="none"></g></svg>'
         + '<textarea class="px-textin" id="pxText" hidden rows="1" aria-label="Text"></textarea>'
         + '<div class="px-float" id="pxFloat" role="toolbar" aria-label="Selected" hidden></div></div></div>'
         + '<div class="px-props" id="pxProps"></div>'
@@ -1359,8 +1385,75 @@
         applyZoom();
       }
 
+      /* ── Live: drawing together ────────────────────────────────────────
+         flux-pixel-live.js carries the changes; this part puts other
+         people's changes on the page and shows where they are. Their
+         changes are written into every undo step too, so Undo takes back
+         only what you did, never someone else's work. */
+      var live = null;
+      function startLive() {
+        var L = window.FluxPixelLive;
+        if (!L || live || !doc.live) return;
+        live = L.session({
+          room: doc.live,
+          doc: function () { return doc; },
+          onRemote: applyRemote,
+          onPeers: drawPeers,
+          onError: function (m) { toast(m, 'warn'); },
+        });
+      }
+      function applyRemote(ops) {
+        var L = window.FluxPixelLive;
+        var touched = (ops.up || []).some(function (it) { return it.id === st.sel; }) || (ops.del || []).indexOf(st.sel) >= 0;
+        doc.items = L.apply(doc.items, ops);
+        st.hist = st.hist.map(function (snap) { return JSON.stringify(L.apply(JSON.parse(snap), { up: ops.up, del: ops.del })); });
+        if (ops.meta) {
+          if (typeof ops.meta.title === 'string' && ops.meta.title !== doc.title) {
+            doc.title = ops.meta.title.slice(0, 80) || 'Untitled drawing';
+            var ti = $('.px-title', host); if (ti && document.activeElement !== ti) ti.value = doc.title;
+          }
+          if (BGS.some(function (b) { return b[0] === ops.meta.bg; }) && ops.meta.bg !== doc.bg) { doc.bg = ops.meta.bg; drawBg(); }
+        }
+        if (st.sel && !doc.items.some(function (i) { return i.id === st.sel; })) st.sel = null;
+        drawItems();
+        // Rebuilding the options panel would steal focus from a box being typed in.
+        if (touched && !(document.activeElement && props.contains(document.activeElement))) drawProps();
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(function () { saveTimer = null; putDoc(doc); }, 350);
+      }
+      function drawPeers(list, status) {
+        var badge = $('[data-act="livename"]', host), btn = $('[data-act="share"]', host);
+        if (!badge) return;
+        badge.hidden = false;
+        if (btn) btn.classList.add('is-live');
+        var n = list.length;
+        badge.className = 'px-live is-' + status;
+        badge.innerHTML = '<span class="px-live-dot"></span>'
+          + (status === 'live' ? (n ? list.slice(0, 4).map(function (p) { return '<span class="px-live-face" style="background:' + esc(p.color || '#64748b') + '" title="' + esc(p.name || 'Someone') + '">' + esc((p.name || '?').charAt(0)) + '</span>'; }).join('') + '<span>' + (n === 1 ? esc(list[0].name || '1 other') : n + ' here') + '</span>' : '<span>Live</span>')
+            : status === 'offline' ? '<span>Reconnecting\u2026</span>' : '<span>Connecting\u2026</span>');
+        badge.title = 'You are ' + live.me().name + '. Click to change your name.' + (n ? '\nHere now: ' + list.map(function (p) { return p.name; }).join(', ') : '');
+        var k = 1 / (pageScale() || 1), now = Date.now();
+        $('#pxPeers', host).innerHTML = list.filter(function (p) { return p.moved && now - p.moved < 30000 && isFinite(p.x); }).map(function (p) {
+          var c = esc(p.color || '#64748b'), name = esc(p.name || '');
+          return '<g transform="translate(' + r1(p.x) + ' ' + r1(p.y) + ') scale(' + r1(k * 100) / 100 + ')">'
+            + '<path d="M0 0 L0 17 L4.5 13 L8 20.5 L11 19 L7.6 11.8 L13.5 11.8 Z" fill="' + c + '" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/>'
+            + '<rect x="12" y="18" rx="5" height="19" width="' + (name.length * 7.2 + 14) + '" fill="' + c + '"/>'
+            + '<text x="19" y="31.5" font-size="12" font-weight="700" fill="#fff" font-family="system-ui, sans-serif">' + name + '</text></g>';
+        }).join('');
+      }
+      function shareLive() {
+        var L = window.FluxPixelLive;
+        if (!L) { toast('Sharing could not load. Try refreshing.', 'warn'); return; }
+        if (!doc.live) { doc.live = L.newRoomId(); doc.liveDirty = true; putDoc(doc); startLive(); }
+        var url = L.linkFor(doc.live);
+        var done = function () { toast('Link copied. Anyone with it can draw on this page with you, live.'); };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, function () { window.prompt('Send this link to draw together', url); });
+        else window.prompt('Send this link to draw together', url);
+      }
+
       /* Saving and history */
       function save() {
+        if (live) live.changed();
         clearTimeout(saveTimer);
         saveTimer = setTimeout(function () {
           if (putDoc(doc)) { var s = $('.px-saved', host); if (s) { s.textContent = 'Saved'; clearTimeout(s._t); s._t = setTimeout(function () { s.textContent = ''; }, 1200); } }
@@ -1721,6 +1814,7 @@
         drawDraft();
       });
       svg.addEventListener('pointermove', function (e) {
+        if (live) live.cursor(toPage(e));
         if (e.pointerType === 'touch' && touches[e.pointerId]) {
           touches[e.pointerId] = { x: e.clientX, y: e.clientY };
           if (pinch) { movePinch(); return; }
@@ -2025,6 +2119,12 @@
           if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(function () { toast('Link copied. It opens this figure\u2019s settings.'); }, function () { window.prompt('Copy this link', url); });
           else window.prompt('Copy this link', url);
         }
+        else if (a === 'share') shareLive();
+        else if (a === 'livename') {
+          if (!live) return;
+          var nm = window.prompt('Your name, as the others see it', live.me().name);
+          if (nm != null) { live.rename(nm); drawPeers(live.peers(), live.status()); }
+        }
         else if (a === 'vadd') addTypedVector();
         else if (a === 'vtip') vecOp('tip');
         else if (a === 'vpara') vecOp('para');
@@ -2139,15 +2239,24 @@
       setPanel(window.innerWidth > 760);
       setMode(st.mode);
       drawUndo();
+      if (doc.live) startLive();
       if (window.FluxHub) window.FluxHub.mountAll();
       // Saving waits a moment after each change; closing or reloading the page in that moment must not lose it.
-      function flush() { if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; putDoc(doc); } }
+      function flush() {
+        if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; putDoc(doc); }
+        if (live) { live.close(); live = null; }
+      }
       window.addEventListener('pagehide', flush);
+      // Back from the browser's back-forward cache: the live link was closed on the way out.
+      function onShow(e) { if (e.persisted && doc.live) startLive(); }
+      window.addEventListener('pageshow', onShow);
             var ro = typeof ResizeObserver === 'function' ? new ResizeObserver(function () { applyZoom(); }) : null;
       if (ro) ro.observe(stage); else window.addEventListener('resize', applyZoom);
       cleanup = function () {
         if (ro) ro.disconnect(); else window.removeEventListener('resize', applyZoom);
         window.removeEventListener('pagehide', flush);
+        window.removeEventListener('pageshow', onShow);
+        if (live) { live.close(); live = null; }
         if (editing) closeText(true);
         clearTimeout(saveTimer); putDoc(doc);
         document.removeEventListener('keydown', onKey);
