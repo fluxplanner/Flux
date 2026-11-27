@@ -740,18 +740,30 @@
     // Mission: letters ignite; [words] glow gold.
     document.querySelectorAll('[data-ignite]').forEach(function (p) {
       var i = 0;
-      p.setAttribute('aria-label', p.textContent.replace(/[\[\]]/g, ''));
-      p.innerHTML = p.textContent.split(/(\[[^\]]+\])/).map(function (part) {
+      var source = p.textContent;
+      p.setAttribute('aria-label', source.replace(/[\[\]]/g, ''));
+      p.textContent = '';
+      // Built as nodes with textContent, never as an HTML string.
+      source.split(/(\[[^\]]+\])/).forEach(function (part) {
         var glow = part.charAt(0) === '[';
-        var text = glow ? part.slice(1, -1) : part;
-        var words = text.split(/(\s+)/).map(function (w) {
-          if (/^\s+$/.test(w) || !w) return w;
-          return '<span style="display:inline-block;white-space:nowrap" aria-hidden="true">' + w.split('').map(function (c) {
-            return '<span class="ch" style="--i:' + (i++) + '">' + esc(c) + '</span>';
-          }).join('') + '</span>';
-        }).join('');
-        return glow ? '<span class="glow">' + words + '</span>' : words;
-      }).join('');
+        var host = p;
+        if (glow) { host = document.createElement('span'); host.className = 'glow'; p.appendChild(host); }
+        (glow ? part.slice(1, -1) : part).split(/(\s+)/).forEach(function (w) {
+          if (!w) return;
+          if (/^\s+$/.test(w)) { host.appendChild(document.createTextNode(w)); return; }
+          var word = document.createElement('span');
+          word.style.cssText = 'display:inline-block;white-space:nowrap';
+          word.setAttribute('aria-hidden', 'true');
+          w.split('').forEach(function (c) {
+            var ch = document.createElement('span');
+            ch.className = 'ch';
+            ch.style.setProperty('--i', String(i++));
+            ch.textContent = c;
+            word.appendChild(ch);
+          });
+          host.appendChild(word);
+        });
+      });
     });
 
     // Entrance animations, once each.
